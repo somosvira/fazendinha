@@ -233,7 +233,7 @@ function DetalheEstoqueLeite({
               />
             </>
           )}
-          <h2>Origens, natureza e apuração <AjudaCampo rotulo="Sobre a apuração do custo" texto={"O custo pode ser documentado depois da retirada. Apurar não altera os litros e não cria outra despesa."} /></h2>
+          <h2>Origens, natureza e apuração </h2>
 
           {!estoque.origens.length ? (
             <Empty>Nenhuma produção confirmada para este produto neste sítio.</Empty>

@@ -37,7 +37,7 @@ describe("classificação conservadora da entrada inteira", () => {
       vinculosMedicoes: [{ medicao: { participante: { animalId: `animal-${i}` } } }],
       movimento: { quantidade: new Prisma.Decimal(b.quantidade), data: new Date(b.data), seq: i + 1 }, apuracoes: [], alocacoes: [],
       classificacoes: [{ id: `classe-${i}`, natureza: b.natureza, versao: 2 }] }));
-    const tx = { loteColostro: { findMany: vi.fn().mockResolvedValue([]) }, aplicacaoProduto: { findMany: vi.fn(async () => []) }, entradaProducaoLeite: { findMany: vi.fn(async () => fontes) }, movimentoEstoque: {
+    const tx = { loteColostro: { findMany: vi.fn().mockResolvedValue([]) }, envioAplicacoesTablet: { findMany: vi.fn(async () => []) }, aplicacaoProduto: { findMany: vi.fn(async () => []) }, entradaProducaoLeite: { findMany: vi.fn(async () => fontes) }, movimentoEstoque: {
       findMany: vi.fn(async () => fontes.map(f => ({ tipo: "ENTRADA", quantidade: f.movimento.quantidade }))), create: vi.fn(),
     }, alocacaoLeiteEstoque: { createMany: vi.fn() } };
     const banco = tx as unknown as Prisma.TransactionClient;

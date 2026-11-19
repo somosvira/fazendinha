@@ -33,6 +33,8 @@ const envSchema = z
     SHARED_ACCESS_TOKEN: z.string().min(16).optional(),
 
     NUTRICAO_MENSAL_ENABLED: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
+    LEILOES_PROGRAMA_ENABLED: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
+    LEILOES_ERURAL_ENABLED: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
     NUTRICAO_AUTOMACAO_ENABLED: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
 
     // --- OpenAI (provider único do app) ---

@@ -17,6 +17,19 @@ const app = (verValores = false) => new Hono().use("*", async (c, next) => { c.s
 const fato = { id: uid(1), animal: { id: uid(2), brinco: "GV3-01", nome: "Mimosa" }, dose: "2", valorProdutoAtribuido: "6", valorServicoAtribuido: null };
 const json = { "content-type": "application/json" };
 
+it("separa as permissões do tablet da permissão geral de lançamento", async () => {
+  const envio = { id: uid(1), propriedadeId: 2, aplicadaEm: "2026-01-02T10:00:00-03:00", animalIds: [uid(2)], itens: [{ produtoId: uid(3), quantidade: 1 }] };
+  const tablet = (flag: string, id = 7) => new Hono().use("*", async (c, next) => {
+    c.set("usuario" as never, { ...usuario, id, flags: [flag] } as never);
+    await next();
+  }).route("/", sanidadeRouter);
+  const post = (body: unknown) => ({ method: "POST", headers: json, body: JSON.stringify(body) });
+  expect((await app().request("/tablet/envios", post(envio))).status).toBe(403);
+  expect((await tablet("enviarAplicacoesTablet").request(`/tablet/envios/${uid(1)}/revisao`, post({ propriedadeId: 2, motivo: "Invalidar dados" }))).status).toBe(403);
+  expect((await tablet("revisarAplicacoesTablet").request("/tablet/envios", post(envio))).status).toBe(403);
+  expect((await tablet("enviarAplicacoesTablet", 0).request("/tablet/envios", post(envio))).status).toBe(401);
+});
+
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.leitura.mockResolvedValue(2); mocks.escrita.mockResolvedValue(2);

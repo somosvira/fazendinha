@@ -151,7 +151,7 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
   if (carregando && !carregou && !erro) return <PaginaCarregando label="Carregando compromissos" />;
 
   return <PaginaFinanceira colorida>
-    <PageHeader eyebrow="" titulo="Compromissos" descricao="Acompanhe vencimentos, valores pendentes e registre pagamentos e recebimentos." acao={podeLancar ? <div className="flex flex-wrap gap-2"><Button secondary disabled={preparando} onClick={() => { void prepararNovoCompromisso("RECEBER"); }}>Criar a receber</Button><Button disabled={preparando} onClick={() => { void prepararNovoCompromisso("PAGAR"); }}>Criar a pagar</Button></div> : undefined} />
+    <PageHeader eyebrow="" titulo="Compromissos" acao={podeLancar ? <div className="flex flex-wrap gap-2"><Button secondary disabled={preparando} onClick={() => { void prepararNovoCompromisso("RECEBER"); }}>Criar a receber</Button><Button disabled={preparando} onClick={() => { void prepararNovoCompromisso("PAGAR"); }}>Criar a pagar</Button></div> : undefined} />
     <ErrorBox erro={erro} />
     {erro && <Button secondary onClick={() => { void carregar(); }}>Tentar novamente</Button>}
     {carregando && <AtualizandoFinanceiro />}

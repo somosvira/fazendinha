@@ -148,7 +148,7 @@ export function ConfiguracaoReprodutiva({
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">Aptidão e acompanhamento <AjudaCampo rotulo="Ajuda sobre aptidão e acompanhamento" texto="Defina o período de espera voluntário (PEV) e as regras da fazenda. Os valores devem ser escolhidos com o responsável pelo manejo."/></h2>
+        <h2 className="text-xl font-semibold">Aptidão e acompanhamento </h2>
 
       </div>
       {erro && !formularioAberto && (
@@ -166,7 +166,7 @@ export function ConfiguracaoReprodutiva({
           className="space-y-4"
         >
           <fieldset disabled={ocupado} className="space-y-4 min-w-0">
-          <p className="text-sm">As alterações valem a partir da vigência informada. Os ciclos existentes conservam suas regras. <AjudaCampo rotulo="Ajuda sobre versões da política" texto="Cada ciclo conserva a versão aplicável ao seu início. Consultar um animal não cria vínculos. O PEV original só é exibido quando existe vínculo com a política do ciclo."/></p>
+          <p className="text-sm">As alterações valem a partir da vigência informada. Os ciclos existentes conservam suas regras. </p>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label>
@@ -195,7 +195,6 @@ export function ConfiguracaoReprodutiva({
                 onChange={(e) => setMultiparas(e.target.value)}
               />
             </label>
-            <p className="sm:col-span-2 lg:col-span-3 text-sm">As regras abaixo preservam o cálculo dos indicadores históricos. Na operação, aborto e perda exigem novo exame; descarte e condições impeditivas vigentes tornam o animal não apto, independentemente destas opções.</p>
             <Escolha
               rotulo="Após aborto"
               valor={aborto}
@@ -248,7 +247,6 @@ export function ConfiguracaoReprodutiva({
           </div>
           <div className="border-t pt-5">
             <h3 className="text-lg font-semibold">Critérios de avaliação reprodutiva</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Somente critérios selecionados exigem evidência. Quando combinados, todos precisam ser atendidos. Avaliação devida não agenda nem determina aptidão.</p>
             <label className="my-3 flex items-center gap-2"><input type="checkbox" checked={diasAvaliacao !== null} onChange={e => setDiasAvaliacao(e.target.checked ? 45 : null)}/>Solicitar avaliação após parto comprovado</label>
             {diasAvaliacao !== null && <label>Dias após parto comprovado<Input required type="number" min={0} max={2000} value={diasAvaliacao} onChange={e => setDiasAvaliacao(Number(e.target.value))}/><span className="text-sm text-muted-foreground">Referência: 45 dias. Ajuste explicitamente com o responsável pelo manejo.</span></label>}
             <div className="mt-5 grid gap-8 lg:grid-cols-2"><CriteriosAptidaoFormulario titulo="Vacas" valor={vacas} onChange={setVacas}/><CriteriosAptidaoFormulario titulo="Novilhas" valor={novilhas} onChange={setNovilhas}/></div>
@@ -256,7 +254,7 @@ export function ConfiguracaoReprodutiva({
             <label className="mt-4 block">Motivo da alteração<Input required minLength={5} maxLength={1000} value={motivoVersao} onChange={e => setMotivoVersao(e.target.value)}/></label>
           </div>
           <fieldset>
-            <legend className="mb-2">Papéis incluídos nos indicadores <AjudaCampo rotulo="Ajuda sobre a elegibilidade de novilhas" texto="Este recorte pertence aos indicadores históricos. O papel reprodutivo não determina a aptidão atual."/></legend>
+            <legend className="mb-2">Papéis incluídos nos indicadores </legend>
             {(
               [
                 ["NENHUM", "Nenhum"],

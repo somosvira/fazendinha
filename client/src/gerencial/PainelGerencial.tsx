@@ -77,22 +77,22 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
         {dados.compromissos.estado === "DISPONIVEL" && Number(dados.compromissos.dados.vencido) > 0 && <div><CircleAlert size={20} aria-hidden="true" /><strong>{brl(dados.compromissos.dados.vencido)} vencidos</strong><LinkOrigem href={`/financeiro/compromissos?${new URLSearchParams({situacao:"pagar", ...(propriedadeId == null ? {} : {propriedadeId:String(propriedadeId)})})}`}>Consultar vencimentos</LinkOrigem></div>}
         {dados.clinico.estado === "DISPONIVEL" && dados.clinico.dados.acompanhamentosPendentes > 0 && <div><CircleAlert size={20} aria-hidden="true" /><strong>Pendências reprodutivas: {dados.clinico.dados.acompanhamentosPendentes}<small>Até {dataBR(dados.clinico.dados.data)}</small></strong><LinkOrigem href={link("/pecuaria/reproducao")}>Consultar acompanhamentos</LinkOrigem></div>}
       </aside>}
-      <section className="ger-secao" aria-labelledby="ger-financas"><div className="ger-secao-titulo"><h2 id="ger-financas">Caixa e compromissos</h2><p>Movimentos do período e posição atual dos vencimentos.</p></div><div className="ger-grade ger-grade-caixa">
+      <section className="ger-secao" aria-labelledby="ger-financas"><div className="ger-secao-titulo"><h2 id="ger-financas">Caixa e compromissos</h2></div><div className="ger-grade ger-grade-caixa">
         <BlocoPainel titulo="Caixa no período" bloco={dados.caixa} className="ger-caixa">{c => <>
-          <p className="ger-muted">Valores líquidos de estornos.</p>
+          
           <dl className="ger-caixa-valores"><Valor rotulo="Recebido" valor={brl(c.entradas)} /><Valor rotulo="Pago" valor={brl(c.saidas)} /><Valor rotulo="Resultado de caixa" valor={brl(c.resultado)} /></dl>
           <p className="ger-muted">{contagem(new Set(c.fontes.map(f => f.transacaoId)).size, "transação", "transações")} no período. Resultado de caixa não representa lucro.</p>
           <div className="ger-rodape-link"><LinkOrigem href={link("/financeiro/contas")}>Ver contas</LinkOrigem></div>
         </>}</BlocoPainel>
         <BlocoPainel titulo="Ainda a pagar" bloco={dados.compromissos} className="ger-compromissos">{c => <>
-          <p className="ger-muted">Saldo dos compromissos ativos hoje.</p><p className="ger-valor ger-valor-destaque">{brl(c.totalPendente)}</p>
+          <p className="ger-valor ger-valor-destaque">{brl(c.totalPendente)}</p>
           <dl className="ger-indices"><Valor rotulo="Vencido" valor={brl(c.vencido)} /><Valor rotulo="A vencer" valor={brl(c.aVencer)} /></dl>
           <h3 className="ger-subtitulo">Quando vence o saldo a pagar</h3><BarrasHorizontais titulo="Saldo a pagar por vencimento" itens={c.faixas.map(f => ({...f, alerta:f.chave === "VENCIDO"}))} vazio="Sem saldo a pagar." />
           <p className="ger-muted">Posição em {dataBR(c.data)} · todos os vencimentos, independente do período acima.</p>
           <div className="ger-rodape-link"><LinkOrigem href={`/financeiro/compromissos?${new URLSearchParams({situacao:"pagar", ...(propriedadeId == null ? {} : {propriedadeId:String(propriedadeId)})})}`}>Ver compromissos</LinkOrigem></div>
         </>}</BlocoPainel>
         <BlocoPainel titulo="Recebido e pago por mês" bloco={dados.caixa} className="ger-mensal">{c => <>
-          <p className="ger-muted">Valores líquidos de estornos. Meses parciais incluem somente as datas do período selecionado.</p>
+          
           {c.mensal.length ? <>
             {c.mensal.some(m => Number(m.entradas) !== 0 || Number(m.saidas) !== 0) ? <div className="ger-grafico" aria-hidden="true"><ResponsiveContainer width="100%" height="100%"><BarChart accessibilityLayer={false} data={c.mensal.map(m => ({...m, nome: `${mesBR(m.mes)}${m.incompleto ? "*" : ""}`, Recebido:Number(m.entradas), Pago:Number(m.saidas)}))} margin={{top:12,right:8,left:0,bottom:5}}><CartesianGrid vertical={false} stroke="var(--ger-borda)" /><XAxis dataKey="nome" tick={{fontSize:11}} interval="preserveStartEnd" /><YAxis width={68} tickFormatter={eixoMonetario} tick={{fontSize:10}} /><ReferenceLine y={0} stroke="var(--ger-suave)" /><Legend /><Bar dataKey="Recebido" fill="var(--ger-verde)" isAnimationActive={false} /><Bar dataKey="Pago" fill="var(--ger-saida)" isAnimationActive={false} /></BarChart></ResponsiveContainer></div> : <p className="ger-caixa-zerado">Entradas e saídas líquidas zeradas neste período.</p>}
             <div className="ger-tabela" tabIndex={0} role="region" aria-label="Valores mensais do caixa"><table className="consulta-tabela"><caption>Caixa por mês · * mês parcial</caption><thead><tr><th scope="col">Mês</th><th scope="col">Recebido</th><th scope="col">Pago</th></tr></thead><tbody>{c.mensal.map(m => <tr key={m.mes}><th scope="row">{mesBR(m.mes)}{m.incompleto ? " · parcial" : ""}</th><td>{brl(m.entradas)}</td><td>{brl(m.saidas)}</td></tr>)}</tbody></table></div>
@@ -102,10 +102,10 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
         <BlocoPainel titulo="Pagamentos por centro de custo" bloco={dados.caixa} className="ger-centros">{c => <>
           <p className="ger-muted">Total pago no período: {brl(c.saidas)} · líquido de estornos.</p>
           <BarrasHorizontais titulo="Pagamentos por centro de custo" itens={c.centros.map((v,i) => ({chave:v.id ?? `sem-centro-${i}`, rotulo:v.nome, valor:v.saidas}))} vazio="Sem movimentos por centro neste período." />
-          <p className="ger-muted">Valores negativos indicam estornos superiores aos pagamentos do centro no período.</p>
+          
           <div className="ger-rodape-link"><LinkOrigem href={link("/financeiro/contas")}>Ver contas</LinkOrigem></div>
         </>}</BlocoPainel>
-      </div></section><section className="ger-secao" aria-labelledby="ger-operacao"><div className="ger-secao-titulo"><h2 id="ger-operacao">Produção e custos do rebanho</h2><p>Consumo registrado, cobertura e custos atribuídos aos fatos.</p></div><div className="ger-grade ger-grade-operacao">
+      </div></section><section className="ger-secao" aria-labelledby="ger-operacao"><div className="ger-secao-titulo"><h2 id="ger-operacao">Produção e custos do rebanho</h2></div><div className="ger-grade ger-grade-operacao">
         <BlocoPainel titulo="Nutrição registrada" bloco={dados.nutricao} className="ger-nutricao">{n => {
           const cobertura = n.cobertura.animalDias > 0 ? n.cobertura.diasAlimentados / n.cobertura.animalDias * 100 : null;
           const percentual = cobertura == null ? "Não apurado" : `${cobertura.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
@@ -113,7 +113,7 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
             <div className="ger-valor-linha"><p className="ger-valor">{dinheiro(n.rebanho.custoConhecido)}</p>{n.rebanho.parcial && <span className="ger-selo">Custo parcial</span>}</div>
             <div className="ger-cobertura"><p>{cobertura == null ? "Cobertura de alimentação não apurada." : <>Alimentação registrada em <strong>{percentual}</strong> dos animal-dias.</>}</p>{cobertura != null && <div className="ger-progresso-linha"><progress max={100} value={Math.min(100, Math.max(0, cobertura))} aria-label="Cobertura de alimentação registrada" /><span>{percentual}</span></div>}<p className="ger-muted">{numero(n.cobertura.diasAlimentados)} de {numero(n.cobertura.animalDias)} animal-dias.</p></div>
             <dl className="ger-indices"><Valor rotulo="R$/cabeça/dia" valor={dinheiroDiario(n.rebanho.porDia)} /><Valor rotulo="R$/cabeça no período" valor={dinheiro(n.rebanho.porPeriodo)} /></dl><p className="ger-muted">{media(n.rebanho.populacaoMedia)} cabeças em média.</p>
-            <p className="ger-aviso">Ausência de registro não significa consumo zero. A cobertura não comprova classificação nem custo completos.</p>
+            
             <p className="ger-muted">{numero(n.cobertura.diasClassificados)} de {numero(n.cobertura.animalDias)} animal-dias com classificação comprovada · {contagem(n.cobertura.itensPendentes,"componente pendente","componentes pendentes")}.</p>
             {n.lacunas.length > 0 && <p className="ger-aviso">{contagem(n.lacunas.length,"divergência histórica","divergências históricas")} limita a apuração neste período.</p>}
             <div className="ger-rodape-link"><LinkOrigem href={link("/pecuaria/nutricao")}>Ver nutrição</LinkOrigem></div>
@@ -124,21 +124,21 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
           {c.componentesPendentes > 0 && <p className="ger-pendente"><CircleAlert size={17} aria-hidden="true" />{contagem(c.componentesPendentes, "componente", "componentes")} com valor pendente</p>}
           {c.lacunasNutricao > 0 && <p className="ger-aviso">Há {c.lacunasNutricao} participações nutricionais sem recorte conciliável; este total é parcial.</p>}
           <dl className="ger-finalidades">{c.finalidades.map(f => <div key={f.finalidade}><dt>{finalidade(f.finalidade)}{f.componentesPendentes > 0 && <small>{contagem(f.componentesPendentes,"pendente","pendentes")}</small>}</dt><dd>{dinheiro(f.totalConhecido)}</dd>{f.totalConhecido != null && Number(f.totalConhecido) > 0 && <span className="ger-finalidade-barra" aria-hidden="true"><span style={{ width: `${Number(f.totalConhecido) / Math.max(1, ...c.finalidades.map(v => Number(v.totalConhecido ?? 0))) * 100}%` }} /></span>}</div>)}</dl>
-          <p className="ger-muted">Custos sem atribuição operacional não são distribuídos entre animais.</p>
+          
           {c.cobertura === "PARCIAL" && <p className="ger-muted">Valores parciais.</p>}
         </>}</BlocoPainel>
         <BlocoPainel titulo="Produção de leite" bloco={dados.clinico}>{() => <ResumoLeitePainel inicio={periodo.inicio} fim={periodo.fim} propriedadeId={propriedadeId} revisao={revisao} />}</BlocoPainel>
-      </div></section><section className="ger-secao" aria-labelledby="ger-posicao"><div className="ger-secao-titulo"><h2 id="ger-posicao">Posição atual da fazenda</h2><p>Estoque na data de referência e acompanhamentos pendentes.</p></div><div className="ger-grade ger-grade-posicao">
+      </div></section><section className="ger-secao" aria-labelledby="ger-posicao"><div className="ger-secao-titulo"><h2 id="ger-posicao">Posição atual da fazenda</h2></div><div className="ger-grade ger-grade-posicao">
         <BlocoPainel titulo={`Estoque atual em ${dados.estoque.estado === "DISPONIVEL" ? dataBR(dados.estoque.dados.data) : "data de referência"}`} bloco={dados.estoque} className="ger-estoque">{e => <>
           <p className="ger-valor">{dinheiro(e.valorConhecido)}</p>
           <p>{contagem(new Set(e.itens.map(i => i.produtoId)).size,"produto","produtos")} · {e.gruposPendentes ? `${contagem(e.gruposPendentes,"grupo","grupos")} com valor pendente` : "sem valor pendente neste recorte"}.</p>
           {e.situacao === "PARCIAL" && <p className="ger-aviso">Valor parcial: há grupos com valor pendente.</p>}
           {e.situacao === "DESCONHECIDO" && <p className="ger-aviso">Valor não apurado: os grupos em estoque não têm valor conhecido.</p>}
-          <p className="ger-muted">O estoque usa a data de referência indicada.</p><div className="ger-rodape-link"><LinkOrigem href={propriedadeId == null ? "/estoque" : `/estoque?${new URLSearchParams({propriedadeId:String(propriedadeId)})}`}>Ver estoque</LinkOrigem></div>
+          <div className="ger-rodape-link"><LinkOrigem href={propriedadeId == null ? "/estoque" : `/estoque?${new URLSearchParams({propriedadeId:String(propriedadeId)})}`}>Ver estoque</LinkOrigem></div>
         </>}</BlocoPainel>
         {(dados.clinico.estado === "RESTRITO" || dados.clinico.dados.acompanhamentosPendentes === 0) && <BlocoPainel<{ data: string; acompanhamentosPendentes: number }> titulo="Pontos de atenção" bloco={dados.clinico} className="ger-clinico">{c => <><p>{c.acompanhamentosPendentes} acompanhamentos reprodutivos pendentes até {dataBR(c.data)}.</p><div className="ger-rodape-link"><LinkOrigem href={link("/pecuaria/reproducao")}>Ver reprodução</LinkOrigem></div></>}</BlocoPainel>}
       </div></section>
-      <div className="ger-nota"><AjudaCampo rotulo="Sobre as leituras do painel" texto="Caixa, consumo e estoque representam momentos diferentes e não devem ser somados. Nutrição já integra os custos diretos; não some novamente. Não apurado preserva um valor desconhecido; zero representa zero comprovado." />Sobre as leituras do painel</div>
+      <div className="ger-nota">Sobre as leituras do painel</div>
     </>}
   </div></PaginaFinanceira>;
 }

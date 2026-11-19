@@ -129,7 +129,7 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
   }
   return (
     <section className="leite-operacoes leite-importacao">
-      <h2 className="leite-titulo-secao"><FileSearch size={20} aria-hidden />Conferir importação de leite <AjudaCampo rotulo="Sobre a prévia da importação" texto={"Prepare o lote a partir dos registros reais da fazenda. Esta prévia compara animais, ordenhas, datas e medições existentes. Não importa registros nem movimenta leite, vendas ou dinheiro."} /></h2>
+      <h2 className="leite-titulo-secao"><FileSearch size={20} aria-hidden />Conferir importação de leite </h2>
 
       <ol className="leite-etapas-importacao" aria-label="Etapas da conferência"><li><b>1</b>Arquivo e origem</li><li><b>2</b>Validação de unidades</li><li><b>3</b>Prévia e pendências</li></ol>
       <form

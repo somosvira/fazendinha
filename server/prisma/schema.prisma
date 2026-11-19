@@ -514,6 +514,7 @@ model ItemOperacao {
   valorTotal        Decimal                 @db.Decimal(14, 2)
   estocavel         Boolean                 @default(false)
   partidasSnapshot  Json?
+  embalagemSnapshot Json?
   movimentosEstoque MovimentoEstoque[]
   createdAt         DateTime                @default(now())
   aplicacaoProdutos AplicacaoProduto[]
@@ -665,6 +666,8 @@ model AuditoriaFinanceira {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
+  enviosAplicacoesTablet EnvioAplicacoesTablet[]
+  templatesAplicacoesTablet TemplateAplicacoesTablet[]
   catalogosAvaliacaoReprodutiva CatalogoAvaliacaoReprodutiva[]
   eventosMetasAssistente EventoMetaAssistente[]
   assinaturasRadarAssistente AssinaturaRadarAssistente[]
@@ -943,6 +946,9 @@ enum TipoToken {
 }
 
 model Usuario {
+  enviosAplicacoesTablet EnvioAplicacoesTablet[] @relation("TabletAutor")
+  revisoesAplicacoesTablet EnvioAplicacoesTablet[] @relation("TabletRevisor")
+  templatesAplicacoesTablet TemplateAplicacoesTablet[]
   catalogosAvaliacaoCriados CatalogoAvaliacaoReprodutiva[] @relation("CatalogoAvaliacaoCriadoPor")
   conclusoesCriadas VinculoConclusaoAcompanhamento[] @relation("ConclusaoCriadaPor")
   conclusoesInvalidadas VinculoConclusaoAcompanhamento[] @relation("ConclusaoInvalidadaPor")
@@ -1159,6 +1165,7 @@ enum OrigemComposicao {
 // Quem o animal é: identidade estável. Onde está, para que serve e se teve baixa
 // vivem em tabelas de histórico próprias (Localizacao/Destino/Baixa).
 model Animal {
+  registrosGenealogicos RegistroGenealogicoAnimal[]
   controlesHistoricosLeite ControleHistoricoLeite[]
   participacoesBezerreiro ParticipacaoBezerreiro[]
   lotesColostro LoteColostro[]
@@ -1763,6 +1770,7 @@ enum FinalidadeAplicacao {
 }
 
 model Doenca {
+  templatesAplicacoesTablet TemplateAplicacoesTablet[]
   RegraSanitariaReprodutiva RegraSanitariaReprodutiva[]
   id                    String                @id @default(uuid())
   nome                  String                @unique
@@ -5170,6 +5178,10 @@ model ProdutoCatalogo {
   classificacaoTecnicaId String? @db.Uuid
   classificacaoTecnica ClassificacaoTecnicaProduto? @relation(fields: [classificacaoTecnicaId], references: [id], onDelete: Restrict)
   unidadeSugerida UnidadeMedida @default(UN)
+  conteudoEmbalagem Decimal? @db.Decimal(12, 3)
+  rotuloEmbalagem String?
+  conferenciaBula Json?
+  orientacaoBula Json?
   usoSanitario Boolean @default(false)
   usoNutricional Boolean @default(false)
   usoGenetico Boolean @default(false)
@@ -5192,4 +5204,70 @@ model ProdutoCatalogoPrincipioAtivo {
   @@id([produtoCatalogoId, principioAtivoId])
   @@unique([produtoCatalogoId, ordem])
   @@schema("public")
+}
+
+model RegistroGenealogicoAnimal {
+  registro String @id
+  animalId String
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  evidencia String
+  criadoEm DateTime @default(now()) @db.Timestamptz(6)
+
+  @@schema("pecuaria")
+}
+
+model EventoLeilaoExterno {
+  fonte String
+  idExterno String
+  titulo String
+  url String
+  vistoNaAgendaEm DateTime @db.Timestamptz(6)
+  catalogo Json?
+  catalogoTentadoEm DateTime? @db.Timestamptz(6)
+  catalogoConsultadoEm DateTime? @db.Timestamptz(6)
+
+  @@id([fonte, idExterno])
+  @@schema("pecuaria")
+}
+
+model EnvioAplicacoesTablet {
+  id             String   @id
+  propriedadeId  Int
+  autorId        Int
+  autorNome      String
+  data           DateTime @db.Date
+  aplicadaEm     DateTime
+  animalIds      String[]
+  itens          Json
+  enviadoEm      DateTime @default(now())
+  revisadoEm     DateTime?
+  revisorId      Int?
+  revisorNome    String?
+  devolucao      String?
+  aplicacaoIds   String[] @default([])
+  corrigeId      String?  @unique
+  propriedade    Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  autor          Usuario @relation("TabletAutor", fields: [autorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  revisor        Usuario? @relation("TabletRevisor", fields: [revisorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  corrige        EnvioAplicacoesTablet? @relation("CorrecaoTablet", fields: [corrigeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reenvio        EnvioAplicacoesTablet? @relation("CorrecaoTablet")
+
+  @@index([propriedadeId, enviadoEm])
+  @@schema("pecuaria")
+}
+
+model TemplateAplicacoesTablet {
+  quantidades Json @default("{}")
+  propriedadeId Int
+  doencaId      String
+  produtoIds    String[]
+  autorId       Int
+  atualizadoEm DateTime @updatedAt
+
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  doenca Doenca @relation(fields: [doencaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  autor Usuario @relation(fields: [autorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([propriedadeId, doencaId])
+  @@schema("pecuaria")
 }

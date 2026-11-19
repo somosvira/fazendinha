@@ -1,0 +1,3088 @@
+[
+  {
+    "nomeCatalogo": "Pirosan",
+    "fabricanteCatalogo": "Laboratório Calbos Ltda.",
+    "itens": [
+      {
+        "id": "5646198f-5222-5690-b6d8-3fa676aea080",
+        "apresentacao": "Frasco 200 ml"
+      },
+      {
+        "id": "e0e4a30d-429a-5230-a8a6-90f48cf228df",
+        "apresentacao": "Frasco 30 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://drive.google.com/file/d/1QEY22uGgPb7SgLyL3zX5g77w9_GZJzxW/view",
+      "titulo": "Bula Calbos — Pirosan ME0034R25",
+      "tipoFonte": "BULA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "documentoSha256": "df38ac9ef60496ca63213db8cb2ded005055d120926db1c0199b3f364dc5bbc5",
+      "especie": "Bovinos",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://drive.google.com/file/d/1QEY22uGgPb7SgLyL3zX5g77w9_GZJzxW/view",
+          "secao": "1. Fórmula",
+          "pagina": 1
+        },
+        "dosagem": {
+          "url": "https://drive.google.com/file/d/1QEY22uGgPb7SgLyL3zX5g77w9_GZJzxW/view",
+          "secao": "5. Modo de usar e dosagem",
+          "pagina": 1
+        },
+        "proporcoes": {
+          "url": "https://drive.google.com/file/d/1QEY22uGgPb7SgLyL3zX5g77w9_GZJzxW/view",
+          "secao": "5. Modo de usar e dosagem",
+          "pagina": 1
+        },
+        "via": {
+          "url": "https://drive.google.com/file/d/1QEY22uGgPb7SgLyL3zX5g77w9_GZJzxW/view",
+          "secao": "5. Modo de usar e dosagem",
+          "pagina": 1
+        },
+        "carenciasLeite": {
+          "url": "https://drive.google.com/file/d/1QEY22uGgPb7SgLyL3zX5g77w9_GZJzxW/view",
+          "secao": "11. Período de carência",
+          "pagina": 1
+        },
+        "carenciasCarne": {
+          "url": "https://drive.google.com/file/d/1QEY22uGgPb7SgLyL3zX5g77w9_GZJzxW/view",
+          "secao": "11. Período de carência",
+          "pagina": 1
+        },
+        "cuidados": {
+          "url": "https://drive.google.com/file/d/1QEY22uGgPb7SgLyL3zX5g77w9_GZJzxW/view",
+          "secao": "6. Período após abertura; 7. Contraindicação; 9. Precauções",
+          "pagina": 1
+        }
+      },
+      "concentracao": "Por 100 mL: 7 g de diminazeno diaceturato e 8,75 g de fenazona.",
+      "dosagem": "Dose única de 0,05 mL/kg. Para infecção por Trypanosoma brucei, a ficha determina o dobro da dose.",
+      "proporcoes": [
+        {
+          "quantidade": "0.05",
+          "unidade": "ML",
+          "pesoKg": "1",
+          "condicao": "Dose usual, única."
+        },
+        {
+          "quantidade": "0.10",
+          "unidade": "ML",
+          "pesoKg": "1",
+          "condicao": "Somente infecção por Trypanosoma brucei; dobro da dose usual."
+        }
+      ],
+      "via": "Intramuscular profunda; agitar antes de usar.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 72,
+          "condicao": "Após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 720,
+          "condicao": "Após a última aplicação."
+        }
+      },
+      "cuidados": "Dividir volumes acima de 10 mL entre dois ou mais pontos. Não usar por via endovenosa ou em hipersensibilidade. Usar o conteúdo imediatamente após abrir. A bula exige prescrição e orientação veterinária.",
+      "origemOficial": "https://calbos.com.br/produto/pirosan/",
+      "revisaoDocumento": "ME0034R25",
+      "registroMapa": "PR 0000024-8.000007",
+      "versao": 2
+    }
+  },
+  {
+    "nomeCatalogo": "Glicocalbos",
+    "fabricanteCatalogo": "Laboratório Calbos Ltda.",
+    "itens": [
+      {
+        "id": "86b4052d-8ae6-55a4-aebf-c1e442c5c7fe",
+        "apresentacao": "Frasco 200 ml"
+      },
+      {
+        "id": "22ee0f4c-ce44-505a-974d-2e07a6e7d0f8",
+        "apresentacao": "Frasco 500 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://calbos.com.br/produto/glicocalbos/",
+      "titulo": "Ficha oficial Calbos — Glicocalbos",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "documentoSha256": "6a7c7531a7bb52e6e88e9d5a4cc2158043425c95f7006463711944e2a6428c29",
+      "especie": "Bovinos",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://calbos.com.br/produto/glicocalbos/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://calbos.com.br/produto/glicocalbos/",
+          "secao": "Modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://calbos.com.br/produto/glicocalbos/",
+          "secao": "Modo de usar"
+        },
+        "via": {
+          "url": "https://calbos.com.br/produto/glicocalbos/",
+          "secao": "Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://calbos.com.br/produto/glicocalbos/",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://calbos.com.br/produto/glicocalbos/",
+          "secao": "Período de carência"
+        },
+        "cuidados": {
+          "url": "https://calbos.com.br/produto/glicocalbos/",
+          "secao": "Modo de usar e informações do produto"
+        }
+      },
+      "concentracao": "Dextrose anidra: 50 g em 100 mL.",
+      "dosagem": "Dose única de 1 mL por kg de peso.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "1",
+          "condicao": "Dose única; ficha indica bovinos e equinos."
+        }
+      ],
+      "via": "Não informada nesta ficha.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        }
+      },
+      "cuidados": "A ficha não informa via ou prazos de carência. A indicação inclui hipoglicemia e cetose.",
+      "versao": 2
+    }
+  },
+  {
+    "nomeCatalogo": "Atropina 1% Calbos",
+    "fabricanteCatalogo": "Laboratório Calbos Ltda.",
+    "itens": [
+      {
+        "id": "d6f2060b-dd7e-5342-8b14-f7a0aa82fcd9",
+        "apresentacao": "Frasco 10 ml"
+      },
+      {
+        "id": "aa8eeb8b-f9fd-5a4b-a3de-160b91740177",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://calbos.com.br/produto/atropina-calbos/",
+      "titulo": "Ficha oficial Calbos — Atropina 1% Calbos",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "documentoSha256": "e1d8fe328c676dbe41a9a2f2b7ff36bf1bac8274f07f39c8b60a81318bb3f5ea",
+      "especie": "Bovinos",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://calbos.com.br/produto/atropina-calbos/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://calbos.com.br/produto/atropina-calbos/",
+          "secao": "Modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://calbos.com.br/produto/atropina-calbos/",
+          "secao": "Modo de usar"
+        },
+        "via": {
+          "url": "https://calbos.com.br/produto/atropina-calbos/",
+          "secao": "Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://calbos.com.br/produto/atropina-calbos/",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://calbos.com.br/produto/atropina-calbos/",
+          "secao": "Período de carência"
+        },
+        "cuidados": {
+          "url": "https://calbos.com.br/produto/atropina-calbos/",
+          "secao": "Modo de usar e informações do produto"
+        }
+      },
+      "concentracao": "Sulfato de atropina: 1 g em 100 mL.",
+      "dosagem": "Bovinos adultos: 8 a 10 mL; bovinos jovens: 3 a 5 mL. A ficha descreve dose única.",
+      "proporcoes": [],
+      "via": "Não informada nesta ficha.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        }
+      },
+      "cuidados": "Dose informada por faixa etária, sem relação por kg. A ficha não informa via nem carências.",
+      "versao": 2
+    }
+  },
+  {
+    "nomeCatalogo": "Calbendazole - Suspensão a 10%",
+    "fabricanteCatalogo": "Laboratório Calbos Ltda.",
+    "itens": [
+      {
+        "id": "58269ca8-ea8b-5f87-be1d-888973662236",
+        "apresentacao": "Frasco 1000 ml"
+      },
+      {
+        "id": "f2159ff7-a7d4-5403-a765-cc79692454bb",
+        "apresentacao": "Frasco 200 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://calbos.com.br/produto/calbendazole-10/",
+      "titulo": "Ficha oficial Calbos — Calbendazole - Suspensão a 10%",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "documentoSha256": "cb2bf58463dea365b5e865658c84a7120e28a729267dafc93aa95012b88a5986",
+      "especie": "Bovinos",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://calbos.com.br/produto/calbendazole-10/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://calbos.com.br/produto/calbendazole-10/",
+          "secao": "Modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://calbos.com.br/produto/calbendazole-10/",
+          "secao": "Modo de usar"
+        },
+        "via": {
+          "url": "https://calbos.com.br/produto/calbendazole-10/",
+          "secao": "Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://calbos.com.br/produto/calbendazole-10/",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://calbos.com.br/produto/calbendazole-10/",
+          "secao": "Período de carência"
+        },
+        "cuidados": {
+          "url": "https://calbos.com.br/produto/calbendazole-10/",
+          "secao": "Modo de usar e informações do produto"
+        }
+      },
+      "concentracao": "Albendazol: 10 g em 100 mL.",
+      "dosagem": "Bovinos: dose única de 1 mL por 20 kg. Para Fasciola hepatica: 1 mL por 10 kg.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "20",
+          "condicao": "Bovinos, dose única, verminoses descritas na ficha."
+        },
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "10",
+          "condicao": "Bovinos, infestação por Fasciola hepatica."
+        }
+      ],
+      "via": "Oral.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 72,
+          "condicao": "Após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 336,
+          "condicao": "Após a última aplicação."
+        }
+      },
+      "cuidados": "A posologia para fasciolose é diferente da dose usual. O prazo de carne informado aqui é o dos bovinos.",
+      "versao": 2
+    }
+  },
+  {
+    "nomeCatalogo": "Placencal Injetável",
+    "fabricanteCatalogo": "Laboratório Calbos Ltda.",
+    "itens": [
+      {
+        "id": "5fea6ad8-3ed0-5dd3-b767-8f7f0dc7af90",
+        "apresentacao": "Frasco 10 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://calbos.com.br/produto/placencal/",
+      "titulo": "Ficha oficial Calbos — Placencal Injetável",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "documentoSha256": "858f6d762a624dec16b681778d9054b3307ec6caecd374cdbecde9361fbbcf17",
+      "especie": "Bovinos",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://calbos.com.br/produto/placencal/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://calbos.com.br/produto/placencal/",
+          "secao": "Modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://calbos.com.br/produto/placencal/",
+          "secao": "Modo de usar"
+        },
+        "via": {
+          "url": "https://calbos.com.br/produto/placencal/",
+          "secao": "Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://calbos.com.br/produto/placencal/",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://calbos.com.br/produto/placencal/",
+          "secao": "Período de carência"
+        },
+        "cuidados": {
+          "url": "https://calbos.com.br/produto/placencal/",
+          "secao": "Modo de usar e informações do produto"
+        }
+      },
+      "concentracao": "Ocitocina: 2 mg a 500 UI/mg em 100 mL.",
+      "dosagem": "Bovinos: 2 a 5 mL intramusculares. A fonte descreve 5 mL nas situações especificadas e, na atonia uterina, repetição se não houver contrações em 20 a 25 minutos.",
+      "proporcoes": [],
+      "via": "Intramuscular; na expulsão da placenta, administração lenta.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        }
+      },
+      "cuidados": "A dose depende da condição obstétrica descrita na fonte; não há proporção por kg ou carência declarada nesta ficha.",
+      "versao": 2
+    }
+  },
+  {
+    "nomeCatalogo": "Cipermetrina Calbos - Pour-On",
+    "fabricanteCatalogo": "Laboratório Calbos Ltda.",
+    "itens": [
+      {
+        "id": "05201ad5-edb5-5baf-b152-908c28d26ae6",
+        "apresentacao": "Frasco 1 l"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://calbos.com.br/produto/cipermetrina-calbos/",
+      "titulo": "Ficha oficial Calbos — Cipermetrina Calbos - Pour-On",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "documentoSha256": "240c83a0fb1d99d6ba99f54f43c07882ac83a8969920a429f2f5c267b518162d",
+      "especie": "Bovinos",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://calbos.com.br/produto/cipermetrina-calbos/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://calbos.com.br/produto/cipermetrina-calbos/",
+          "secao": "Modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://calbos.com.br/produto/cipermetrina-calbos/",
+          "secao": "Modo de usar"
+        },
+        "via": {
+          "url": "https://calbos.com.br/produto/cipermetrina-calbos/",
+          "secao": "Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://calbos.com.br/produto/cipermetrina-calbos/",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://calbos.com.br/produto/cipermetrina-calbos/",
+          "secao": "Período de carência"
+        },
+        "cuidados": {
+          "url": "https://calbos.com.br/produto/cipermetrina-calbos/",
+          "secao": "Modo de usar e informações do produto"
+        }
+      },
+      "concentracao": "Cipermetrina: 6 g em 100 mL.",
+      "dosagem": "Bovinos: dose única de 10 mL para 100 kg.",
+      "proporcoes": [
+        {
+          "quantidade": "10",
+          "unidade": "ML",
+          "pesoKg": "100",
+          "condicao": "Bovinos, dose única."
+        }
+      ],
+      "via": "Tópica, pour-on.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 24,
+          "condicao": "Após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 240,
+          "condicao": "Após a última aplicação."
+        }
+      },
+      "cuidados": "Produto para aplicação externa. A indicação da ficha inclui carrapatos, piolhos e moscas.",
+      "versao": 2
+    }
+  },
+  {
+    "nomeCatalogo": "Vermical",
+    "fabricanteCatalogo": "Laboratório Calbos Ltda.",
+    "itens": [
+      {
+        "id": "cfcabcf8-099a-5056-b2b5-7d79d5dbf08d",
+        "apresentacao": "Envelope 10 g"
+      },
+      {
+        "id": "792d6a78-46d6-5c56-99be-a0a10dfd8ab1",
+        "apresentacao": "Envelope 50 g"
+      },
+      {
+        "id": "105b345f-a82e-57b6-a143-2fc870cff8aa",
+        "apresentacao": "Pote 1000 g"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://calbos.com.br/produto/vermical/",
+      "titulo": "Ficha oficial Calbos — Vermical",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "documentoSha256": "850ad4d192ed5b7a5edd6e26421cbc28cedae6e1c27d02e3c41d6ac8e2073560",
+      "especie": "Bovinos",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://calbos.com.br/produto/vermical/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://calbos.com.br/produto/vermical/",
+          "secao": "Modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://calbos.com.br/produto/vermical/",
+          "secao": "Modo de usar"
+        },
+        "via": {
+          "url": "https://calbos.com.br/produto/vermical/",
+          "secao": "Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://calbos.com.br/produto/vermical/",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://calbos.com.br/produto/vermical/",
+          "secao": "Período de carência"
+        },
+        "cuidados": {
+          "url": "https://calbos.com.br/produto/vermical/",
+          "secao": "Modo de usar e informações do produto"
+        }
+      },
+      "concentracao": "Adipato de piperazina a 100%, equivalente a 37% de piperazina base.",
+      "dosagem": "Bovinos: dose única de 10 g por 50 kg.",
+      "proporcoes": [
+        {
+          "quantidade": "10",
+          "unidade": "G",
+          "pesoKg": "50",
+          "condicao": "Bovinos, dose única."
+        }
+      ],
+      "via": "Oral: ração, água ou diretamente na boca.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 96,
+          "condicao": "Após a última aplicação."
+        }
+      },
+      "cuidados": "A ficha não informa prazo de leite.",
+      "versao": 2
+    }
+  },
+  {
+    "nomeCatalogo": "Taitec Oral",
+    "fabricanteCatalogo": "Laboratório Calbos Ltda.",
+    "itens": [
+      {
+        "id": "a16f09f8-5eb2-5772-b80c-a854e2598d2c",
+        "apresentacao": "Frasco 1000 ml"
+      },
+      {
+        "id": "bcb296c6-e145-5eb6-b21d-7e21b089e75a",
+        "apresentacao": "Frasco 200 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://calbos.com.br/produto/taitec-oral/",
+      "titulo": "Ficha oficial Calbos — Taitec Oral",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "documentoSha256": "32eb38079778efbed6b0019a9f2f6f778fff30f257f503121ace79fe68e2b4b0",
+      "especie": "Bovinos",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://calbos.com.br/produto/taitec-oral/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://calbos.com.br/produto/taitec-oral/",
+          "secao": "Modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://calbos.com.br/produto/taitec-oral/",
+          "secao": "Modo de usar"
+        },
+        "via": {
+          "url": "https://calbos.com.br/produto/taitec-oral/",
+          "secao": "Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://calbos.com.br/produto/taitec-oral/",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://calbos.com.br/produto/taitec-oral/",
+          "secao": "Período de carência"
+        },
+        "cuidados": {
+          "url": "https://calbos.com.br/produto/taitec-oral/",
+          "secao": "Modo de usar e informações do produto"
+        }
+      },
+      "concentracao": "Closantel: 10 g em 100 mL.",
+      "dosagem": "Dose única: 1 mL por 10 kg para verminoses gastrointestinais e fasciolose; 3 mL por 10 kg para dermatobiose e miíases.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "10",
+          "condicao": "Endoparasitoses indicadas."
+        },
+        {
+          "quantidade": "3",
+          "unidade": "ML",
+          "pesoKg": "10",
+          "condicao": "Dermatobiose e miíases."
+        }
+      ],
+      "via": "Oral, conforme nome/apresentação do produto na ficha.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 360,
+          "condicao": "Após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 360,
+          "condicao": "Após a última aplicação."
+        }
+      },
+      "cuidados": "A ficha inclui limite pré-parto de 28 dias. A dose muda com o parasito; o regime para oestrose é exclusivo de ovinos.",
+      "versao": 2
+    }
+  },
+  {
+    "nomeCatalogo": "Endostac",
+    "fabricanteCatalogo": "Laboratório Calbos Ltda.",
+    "itens": [
+      {
+        "id": "019ab142-2a39-5472-8b0d-cf825639e182",
+        "apresentacao": "Injetor 25 g"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://calbos.com.br/produto/endostac/",
+      "titulo": "Ficha oficial Calbos — Endostac",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "documentoSha256": "45867036219d26b5a2eb748346378846e223d356dfc3fb9ffa0bd20df62b454c",
+      "especie": "Equinos",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://calbos.com.br/produto/endostac/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://calbos.com.br/produto/endostac/",
+          "secao": "Modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://calbos.com.br/produto/endostac/",
+          "secao": "Modo de usar"
+        },
+        "via": {
+          "url": "https://calbos.com.br/produto/endostac/",
+          "secao": "Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://calbos.com.br/produto/endostac/",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://calbos.com.br/produto/endostac/",
+          "secao": "Período de carência"
+        },
+        "cuidados": {
+          "url": "https://calbos.com.br/produto/endostac/",
+          "secao": "Modo de usar e informações do produto"
+        }
+      },
+      "concentracao": "Albendazol: 40,4 g em 100 g.",
+      "dosagem": "Equinos: 1,25 g do produto para 100 kg de peso, equivalente a 5 mg de albendazol/kg segundo a ficha.",
+      "proporcoes": [
+        {
+          "quantidade": "1.25",
+          "unidade": "G",
+          "pesoKg": "100",
+          "condicao": "Somente equinos."
+        }
+      ],
+      "via": "Oral.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        }
+      },
+      "cuidados": "A ficha indica equinos. Esta orientação não deve ser aplicada aos bovinos.",
+      "versao": 2
+    }
+  },
+  {
+    "nomeCatalogo": "Sedacol Injetável",
+    "fabricanteCatalogo": "Laboratório Calbos Ltda.",
+    "itens": [
+      {
+        "id": "4a5397d6-dc19-57ca-8ace-609ed6f01adf",
+        "apresentacao": "Frasco 100 ml"
+      },
+      {
+        "id": "b9b038fc-5470-5e95-8929-5c784aea1332",
+        "apresentacao": "Frasco 200 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://calbos.com.br/produto/sedacol/",
+      "titulo": "Ficha oficial Calbos — Sedacol Injetável",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "documentoSha256": "b08cd417defb6cd5de27362eb89f3530765419d0ada7006674ab0278696d4ace",
+      "especie": "Equinos",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://calbos.com.br/produto/sedacol/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://calbos.com.br/produto/sedacol/",
+          "secao": "Modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://calbos.com.br/produto/sedacol/",
+          "secao": "Modo de usar"
+        },
+        "via": {
+          "url": "https://calbos.com.br/produto/sedacol/",
+          "secao": "Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://calbos.com.br/produto/sedacol/",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://calbos.com.br/produto/sedacol/",
+          "secao": "Período de carência"
+        },
+        "cuidados": {
+          "url": "https://calbos.com.br/produto/sedacol/",
+          "secao": "Modo de usar e informações do produto"
+        }
+      },
+      "concentracao": "Sorbitol: 50 g em 100 mL.",
+      "dosagem": "Equinos: 100 a 200 mL, com intervalo mínimo de 2 horas após a primeira aplicação.",
+      "proporcoes": [],
+      "via": "Não informada nesta ficha.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte consultada não informa este dado."
+        }
+      },
+      "cuidados": "A ficha consultada descreve posologia apenas para equinos, sem carências ou via declaradas.",
+      "versao": 2
+    }
+  },
+  {
+    "nomeCatalogo": "Mastifin Vaca Seca",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "128dec18-289b-5bec-b561-975bcbe8e685",
+        "apresentacao": "Seringa 10 g"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006686_0225_OF00_MASTIFIN_VACA_SECA-VD.pdf",
+      "titulo": "Bula oficial brasileira — Mastifin Vaca Seca",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Gentamicina base 400 mg/seringa de 10 g (sulfato 677 mg).",
+      "dosagem": "Uma seringa de 10 g por quarto do úbere, dose única, após última ordenha da lactação e desinfecção dos tetos.",
+      "proporcoes": [],
+      "via": "Intramamária",
+      "carencias": {
+        "leite": {
+          "estado": "PROIBIDO",
+          "horas": null,
+          "condicao": "Após a última aplicação; não aplicar em fêmeas produtoras de leite para consumo humano."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 672,
+          "condicao": "Após a última aplicação; abate de bovinos."
+        }
+      },
+      "cuidados": "Não usar em lactação, insuficiência renal ou hipersensibilidade. A bula, apesar da indicação no período seco, traz proibição expressa para fêmeas produtoras de leite para consumo humano; não inferir prazo pós-parto.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006686_0225_OF00_MASTIFIN_VACA_SECA-VD.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006686_0225_OF00_MASTIFIN_VACA_SECA-VD.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006686_0225_OF00_MASTIFIN_VACA_SECA-VD.pdf",
+          "secao": "Modo de uso e dosagens / Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006686_0225_OF00_MASTIFIN_VACA_SECA-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006686_0225_OF00_MASTIFIN_VACA_SECA-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006686_0225_OF00_MASTIFIN_VACA_SECA-VD.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006686_0225_OF00_MASTIFIN_VACA_SECA-VD.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/mastifin-vaca-seca/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006686_0225_OF00_MASTIFIN_VACA_SECA-VD.pdf",
+        "sha256": "8f595ace7cbf9458e815948b8024b5e12063c3e164f3b98c9035635286b18acd",
+        "pdfProducaoConsultado": true,
+        "textoIdenticoAoPdfInstitucional": true,
+        "hashIdenticoAoPdfInstitucional": true
+      },
+      "versao": 2,
+      "documentoSha256": "8f595ace7cbf9458e815948b8024b5e12063c3e164f3b98c9035635286b18acd",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Desflan",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "660dac19-581e-5315-9e44-facf5f3cd58f",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006614_1224_OF00_DESFLAN-VD.pdf",
+      "titulo": "Bula oficial brasileira — Desflan",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Flunixina (meglumina) 5 g/100 mL.",
+      "dosagem": "Bovinos: diarreia neonatal 2–3 mL/45 kg/dia (geralmente uma aplicação); mastite colibacilar/choque 1 mL/45 kg IV, continuar 3 dias IM; musculoesquelético 1 mL/45 kg IM/IV, até 5 dias; outras indicações 2 mL/45 kg/dia.",
+      "proporcoes": [
+        {
+          "quantidade": "2",
+          "unidade": "ML",
+          "pesoKg": "45",
+          "condicao": "Diarreia dos recém-nascidos; IM/IV por dia.",
+          "quantidadeMaxima": "3"
+        },
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "45",
+          "condicao": "Mastite colibacilar/choque: IV, continuar 3 dias IM; musculoesquelético: IM/IV até 5 dias."
+        },
+        {
+          "quantidade": "2",
+          "unidade": "ML",
+          "pesoKg": "45",
+          "condicao": "Outras indicações, por dia."
+        }
+      ],
+      "via": "Intramuscular ou intravenosa, conforme indicação",
+      "carencias": {
+        "leite": {
+          "estado": "PROIBIDO",
+          "horas": null,
+          "condicao": "Após a última aplicação; não aplicar em fêmeas produtoras de leite para consumo humano."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 240,
+          "condicao": "Após a última aplicação; abate de bovinos."
+        }
+      },
+      "cuidados": "Não usar em touros reprodutores, vacas leiteiras lactantes ou secas, nem bezerros para vitela. Evitar aplicação intra-arterial; não associar AINEs, glicocorticoides ou diuréticos.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006614_1224_OF00_DESFLAN-VD.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006614_1224_OF00_DESFLAN-VD.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006614_1224_OF00_DESFLAN-VD.pdf",
+          "secao": "Modo de uso e dosagens / Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006614_1224_OF00_DESFLAN-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006614_1224_OF00_DESFLAN-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006614_1224_OF00_DESFLAN-VD.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006614_1224_OF00_DESFLAN-VD.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/desflan/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006614_1224_OF00_DESFLAN-VD.pdf",
+        "sha256": "27f948aa1e563b298c89edad8bdf0adada96ea50069c10a416f64ca99cb76b66",
+        "pdfProducaoConsultado": true,
+        "textoIdenticoAoPdfInstitucional": true,
+        "hashIdenticoAoPdfInstitucional": true
+      },
+      "versao": 2,
+      "documentoSha256": "27f948aa1e563b298c89edad8bdf0adada96ea50069c10a416f64ca99cb76b66",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Finador",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "6b17744d-30ce-5d69-8086-78820a48d5eb",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006423_0524_OF00_FINADOR-VD.pdf",
+      "titulo": "Bula oficial brasileira — Finador",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Dipirona sódica 50 g/100 mL.",
+      "dosagem": "Adultos bovinos: 20–35 mL; bezerros: 5–15 mL. Repetição se necessária após 4–6 horas; ajuste veterinário conforme gravidade.",
+      "proporcoes": [],
+      "via": "Intramuscular em bovinos",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 48,
+          "condicao": "Após a última aplicação; consumo humano."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 144,
+          "condicao": "Após a última aplicação; abate de bovinos."
+        }
+      },
+      "cuidados": "Monitorar sangue em tratamento prolongado. Não usar em hipersensibilidade à dipirona nem associar outros anti-inflamatórios ou barbitúricos. Pode aumentar hemorragia.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006423_0524_OF00_FINADOR-VD.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006423_0524_OF00_FINADOR-VD.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006423_0524_OF00_FINADOR-VD.pdf",
+          "secao": "Modo de uso e dosagens / Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006423_0524_OF00_FINADOR-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006423_0524_OF00_FINADOR-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006423_0524_OF00_FINADOR-VD.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006423_0524_OF00_FINADOR-VD.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/finador/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006423_0524_OF00_FINADOR-VD.pdf",
+        "sha256": "ca4c37278a662480bd6dc087a1605987eeb2e20d4037c6f113c87c028f3b3e2a",
+        "pdfProducaoConsultado": true,
+        "textoIdenticoAoPdfInstitucional": true,
+        "hashIdenticoAoPdfInstitucional": true
+      },
+      "versao": 2,
+      "documentoSha256": "ca4c37278a662480bd6dc087a1605987eeb2e20d4037c6f113c87c028f3b3e2a",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Sincrocio",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "25f22892-472e-513d-aa9c-cf73409e596c",
+        "apresentacao": "Frasco 20 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005385_1024_OF00_SINCROCIO.pdf",
+      "titulo": "Bula oficial brasileira — Sincrocio",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Cloprostenol sódico 26,30 mg/100 mL, equivalente a 25 mg de cloprostenol base.",
+      "dosagem": "Bovinos: 2 mL em aplicação única ou critério veterinário; sincronização/indução de cio em fêmeas responsivas com corpo lúteo ou protocolos para redução de progesterona. Observar cio por 6 dias e retratar no sexto dia as não inseminadas.",
+      "proporcoes": [],
+      "via": "Intramuscular",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Após a última aplicação; consumo humano."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Após a última aplicação; abate de bovinos."
+        }
+      },
+      "cuidados": "Não requer carência para leite ou abate de bovinos. Usar assepsia e luvas; gestantes e asmáticos não devem manipular. Não usar em hipersensibilidade.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005385_1024_OF00_SINCROCIO.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005385_1024_OF00_SINCROCIO.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005385_1024_OF00_SINCROCIO.pdf",
+          "secao": "Modo de uso e dosagens / Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005385_1024_OF00_SINCROCIO.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005385_1024_OF00_SINCROCIO.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005385_1024_OF00_SINCROCIO.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005385_1024_OF00_SINCROCIO.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/sincrocio/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005385_1024_OF00_SINCROCIO.pdf",
+        "sha256": "0ea424944e4903e805fe5cc9dde693f7847718c69886f1d559548cd8eb213f8b",
+        "pdfProducaoConsultado": true,
+        "textoIdenticoAoPdfInstitucional": true,
+        "hashIdenticoAoPdfInstitucional": true
+      },
+      "versao": 2,
+      "documentoSha256": "0ea424944e4903e805fe5cc9dde693f7847718c69886f1d559548cd8eb213f8b",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Master Lp",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "753a0294-6667-57df-bec4-19f24dd46485",
+        "apresentacao": "Frasco 1 l"
+      },
+      {
+        "id": "5af13b3a-d9b7-5f50-80c6-4e079d686b12",
+        "apresentacao": "Frasco 200 ml"
+      },
+      {
+        "id": "23cef8dd-2ef7-56e1-82d5-45b9611a3f91",
+        "apresentacao": "Frasco 50 ml"
+      },
+      {
+        "id": "02ee3a26-9a78-5ebe-b8c3-84a031919aae",
+        "apresentacao": "Frasco 500 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006326_0324_OF00_MASTER_LP_VD_1.pdf",
+      "titulo": "Bula oficial brasileira — Master Lp",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Ivermectina 4 g/100 mL.",
+      "dosagem": "1 mL/50 kg, geralmente dose única; volumes acima de 10 mL divididos em dois ou mais pontos. Controle de nematódeos gastrointestinais, bernes e carrapatos.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "50",
+          "condicao": "Bovinos; geralmente dose única; dividir volumes acima de 10 mL."
+        }
+      ],
+      "via": "Subcutânea, preferencialmente tábua do pescoço",
+      "carencias": {
+        "leite": {
+          "estado": "PROIBIDO",
+          "horas": null,
+          "condicao": "Após a última aplicação; não aplicar em fêmeas produtoras de leite para consumo humano."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 888,
+          "condicao": "Após a última aplicação; abate de bovinos."
+        }
+      },
+      "cuidados": "Não usar IM/IV. Bula proíbe bovinos de corte em confinamento, semiconfinamento e extensivo em terminação. Segurança indicada acima de 15 dias; evitar hipersensibilidade.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006326_0324_OF00_MASTER_LP_VD_1.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006326_0324_OF00_MASTER_LP_VD_1.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006326_0324_OF00_MASTER_LP_VD_1.pdf",
+          "secao": "Modo de uso e dosagens / Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006326_0324_OF00_MASTER_LP_VD_1.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006326_0324_OF00_MASTER_LP_VD_1.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006326_0324_OF00_MASTER_LP_VD_1.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006326_0324_OF00_MASTER_LP_VD_1.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/master-lp/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006326_0324_OF00_MASTER_LP_VD_1.pdf",
+        "sha256": "3370a62c1a1c4e46e5a829b51d91adda83fa46921e837a1c6816667107e3bd69",
+        "pdfProducaoConsultado": true,
+        "textoIdenticoAoPdfInstitucional": true,
+        "hashIdenticoAoPdfInstitucional": true
+      },
+      "versao": 2,
+      "documentoSha256": "3370a62c1a1c4e46e5a829b51d91adda83fa46921e837a1c6816667107e3bd69",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Maxicam Injetável (2%)",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "db3e08e8-d66f-5028-8ddd-168c53df4d3b",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006693_0325_OF00_MAXICAM_2_VD.pdf",
+      "titulo": "Bula oficial brasileira — Maxicam Injetável (2%)",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Meloxicam 2 g/100 mL.",
+      "dosagem": "Bovinos: 2,5 mL/100 kg (0,5 mg/kg), dose única ou duas doses com intervalo de 24 horas; duração conforme espécie, gravidade e afecção, sob orientação veterinária.",
+      "proporcoes": [
+        {
+          "quantidade": "2.5",
+          "unidade": "ML",
+          "pesoKg": "100",
+          "condicao": "Bovinos; dose única ou duas doses com intervalo de 24 horas."
+        }
+      ],
+      "via": "Intramuscular ou intravenosa em bovinos",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 120,
+          "condicao": "Após a última aplicação; consumo humano."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 360,
+          "condicao": "Após a última aplicação; abate de bovinos."
+        }
+      },
+      "cuidados": "Não associar outros anti-inflamatórios, aminoglicosídeos ou anticoagulantes. Evitar disfunções cardíacas/hepáticas/renais severas, ulceração, desidratação e hipersensibilidade; acompanhar idosos e menores de 6 semanas.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006693_0325_OF00_MAXICAM_2_VD.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006693_0325_OF00_MAXICAM_2_VD.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006693_0325_OF00_MAXICAM_2_VD.pdf",
+          "secao": "Modo de uso e dosagens / Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006693_0325_OF00_MAXICAM_2_VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006693_0325_OF00_MAXICAM_2_VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006693_0325_OF00_MAXICAM_2_VD.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006693_0325_OF00_MAXICAM_2_VD.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/maxicam-2/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006693_0325_OF00_MAXICAM_2_VD.pdf",
+        "sha256": "2b1917b1be61ba7128d2a68db94b97838c7fbe5e35b2ba02a00851fa7a4550ad",
+        "pdfProducaoConsultado": true,
+        "textoIdenticoAoPdfInstitucional": true,
+        "hashIdenticoAoPdfInstitucional": true
+      },
+      "versao": 2,
+      "documentoSha256": "2b1917b1be61ba7128d2a68db94b97838c7fbe5e35b2ba02a00851fa7a4550ad",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Cypermil Pour On",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "7c9be8c3-13a3-5410-92ed-fb4f6a2b0c5d",
+        "apresentacao": "Frasco 1000 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/ROT_50006888_1025_OF00_CYPERMIL_POUR_ON_1L_TEXTO_TECNICO.pdf",
+      "titulo": "Bula oficial brasileira — Cypermil Pour On",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Cipermetrina 5 g/100 mL.",
+      "dosagem": "1 mL/10 kg, máximo 50 mL acima de 500 kg; geralmente dose única. Exclusivamente controle estratégico da mosca-dos-chifres.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "10",
+          "condicao": "Bovinos até 500 kg; dose máxima 50 mL acima de 500 kg; geralmente dose única."
+        }
+      ],
+      "via": "Tópica pour on na linha dorsal, inserção da cauda ao meio do pescoço",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 78,
+          "condicao": "Após a última aplicação; consumo humano."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 576,
+          "condicao": "Após a última aplicação; abate de bovinos."
+        }
+      },
+      "cuidados": "Não aplicar em animais estressados, doentes, convalescentes, pele lesionada ou hipersensibilidade. Segurança em prenhes não avaliada; evitar calor intenso e chuva.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/ROT_50006888_1025_OF00_CYPERMIL_POUR_ON_1L_TEXTO_TECNICO.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/ROT_50006888_1025_OF00_CYPERMIL_POUR_ON_1L_TEXTO_TECNICO.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/ROT_50006888_1025_OF00_CYPERMIL_POUR_ON_1L_TEXTO_TECNICO.pdf",
+          "secao": "Modo de uso e dosagens / Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/ROT_50006888_1025_OF00_CYPERMIL_POUR_ON_1L_TEXTO_TECNICO.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/ROT_50006888_1025_OF00_CYPERMIL_POUR_ON_1L_TEXTO_TECNICO.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/ROT_50006888_1025_OF00_CYPERMIL_POUR_ON_1L_TEXTO_TECNICO.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/ROT_50006888_1025_OF00_CYPERMIL_POUR_ON_1L_TEXTO_TECNICO.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/cypermil-pour-on/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/ROT_50006888_1025_OF00_CYPERMIL_POUR_ON_1L_TEXTO_TECNICO.pdf",
+        "sha256": "ea63bbb3907aa4dce5ccdc86756cbca1917b9a7327a3de4614fcc00daa226639",
+        "pdfProducaoConsultado": true,
+        "textoIdenticoAoPdfInstitucional": true,
+        "hashIdenticoAoPdfInstitucional": true
+      },
+      "versao": 2,
+      "documentoSha256": "ea63bbb3907aa4dce5ccdc86756cbca1917b9a7327a3de4614fcc00daa226639",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Corta Curso",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "2ad0d738-71b6-5f2b-98e1-bffd9ff2619b",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006412_0524_OF00_CORTA_CURSO-VD.pdf",
+      "titulo": "Bula oficial brasileira — Corta Curso",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Doxiciclina 4 g e benzetimide cloridrato 0,0165 g/100 mL.",
+      "dosagem": "1 mL/10 kg; se necessário repetir após 24 horas, sem ultrapassar 3 dias contínuos. Dividir volumes acima de 10 mL. Infecções bovinas por E. coli e F. necrophorum.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "10",
+          "condicao": "Bovinos; repetir se necessário após 24 horas, máximo 3 dias; dividir volumes acima de 10 mL."
+        }
+      ],
+      "via": "Intramuscular",
+      "carencias": {
+        "leite": {
+          "estado": "PROIBIDO",
+          "horas": null,
+          "condicao": "Após a última aplicação; não aplicar em fêmeas produtoras de leite para consumo humano."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 408,
+          "condicao": "Após a última aplicação; abate de bovinos."
+        }
+      },
+      "cuidados": "Seguro para bezerros neonatos; segurança em prenhes/lactantes não estudada. Não associar bactericidas, atropina ou similares, cálcio/soros parenterais. Antidiarreico genérico do catálogo corresponde ao benzetimide da bula.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006412_0524_OF00_CORTA_CURSO-VD.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006412_0524_OF00_CORTA_CURSO-VD.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006412_0524_OF00_CORTA_CURSO-VD.pdf",
+          "secao": "Modo de uso e dosagens / Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006412_0524_OF00_CORTA_CURSO-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006412_0524_OF00_CORTA_CURSO-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006412_0524_OF00_CORTA_CURSO-VD.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006412_0524_OF00_CORTA_CURSO-VD.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/corta-curso/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006412_0524_OF00_CORTA_CURSO-VD.pdf",
+        "sha256": "06b1cb233f0d625fbafb18f57b093706e8b3646bb3e7e64b655d6cfc630c1118",
+        "pdfProducaoConsultado": true,
+        "textoIdenticoAoPdfInstitucional": true,
+        "hashIdenticoAoPdfInstitucional": true
+      },
+      "versao": 2,
+      "documentoSha256": "06b1cb233f0d625fbafb18f57b093706e8b3646bb3e7e64b655d6cfc630c1118",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Colosso Pulverização",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "15611219-636f-5a6b-9851-428c1730184f",
+        "apresentacao": "Frasco 100 ml"
+      },
+      {
+        "id": "961f231f-c957-5118-93c3-11a09784f68c",
+        "apresentacao": "Frasco 25 ml"
+      },
+      {
+        "id": "381bddd1-de18-5343-abba-7b10abc4f377",
+        "apresentacao": "Frasco 250 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005882_50005886_0323_OF00_KIT_COLOSSO_PULV-T_H3Pt2AN.pdf",
+      "titulo": "Bula oficial brasileira — Colosso Pulverização",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Clorpirifós 25 g e cipermetrina 15 g/100 mL.",
+      "dosagem": "Pulverização: diluir 1:800 (25 mL/20 L água); aplicar 4–5 L de calda por bovino; bezerros 3,5 L. Usar calda em até 24 horas.",
+      "proporcoes": [],
+      "via": "Pulverização tópica em bovinos; ficha restrita a esta via.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 108,
+          "condicao": "Exclusivamente pulverização: 108 horas após última aplicação. Não extrapolar a outras vias."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 576,
+          "condicao": "Exclusivamente pulverização: 24 dias após última aplicação. Não extrapolar a outras vias."
+        }
+      },
+      "cuidados": "Esta ficha cobre somente pulverização. A bula também descreve imersão com outras carências e proibições; não aplicar estes valores à imersão. Usar EPI e evitar contaminar águas.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005882_50005886_0323_OF00_KIT_COLOSSO_PULV-T_H3Pt2AN.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005882_50005886_0323_OF00_KIT_COLOSSO_PULV-T_H3Pt2AN.pdf",
+          "secao": "Modo de uso e dosagens / Dosagem"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005882_50005886_0323_OF00_KIT_COLOSSO_PULV-T_H3Pt2AN.pdf",
+          "secao": "Modo de uso e dosagens / Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005882_50005886_0323_OF00_KIT_COLOSSO_PULV-T_H3Pt2AN.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005882_50005886_0323_OF00_KIT_COLOSSO_PULV-T_H3Pt2AN.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005882_50005886_0323_OF00_KIT_COLOSSO_PULV-T_H3Pt2AN.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005882_50005886_0323_OF00_KIT_COLOSSO_PULV-T_H3Pt2AN.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/colosso-pulverizacao/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50005882_50005886_0323_OF00_KIT_COLOSSO_PULV-T_H3Pt2AN.pdf",
+        "sha256": "e2ef20b7d7c0ac936830d81566140a3ca01d13a8187ec11b37aaa886baebcce7",
+        "pdfProducaoConsultado": true,
+        "textoIdenticoAoPdfInstitucional": true,
+        "hashIdenticoAoPdfInstitucional": true
+      },
+      "versao": 2,
+      "documentoSha256": "e2ef20b7d7c0ac936830d81566140a3ca01d13a8187ec11b37aaa886baebcce7",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Gentrin Infusão Uterina",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "6b051418-68d0-582d-9aeb-3826be0a8c17",
+        "apresentacao": "Frasco 100 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006622_0125_OF00_GENTRIN_INFUSAO_UTERINA-VD.pdf",
+      "titulo": "Bula oficial brasileira — Gentrin Infusão Uterina",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Por 100 mL: gentamicina base 300 mg, bromexina cloridrato 150 mg, cloreto de benzalcônio 100 mg.",
+      "dosagem": "Vacas: 50–100 mL por infusão uterina; repetir se necessário durante 2–3 dias ou a critério veterinário. Indicado para metrites e endometrites pelos agentes sensíveis da bula.",
+      "proporcoes": [],
+      "via": "Infusão intrauterina direta com pipeta de inseminação artificial",
+      "carencias": {
+        "leite": {
+          "estado": "PROIBIDO",
+          "horas": null,
+          "condicao": "Não aplicar em fêmeas produtoras de leite para consumo humano."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 600,
+          "condicao": "Abate de bovinos após última aplicação."
+        }
+      },
+      "cuidados": "Lavagem uterina prévia abundante com solução fisiológica. Aplicação por profissional habilitado; não usar em disfunção renal ou hipersensibilidade à gentamicina. Não misturar medicamentos; usar imediatamente após abrir.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006622_0125_OF00_GENTRIN_INFUSAO_UTERINA-VD.pdf",
+          "secao": "Modo de uso e dosagem / Dosagens"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006622_0125_OF00_GENTRIN_INFUSAO_UTERINA-VD.pdf",
+          "secao": "Modo de uso e dosagem / Dosagens"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006622_0125_OF00_GENTRIN_INFUSAO_UTERINA-VD.pdf",
+          "secao": "Modo de uso e dosagem"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006622_0125_OF00_GENTRIN_INFUSAO_UTERINA-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006622_0125_OF00_GENTRIN_INFUSAO_UTERINA-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006622_0125_OF00_GENTRIN_INFUSAO_UTERINA-VD.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006622_0125_OF00_GENTRIN_INFUSAO_UTERINA-VD.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/gentrin/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006622_0125_OF00_GENTRIN_INFUSAO_UTERINA-VD.pdf",
+        "pdfProducaoConsultado": true,
+        "sha256": "68651cff25edba338eaa03afcc6cb4fc3dc31b8b351b21fbfedb2b0f4d7925cc"
+      },
+      "versao": 2,
+      "documentoSha256": "68651cff25edba338eaa03afcc6cb4fc3dc31b8b351b21fbfedb2b0f4d7925cc",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Ourotetra Plus L.A.",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "bd5884b3-f221-59b1-9f34-47fb446262f6",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006400_0524_OF00_OUROTETRA_PLUS-VD_2.pdf",
+      "titulo": "Bula oficial brasileira — Ourotetra Plus L.A.",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Oxitetraciclina dihidrato 20 g e diclofenaco sódico 1 g/100 mL.",
+      "dosagem": "Bovinos: 1 mL/10 kg; geralmente aplicação única. Máximo por local: 10 mL em adultos e 5 mL em bezerros.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "10",
+          "condicao": "Bovinos; geralmente dose única; máximo por local 10 mL adultos e 5 mL bezerros."
+        }
+      ],
+      "via": "Intramuscular profunda",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 528,
+          "condicao": "Após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 816,
+          "condicao": "Abate de bovinos após última aplicação."
+        }
+      },
+      "cuidados": "Evitar animais em crescimento e fêmeas prenhes. Não usar em úlceras gastrointestinais ou hipersensibilidade; disfunção renal exige ajuste veterinário. Fonte atual chama-se Ourotetra Plus, com mesmos princípios do catálogo.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006400_0524_OF00_OUROTETRA_PLUS-VD_2.pdf",
+          "secao": "Modo de uso e dosagem / Dosagens"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006400_0524_OF00_OUROTETRA_PLUS-VD_2.pdf",
+          "secao": "Modo de uso e dosagem / Dosagens"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006400_0524_OF00_OUROTETRA_PLUS-VD_2.pdf",
+          "secao": "Modo de uso e dosagem"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006400_0524_OF00_OUROTETRA_PLUS-VD_2.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006400_0524_OF00_OUROTETRA_PLUS-VD_2.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006400_0524_OF00_OUROTETRA_PLUS-VD_2.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006400_0524_OF00_OUROTETRA_PLUS-VD_2.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/ourotetra-plus/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006400_0524_OF00_OUROTETRA_PLUS-VD_2.pdf",
+        "pdfProducaoConsultado": true,
+        "sha256": "d0f53a3dd7d9c2b78cc25c44ee557c820a75ca44f49e618f7b080970595765b4"
+      },
+      "versao": 2,
+      "documentoSha256": "d0f53a3dd7d9c2b78cc25c44ee557c820a75ca44f49e618f7b080970595765b4",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Diclofenaco 50 Ouro Fino",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "f4eb039c-548a-58af-b9a6-34849168b171",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50004196_0720_OF00_DICLOFENACO_50-VD.pdf",
+      "titulo": "Bula oficial brasileira — Diclofenaco 50 Ouro Fino",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Diclofenaco sódico 5 g/100 mL.",
+      "dosagem": "Bovinos: 1 mL/50 kg por via intramuscular, por até 3 dias consecutivos. Intervalos e doses podem ser alterados pelo médico-veterinário.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "50",
+          "condicao": "Bovinos, por até 3 dias consecutivos."
+        }
+      ],
+      "via": "Intramuscular",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 192,
+          "condicao": "Após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 144,
+          "condicao": "Abate de bovinos após última aplicação."
+        }
+      },
+      "cuidados": "Não administrar em ulcerações gastrointestinais, hipersensibilidade ou grave disfunção renal. Usar assepsia. Outros AINEs, glicocorticoides e anticoagulantes exigem atenção às interações.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50004196_0720_OF00_DICLOFENACO_50-VD.pdf",
+          "secao": "Modo de uso e dosagem / Dosagens"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50004196_0720_OF00_DICLOFENACO_50-VD.pdf",
+          "secao": "Modo de uso e dosagem / Dosagens"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50004196_0720_OF00_DICLOFENACO_50-VD.pdf",
+          "secao": "Modo de uso e dosagem"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50004196_0720_OF00_DICLOFENACO_50-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50004196_0720_OF00_DICLOFENACO_50-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50004196_0720_OF00_DICLOFENACO_50-VD.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50004196_0720_OF00_DICLOFENACO_50-VD.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/diclofenaco-50/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50004196_0720_OF00_DICLOFENACO_50-VD.pdf",
+        "pdfProducaoConsultado": true,
+        "sha256": "1b44a4a8ea7c32105379af4d3ca412f405b2bd0875d8e371131951b8cad69846"
+      },
+      "versao": 2,
+      "documentoSha256": "1b44a4a8ea7c32105379af4d3ca412f405b2bd0875d8e371131951b8cad69846",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Trissulfin Solução Injetável",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "59b43de6-c2a9-50bc-b966-b342011930f8",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50007253_1125_OF00_TRISSULFIN_INJETAVEL-VD.pdf",
+      "titulo": "Bula oficial brasileira — Trissulfin Solução Injetável",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Por frasco de 50 mL: sulfametoxazol 10 g e trimetoprim 2 g.",
+      "dosagem": "Bovinos: 1 mL/15 kg pela via intramuscular durante 5 dias consecutivos, para infecções por agentes sensíveis à associação.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "15",
+          "condicao": "Bovinos, durante 5 dias consecutivos."
+        }
+      ],
+      "via": "Intramuscular",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 36,
+          "condicao": "Após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 336,
+          "condicao": "Abate de bovinos após última aplicação."
+        }
+      },
+      "cuidados": "Não usar em hipersensibilidade ou disfunções hepáticas/renais graves. Oferecer água. Segurança não estudada em menores de 18 meses, idosos e machos reprodutores; bula informa segurança em gestantes e lactantes.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50007253_1125_OF00_TRISSULFIN_INJETAVEL-VD.pdf",
+          "secao": "Modo de uso e dosagem / Dosagens"
+        },
+        "proporcoes": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50007253_1125_OF00_TRISSULFIN_INJETAVEL-VD.pdf",
+          "secao": "Modo de uso e dosagem / Dosagens"
+        },
+        "via": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50007253_1125_OF00_TRISSULFIN_INJETAVEL-VD.pdf",
+          "secao": "Modo de uso e dosagem"
+        },
+        "carenciasLeite": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50007253_1125_OF00_TRISSULFIN_INJETAVEL-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Leite"
+        },
+        "carenciasCarne": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50007253_1125_OF00_TRISSULFIN_INJETAVEL-VD.pdf",
+          "secao": "Períodos de carência — Bovinos — Abate"
+        },
+        "concentracao": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50007253_1125_OF00_TRISSULFIN_INJETAVEL-VD.pdf",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50007253_1125_OF00_TRISSULFIN_INJETAVEL-VD.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "evidenciaApresentacao": "https://ourofino.com/produtos/trissulfin-injetavel/",
+      "verificacaoFonte": {
+        "urlProducao": "https://ourofino.com/wp-content/uploads/2026/08/BUL_50007253_1125_OF00_TRISSULFIN_INJETAVEL-VD.pdf",
+        "pdfProducaoConsultado": true,
+        "sha256": "1f07bbe2b1c9eed645d3135eb18ce1dd311c6554da5d7aab6b0a7e13176575fd"
+      },
+      "versao": 2,
+      "documentoSha256": "1f07bbe2b1c9eed645d3135eb18ce1dd311c6554da5d7aab6b0a7e13176575fd",
+      "tipoFonte": "BULA_OFICIAL"
+    }
+  },
+  {
+    "nomeCatalogo": "Ivergen Platinum 3.15",
+    "fabricanteCatalogo": "Biogénesis Bagó Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "922f56f4-4366-5655-9c9b-2d6e5b786ad7",
+        "apresentacao": "Frasco 50 ml"
+      },
+      {
+        "id": "e9935ac9-1364-557a-9be3-86b2c2c74706",
+        "apresentacao": "Frasco 500 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://br.biovademecum.biogenesisbago.com/endectocidas/ivergen-platinum",
+      "titulo": "IVERGEN® PLATINUM — BioVademécum Brasil",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Ivermectina 3,15 g/100 mL.",
+      "dosagem": "Bovinos: 1 mL por 50 kg de peso vivo.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "50",
+          "condicao": "Bovinos"
+        }
+      ],
+      "via": "Subcutânea, na pele solta à frente ou atrás da paleta.",
+      "carencias": {
+        "leite": {
+          "estado": "PROIBIDO",
+          "horas": null,
+          "condicao": "Não utilizar em fêmeas gestantes e lactantes."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 2880,
+          "condicao": "Bovinos; após a última aplicação."
+        }
+      },
+      "cuidados": "Não usar abaixo de 8 meses, em gestantes/lactantes, nem bovinos de corte em confinamento, semiconfinamento ou fase de terminação extensiva. Usar material estéril; não misturar na seringa. Após abrir, usar em até quatro meses.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://br.biovademecum.biogenesisbago.com/endectocidas/ivergen-platinum",
+          "secao": "Dose"
+        },
+        "proporcoes": {
+          "url": "https://br.biovademecum.biogenesisbago.com/endectocidas/ivergen-platinum",
+          "secao": "Dose"
+        },
+        "via": {
+          "url": "https://br.biovademecum.biogenesisbago.com/endectocidas/ivergen-platinum",
+          "secao": "Instruções de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://br.biovademecum.biogenesisbago.com/endectocidas/ivergen-platinum",
+          "secao": "Precauções"
+        },
+        "carenciasCarne": {
+          "url": "https://br.biovademecum.biogenesisbago.com/endectocidas/ivergen-platinum",
+          "secao": "Período de carência"
+        },
+        "concentracao": {
+          "url": "https://br.biovademecum.biogenesisbago.com/endectocidas/ivergen-platinum",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://br.biovademecum.biogenesisbago.com/endectocidas/ivergen-platinum",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "8d208414ee5582498408c9ad264638f3efbc2149312d573734c134abe54225ad"
+    }
+  },
+  {
+    "nomeCatalogo": "Bioraiva - Vacina Inativada Raiva Bov.",
+    "fabricanteCatalogo": "Biogénesis Bagó Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "44dd2eea-dc58-5b33-aff4-916a3d900a9b",
+        "apresentacao": "Fr. 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://br.biovademecum.biogenesisbago.com/biologicos/bioraiva",
+      "titulo": "BIORAIVA® — BioVademécum Brasil",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Vírus rábico inativado cultivado em células BHK; adjuvante hidróxido de alumínio.",
+      "dosagem": "Dose: 2 mL.",
+      "proporcoes": [],
+      "via": "Bovinos: intramuscular ou subcutânea.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        }
+      },
+      "cuidados": "Refrigerar entre 2 e 8 °C, não congelar. Não usar se mudar de rósea para amarela; não vacinar animais enfermos, parasitados, subnutridos ou estressados. Pode causar hipersensibilidade.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioraiva",
+          "secao": "Dose"
+        },
+        "proporcoes": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioraiva",
+          "secao": "Dose/Modo de uso: sem proporção explícita por peso"
+        },
+        "via": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioraiva",
+          "secao": "Instruções de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioraiva",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "carenciasCarne": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioraiva",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "concentracao": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioraiva",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioraiva",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "67f889ccf10384575cacbb915257333af5f241f7c4dd730b920a3fd971235238"
+    }
+  },
+  {
+    "nomeCatalogo": "Bioleptogen",
+    "fabricanteCatalogo": "Biogénesis Bagó Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "18e94a8e-8a3f-5246-a871-dddbfe07e157",
+        "apresentacao": "Frasco 125 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://br.biovademecum.biogenesisbago.com/biologicos/bioleptogen",
+      "titulo": "BIOLEPTOGEN® — BioVademécum Brasil",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Suspensão inativada de sete sorotipos de Leptospira interrogans.",
+      "dosagem": "Bovinos: 5 mL.",
+      "proporcoes": [],
+      "via": "Subcutânea, à frente ou atrás da paleta.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        }
+      },
+      "cuidados": "Refrigerar de 2 a 8 °C; não congelar. Agitar. Não vacinar animais enfermos, parasitados, subnutridos ou estressados. Antimicrobianos e anti-inflamatórios concomitantes podem interferir na resposta imune; podem ocorrer reações alérgicas.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioleptogen",
+          "secao": "Dose"
+        },
+        "proporcoes": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioleptogen",
+          "secao": "Dose/Modo de uso: sem proporção explícita por peso"
+        },
+        "via": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioleptogen",
+          "secao": "Instruções de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioleptogen",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "carenciasCarne": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioleptogen",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "concentracao": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioleptogen",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://br.biovademecum.biogenesisbago.com/biologicos/bioleptogen",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "21e5a602e6e3c99f8eeeb9e87a1d1a03f613e2a5ddd50c506bf97e2d64d7d455"
+    }
+  },
+  {
+    "nomeCatalogo": "Aspersin",
+    "fabricanteCatalogo": "Biogénesis Bagó Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "2c056966-a233-5005-bc87-dc190ec8188a",
+        "apresentacao": "Frasco 250 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aspersin",
+      "titulo": "ASPERSIN® — BioVademécum Brasil",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Cipermetrina 20 g e clorpirifós 50 g/100 mL.",
+      "dosagem": "Diluir 17 mL em 20 litros de água; aplicar 1 a 3 litros da solução por animal.",
+      "proporcoes": [],
+      "via": "Externa, por aspersão.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 120,
+          "condicao": "Bovinos; após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 408,
+          "condicao": "Bovinos; após a última aplicação."
+        }
+      },
+      "cuidados": "Não banhar gestação adiantada, sob calor/frio intenso ou em curral com lama. Se chover nas 24 horas seguintes, repetir. Evitar inalação/contato e aspersão contra vento; tóxico a polinizadores e peixes.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aspersin",
+          "secao": "Dose"
+        },
+        "proporcoes": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aspersin",
+          "secao": "Dose/Modo de uso: sem proporção explícita por peso"
+        },
+        "via": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aspersin",
+          "secao": "Indicações: formulação para aspersão"
+        },
+        "carenciasLeite": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aspersin",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aspersin",
+          "secao": "Período de carência"
+        },
+        "concentracao": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aspersin",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aspersin",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "61235ff1af0ab42d23244f33bfcce275313010ba3052b952004ab365a5339d76"
+    }
+  },
+  {
+    "nomeCatalogo": "Aciendel Plus \"Pour-On\"",
+    "fabricanteCatalogo": "Biogénesis Bagó Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "62a72c5d-32b3-5938-9216-b55a23b52b77",
+        "apresentacao": "Frasco 1 l"
+      },
+      {
+        "id": "afe70b7f-6488-57f4-87cc-f0e7760c61bd",
+        "apresentacao": "Frasco 2,5 l"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aciendel-plus",
+      "titulo": "ACIENDEL® PLUS — BioVademécum Brasil",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Cipermetrina 5%; clorpirifós 2,5%; butóxido de piperonila 1%.",
+      "dosagem": "Bovinos: 10 mL por 100 kg de peso vivo.",
+      "proporcoes": [
+        {
+          "quantidade": "10",
+          "unidade": "ML",
+          "pesoKg": "100",
+          "condicao": "Bovinos"
+        }
+      ],
+      "via": "Externa: aplicar com cânula ou frasco dosador do pescoço à anca e nos flancos.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 6,
+          "condicao": "Bovinos; após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 48,
+          "condicao": "Bovinos; após a última aplicação."
+        }
+      },
+      "cuidados": "Usar equipamentos de proteção; evitar comer, beber e fumar durante manipulação. Não contaminar mananciais; tóxico para abelhas, pássaros e peixes.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aciendel-plus",
+          "secao": "Dose"
+        },
+        "proporcoes": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aciendel-plus",
+          "secao": "Dose"
+        },
+        "via": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aciendel-plus",
+          "secao": "Instruções de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aciendel-plus",
+          "secao": "Período de carência"
+        },
+        "carenciasCarne": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aciendel-plus",
+          "secao": "Período de carência"
+        },
+        "concentracao": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aciendel-plus",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://br.biovademecum.biogenesisbago.com/antiparasitarios-externos/aciendel-plus",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "bf280f813a6e167ae4da699a249570e791aceb855d024b9aa807a794ef914979"
+    }
+  },
+  {
+    "nomeCatalogo": "Flunixin Injetável Chemitec",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "itens": [
+      {
+        "id": "ca5dc1e5-45a6-5bc7-9f73-bea64b05ea6c",
+        "apresentacao": "Frasco 10 ml"
+      },
+      {
+        "id": "18b38d5c-3274-5da6-8a5b-bfb5b5603aab",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-flunixin-injetavel/",
+      "titulo": "Anti-inflamatório Flunixin Injetável — Chemitec",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Flunixina 5 g/100 mL, equivalente a 8,3 g de flunixina meglumina.",
+      "dosagem": "Bovinos: 1,1 a 2,2 mg/kg. Duração e dose dependem da condição tratada.",
+      "proporcoes": [],
+      "via": "Intramuscular.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        }
+      },
+      "cuidados": "Não aplicar intra-arterial; evitar fêmeas prenhes e não administrar a touros reprodutores. Cautela em alterações renais, hepáticas, hematológicas ou úlceras gastrintestinais. Não associar a outros AINEs, metoxifluorano ou nefrotóxicos.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-flunixin-injetavel/",
+          "secao": "Modo de uso"
+        },
+        "proporcoes": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-flunixin-injetavel/",
+          "secao": "Dose/Modo de uso: sem proporção explícita por peso"
+        },
+        "via": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-flunixin-injetavel/",
+          "secao": "Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-flunixin-injetavel/",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "carenciasCarne": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-flunixin-injetavel/",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "concentracao": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-flunixin-injetavel/",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-flunixin-injetavel/",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "b52dfa4e14137084bf7a4070b40f5fa40fd52be1384d597488ed507b27dc6ebd"
+    }
+  },
+  {
+    "nomeCatalogo": "Gentatec",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "itens": [
+      {
+        "id": "3f6a05c2-6f4d-5b14-a41f-0fb342461002",
+        "apresentacao": "Frasco 100 ml"
+      },
+      {
+        "id": "b20cfbcd-4c15-5cbb-a992-26bacde06e36",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec/",
+      "titulo": "Antibiótico Gentatec® — Chemitec",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Gentamicina como sulfato, 40 mg/mL.",
+      "dosagem": "Bovinos: 10 mL/100 kg, cada 24 horas por sete dias consecutivos ou a critério veterinário. A página ressalva que em vacas doses podem diferir.",
+      "proporcoes": [
+        {
+          "quantidade": "10",
+          "unidade": "ML",
+          "pesoKg": "100",
+          "condicao": "Bovinos; a cada 24 horas durante 7 dias ou critério veterinário. A ficha ressalva doses diferentes em vacas sem quantificar."
+        }
+      ],
+      "via": "Intramuscular.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        }
+      },
+      "cuidados": "Uso orientado por médico-veterinário; a ficha não especifica a dose alternativa para vacas.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec/",
+          "secao": "Modo de uso"
+        },
+        "proporcoes": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec/",
+          "secao": "Modo de uso"
+        },
+        "via": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec/",
+          "secao": "Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec/",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "carenciasCarne": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec/",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "concentracao": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec/",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec/",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "1cb9c606a788bcd214001f905a636a5b9245a0dbb5aec22e8048e99406b4ec43"
+    }
+  },
+  {
+    "nomeCatalogo": "Unguento Chemitec",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "itens": [
+      {
+        "id": "67b7af65-984b-50ba-9b0a-fd759dd48aeb",
+        "apresentacao": "Bisnaga 200 g"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://chemitec.com.br/produtos-por-animal/pomada-cicatrizante-unguento-chemitec/",
+      "titulo": "Pomada Cicatrizante Unguento Chemitec®",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Óxido de zinco 15 g e ácido cresílico 2 g/100 g.",
+      "dosagem": "Limpar e secar a lesão; cobrir com camada uniforme diariamente até desaparecerem as lesões.",
+      "proporcoes": [],
+      "via": "Tópica/externa, apenas na pele.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        }
+      },
+      "cuidados": "Feridas pós-cirúrgicas podem precisar de curativo. Não administrar em gatos, pela toxicidade do ácido cresílico.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://chemitec.com.br/produtos-por-animal/pomada-cicatrizante-unguento-chemitec/",
+          "secao": "Modo de uso"
+        },
+        "proporcoes": {
+          "url": "https://chemitec.com.br/produtos-por-animal/pomada-cicatrizante-unguento-chemitec/",
+          "secao": "Dose/Modo de uso: sem proporção explícita por peso"
+        },
+        "via": {
+          "url": "https://chemitec.com.br/produtos-por-animal/pomada-cicatrizante-unguento-chemitec/",
+          "secao": "Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://chemitec.com.br/produtos-por-animal/pomada-cicatrizante-unguento-chemitec/",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "carenciasCarne": {
+          "url": "https://chemitec.com.br/produtos-por-animal/pomada-cicatrizante-unguento-chemitec/",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "concentracao": {
+          "url": "https://chemitec.com.br/produtos-por-animal/pomada-cicatrizante-unguento-chemitec/",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://chemitec.com.br/produtos-por-animal/pomada-cicatrizante-unguento-chemitec/",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "b8bb7dfa72ed6caa8bfe2bbae30d192ec28ee85f3ca92fd79b3b21ae2e8d7bcf"
+    }
+  },
+  {
+    "nomeCatalogo": "Déxium Solução Injetável",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "itens": [
+      {
+        "id": "d3c061f1-f907-57dc-987d-5f0bbdd63579",
+        "apresentacao": "Frasco 10 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-dexium-solucao-injetavel/",
+      "titulo": "Déxium Solução Injetável — Chemitec",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Dexametasona 0,2 g/100 mL.",
+      "dosagem": "Bovinos: 1,5 mL/50 kg (0,06 mg/kg), cada 24 horas por três dias consecutivos.",
+      "proporcoes": [
+        {
+          "quantidade": "1.5",
+          "unidade": "ML",
+          "pesoKg": "50",
+          "condicao": "Bovinos; cada 24 horas durante 3 dias consecutivos."
+        }
+      ],
+      "via": "Intramuscular.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        }
+      },
+      "cuidados": "Supervisão veterinária. A página desaconselha associação a outros AINEs, metoxifluorano e drogas nefrotóxicas.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-dexium-solucao-injetavel/",
+          "secao": "Modo de uso"
+        },
+        "proporcoes": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-dexium-solucao-injetavel/",
+          "secao": "Modo de uso"
+        },
+        "via": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-dexium-solucao-injetavel/",
+          "secao": "Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-dexium-solucao-injetavel/",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "carenciasCarne": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-dexium-solucao-injetavel/",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "concentracao": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-dexium-solucao-injetavel/",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://chemitec.com.br/produtos-por-animal/anti-inflamatorio-dexium-solucao-injetavel/",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "fonteApresentacao": {
+        "url": "https://www.chemitec.com.br/wp-content/uploads/2020/09/Folheto_Linha_Grandes_Animais.pdf",
+        "secao": "Déxium Solução Injetável: frascos-ampola 10 e 50 mL"
+      },
+      "versao": 2,
+      "documentoSha256": "d9f3b19c8cc872b95f39417d2ae3268aaf39e9935af25ad700c678788693dca2",
+      "origemOficial": "https://www.chemitec.com.br/wp-content/uploads/2020/09/Folheto_Linha_Grandes_Animais.pdf"
+    }
+  },
+  {
+    "nomeCatalogo": "Chemitril Injetável 10%",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "itens": [
+      {
+        "id": "67cb9f73-4d39-5e51-bf1c-0e6fd1fc5e7b",
+        "apresentacao": "Frasco 10 ml"
+      },
+      {
+        "id": "cf60d085-3f0e-5271-b9de-84c201b1deae",
+        "apresentacao": "Frasco 50 ml"
+      },
+      {
+        "id": "fe12fd74-5eaf-5b4f-b4a8-2593502bf775",
+        "apresentacao": "Frasco 500 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://chemitec.com.br/produtos-por-animal/antibiotico-chemitril-injetavel-10/",
+      "titulo": "Chemitril® Injetável 10% — Chemitec",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Enrofloxacino 10 g/100 mL.",
+      "dosagem": "Bovinos: 1 mL/40 kg; infecções respiratórias complicadas e anaplasmose: 1 mL/20 kg. Tratamento de três a cinco dias; intervalo não informado na ficha.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "40",
+          "condicao": "Bovinos; tratamento de 3 a 5 dias; intervalo não informado."
+        },
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "20",
+          "condicao": "Infecções respiratórias complicadas e anaplasmose; tratamento de 3 a 5 dias; intervalo não informado."
+        }
+      ],
+      "via": "Intramuscular.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha oficial consultada não informa prazo; não equivale a carência zero."
+        }
+      },
+      "cuidados": "Uso sob orientação veterinária para infecções por agentes sensíveis.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-chemitril-injetavel-10/",
+          "secao": "Modo de uso"
+        },
+        "proporcoes": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-chemitril-injetavel-10/",
+          "secao": "Modo de uso"
+        },
+        "via": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-chemitril-injetavel-10/",
+          "secao": "Modo de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-chemitril-injetavel-10/",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "carenciasCarne": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-chemitril-injetavel-10/",
+          "secao": "Ficha consultada: prazo não informado"
+        },
+        "concentracao": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-chemitril-injetavel-10/",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://chemitec.com.br/produtos-por-animal/antibiotico-chemitril-injetavel-10/",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "672c79cdb215503f69f7e47dcdd06431136d48b617512071e6dba8acd79559a0"
+    }
+  },
+  {
+    "nomeCatalogo": "Vac. Anticarbunculosa Bac. Anthracis",
+    "fabricanteCatalogo": "Labovet Produtos Veterinários Ltda.",
+    "itens": [
+      {
+        "id": "b332162f-b981-56c5-bcc5-b708bfa57bc0",
+        "apresentacao": "Fr.50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://labovet.com.br/produtos/vacina-anticarbunculosa",
+      "titulo": "Vacina Anticarbunculosa — Labovet",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Esporos de Bacillus anthracis amostra Sterne em salina glicero-saponinada.",
+      "dosagem": "Bovinos: 2 mL, a partir dos quatro meses; revacinação anual. Outros esquemas somente sob responsabilidade veterinária.",
+      "proporcoes": [],
+      "via": "Subcutânea.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Carência zero para leite."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Carência zero para abate."
+        }
+      },
+      "cuidados": "Manter entre 2 e 8 °C, sem congelar. Usar assepsia; não vacinar animais enfermos, parasitados, subnutridos ou estressados. Cautela ao manejar gestantes.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://labovet.com.br/produtos/vacina-anticarbunculosa",
+          "secao": "Dosagem / Via de administração, doses e modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://labovet.com.br/produtos/vacina-anticarbunculosa",
+          "secao": "Dosagem: somente proporções explicitadas"
+        },
+        "via": {
+          "url": "https://labovet.com.br/produtos/vacina-anticarbunculosa",
+          "secao": "Via de administração / Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://labovet.com.br/produtos/vacina-anticarbunculosa",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "carenciasCarne": {
+          "url": "https://labovet.com.br/produtos/vacina-anticarbunculosa",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "concentracao": {
+          "url": "https://labovet.com.br/produtos/vacina-anticarbunculosa",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://labovet.com.br/produtos/vacina-anticarbunculosa",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "23e92e57345e53f1289e23a0240a98a0d2065a2f8b35624f5701e21316bcbe18"
+    }
+  },
+  {
+    "nomeCatalogo": "Vacina Contra Paratifo Dos Bezerros",
+    "fabricanteCatalogo": "Labovet Produtos Veterinários Ltda.",
+    "itens": [
+      {
+        "id": "d63ca730-dc32-583c-9307-39758a9d2361",
+        "apresentacao": "Fr. 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://labovet.com.br/produtos/vacina-contra-o-paratifo-dos-bezerros",
+      "titulo": "Vacina Contra o Paratifo dos Bezerros — Labovet",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Salmonella dublin e S. typhimurium inativadas em salina tamponada saponinada.",
+      "dosagem": "Bezerros: 2 mL entre 15 e 30 dias de idade. Vacas gestantes: 5 mL, 30 dias antes do parto. Revacinação anual; outros esquemas sob responsabilidade veterinária.",
+      "proporcoes": [],
+      "via": "Subcutânea.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Carência zero para leite."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Carência zero para abate."
+        }
+      },
+      "cuidados": "Manter entre 2 e 8 °C, sem congelar. Usar assepsia; não vacinar animais enfermos, parasitados, subnutridos ou estressados. Cautela ao manejar gestantes.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://labovet.com.br/produtos/vacina-contra-o-paratifo-dos-bezerros",
+          "secao": "Dosagem / Via de administração, doses e modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://labovet.com.br/produtos/vacina-contra-o-paratifo-dos-bezerros",
+          "secao": "Dosagem: somente proporções explicitadas"
+        },
+        "via": {
+          "url": "https://labovet.com.br/produtos/vacina-contra-o-paratifo-dos-bezerros",
+          "secao": "Via de administração / Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://labovet.com.br/produtos/vacina-contra-o-paratifo-dos-bezerros",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "carenciasCarne": {
+          "url": "https://labovet.com.br/produtos/vacina-contra-o-paratifo-dos-bezerros",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "concentracao": {
+          "url": "https://labovet.com.br/produtos/vacina-contra-o-paratifo-dos-bezerros",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://labovet.com.br/produtos/vacina-contra-o-paratifo-dos-bezerros",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "24c91cfaa2f611b474380ca2e65c14b691a0bf6c0ba19efc61a62f0eeb6ca52f"
+    }
+  },
+  {
+    "nomeCatalogo": "Clostrimune-8",
+    "fabricanteCatalogo": "Labovet Produtos Veterinários Ltda.",
+    "itens": [
+      {
+        "id": "0895beb6-a202-586a-a50b-5542f2a58504",
+        "apresentacao": "Frasco 100 ml"
+      },
+      {
+        "id": "837df13c-e16b-5ed6-9a16-12fd582de887",
+        "apresentacao": "Frasco 250 ml"
+      },
+      {
+        "id": "3045924c-dfd7-59b3-8f5b-af884a036cca",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://labovet.com.br/produtos/vacina-clostrimune-8",
+      "titulo": "Vacina Clostrimune 8 — Labovet",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Toxinas de C. septicum, perfringens B/C/D, novyi B, sordellii, tetani e bacterina C. chauvoei inativadas.",
+      "dosagem": "Bovinos: 5 mL aos quatro meses; primovacinados: reforço quatro semanas após. Revacinação anual; outros esquemas sob responsabilidade veterinária.",
+      "proporcoes": [],
+      "via": "Subcutânea.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não informado na fonte consultada; não equivale a zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não informado na fonte consultada; não equivale a zero."
+        }
+      },
+      "cuidados": "Manter entre 2 e 8 °C, sem congelar. Usar assepsia; não vacinar animais enfermos, parasitados, subnutridos ou estressados. Cautela ao manejar gestantes.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://labovet.com.br/produtos/vacina-clostrimune-8",
+          "secao": "Dosagem / Via de administração, doses e modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://labovet.com.br/produtos/vacina-clostrimune-8",
+          "secao": "Dosagem: somente proporções explicitadas"
+        },
+        "via": {
+          "url": "https://labovet.com.br/produtos/vacina-clostrimune-8",
+          "secao": "Via de administração / Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://labovet.com.br/produtos/vacina-clostrimune-8",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "carenciasCarne": {
+          "url": "https://labovet.com.br/produtos/vacina-clostrimune-8",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "concentracao": {
+          "url": "https://labovet.com.br/produtos/vacina-clostrimune-8",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://labovet.com.br/produtos/vacina-clostrimune-8",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "8d71069e759baf76c411d0ef299439d303e3fb5913e47bf6dfad417a2a65ec39"
+    }
+  },
+  {
+    "nomeCatalogo": "Starvac",
+    "fabricanteCatalogo": "Labovet Produtos Veterinários Ltda.",
+    "itens": [
+      {
+        "id": "bf328631-3d8c-59a4-9c1c-87246f28e0de",
+        "apresentacao": "Frasco 100 ml"
+      },
+      {
+        "id": "f2bcf34a-438e-52e8-b929-94e4d207f0ee",
+        "apresentacao": "Frasco 250 ml"
+      },
+      {
+        "id": "c37c505f-e9f3-5571-b914-4ce945886d56",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://labovet.com.br/produtos/vacina-starvac",
+      "titulo": "Vacina StarVac — Labovet",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Toxinas de C. septicum, botulinum C/D, perfringens B/C/D, novyi B, sordellii e bacterina C. chauvoei inativadas.",
+      "dosagem": "Bovinos: 5 mL aos quatro meses e reforço quatro semanas depois. Filhos de mães não vacinadas: primeira dose a partir da segunda semana. Revacinação anual; outros esquemas sob responsabilidade veterinária.",
+      "proporcoes": [],
+      "via": "Subcutânea.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não informado na fonte consultada; não equivale a zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não informado na fonte consultada; não equivale a zero."
+        }
+      },
+      "cuidados": "Manter entre 2 e 8 °C, sem congelar. Usar assepsia; não vacinar animais enfermos, parasitados, subnutridos ou estressados. Cautela ao manejar gestantes.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://labovet.com.br/produtos/vacina-starvac",
+          "secao": "Dosagem / Via de administração, doses e modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://labovet.com.br/produtos/vacina-starvac",
+          "secao": "Dosagem: somente proporções explicitadas"
+        },
+        "via": {
+          "url": "https://labovet.com.br/produtos/vacina-starvac",
+          "secao": "Via de administração / Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://labovet.com.br/produtos/vacina-starvac",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "carenciasCarne": {
+          "url": "https://labovet.com.br/produtos/vacina-starvac",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "concentracao": {
+          "url": "https://labovet.com.br/produtos/vacina-starvac",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://labovet.com.br/produtos/vacina-starvac",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "c0d97149a95312e86d86bfa27c2e4df47fa8db4deebbccb89cfa5253e6022e12"
+    }
+  },
+  {
+    "nomeCatalogo": "Vacina Anti-Rábica Inativada",
+    "fabricanteCatalogo": "Labovet Produtos Veterinários Ltda.",
+    "itens": [
+      {
+        "id": "399e28ba-7238-5a7f-a1f3-df51f5cba59b",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://labovet.com.br/produtos/vacina-antirrabica-inativada-labovet-para-herbivoros",
+      "titulo": "Vacina Antirrábica Inativada para Herbívoros — Labovet",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Vírus rábico fixo cepa Pasteur em cultivo celular, inativado por BEI; hidróxido de alumínio.",
+      "dosagem": "Bovinos: 2 mL a partir dos três meses. Primovacinados: reforço após 30 dias. Revacinação anual; outros esquemas sob responsabilidade veterinária.",
+      "proporcoes": [],
+      "via": "Subcutânea ou intramuscular.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não informado na fonte consultada; não equivale a zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não informado na fonte consultada; não equivale a zero."
+        }
+      },
+      "cuidados": "Manter entre 2 e 8 °C, sem congelar. Usar assepsia; não vacinar animais enfermos, parasitados, subnutridos ou estressados. Cautela ao manejar gestantes. Não utilizar em animais silvestres.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://labovet.com.br/produtos/vacina-antirrabica-inativada-labovet-para-herbivoros",
+          "secao": "Dosagem / Via de administração, doses e modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://labovet.com.br/produtos/vacina-antirrabica-inativada-labovet-para-herbivoros",
+          "secao": "Dosagem: somente proporções explicitadas"
+        },
+        "via": {
+          "url": "https://labovet.com.br/produtos/vacina-antirrabica-inativada-labovet-para-herbivoros",
+          "secao": "Via de administração / Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://labovet.com.br/produtos/vacina-antirrabica-inativada-labovet-para-herbivoros",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "carenciasCarne": {
+          "url": "https://labovet.com.br/produtos/vacina-antirrabica-inativada-labovet-para-herbivoros",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "concentracao": {
+          "url": "https://labovet.com.br/produtos/vacina-antirrabica-inativada-labovet-para-herbivoros",
+          "secao": "Composição"
+        },
+        "cuidados": {
+          "url": "https://labovet.com.br/produtos/vacina-antirrabica-inativada-labovet-para-herbivoros",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "7088179ee9459ab1fe697f10fd6ff2eea90f7eedcf517e8351feee5f826ee39d"
+    }
+  },
+  {
+    "nomeCatalogo": "Vacina Contra O Botulismo",
+    "fabricanteCatalogo": "Labovet Produtos Veterinários Ltda.",
+    "itens": [
+      {
+        "id": "3289db1f-234e-5114-8c7e-b8f3489cef2b",
+        "apresentacao": "Frasco 250 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://labovet.com.br/wp-content/uploads/2019/01/BOTULISMO-1.pdf",
+      "titulo": "Vacina Contra o Botulismo — rótulo-bula Labovet",
+      "tipoFonte": "BULA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Suspensões de C. botulinum C e D inativadas; hidróxido de alumínio.",
+      "dosagem": "Bovinos: 5 mL a partir dos quatro meses; primovacinados: reforço quatro semanas após. Revacinação anual.",
+      "proporcoes": [],
+      "via": "Subcutânea.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não informado na fonte consultada; não equivale a zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não informado na fonte consultada; não equivale a zero."
+        }
+      },
+      "cuidados": "Manter entre 2 e 8 °C, sem congelar. Usar assepsia; não vacinar animais enfermos, parasitados, subnutridos ou estressados. Cautela ao manejar gestantes. Agitar antes e durante o uso; antimicrobianos/anti-inflamatórios concomitantes podem interferir na resposta imune.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://labovet.com.br/wp-content/uploads/2019/01/BOTULISMO-1.pdf",
+          "secao": "Dosagem / Via de administração, doses e modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://labovet.com.br/wp-content/uploads/2019/01/BOTULISMO-1.pdf",
+          "secao": "Dosagem: somente proporções explicitadas"
+        },
+        "via": {
+          "url": "https://labovet.com.br/wp-content/uploads/2019/01/BOTULISMO-1.pdf",
+          "secao": "Via de administração / Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://labovet.com.br/wp-content/uploads/2019/01/BOTULISMO-1.pdf",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "carenciasCarne": {
+          "url": "https://labovet.com.br/wp-content/uploads/2019/01/BOTULISMO-1.pdf",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "concentracao": {
+          "url": "https://labovet.com.br/wp-content/uploads/2019/01/BOTULISMO-1.pdf",
+          "secao": "Fórmula / composição"
+        },
+        "cuidados": {
+          "url": "https://labovet.com.br/wp-content/uploads/2019/01/BOTULISMO-1.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "4c68bb9557f2d5e40dedfdae5488683648a5e3aa6020372ae0d95de4e9c2a2c2"
+    }
+  },
+  {
+    "nomeCatalogo": "Dexavet",
+    "fabricanteCatalogo": "Laboratório Bravet Ltda.",
+    "itens": [
+      {
+        "id": "de7ea488-7d03-5455-a01f-e720c7458312",
+        "apresentacao": "Frasco 10 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://www.bravet.com.br/files/product/leaflet/22/DEXAVET%2010ml%20EE%20PRINTT.pdf",
+      "titulo": "Dexavet injetável — bula Bravet",
+      "tipoFonte": "BULA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Dexametasona-21 fosfato dissódico 20 mg/10 mL.",
+      "dosagem": "Bovinos: 5 a 20 mg (2,5 a 10 mL). Tratamento e alterações de dose sob orientação veterinária.",
+      "proporcoes": [],
+      "via": "Intramuscular ou endovenosa.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 120,
+          "condicao": "Após a última aplicação."
+        },
+        "carne": {
+          "estado": "PROIBIDO",
+          "horas": null,
+          "condicao": "Não usar em animais destinados ao abate para consumo humano."
+        }
+      },
+      "cuidados": "Não usar no último terço da prenhez, infecções virais, insuficiência cardíaca, diabetes ou nefrite. Pode mascarar sinais de infecção. Assepsia e material estéril.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/22/DEXAVET%2010ml%20EE%20PRINTT.pdf",
+          "secao": "Dosagem / Via de administração, doses e modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/22/DEXAVET%2010ml%20EE%20PRINTT.pdf",
+          "secao": "Dosagem: somente proporções explicitadas"
+        },
+        "via": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/22/DEXAVET%2010ml%20EE%20PRINTT.pdf",
+          "secao": "Via de administração / Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/22/DEXAVET%2010ml%20EE%20PRINTT.pdf",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "carenciasCarne": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/22/DEXAVET%2010ml%20EE%20PRINTT.pdf",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "concentracao": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/22/DEXAVET%2010ml%20EE%20PRINTT.pdf",
+          "secao": "Fórmula / composição"
+        },
+        "cuidados": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/22/DEXAVET%2010ml%20EE%20PRINTT.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "4c91d29fbcfaf903ac6ff1e90e3ea2d4252f14dff6da9080d6cbccfa83ca8881"
+    }
+  },
+  {
+    "nomeCatalogo": "Lidovet",
+    "fabricanteCatalogo": "Laboratório Bravet Ltda.",
+    "itens": [
+      {
+        "id": "10ecc79c-181b-5fa1-9feb-4a9aa52f9fda",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "fonte": "https://www.bravet.com.br/files/product/leaflet/20/LIDOVET%20%20EE.pdf",
+      "titulo": "Lidovet — bula Bravet",
+      "tipoFonte": "BULA_OFICIAL",
+      "consultadaEm": "2026-11-17",
+      "especie": "Bovinos",
+      "concentracao": "Cloridrato de lidocaína 2 g/100 mL, em solução de Ringer.",
+      "dosagem": "Bovinos: analgesia epidural baixa 4 mL; alta 60 mL. Membros inferiores: torniquete abaixo/acima do jarrete e 10 a 20 mL endovenosos em veia superficial abaixo do torniquete.",
+      "proporcoes": [],
+      "via": "Epidural; endovenosa regional conforme procedimento; bula também prevê intradérmica, subcutânea e infiltração muscular.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não informado na fonte consultada; não equivale a zero."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não informado na fonte consultada; não equivale a zero."
+        }
+      },
+      "cuidados": "Aplicação obrigatória pelo médico-veterinário; dose depende da cirurgia, espécie e anestesia. Usar assepsia, agulhas e seringas estéreis.",
+      "camposFonte": {
+        "dosagem": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/20/LIDOVET%20%20EE.pdf",
+          "secao": "Dosagem / Via de administração, doses e modo de usar"
+        },
+        "proporcoes": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/20/LIDOVET%20%20EE.pdf",
+          "secao": "Dosagem: somente proporções explicitadas"
+        },
+        "via": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/20/LIDOVET%20%20EE.pdf",
+          "secao": "Via de administração / Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/20/LIDOVET%20%20EE.pdf",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "carenciasCarne": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/20/LIDOVET%20%20EE.pdf",
+          "secao": "Período de carência (quando presente; ausência preservada)"
+        },
+        "concentracao": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/20/LIDOVET%20%20EE.pdf",
+          "secao": "Fórmula / composição"
+        },
+        "cuidados": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/20/LIDOVET%20%20EE.pdf",
+          "secao": "Precauções, contraindicações e instruções de uso"
+        }
+      },
+      "versao": 2,
+      "documentoSha256": "9a09a3b8f93a6e6cfe5b084ce4b28dd9da7c4ac20f445fa3693fb812c8fb0768"
+    }
+  }
+]

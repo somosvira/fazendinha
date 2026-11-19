@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/DatePicker';
+import { BarraConsulta } from '@/financeiro/BarraConsulta';
+import { PeriodoFinanceiroControl } from '@/financeiro/PeriodoFinanceiroControl';
 import { SelectCampo } from '@/financeiro/SelectCampo';
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from '@/components/VisualizacaoConsulta';
 import { TabelaFinanceira } from '@/financeiro/financeiro-ui';
@@ -77,9 +79,7 @@ export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number;par
               { chave: 'pendencias', titulo: 'Cobertura', celula: a => coberturaRegistro(a.pendencias) },
             ]} />
           {dados.porAnimal.length === 0 && <p className="bez-estado">Nenhum custo atribuído por animal neste período.</p>}
-          <p className="bez-ajuda">O custo da mistura é atribuído aos participantes da coleira na oferta. Isso não comprova quantos litros de cada origem cada animal ingeriu.</p>
         </section>
-        <ul className="bez-lacunas">{dados.lacunas.map(l => <li key={l}>{l}</li>)}</ul>
       </>}
     </EstadoConsulta>
   </div>;
@@ -106,7 +106,10 @@ export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar,aoSalv
       <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização da sanidade dos bezerros" />
       {podeLancar && <Button onClick={() => setSelecionar(true)}>Registrar ação sanitária</Button>}
     </div>
-    <PeriodoBezerreiro params={params} mudar={mudar} />
+    <BarraConsulta>
+      <PeriodoFinanceiroControl inicio={params.get('de') ?? ''} fim={params.get('ate') ?? ''}
+        allowAll showIcon label="Período" onChange={({ inicio, fim }) => mudar({ de: inicio, ate: fim, pagina: '' })} />
+    </BarraConsulta>
     <EstadoConsulta {...consulta} carregando={!consulta.dados}>
       {consulta.dados && <>
         {visual.modo === 'tabela' ? <TabelaFinanceira visualizacao="tabela" rotulo={rotulo}

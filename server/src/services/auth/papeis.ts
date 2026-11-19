@@ -5,7 +5,10 @@ export type Flag =
   | "verSalarios"
   | "lancar"
   | "exportar"
-  | "gerenciarAcessos";
+  | "gerenciarAcessos"
+  | "enviarAplicacoesTablet"
+  | "revisarAplicacoesTablet"
+  | "gerenciarTemplatesTablet";
 
 export const AREAS_IDS = ["financeiro", "pecuaria"] as const;
 export type Area = (typeof AREAS_IDS)[number];
@@ -14,7 +17,7 @@ const AREAS_LEGADAS_PECUARIA = new Set(["rebanho", "gado_corte"]);
 // `relatorio` é o identificador persistido por compatibilidade; na interface ele
 // representa a Central de Relatórios geral, não apenas o antigo fechamento.
 export const ABAS_IDS = ["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"];
-export const FLAGS_IDS: Flag[] = ["verValores", "verSalarios", "lancar", "exportar", "gerenciarAcessos"];
+export const FLAGS_IDS: Flag[] = ["verValores", "verSalarios", "lancar", "exportar", "gerenciarAcessos", "enviarAplicacoesTablet", "revisarAplicacoesTablet", "gerenciarTemplatesTablet"];
 
 export const PAPEIS: Record<string, { abas: string[]; areas: Area[]; flags: Flag[] }> = {
   proprietario: {

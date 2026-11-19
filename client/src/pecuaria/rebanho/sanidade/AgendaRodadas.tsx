@@ -39,7 +39,7 @@ export function AgendaRodadas({ filtrosColunas, filtrosUI, filtros, podeLancar, 
   if (rodadaId) return <div className="protocolos-pagina protocolos-superficie"><DetalheRodada key={rodadaId} id={rodadaId} filtros={filtros} podeLancar={podeLancar} onFechar={() => onAbrir("")} onExecutar={onExecutar} onAcao={onAcao} recarregarToken={recarregarToken} onMudou={() => setRevisao((v) => v + 1)} /></div>;
   return <section className="protocolos-pagina protocolos-superficie min-w-0">
     {typeof filtrosUI === "function" ? filtrosUI(podeLancar ? <Button onClick={() => setCriando(true)}>Novo ciclo</Button> : undefined) : <div className="flex flex-wrap items-center justify-between gap-3">{filtrosUI}{podeLancar && <Button onClick={() => setCriando(true)}>Novo ciclo</Button>}</div>}
-    <div className="san-visual-barra"><p>Acompanhe as etapas e as tarefas de cada ciclo.</p><AlternarVisualizacaoSanitaria rotulo="Visualização dos ciclos" {...visual}/></div>
+    <div className="san-visual-barra"><AlternarVisualizacaoSanitaria rotulo="Visualização dos ciclos" {...visual}/></div>
     {salvo && <p role="status">Ciclo salvo.</p>}
     {erro && <><ErrorBox erro={erro} /><Button secondary onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></>}
     {carregando ? <SkeletonSanitario estrutura="ciclos" label="Carregando ciclos de protocolos…" /> : !erro && <>{visual.modo === "visual" ? <CartoesCiclos ciclos={pagina?.itens ?? []} onAbrir={onAbrir} revisao={revisao + recarregarToken}/> : <div className="sanidade-ciclos">

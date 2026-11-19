@@ -18,7 +18,7 @@ const { estado, db } = vi.hoisted(() => {
     $executeRaw: vi.fn().mockResolvedValue(0),
     $queryRaw: vi.fn().mockResolvedValue([]),
     propriedade: { findUnique: vi.fn().mockResolvedValue({ id: 1, ativo: true }) },
-    animal: { findMany: vi.fn() }, lactacaoAnimal: { findMany: vi.fn() },
+    animal: { findMany: vi.fn() }, lactacaoAnimal: { findMany: vi.fn() }, envioAplicacoesTablet: { findMany: vi.fn(async () => []) },
     requisicaoPecuaria: {
       findUnique: vi.fn(async ({ where }: { where: { chave: string } }) => estado.requisicoes.get(where.chave) ?? null),
       create: vi.fn(async ({ data }: { data: Record<string, unknown> & { chave: string } }) => { estado.requisicoes.set(data.chave, data); return data; }),

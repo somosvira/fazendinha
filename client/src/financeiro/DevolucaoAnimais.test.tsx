@@ -148,7 +148,6 @@ describe("modal Devolver cabeças", () => {
     expect((within(lista).getByLabelText("Devolver animal 103") as HTMLInputElement).disabled).toBe(true);
     expect(within(lista).getByText("Devolvido na OP-0012")).toBeTruthy();
     expect(within(lista).getByText("Fora do rebanho: Morte")).toBeTruthy();
-    expect(within(dialogo).getByText(/não abate parcelas em aberto/)).toBeTruthy();
   });
 
   it("preenche o valor pago, calcula o total e a descrição padrão", async () => {

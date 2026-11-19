@@ -27,7 +27,7 @@ export function NutricaoAnimal({ animalId, recarregarToken = 0 }: { animalId: st
       .finally(() => { if (vivo) setCarregando(false); });
     return () => { vivo = false; };
   }, [animalId, pagina, recarregarToken, revisao]);
-  return <SecaoGeralAnimal id="consumo-animal" className="nutricao-animal" icon={Wheat} titulo="Consumo atribuído ao animal" acao={<AjudaCampo rotulo="Sobre o consumo atribuído" texto="Atribuído por permanência nos lotes, a partir dos consumos conferidos. Não mede a ingestão individual." />}>
+  return <SecaoGeralAnimal id="consumo-animal" className="nutricao-animal" icon={Wheat} titulo="Consumo atribuído ao animal">
     <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao((r) => r + 1)}>Tentar novamente</Button>}
     {carregando ? <EsqueletoLista label="Carregando consumo" itens={3} /> : !erro && (itens.length ? <div className="space-y-3">{itens.map((item) => <ConsumoAnimalCard key={item.id} consumo={item} verValores={valores} />)}</div> : <div className="space-y-3" role="status"><h3 className="text-base font-semibold">Nenhum consumo atribuído a este animal</h3><p>Confira a dieta e os fornecimentos do lote no período de permanência do animal. A ausência de consumo conferido não comprova que o lote está sem dieta.</p><Button secondary onClick={() => navegarPara("/pecuaria/nutricao")}>Conferir nutrição do lote</Button></div>)}
     {!carregando && !erro && total > 25 && <div className="mt-3 flex flex-wrap items-center gap-3"><Button secondary disabled={pagina === 1} onClick={() => setPagina((p) => p - 1)}>Anterior</Button><span>Página {pagina} · {total} fechamentos</span><Button secondary disabled={pagina * 25 >= total} onClick={() => setPagina((p) => p + 1)}>Próxima</Button></div>}

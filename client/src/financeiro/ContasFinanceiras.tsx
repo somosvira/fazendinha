@@ -131,7 +131,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
     {chave:"tipo",ativo:!!tipoConta,limpar:()=>filtrosAvancados.editar("tipo",""),conteudo:<CampoFiltro rotulo="Tipo de conta"><SelectCampo aria-label="Filtrar tipo de conta" value={filtrosAvancados.rascunho.tipo} onValueChange={v=>filtrosAvancados.editar("tipo",v)}><option value="">Todos os tipos</option>{Object.entries(TIPO_CONTA).map(([valor,texto])=><option key={valor} value={valor}>{texto}</option>)}</SelectCampo></CampoFiltro>},
     {chave:"situacao",colunas:[],ativo:!!statusConta,limpar:()=>filtrosAvancados.editar("status",""),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Filtrar situação da conta" value={filtrosAvancados.rascunho.status} onValueChange={v=>filtrosAvancados.editar("status",v)}><option value="">Todas as situações</option><option value="ATIVA">Ativas</option><option value="INATIVA">Inativas</option></SelectCampo></CampoFiltro>},
   ];
-  if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Selecione uma conta para acompanhar seu saldo e consultar as movimentações." label="Carregando contas" erro={erro} onTentarNovamente={() => { void carregar(); }} />;
+  if (!config) return <PaginaSemDados titulo="Contas e extratos" label="Carregando contas" erro={erro} onTentarNovamente={() => { void carregar(); }} />;
   const contasDoSaldo = config.contas.filter(c => c.ativo && c.incluirNoSaldoGeral);
   const saldoGeral = somarSaldos(contasDoSaldo);
   const instituicoes = Array.from(new Set(config.contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort();
@@ -178,7 +178,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
       <section className="contas-saldo-geral" aria-label="Saldo geral atual">
         <span className="contas-saldo-icone"><Wallet size={26} aria-hidden="true" strokeWidth={1.7} /></span>
         <div className="contas-saldo-valor"><span>Saldo geral atual</span><strong className={saldoGeral < 0 ? "text-destructive" : undefined}>{brl(saldoGeral)}</strong></div>
-        <div className="contas-saldo-escopo"><strong>{contasDoSaldo.length} {contasDoSaldo.length === 1 ? "conta ativa incluída" : "contas ativas incluídas"}</strong><span>Somente contas incluídas no saldo geral</span></div>
+        <div className="contas-saldo-escopo"><strong>{contasDoSaldo.length} {contasDoSaldo.length === 1 ? "conta ativa incluída" : "contas ativas incluídas"}</strong></div>
       </section>
       <Tabs className="contas-consulta" value={aba} onValueChange={mudarAba}>
         <TabsList aria-label="Consultas de contas">
@@ -197,7 +197,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
         { chave: "saldo", titulo: "Saldo atual", alinhamento: "direita", larguraMinima: 150, celula: c => <strong data-fin-tom={Number(c.saldoAtual) < 0 ? "alerta" : "neutro"} className="fin-valor whitespace-nowrap">{brl(c.saldoAtual)}</strong> },
       ]} />}<Paginacao ocultarControlesPaginaUnica pagina={paginaAtualContas} totalPaginas={totalPaginasContas} total={contasFiltradas.length} porPagina={15} rotulo="Paginação das contas" substantivo="contas" idSelect="pagina-contas" onPagina={setPaginaContas} /></> : <Empty>Nenhuma conta encontrada para os filtros selecionados.</Empty>}<div className="contas-resumo-consulta"><span>Saldo da consulta · {contasFiltradas.length} {contasFiltradas.length === 1 ? "conta" : "contas"}</span><strong>{brl(somarSaldos(contasFiltradas))}</strong></div></Panel>
       {visual.modo === "visual" && <Panel className="mt-4 overflow-hidden"><DistribuicaoSaldos contas={contasDoSaldo} onAbrir={id => navegar(id)} /></Panel>}
-      <p className="contas-ajuda">Selecione uma conta para consultar seu extrato.</p></section>
+      </section>
         </TabsContent>
         <TabsContent value="analise" forceMount hidden={aba !== "analise"}>
       <section className="min-w-0" aria-label="Fluxo consolidado">

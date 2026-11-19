@@ -52,8 +52,6 @@ describe("detalhe do relatório emitido", () => {
     expect(itens).toContain("Grupo");
     expect(itens).toContain("Investimentos");
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Documento" }));
-    fireEvent.click(screen.getByRole("button", { name: "Informações: Prévia gerencial" }));
-    expect(screen.getByRole("dialog", { name: "Prévia gerencial" }).textContent).toContain("o saldo das contas nunca é filtrado");
   });
 
   it("baixa o PDF do relatório concluído", async () => {
@@ -116,9 +114,6 @@ it("recolhe detalhes e critérios vazios e distingue compras de caixa", async ()
   expect(screen.queryByText("Relatório salvo na emissão")).toBeNull();
   expect(screen.queryByRole("button", { name: /composição por classificação/ })).toBeNull();
   expect(screen.getByRole("region", { name: "Compras por categoria" }).textContent).toContain("100%");
-  fireEvent.click(screen.getByRole("button", { name: "Informações: Caixa no período" }));
-  expect(screen.getByRole("dialog", { name: "Caixa no período" }).textContent).toContain("não representa lucro");
-  fireEvent.click(screen.getByRole("button", { name: "Fechar informações" }));
   fireEvent.click(screen.getByRole("button", { name: "Informações do relatório" }));
   expect(screen.getByText("Rafael")).toBeTruthy();
   expect(screen.queryByRole("button", { name: /Baixar PDF/ })).toBeNull();

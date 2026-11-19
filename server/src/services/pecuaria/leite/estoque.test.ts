@@ -26,6 +26,7 @@ function banco() {
     participanteProducaoLeite: { findMany: vi.fn(async () => participantes) },
     finalidadeAnimal: { findMany: vi.fn(async (): Promise<{ id: string; animalId: string; aptidao: string; desde: Date; ate: Date | null }[]> => participantes.map(p => ({ id: p.finalidadeId, animalId: p.animalId, aptidao: "LEITE", desde: new Date("2020-01-01"), ate: null }))) },
     aplicacaoProduto: { findMany: vi.fn(async (): Promise<AplicacaoCarenciaProducao[]> => []) },
+    envioAplicacoesTablet: { findMany: vi.fn(async () => []) },
     $executeRaw: vi.fn(), $queryRaw: vi.fn(async () => [{ id: input.sessaoId }]),
     entradaProducaoLeite: { findUnique: vi.fn(async () => null), findFirst: vi.fn(async () => null),
       findMany: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn(), create: vi.fn(async ({ data }: { data: Prisma.EntradaProducaoLeiteUncheckedCreateInput }) => ({ id: id(6), ...data })) },

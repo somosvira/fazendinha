@@ -154,7 +154,6 @@ export function ConfiguracaoAlertasReprodutivos({
     <section className="space-y-4">
       <PageHeader
         titulo="Alertas operacionais da reprodução"
-        descricao="Defina quando acompanhar e o fato que resolve cada necessidade."
         acao={
           podeLancar && (
             <Button

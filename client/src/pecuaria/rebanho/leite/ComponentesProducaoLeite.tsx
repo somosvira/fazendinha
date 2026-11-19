@@ -9,8 +9,8 @@ import{formatarLitros}from'./modelo';
 import type{DiaOperacionalLeite,GrupoProducaoLeite}from'./resumo-producao';
 import'./componentes-producao.css';
 const litros=(v:string|null|undefined)=>formatarLitros(v==null?null:Number(v));
-function Campo({rotulo,valor,ajuda}:{rotulo:string;valor:React.ReactNode;ajuda:string}){return <div><dt><span>{rotulo}</span><AjudaCampo rotulo={`Sobre ${rotulo.toLocaleLowerCase('pt-BR')}`} texto={ajuda}/></dt><dd>{valor}</dd></div>}
-function Total({rotulo,valor,ajuda}:{rotulo:string;valor:React.ReactNode;ajuda:string}){return <div className="producao-componente-total"><span>{rotulo}<AjudaCampo rotulo={`Sobre ${rotulo.toLocaleLowerCase('pt-BR')}`} texto={ajuda}/></span><strong>{valor}</strong></div>}
+function Campo({rotulo,valor,ajuda}:{rotulo:string;valor:React.ReactNode;ajuda?:string}){return <div><dt><span>{rotulo}</span>{ajuda&&<AjudaCampo rotulo={`Sobre ${rotulo.toLocaleLowerCase('pt-BR')}`} texto={ajuda}/>}</dt><dd>{valor}</dd></div>}
+function Total({rotulo,valor,ajuda}:{rotulo:string;valor:React.ReactNode;ajuda?:string}){return <div className="producao-componente-total"><span>{rotulo}{ajuda&&<AjudaCampo rotulo={`Sobre ${rotulo.toLocaleLowerCase('pt-BR')}`} texto={ajuda}/>}</span><strong>{valor}</strong></div>}
 export function ComponentesProducaoLeite({grupo,ordenhas,operacional,carregando,erro,onRecarregar,onDetalhar}:{grupo:GrupoProducaoLeite;ordenhas:{posicaoId:string;nome:string}[];operacional:DiaOperacionalLeite|null;carregando:boolean;erro:string;onRecarregar:()=>void;onDetalhar:(grupo:'producao'|'consumo'|'vendas')=>void}){
  const consumo=operacional?.consumo,vendas=operacional?.vendas;
  const somaTurnos=grupo.turnos.reduce((s,t)=>s+(t.litros??0),0);
@@ -27,9 +27,9 @@ export function ComponentesProducaoLeite({grupo,ordenhas,operacional,carregando,
  <DistribuicaoConsumoLeite dados={operacional} compacto carregando={carregando} erro={!!erro}/>
  {erro&&<div role="alert" className="producao-componente-erro">{erro}<Button variant="outline" size="sm" onClick={onRecarregar}>Tentar novamente</Button></div>}
  <Button variant="ghost" onClick={()=>onDetalhar('consumo')} disabled={carregando||!!erro}>Consultar consumo<ArrowUpRight size={14} aria-hidden/></Button></article></Card>
- <Card asChild className="producao-componente"><article aria-label="Leite vendido"><header><Truck size={19} aria-hidden/><h3>Leite vendido</h3></header><Total rotulo="Volume retirado para venda" valor={valor(vendas?.totalLitros)} ajuda="Saídas físicas confirmadas para venda na data da retirada. A operação comercial pode estar com preço pendente; o volume não representa receita ou recebimento."/>
- <dl className="producao-componente-campos">{vendas?.compradores.length?vendas.compradores.map(c=><Campo key={c.id??c.nome} rotulo={c.nome} valor={litros(c.litros)} ajuda={`Volume físico confirmado para ${c.nome} no período selecionado.`}/>):<Campo rotulo="Compradores" valor={espera??(erro?'Indisponível':'Sem retirada registrada')} ajuda="Compradores vinculados às saídas físicas confirmadas no período. Ausência de retirada não comprova volume zero."/>}</dl>
- <dl className="producao-componente-campos divisor"><Campo rotulo="Média vendida por vaca" valor={mediaVendida==null?'Não apurada':`${mediaVendida.toLocaleString('pt-BR',{maximumFractionDigits:3})} L/vaca`} ajuda="Relação entre o volume retirado para venda e os animais com origem conhecida no dia. As retiradas podem reunir leite de outros dias; não equivale à produção individual ou a preço por litro."/></dl>
+ <Card asChild className="producao-componente"><article aria-label="Leite vendido"><header><Truck size={19} aria-hidden/><h3>Leite vendido</h3></header><Total rotulo="Volume retirado para venda" valor={valor(vendas?.totalLitros)}/>
+ <dl className="producao-componente-campos">{vendas?.compradores.length?vendas.compradores.map(c=><Campo key={c.id??c.nome} rotulo={c.nome} valor={litros(c.litros)} ajuda={`Volume físico confirmado para ${c.nome} no período selecionado.`}/>):<Campo rotulo="Compradores" valor={espera??(erro?'Indisponível':'Sem retirada registrada')}/>}</dl>
+ <dl className="producao-componente-campos divisor"><Campo rotulo="Média vendida por vaca" valor={mediaVendida==null?'Não apurada':`${mediaVendida.toLocaleString('pt-BR',{maximumFractionDigits:3})} L/vaca`}/></dl>
  {!!vendas?.coletasSemPreco&&<Badge variant="secondary">{vendas.coletasSemPreco} {vendas.coletasSemPreco===1?'retirada com preço pendente':'retiradas com preço pendente'}</Badge>}
  <Button variant="ghost" onClick={()=>onDetalhar('vendas')} disabled={carregando||!!erro}>Consultar vendas<ArrowUpRight size={14} aria-hidden/></Button></article></Card>
  </div>

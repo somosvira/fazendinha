@@ -117,7 +117,7 @@ export function SecaoAnimais({
     </div>}
 
     {animais.length === 0
-      ? <div id="lista-animais" className={erroSecao ? "rounded-xl ring-2 ring-destructive/30" : undefined}><Empty>Nenhum animal adicionado. Use Adicionar animal para cadastrar cada animal comprado.</Empty></div>
+      ? <div id="lista-animais" className={erroSecao ? "rounded-xl ring-2 ring-destructive/30" : undefined}><Empty>Nenhum animal adicionado.</Empty></div>
       : <ul aria-label="Animais da compra" className="space-y-3">{animais.map((animal, indice) => {
         const valor = valores[indice] ?? null;
         const pendencia = pendenciaPrecoAnimal(unidade, animal, valor);

@@ -137,7 +137,6 @@ export function DevolucaoAnimais({ operacao, onFechar, onCriada }: {
     onClose={() => { if (!salvando) onFechar(); }}
     className="sm:max-w-3xl"
     rodape={<div className="space-y-3">
-      <p className="flex items-start gap-2 text-xs leading-5 text-ink-3"><Info size={14} className="mt-0.5 shrink-0" aria-hidden /><span>Os animais devolvidos recebem a baixa "Compra estornada" e mantêm todos os registros. A devolução não abate parcelas em aberto da compra: ela cria o valor a receber do fornecedor.</span></p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-sm">{escolhidos.length} {escolhidos.length === 1 ? "animal" : "animais"} · total <strong aria-label="Total da devolução">{brl(deCentavos(totalCentavos))}</strong></span>
         <div className="flex gap-2"><Button type="button" secondary disabled={salvando} onClick={onFechar}>Cancelar</Button><Button type="button" carregando={salvando} disabled={salvando} onClick={() => void confirmar()}>{salvando ? "Confirmando…" : "Confirmar devolução"}</Button></div>

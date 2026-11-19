@@ -205,7 +205,7 @@ Quando configurada, a orientação é avaliada separadamente da precisão regist
 
 ### Biblioteca de referências
 
-A biblioteca pesquisável apresenta referências técnicas com fonte, data/versão, objetivo, população indicada e campos que precisam ser completados. O catálogo inicial contém a referência Ovsynch 56, ficha Wisconsin de 15/04/2021, página 24. É um ponto de partida documental, sem indicação automática para um animal, produto ou dose.
+A biblioteca está disponível pela API e deixou de aparecer na tela de protocolos reprodutivos. A consulta apresenta referências técnicas com fonte, data/versão, objetivo, população indicada e campos que precisam ser completados. O catálogo inicial contém a referência Ovsynch 56, ficha Wisconsin de 15/04/2021, página 24. É um ponto de partida documental, sem indicação automática para um animal, produto ou dose.
 
 Copiar exige nome e versão e cria um `Protocolo` em rascunho, com `referenciaTecnica` preservada. Configurar, publicar e adotar são ações distintas. A derivação de nova versão conserva a referência por vínculo explícito à versão de origem; semelhança de nome não prova proveniência. A publicação continua exigindo os parâmetros operacionais do núcleo comum. Nenhum modelo é apresentado como importado do IDEAGRI sem evidência de sua origem; IDEAGRI permanece transferência inicial de dados.
 

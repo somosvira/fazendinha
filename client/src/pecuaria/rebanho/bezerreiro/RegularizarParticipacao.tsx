@@ -41,7 +41,6 @@ export function RegularizarParticipacao({sitio, config, aoFechar, aoSalvar}: {si
     </>}>
     <form id="regularizar-participacao" className="bez-regularizacao bezerreiro" onSubmit={e => {e.preventDefault(); if(!animal || !perfil || !local || motivo.trim().length < 5) {comando.setErro('Confira a localização e informe o motivo com pelo menos 5 caracteres.');return;} void comando.salvar('/participantes', {animalId:animal.id, perfilId:perfil.id, desde:local.desde.slice(0,10), motivo:motivo.trim()});}}>
       <fieldset disabled={comando.ocupado} className="bez-campos">
-        <p className="bez-ajuda bez-inteiro">Use somente quando o animal já estiver no lote e faltar a participação. A localização é preservada, sem nova movimentação.</p>
         {!perfis.length && <p className="bez-ajuda bez-inteiro">Nenhum lote ativo configurado como Bezerreiro neste sítio. Confira as configurações antes de regularizar.</p>}
         <label>Bezerreiro<SelectCampo required value={perfilId} onValueChange={v => {if(!v)return;setPerfil(v);setAnimal(null);setFicha(null);setPagina(1);}}><option value="">Selecione</option>{perfis.map(p => <option key={p.id} value={p.id}>{p.lote.nome}</option>)}</SelectCampo></label>
         <label>Buscar animal<input disabled={!perfil} value={busca} onChange={e => {setBusca(e.target.value);setPagina(1);}} placeholder="Brinco ou nome"/></label>

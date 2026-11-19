@@ -146,7 +146,7 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
         {erroCarga && <ErrorBox erro={`Não foi possível carregar as categorias: ${erroCarga}`} />}
         {categorias && categoriasGeneticas.length === 0
           ? <p className="text-sm text-amber-700">Cadastre uma categoria financeira em Financeiro › Configurações.</p>
-          : <CampoFormulario id="material-categoria" rotulo="Categoria" obrigatorio ajuda="Categoria financeira usada nas compras deste material." erro={erros.categoriaId}>
+          : <CampoFormulario id="material-categoria" rotulo="Categoria" obrigatorio erro={erros.categoriaId}>
               {(p) => <SelectCampo {...p} value={categoriaId} onValueChange={(valorSelecionado) => setCategoriaId(valorSelecionado)} className={classeInput}>
                 <option value="">Selecione</option>
                 {categoriasGeneticas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}

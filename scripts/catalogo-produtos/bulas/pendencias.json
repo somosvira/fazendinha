@@ -1,0 +1,1581 @@
+[
+  {
+    "nomeCatalogo": "Calfoz",
+    "motivo": "A composição atual inclui butafosfano, ausente na composição do catálogo legado.",
+    "urls": [
+      "https://calbos.com.br/produto/calfoz/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 200 ml",
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Calbiótico",
+    "motivo": "Apresentação catalogada como frasco de 15 mL não identifica o conjunto pó+diluente descrito na ficha atual.",
+    "urls": [
+      "https://calbos.com.br/produto/calbiotico/"
+    ],
+    "estado": "APRESENTACAO_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 15 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Stop Anti-Diarréico",
+    "motivo": "Catálogo identifica sulfonamidas sem molécula ou concentração; ficha atual contém sulfametoxazol e pectina. Requer conferência da versão.",
+    "urls": [
+      "https://calbos.com.br/produto/stop-antidiarreico/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Envelope 10 g",
+      "Pote 500 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Ivermin",
+    "motivo": "A ficha descreve solução injetável, mas o link Download da bula aponta a pasta oral equina. Não publicar até confirmar a bula da formulação correta.",
+    "urls": [
+      "https://calbos.com.br/produto/ivermin/",
+      "https://drive.google.com/file/d/1W4KMZyRle2ct1gwB12Da7g9swmR3aOf8/view"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 1 ml",
+      "Frasco 10 ml",
+      "Frasco 20 ml",
+      "Frasco 200 ml",
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Ourotetra",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Embalagem 10 kg",
+      "Embalagem 100 g",
+      "Embalagem 25 kg",
+      "Embalagem 5 kg"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Brinco Mosquicida Ouro Fino",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Sachê 10 unidades",
+      "Sachê 20 unidades"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Mastifin",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Seringa 10 ml"
+    ],
+    "motivo": "Formulação divergente: catálogo gentamicina + bromexina/10 mL; bula atual gentamicina isolada/10 g. Não vincular.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/mastifin/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50004725_0421_OF00_MASTIFIN-VD.pdf"
+    ],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Mata Bicheira Ouro Fino Aerosol",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Tubo 500 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Vingador (Mata Bicheira)",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Tubo 475 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Larvamec",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Tubo 120 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Abamectina 1% Ouro Fino",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 200 ml",
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Abamectina 1% Ouro Fino LA",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 200 ml",
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Abamectina Ouro Fino Pour On",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 250 ml",
+      "Frasco 500 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Colosso Pour On",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 250 ml",
+      "Frasco 5 l"
+    ],
+    "motivo": "Formulação divergente: catálogo inclui citronela; bula atual apenas cipermetrina + clorpirifós.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/colosso-pour-on/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50006733_50006736_50006738_0325_OF00_KIT_COLOSSO_POUR_ON_PP-VD-1.pdf"
+    ],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Colosso Pulverização",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 500 ml"
+    ],
+    "motivo": "Apresentação não confirmada nas fontes oficiais consultadas; não extrapolada a partir de outras embalagens.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/colosso-pulverizacao/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50005882_50005886_0323_OF00_KIT_COLOSSO_PULV-TEXTO_TECNICO.pdf"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Desflan",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml"
+    ],
+    "motivo": "Apresentação não confirmada nas fontes oficiais consultadas; não extrapolada a partir de outras embalagens.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/desflan/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50006614_1224_OF00_DESFLAN-VD-2.pdf"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Finador",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml"
+    ],
+    "motivo": "Apresentação não confirmada nas fontes oficiais consultadas; não extrapolada a partir de outras embalagens.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/finador/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50006423_0524_OF00_FINADOR-VD-1.pdf"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Norflomax Injetável",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml",
+      "Frasco 50 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Sincrocio",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Ampola 2 ml"
+    ],
+    "motivo": "Apresentação não confirmada nas fontes oficiais consultadas; não extrapolada a partir de outras embalagens.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/sincrocio/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50005385_1024_OF00_SINCROCIO.pdf"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Estreptomax Injetável",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Ampola 15 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Corta Curso",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 20 ml"
+    ],
+    "motivo": "Apresentação não confirmada nas fontes oficiais consultadas; não extrapolada a partir de outras embalagens.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/corta-curso/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50006412_0524_OF00_CORTA_CURSO-VD-1.pdf"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Cypermil Plus Pulverização",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 100 ml",
+      "Frasco 250 ml",
+      "Frasco 500 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Cypermil Pour On",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 250 ml",
+      "Galão 5000 ml"
+    ],
+    "motivo": "Apresentação não confirmada nas fontes oficiais consultadas; não extrapolada a partir de outras embalagens.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/cypermil-pour-on/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/ROT_50006888_1025_OF00_CYPERMIL_POUR_ON_1L_TEXTO_TECNICO.pdf"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Cypermil Pulverização",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 1000 ml",
+      "Frasco 20 ml",
+      "Frasco 250 ml",
+      "Frasco 500 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/cypermil-pulverizacao/"
+    ],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Diclofenaco 50 Ouro Fino",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml"
+    ],
+    "motivo": "Apresentações restantes não confirmadas na página/bula/imagem oficial atual.",
+    "urlsExaminadas": [
+      "https://ourofino.com/wp-content/uploads/2026/08/BUL_50004196_0720_OF00_DICLOFENACO_50-VD.pdf",
+      "https://ourofino.com/produtos/diclofenaco-50/"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Gentrin Infusão Uterina",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 500 ml"
+    ],
+    "motivo": "Apresentações restantes não confirmadas na página/bula/imagem oficial atual.",
+    "urlsExaminadas": [
+      "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006622_0125_OF00_GENTRIN_INFUSAO_UTERINA-VD.pdf",
+      "https://ourofino.com/produtos/gentrin/"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Gentrin Injetável",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml",
+      "Frasco 100 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/gentrin-injetavel/"
+    ],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Ivermectina 1% Ouro Fino",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 20 ml",
+      "Frasco 200 ml",
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Ivermectina 1% Ouro Fino L.A.",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 20 ml",
+      "Frasco 200 ml",
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Ivermectina Ouro Fino Pour On",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1000 ml",
+      "Frasco 250 ml",
+      "Frasco 500 ml",
+      "Frasco 5000 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Nokalt Pulverização",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 20 ml",
+      "Frasco 200 ml",
+      "Frasco 40 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Ourotetra L.A.",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 20 ml",
+      "Frasco 250 ml",
+      "Frasco 50 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Ourotetra Plus L.A.",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 20 ml",
+      "Frasco 250 ml"
+    ],
+    "motivo": "Apresentações restantes não confirmadas na página/bula/imagem oficial atual.",
+    "urlsExaminadas": [
+      "https://ourofino.com/wp-content/uploads/2026/08/BUL_50006400_0524_OF00_OUROTETRA_PLUS-VD_2.pdf",
+      "https://ourofino.com/produtos/ourotetra-plus/"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Penfort",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 6 ml"
+    ],
+    "motivo": "Bula oficial localizada, mas apresentação do catálogo não confirmada e fabricante físico consta Momenta/Ipanema, Ourofino como proprietário; exige revisão antes de vincular.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/penfort/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50006125_50006136_0923_OF00_PENFORT_PPU-VD.pdf"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Penfort Reforçado",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 15 ml"
+    ],
+    "motivo": "Bula oficial localizada, mas apresentação do catálogo não confirmada e fabricante físico consta Momenta/Ipanema, Ourofino como proprietário; exige revisão antes de vincular.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/penfort-reforcado/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50004727_0321_OF00_PENFORT_REFORCADO-VD.pdf"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Trissulfin Solução Injetável",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 20 ml"
+    ],
+    "motivo": "Apresentações restantes não confirmadas na página/bula/imagem oficial atual.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/trissulfin-solucao-injetavel/",
+      "https://ourofino.com/wp-content/uploads/2026/08/BUL_50007253_1125_OF00_TRISSULFIN_INJETAVEL-VD.pdf",
+      "https://ourofino.com/produtos/trissulfin-injetavel/"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Pirofort",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 20 ml",
+      "Frasco 30 ml",
+      "Frasco 50 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/pirofort/"
+    ],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Ricobendazole 10 Injetável",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 1000 ml",
+      "Frasco 250 ml",
+      "Frasco 500 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Ricobendazole Injetável",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 200 ml",
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Ricobendazole Oral",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 250 ml",
+      "Frasco 3 l",
+      "Frasco 5 l"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Penfort Ppu",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml",
+      "Frasco 25 ml",
+      "Frasco 50 ml"
+    ],
+    "motivo": "Bula oficial localizada, mas apresentação do catálogo não confirmada e fabricante físico consta Momenta/Ipanema, Ourofino como proprietário; exige revisão antes de vincular.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/penfort-ppu/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50006125_50006136_0923_OF00_PENFORT_PPU-VD.pdf"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Amitraz Banheiro Ouro Fino",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 800 ml"
+    ],
+    "motivo": "Não localizada e conferida bula oficial brasileira com formulação e apresentação coincidentes nesta rodada.",
+    "urlsExaminadas": [],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Master Lp",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 20 ml"
+    ],
+    "motivo": "Apresentação não confirmada nas fontes oficiais consultadas; não extrapolada a partir de outras embalagens.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/produtos/master-lp/",
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50006326_0324_OF00_MASTER_LP_VD-1.pdf"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Maxicam Injetável (2%)",
+    "fabricanteCatalogo": "Ouro Fino Saúde Animal Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml",
+      "Frasco 100 ml",
+      "Frasco 20 ml"
+    ],
+    "motivo": "Apresentação não confirmada nas fontes oficiais consultadas; não extrapolada a partir de outras embalagens.",
+    "urlsExaminadas": [
+      "https://hmg-institucional.ourofino.com/wp-content/uploads/2024/07/BUL_50006693_0325_OF00_MAXICAM_2_VD-2.pdf",
+      "https://hmg-institucional.ourofino.com/produtos/maxicam-2/"
+    ],
+    "estado": "APRESENTACAO_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Ivergen 1% - Ivermectina 1%",
+    "motivo": "Divergência de carência de abate entre fontes oficiais brasileiras: página informa 24 dias, PDF Bioacademy 35 dias; não foi comprovada substituição regulatória.",
+    "urlsExaminadas": [
+      "https://br.biovademecum.biogenesisbago.com/endectocidas/ivergen",
+      "https://bioacademy.biogenesisbago.com/wp-content/uploads/2023/02/Ivergen-1-.pdf"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Croniben - Agente Luteolítico",
+    "motivo": "Catálogo: Ampola 2/20 mL; fonte oficial: Frascos 20/100 mL. Sem apresentação exata confirmada.",
+    "urlsExaminadas": [
+      "https://br.biovademecum.biogenesisbago.com/reprodutivos/croniben"
+    ],
+    "estado": "APRESENTACAO_PENDENTE",
+    "apresentacoesPendentes": [
+      "Ampola 2 ml",
+      "Ampola 20 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Bioabortogen H",
+    "motivo": "Fórmula oficial inclui Leptospira; cadastro não a lista. Não vinculada automaticamente.",
+    "urlsExaminadas": [
+      "https://br.biovademecum.biogenesisbago.com/biologicos/bioabortogen-h"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 125 ml",
+      "Frasco 250 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Biopoligen Hs",
+    "motivo": "Fórmula oficial inclui Histophilus somni; cadastro não a lista. Não vinculada automaticamente.",
+    "urlsExaminadas": [
+      "https://br.biovademecum.biogenesisbago.com/biologicos/biopoligen-hs"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 125 ml",
+      "Frasco 250 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Gentatec Vaca Seca",
+    "motivo": "Fonte confunde seringa 10 mL com veículo 10 g; catálogo é seringa 10 g. Bula PNG oficial retorna 404. Não vinculada por apresentação ambígua.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec-vaca-seca/",
+      "https://chemitec.com.br/bulas/antibiotico-gentatec-vaca-seca.png"
+    ],
+    "estado": "APRESENTACAO_PENDENTE",
+    "apresentacoesPendentes": [
+      "Seringa 10 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Ivermectan Ivermectina a 1% - Inj.",
+    "motivo": "Catálogo 200 mL; fonte oficial apresenta só 50/500 mL.",
+    "urlsExaminadas": [
+      "https://ucbvet.com/produto/ivermectan-1/"
+    ],
+    "estado": "APRESENTACAO_PENDENTE",
+    "apresentacoesPendentes": [
+      "Fr. 200 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Dornil",
+    "motivo": "Bula contém conflito interno: carência leite de 4 dias na página 1, mas página 2 proíbe administração a lactantes. Necessário esclarecer com fabricante antes de importar.",
+    "urlsExaminadas": [
+      "https://www.bravet.com.br/files/product/leaflet/24/BULA%20DORNIL%20-%20GG.pdf"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Rumivet Labovet",
+    "motivo": "Cadastro lista complexos de aminoácidos; fórmula oficial contém silicone/metilcelulose.",
+    "urlsExaminadas": [
+      "https://labovet.com.br/produtos/rumivet"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Vacina Liofilizada X Brucelose Bov.",
+    "motivo": "Fonte atual apresenta frascos de 10/15 doses e diluentes 20/30 mL; catálogo registra frascos 10/15/50 mL. Não confundir doses e volume.",
+    "urlsExaminadas": [
+      "https://labovet.com.br/produtos/vacina-contra-a-brucelose-bovina"
+    ],
+    "estado": "APRESENTACAO_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 15 ml",
+      "Frasco 10 ml",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Gasel Solução",
+    "motivo": "Fórmula oficial contém antipirina 35% além de diminazeno; cadastro não lista antipirina.",
+    "urlsExaminadas": [
+      "https://www.bravet.com.br/gasel-solucao"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 20 ml",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Quinolon 10%",
+    "motivo": "Página confirma formulação e 50 mL, mas bula vinculada retornou documento inacessível/sem PDF válido nesta consulta; não importar posologia de terceiros.",
+    "urlsExaminadas": [
+      "https://www.bravet.com.br/quinolon-10",
+      "https://www.bravet.com.br/files/product/leaflet/26/Quinolon%2010%25%20-%20FF.pdf"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Sulfaprim Comprimidos",
+    "fabricanteCatalogo": "Laboratório Bravet Ltda.",
+    "motivo": "Bula de cães/gatos contém relação por peso e tabela com faixa superior sem limite. Requer revisão da condição de dose antes de estruturar.",
+    "urls": [
+      "https://www.bravet.com.br/files/product/leaflet/30/Sulfaprim%20Comprimidos%20-%20GG1%20%E2%80%93%20Fourvet.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Cartucho 10 comprimidos"
+    ]
+  },
+  {
+    "nomeCatalogo": "Ibatox",
+    "fabricanteCatalogo": "Laboratório Ibasa Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 20 ml",
+      "Frasco 200 ml",
+      "Frasco 40 ml"
+    ],
+    "motivo": "Ficha atual consultada descreve caninos; não confirmou posologia bovina nem carências. Não extrapolar uso de cães para bovinos.",
+    "urlsExaminadas": [
+      "https://www.ibasa.com.br/ibatox-carrapaticida-ibasa-20ml"
+    ],
+    "estado": "CONFERENCIA_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Sulfamicina",
+    "fabricanteCatalogo": "Laboratório Ibasa Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 20 ml",
+      "Frasco 200 ml",
+      "Frasco 5 l"
+    ],
+    "motivo": "Ficha oficial atual indica apenas aves Gallus gallus domesticus; nenhuma orientação bovina confirmada.",
+    "urlsExaminadas": [
+      "https://www.ibasa.com.br/sulfamicina-20ml"
+    ],
+    "estado": "CONFERENCIA_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Fluido Ibasa",
+    "fabricanteCatalogo": "Laboratório Ibasa Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 100 ml",
+      "Frasco 200 ml"
+    ],
+    "motivo": "Ficha atual consultada descreve equinos e inclui terebintina além de cânfora/salicilato; sem confirmação bovina/formulação coincidente.",
+    "urlsExaminadas": [
+      "https://www.ibasa.com.br/fluido-muscular-ibasa-200ml-anti-inflamatorio"
+    ],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Difly",
+    "fabricanteCatalogo": "Champion Farmoquímico Ltda.",
+    "apresentacoesPendentes": [
+      "Balde 3 kg",
+      "Pote 300 g"
+    ],
+    "motivo": "Página oficial confirma nome e pote 300 g, mas composição/posologia/carências não aparecem: seções técnicas vazias. Não derivar dose do texto publicitário 6kg/833 animais/120 dias.",
+    "urlsExaminadas": [
+      "https://champion.ind.br/produtos/difly"
+    ],
+    "estado": "CONFERENCIA_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Propoxur 1%",
+    "fabricanteCatalogo": "Champion Farmoquímico Ltda.",
+    "apresentacoesPendentes": [
+      "Barrica 1 kg",
+      "Barrica 20 kg",
+      "Embalagem 100 g",
+      "Embalagem 200 g",
+      "Embalagem 500 g"
+    ],
+    "motivo": "Página oficial atual tem seções técnicas vazias e apresenta seletores genéricos 300g/6kg; não confirma formulação 1% nem apresentações do catálogo.",
+    "urlsExaminadas": [
+      "https://champion.ind.br/produtos/propoxur-champion"
+    ],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Ver-Mi-Sal",
+    "fabricanteCatalogo": "Champion Farmoquímico Ltda.",
+    "apresentacoesPendentes": [
+      "Embalagem 1 kg",
+      "Embalagem 10 kg",
+      "Embalagem 25 kg"
+    ],
+    "motivo": "Página oficial atual sem composição quantitativa ou instruções completas; apresentações genéricas 300g/6kg conflitam com catálogo.",
+    "urlsExaminadas": [
+      "https://champion.ind.br/produtos/ver-mi-sal"
+    ],
+    "estado": "DIVERGENCIA"
+  },
+  {
+    "nomeCatalogo": "Pan 10 - Oral Albendazole a 10%",
+    "fabricanteCatalogo": "Mogivet Produtos Agro Veterinários Ltda.",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 250 ml",
+      "Frasco 5 l"
+    ],
+    "motivo": "Bula oficial disponível sob Bimeda Brasil S.A.; fabricante do catálogo é Mogivet. Sem prova oficial de continuidade societária/registro nesta rodada, não vincular automaticamente.",
+    "urlsExaminadas": [
+      "https://www.bimeda.com.br/media/k2/attachments/1PAN001_Rotulo.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Enro Flec 10% Injetável",
+    "motivo": "Página contém 0,5 mL/10 kg e 0,5 mL/20 kg sem associar espécie ou condição. Não selecionar arbitrariamente um esquema.",
+    "urlsExaminadas": [
+      "https://www.vansilsaudeanimal.com/product-page/enro-flec-500ml"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml",
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Neocolim Líquido",
+    "motivo": "Fonte é Neocolin, sem prova explícita de equivalência ao nome cadastrado. Além disso, a relação neomicina base/sal e dose da ficha exige confirmação.",
+    "urlsExaminadas": [
+      "https://www.vansilsaudeanimal.com/product-page/neocolin-l%C3%ADquido"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 480 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Unguento Vansil Plus",
+    "motivo": "Fórmula oficial acrescenta butóxido de piperonila 3,5%, ausente dos princípios ativos cadastrados.",
+    "urlsExaminadas": [
+      "https://www.vansilsaudeanimal.com/product-page/unguento-250g"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Pote 250 g",
+      "Pote 50 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Vancid- 10",
+    "motivo": "Fonte apresenta somente frasco 1 L; catálogo 120 mL e 5 L. Composto é benzalcônio, distinto da descrição genérica alquil-dimetil-amônio do cadastro.",
+    "urlsExaminadas": [
+      "https://www.vansilsaudeanimal.com/product-page/vancid-10"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 120 ml",
+      "Frasco 5 l"
+    ]
+  },
+  {
+    "nomeCatalogo": "Vancid- 50",
+    "motivo": "Ficha informa benzalcônio (N-alquil-benzil-dimetil-amônio); cadastro indica cloreto de alquil dimetil amônio. Não presumida equivalência química.",
+    "urlsExaminadas": [
+      "https://www.vansilsaudeanimal.com/product-page/vancid-50"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Bombona 20 l",
+      "Bombona 50 l",
+      "Frasco 1 l"
+    ]
+  },
+  {
+    "nomeCatalogo": "Glutasil 50",
+    "motivo": "Ficha usa benzalcônio; cadastro indica alquil dimetil amônio sem benzil. Não presumida equivalência química.",
+    "urlsExaminadas": [
+      "https://www.vansilsaudeanimal.com/product-page/glutasil-50"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Bombona 20 l",
+      "Bombona 50 l",
+      "Frasco 1 l"
+    ]
+  },
+  {
+    "nomeCatalogo": "Fenilvet",
+    "motivo": "Ficha não confirma explicitamente apresentação; fonte indica exclusivamente equinos, sem extrapolação para bovinos.",
+    "urlsExaminadas": [
+      "https://www.vansilsaudeanimal.com/product-page/fenilvet"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 20 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Tridiazim",
+    "motivo": "Nome cadastro difere de Tridiazin da fonte; ficha usa sulfadiazina e cadastro sulfadiazida. Necessária confirmação, sem vincular a outro Tridiazin que tem sulfadimetoxina.",
+    "urlsExaminadas": [
+      "https://www.vansilsaudeanimal.com/product-page/tridiazin-15ml"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 15 ml",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Vetomil",
+    "motivo": "Ficha informa metomil; catálogo lista apenas classe Carbamatos. Necessária qualificação do princípio ativo antes de vincular.",
+    "urlsExaminadas": [
+      "https://www.vansilsaudeanimal.com/product-page/vetomil"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 120 ml",
+      "Frasco 250 ml",
+      "Frasco 5 l"
+    ]
+  },
+  {
+    "nomeCatalogo": "Hertape Calier Saúde Animal S.A.",
+    "motivo": "Não comprovada identidade societária atual dos produtos do catálogo neste lote; sem vinculação presumida a Calier ou outro fabricante.",
+    "urlsExaminadas": [
+      "https://www.calier.com.br/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Ibatrim Injetável",
+    "motivo": "Ficha contraindica lactantes e simultaneamente informa carência de leite de 8 dias; requer confirmação do fabricante.",
+    "urlsExaminadas": [
+      "https://www.ibasa.com.br/ibatrim-antibacteriano-ibasa-15ml"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 15 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Triclorsil",
+    "motivo": "Esquemas distintos por via e diluição aguardam revisão; fonte não informa carências.",
+    "urlsExaminadas": [
+      "https://www.vansilsaudeanimal.com/product-page/triclorsil-150mg"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Pote 150 g",
+      "Pote 20 g",
+      "Pote 500 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Folligon 1000 Ui",
+    "estado": "CONFERENCIA_PENDENTE",
+    "motivo": "Fonte brasileira atual examinada confirma somente 5.000 UI com diluente de 25 mL; não extrapolar para apresentação 1.000 UI/5 mL.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/folligon-5-000-ui/"
+    ],
+    "apresentacoesPendentes": [
+      "Frasco 5 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Cidr",
+    "estado": "CONFERENCIA_PENDENTE",
+    "motivo": "Ficha técnica oficial redireciona para página sem conteúdo legível; confirmar documento brasileiro completo antes de preencher.",
+    "urlsExaminadas": [
+      "https://www.zoetis.com.br/pesquisa-de-produtos/produtos/cidr.aspx",
+      "https://www.zoetis.com.br/especies/bovinos/cidr.aspx"
+    ],
+    "apresentacoesPendentes": [
+      "Pacote 10 unidades"
+    ]
+  },
+  {
+    "nomeCatalogo": "E.C.P. (Cipionato De Estradiol)",
+    "estado": "CONFERENCIA_PENDENTE",
+    "motivo": "Página oficial redireciona para aplicação sem texto técnico; link indexado do catálogo PDF retornou 404 na consulta. Não publicar com base só em trecho indexado.",
+    "urlsExaminadas": [
+      "https://www.zoetis.com.br/pesquisa-de-produtos/produtos/ecp.aspx",
+      "https://www2.zoetis.com.br/content/pt/pages/Microsites/Portifolio-Zoetis-Atacadistas/_assets/Catalogo-Produtos-ajustado.pdf"
+    ],
+    "apresentacoesPendentes": [
+      "Frasco 10 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Cobactan Vl",
+    "estado": "CONFERENCIA_PENDENTE",
+    "motivo": "Ficha oficial contém redação ambígua na carência de leite (destinar ao consumo até 4,5 dias). Requer bula completa ou confirmação do fabricante; não corrigir silenciosamente.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/cobactan-vl/"
+    ],
+    "apresentacoesPendentes": [
+      "Seringa 8 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Mastijet Forte",
+    "estado": "DIVERGENCIA",
+    "motivo": "Ficha oficial consultada não publica composição quantitativa; falta confirmar os quatro princípios ativos do cadastro antes de vincular a formulação.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/mastijet-forte/"
+    ],
+    "apresentacoesPendentes": [
+      "Seringa 8 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Panacur 10%",
+    "estado": "CONFERENCIA_PENDENTE",
+    "motivo": "Publicadas somente apresentações 20 mL e 1 L, expressas na fonte brasileira. Outras apresentações do catálogo continuam sem confirmação.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/panacur-10/"
+    ],
+    "apresentacoesPendentes": [
+      "Frasco 2 l",
+      "Frasco 240 ml",
+      "Frasco 30 ml",
+      "Frasco 4 l",
+      "Frasco 5 l",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Digevet",
+    "fabricanteCatalogo": "Laboratório Prado S.A.",
+    "motivo": "Fonte atual confirma somente frascos de 500 mL; catálogo tem 250 e 1.000 mL. Fórmula atual inclui sais e acetilmetionina além de sorbitol.",
+    "urlsExaminadas": [
+      "https://laboratorioprado.com.br/produto/digevet/"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 1000 ml",
+      "Frasco 250 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Glicose 50%",
+    "fabricanteCatalogo": "Laboratório Prado S.A.",
+    "motivo": "Ficha informa 10 mL/kg e também dose usual 500 mL com máximo diário de 2.000 mL; relação por peso ultrapassa máximo em bovinos acima de 200 kg sem explicar condições. Aguardar bula completa ou confirmação.",
+    "urlsExaminadas": [
+      "https://laboratorioprado.com.br/produto/glicose-50-prado/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Pradotin",
+    "fabricanteCatalogo": "Laboratório Prado S.A.",
+    "motivo": "Fórmula atual inclui cafeína, benzoato de sódio e sulfato de esparteína, ausentes da lista de princípios ativos do catálogo; confirmar formulação histórica antes de vincular.",
+    "urlsExaminadas": [
+      "https://laboratorioprado.com.br/produto/pradotin/"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Soluto De Pilocarpina 1,5% Prado",
+    "fabricanteCatalogo": "Laboratório Prado S.A.",
+    "motivo": "Catálogo indica pilocarpina e sulfato; fonte atual identifica cloridrato de pilocarpina. Confirmar identificação química do cadastro.",
+    "urlsExaminadas": [
+      "https://laboratorioprado.com.br/produto/soluto-de-pilocarpina-15/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Creme Balsâmico Analgésico Prado",
+    "fabricanteCatalogo": "Laboratório Prado S.A.",
+    "motivo": "Fonte apresenta tubo 100 g; catálogo frasco 100 g. Fórmula atual também contém mentol e salicilato de metila, ausentes do cadastro.",
+    "urlsExaminadas": [
+      "https://laboratorioprado.com.br/produto/creme-balsamico-analgesico-prado/"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 100 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Rumivet Labovet",
+    "fabricanteCatalogo": "Labovet Produtos Veterinários Ltda.",
+    "motivo": "Divergência de princípio ativo: catálogo registra complexos de aminoácidos; ficha oficial informa silicone e metilcelulose.",
+    "urlsExaminadas": [
+      "https://labovet.com.br/produtos/rumivet"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Gentatec Vaca Seca",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "motivo": "Ficha mistura seringa de 10 mL e veículo 10 g. Apresentação 10 g exige confirmação inequívoca em bula.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec-vaca-seca/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Seringa 10 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Ivermectina 1% Chemitec",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "motivo": "Ficha atual Ivertec 1%: confirmar documentalmente identidade com nome histórico Ivermectina 1% Chemitec antes do vínculo.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/endectocida-ivertec-1/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 20 ml",
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Clorexidina-Cetrimida Chemitec",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "motivo": "Fonte atual informa frasco 1 L ou bomba 5 L; catálogo restante contém Frasco 250 ml, Frasco 5 l e Frasco 20 l. O recipiente exato do SKU 5 L não está confirmado; não converter bomba em frasco por volume.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/desinfetante-clorexidina-cetrimida/"
+    ],
+    "documentoLocal": "/tmp/chem-desinfetante-clorexidina-cetrimida.html",
+    "documentoSha256": "87e62d9f242df32decf2610b6efc76ffd023355993341209af2b8a10b17ab5ea",
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 20 l",
+      "Frasco 250 ml",
+      "Frasco 5 l"
+    ]
+  },
+  {
+    "nomeCatalogo": "Albadry Plus Suspensão",
+    "fabricanteCatalogo": "Laboratórios Pfizer Ltda.",
+    "motivo": "Não localizada bula oficial brasileira exata nesta pesquisa.",
+    "urlsExaminadas": [
+      "https://www.zoetis.com.br/pesquisa-de-produtos/index.aspx"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Seringa 10 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Clamoxyl LA",
+    "fabricanteCatalogo": "Laboratórios Pfizer Ltda.",
+    "motivo": "PDF brasileiro oficial confirma amoxicilina15%, dose1mL/10kg e carências, mas não apresenta volumes comerciais; vínculo de apresentação não confirmado.",
+    "urlsExaminadas": [
+      "https://www2.zoetis.com.br/content/_assets/Image/PDF/Suinos-Products/clamoxyl.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 250 ml",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Dectomax",
+    "fabricanteCatalogo": "Laboratórios Pfizer Ltda.",
+    "motivo": "Somente apresentação200mL pendente:PDF atual lista20,50,100,250,500mL.",
+    "urlsExaminadas": [
+      "https://www2.zoetis.com.br/content/pt/pages/Especies/Bovinos/Bulario/_assets/Dectomax.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 200 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Cobactan Vl",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "motivo": "Texto de carência do leite ambíguo: diz destinado ao consumo até108h; não publicar interpretação.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/cobactan-vl/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Seringa 8 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Cobactan",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "motivo": "Concentração ausente; tabela de dosagem não extraída, exige documento integral.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/cobactan/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Imizol Injetável",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "motivo": "Ficha não informa concentração do imidocarb.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/imizol/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 1 ml",
+      "Frasco 100 ml",
+      "Frasco 15 ml",
+      "Frasco 2 ml",
+      "Frasco 200 ml",
+      "Frasco 4 ml",
+      "Frasco 5 ml",
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Cepravin Anti-Mastitico P/ Vaca Sec.",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "motivo": "Ficha não informa concentração/composição para confirmar formulação.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/cepravin/"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Seringa 3 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Mastijet Forte",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "motivo": "Ficha não informa composição/concentrações.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/mastijet-forte/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Seringa 8 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Pencivet Plus Ppu",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "motivo": "Catálogo lista Estreptomicina/Penicilina/Piroxican; ficha atual declara dihidroestreptomicina, benzilpenicilinas G procaína/benzatina e piroxicam. Conferir diferença química e normalização; concentrações ausentes.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/pencivet-plus-ppu/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 30 ml",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Chorulon 5000 Ui",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "motivo": "Tabela de dose não disponível como texto; requer inspeção/documento completo.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/chorulon-5000-ui/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 5 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Covexin 9 - Vacina X Clostridioses",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "motivo": "Ficha não apresenta composição antigênica quantitativa; tabela de vacinação especial exige conferir; não liberado.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/covexin-9/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml",
+      "Frasco 250 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Panacur 10%",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "motivo": "Ficha atual confirma20mL/1L; nenhuma dessas apresentações consta sob nome exatoPanacur10% no catálogo. Não aproximar variantes Panacur.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/panacur-10/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 2 l",
+      "Frasco 240 ml",
+      "Frasco 30 ml",
+      "Frasco 4 l",
+      "Frasco 5 l",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Solution 3,5% LA",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "motivo": "Somente apresentação200mL pendente: ficha confirma50,500,1000mL.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/solution-35/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 200 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Calminex",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "motivo": "Ficha não informa composição/concentrações.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/calminex/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Bisnaga 100 g",
+      "Bisnaga 200 g",
+      "Bisnaga 30 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Azium Solução / Banamine Injetável",
+    "fabricanteCatalogo": "Não constam no catálogo consultado",
+    "motivo": "Fichas brasileiras oficiais preservadas, mas busca por nomes Azium/Banamine no catálogo não encontrou SKU para vincular.",
+    "urlsExaminadas": [
+      "https://www.msd-saude-animal.com.br/produto/azium-solucao/",
+      "https://www.msd-saude-animal.com.br/produto/banamine-injetavel/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE"
+  },
+  {
+    "nomeCatalogo": "Bionew",
+    "fabricanteCatalogo": "Vetnil Indústria e Comércio de Produtos Veterinários Ltda.",
+    "motivo": "Fórmula atual contém butafosfana; catálogo lista B1, selênio e magnésio ausentes na fórmula atual. Não vincular.",
+    "urlsExaminadas": [
+      "https://vetnil.com.br/produto/bionew-r/"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml",
+      "Frasco 100 ml",
+      "Frasco 20 ml",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Alantol",
+    "fabricanteCatalogo": "Vetnil Indústria e Comércio de Produtos Veterinários Ltda.",
+    "motivo": "Catálogo inclui clorexidina; fórmula atual só alantoína e óxido de zinco. Pote 250 g também difere da bisnaga atual.",
+    "urlsExaminadas": [
+      "https://vetnil.com.br/produto/alantol-r-pomada-cicatrizante-para-feridas-e-ulceracoes/"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Bisnaga 25 g",
+      "Bisnaga 60 g",
+      "Pote 250 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Dm Gel",
+    "fabricanteCatalogo": "Vetnil Indústria e Comércio de Produtos Veterinários Ltda.",
+    "motivo": "Catálogo lista prednisolona; ficha atual usa dexametasona.",
+    "urlsExaminadas": [
+      "https://vetnil.com.br/produto/dm-gel-r/"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Bisnaga 50 g",
+      "Frasco 20 ml",
+      "Frasco 250 ml",
+      "Pote 300 g",
+      "Pote 500 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Condroton Plus",
+    "fabricanteCatalogo": "Vetnil Indústria e Comércio de Produtos Veterinários Ltda.",
+    "motivo": "Catálogo inclui manganês; fórmula atual não o contém.",
+    "urlsExaminadas": [
+      "https://vetnil.com.br/produto/condroton-r-plus/"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Pote 500 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Gasel Solução",
+    "fabricanteCatalogo": "Laboratório Bravet Ltda.",
+    "motivo": "Bula atual inclui antipirina 35%; catálogo só lista diminazeno. Exige revisão da identidade/composição.",
+    "urlsExaminadas": [
+      "https://www.bravet.com.br/files/product/leaflet/27/Gasel%20Soluc%CC%A7a%CC%83o%20-BU%20versa%CC%83o%20FF.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 20 ml",
+      "Frasco 50 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Rilexine 500",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "motivo": "Ficha oficial expressa leite de 6 a 10 dias se parto antecipado. O schema aceita prazo único; não converter faixa em prazo universal. Exige representação explícita da faixa/condição.",
+    "urlsExaminadas": [
+      "https://br.virbac.com/products/antibioticos-intramamarios/rilexine-500"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Injetor 10 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Bociodo",
+    "fabricanteCatalogo": "Laboratório Bravet Ltda.",
+    "motivo": "Conflito oficial: HTML lista iodo 0,5 g e iodeto de sódio 5 g/100 mL; PDF atual tem outra fórmula (iodeto de sódio 1 g/100 mL), e iodo não foi legível com certeza. Não selecionar uma fórmula por aproximação.",
+    "urlsExaminadas": [
+      "https://www.bravet.com.br/bociodo",
+      "https://www.bravet.com.br/files/product/leaflet/8/BULA%20BOCIODO%20-%20FF.pdf"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 100 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Gentatec",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "motivo": "Catálogo restante é Frasco10mL; ficha e guia2026 confirmam somente50e100mL.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec/",
+      "https://chemitec.com.br/wp-content/uploads/2026/07/Chemitec2026_GrandesAnimais_GuiaRapido_Digital.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Gentatec Mastite 250 mg",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "motivo": "Fonte atual150mg diverge da força250mg do catálogo; não vincular.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec-mastite-150-mg/"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Seringa 10 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Ricobendazole 13,6% Chemitec",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "motivo": "Catálogo250mL versus ficha/guia500mL. Ficha também recomenda e depois proíbe via subcutânea; guia esclarecevia, masapresentaçãonãocoincide.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/vermifugo-ricobendazole-136-chemitec/",
+      "https://chemitec.com.br/wp-content/uploads/2026/07/Chemitec2026_GrandesAnimais_GuiaRapido_Digital.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 250 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Ivermectina 1% Chemitec",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "motivo": "Ivertec1% tem composição/apresentações compatíveis, mas identidade com nome histórico genérico não comprovada documentalmente; não presumida.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/endectocida-ivertec-1/",
+      "https://chemitec.com.br/wp-content/uploads/2026/07/Chemitec2026_GrandesAnimais_GuiaRapido_Digital.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 20 ml",
+      "Frasco 50 ml",
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Amônia Quaternária 50% Chemitec",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "motivo": "Guia confirma Quatermon50%,mas não vínculo inequívoco ao nome genérico histórico; ficha não publica diluição numérica.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/desinfetante-quatermon-50/",
+      "https://chemitec.com.br/wp-content/uploads/2026/07/Chemitec2026_GrandesAnimais_GuiaRapido_Digital.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Bombona 20 l",
+      "Bombona 200 l",
+      "Bombona 5 l",
+      "Frasco 1 l",
+      "Frasco 250 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Sulfato De Atropina",
+    "fabricanteCatalogo": "Labovet Produtos Veterinários Ltda.",
+    "motivo": "Catálogo sem concentração; ficha atual2024é0,5%para cães/gatos, enquanto nome histórico pode corresponder1%. Sem identidade da formulação,pendente.",
+    "urlsExaminadas": [
+      "https://labovet.com.br/wp-content/uploads/2024/07/Catalogo-Labovet-2024.pdf"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Frasco 10 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Albendazole 10% Labovet",
+    "fabricanteCatalogo": "Labovet Produtos Veterinários Ltda.",
+    "motivo": "PDF oficial antigo descoberto viaAPI, mas download retorna HTML. Resultadoindexadocita fabricanteBiofarm/proprietárioLabovet; exige conferência completa da tabelaantesdevincular.",
+    "urlsExaminadas": [
+      "https://labovet.com.br/wp-content/uploads/2019/01/R%C3%B3tulo-1L-Albendazole-10-1.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 1000 ml",
+      "Frasco 250 ml",
+      "Frasco 500 ml"
+    ]
+  },
+  {
+    "nomeCatalogo": "Gentatec Vaca Seca",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "motivo": "Fonte HTML descreve seringa de 10 mL e fórmula com veículo de 10 g; guia informa 10 g. Confirmar divergência de unidade entre documentos oficiais antes de vincular.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/antibiotico-gentatec-vaca-seca/",
+      "https://chemitec.com.br/wp-content/uploads/2026/07/Chemitec2026_GrandesAnimais_GuiaRapido_Digital.pdf"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Seringa 10 g"
+    ]
+  },
+  {
+    "nomeCatalogo": "Glutam Desinfetante",
+    "fabricanteCatalogo": "Chemitec Agro-Veterinária Ltda.",
+    "motivo": "Cadastro informa cloreto de alquil dimetil amônio; fonte informa cloreto de benzalcônio. Requer qualificação da identificação química antes de vincular.",
+    "urlsExaminadas": [
+      "https://chemitec.com.br/produtos-por-animal/desinfetante-glutam/",
+      "https://chemitec.com.br/wp-content/uploads/2026/07/Chemitec2026_GrandesAnimais_GuiaRapido_Digital.pdf"
+    ],
+    "estado": "CONFERENCIA_PENDENTE",
+    "apresentacoesPendentes": [
+      "Frasco 1 l",
+      "Frasco 20 l",
+      "Frasco 200 l",
+      "Frasco 5 l"
+    ]
+  },
+  {
+    "nomeCatalogo": "Traumex Pomada",
+    "fabricanteCatalogo": "Labovet Produtos Veterinários Ltda.",
+    "motivo": "Fórmula consultada contém bálsamo do Peru e beladona, ausentes dos princípios ativos cadastrados. Confirmar formulação histórica antes de vincular.",
+    "urlsExaminadas": [
+      "https://labovet.com.br/wp-content/uploads/2024/07/Catalogo-Labovet-2024.pdf"
+    ],
+    "estado": "DIVERGENCIA",
+    "apresentacoesPendentes": [
+      "Bisnaga 100 g"
+    ]
+  }
+]

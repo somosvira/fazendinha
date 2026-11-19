@@ -51,7 +51,7 @@ export function DetalheModeloProtocolo({ origem, onClose }: { origem: CadastroPr
     <div className="modelo-detalhe">
       <dl className="modelo-detalhe-identidade"><div><dt><GitBranch size={18} aria-hidden="true" />Versão</dt><dd>{origem.versao}</dd></div><div><dt><ListChecks size={18} aria-hidden="true" />Procedimentos</dt><dd>{origem.totalEtapas}</dd></div><div><dt><ShieldCheck size={18} aria-hidden="true" />Situação</dt><dd>{!origem.ativo ? "Inativo" : origem.publicado || origem.publicadoEm ? "Disponível para uso" : "Cadastro não concluído"}</dd></div></dl>
       {origem.descricao && <p className="modelo-detalhe-descricao">{origem.descricao}</p>}
-      {!origem.publicado && !origem.publicadoEm && <p className="modelo-detalhe-aviso">Cadastro antigo não concluído. Os procedimentos e suas configurações originais permanecem preservados.</p>}
+      {!origem.publicado && !origem.publicadoEm && <p className="modelo-detalhe-aviso">Cadastro antigo não concluído.</p>}
       {origem.referenciaTecnica?.fonte && <p><a href={origem.referenciaTecnica.fonte.url} target="_blank" rel="noreferrer">{origem.referenciaTecnica.fonte.titulo}</a>{origem.referenciaTecnica.versaoReferencia && ` · referência ${origem.referenciaTecnica.versaoReferencia}`}</p>}
       <ErrorBox erro={erro}/>{erro && <Button secondary onClick={()=>setRevisao(v=>v+1)}>Tentar carregar detalhes novamente</Button>}
       {carregando && <EsqueletoLista label="Carregando etapas e procedimentos" />}

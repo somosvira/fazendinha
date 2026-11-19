@@ -142,7 +142,6 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
                 <div className="conferencia-diferenca" data-atencao={diferenca != null && Math.abs(diferenca) > LIMITE_DIFERENCA || undefined}><span className="nutricao-rotulo-movel">Diferença</span>{diferenca == null ? "—" : `${diferenca > 0 ? "+" : diferenca < 0 ? "−" : ""}${Math.round(Math.abs(diferenca) * 100)}%`}</div>
               </div>
               {i.leite && !!p.ofertasBezerreiro?.length && <div className="grid gap-2">
-                <p className="text-sm" title={p.orientacaoLeiteBezerreiro ?? undefined}>Concilie o leite já fornecido. Os demais ingredientes permanecem neste fechamento.</p>
                 <div><Button secondary onClick={() => mudar(k, { quantidade: '0', motivo: 'Leite já registrado nas ofertas do Bezerreiro; sem novo fornecimento neste fechamento.' })}>Usar ofertas já registradas · zerar leite</Button></div>
               </div>}
               {i.leite && <fieldset className="grid gap-2"><legend className="font-semibold">Leite produzido para esta dieta </legend>

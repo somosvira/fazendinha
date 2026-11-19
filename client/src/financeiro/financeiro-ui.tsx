@@ -55,7 +55,7 @@ export function PaginaCarregando({ label, estrutura = "lista" }: { label: string
  * que uma falha no fetch nunca deixe a tela girando para sempre — o guard
  * `if (!dados) return <PaginaCarregando/>` sozinho engole o erro, porque os
  * dados continuam nulos e o ErrorBox lá embaixo nunca é alcançado. */
-export function PaginaSemDados({ titulo, descricao, label, erro, onTentarNovamente }: { titulo: string; descricao: string; label: string; erro: string | null; onTentarNovamente?: () => void }) {
+export function PaginaSemDados({ titulo, descricao, label, erro, onTentarNovamente }: { titulo: string; descricao?: string; label: string; erro: string | null; onTentarNovamente?: () => void }) {
   if (!erro) return <PaginaCarregando label={label} />;
   return <PaginaFinanceira><PageHeader eyebrow="" titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} />{onTentarNovamente && <Button secondary className="mt-4" onClick={onTentarNovamente}>Tentar novamente</Button>}</PaginaFinanceira>;
 }
@@ -294,8 +294,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     {barraRolagemSuperior && temRolagem && !exibirCartoes && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
-    {tabelaRolavel && <p id={`${idCartao}-rolagem`} className="py-2 text-xs text-muted-foreground">Role horizontalmente para ver todas as colunas.</p>}
-    <div ref={tabelaRef} role={tabelaRolavel ? "region" : undefined} aria-label={tabelaRolavel ? `Rolagem horizontal: ${rotulo}` : undefined} aria-describedby={tabelaRolavel ? `${idCartao}-rolagem` : undefined} tabIndex={tabelaRolavel ? 0 : undefined} onKeyDown={tabelaRolavel ? roladaPorTeclado : undefined} className={`fin-tabela-desktop overflow-x-auto border-t border-border focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 ${barraRolagemSuperior && temRolagem && visualizacao !== "tabela" ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
+    <div ref={tabelaRef} role={tabelaRolavel ? "region" : undefined} aria-label={tabelaRolavel ? `Rolagem horizontal: ${rotulo}` : undefined} tabIndex={tabelaRolavel ? 0 : undefined} onKeyDown={tabelaRolavel ? roladaPorTeclado : undefined} className={`fin-tabela-desktop overflow-x-auto border-t border-border focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 ${barraRolagemSuperior && temRolagem && visualizacao !== "tabela" ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
       <Table semContainer data-fin-compacta={compacta || undefined} className="fin-tabela w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <TableCaption className="sr-only">{rotulo}</TableCaption>
         <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={{ "--fin-coluna-largura": coluna === (flexivel ?? principal) ? undefined : `${coluna.larguraMinima ?? 120}px`, "--fin-coluna-proporcao": flexivel ? undefined : `${(coluna.larguraMinima ?? 120) / larguraMinima * 100}%` } as CSSProperties} />)}</colgroup>

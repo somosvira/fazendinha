@@ -3,7 +3,8 @@ import { ResultadoVisualExame } from "./ResultadoVisualExame";
 import { FlaskConical, Syringe, Milk, Beef } from "lucide-react";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { CartaoConsulta, FatoConsulta, LinhaTempoConsulta } from "@/components/ConsultaVisual";
-import { TabelaFinanceira, Empty, Button } from "@/financeiro/financeiro-ui";
+import { TabelaFinanceira, Empty } from "@/financeiro/financeiro-ui";
+import { SubTabs } from "../../../components/SubTabs";
 import type { ExameResultado } from "./ResultadoExame";
 import type { AplicacaoSanitaria, CarenciaAnimal } from "./api";
 import { dataSanitaria, dataAplicacaoSanitaria, nomeAnimalSanitario, origemSanitaria, resultadoExameSanitario, tipoSanitario, unidadeSanitaria } from "./rotulos";
@@ -12,9 +13,9 @@ import "./consultas-visuais.css";
 
 type Props<T> = Parameters<typeof TabelaFinanceira<T>>[0];
 type ExameVisual = ExameResultado & { data: string; status: string; tipoExame: { nome: string } };
-export function ConsultaExames<T extends ExameVisual>({ nomeAnimal, ...props }: Props<T> & { nomeAnimal: (e: T) => string }) {
+export function ConsultaExames<T extends ExameVisual>({ nomeAnimal, abas, ...props }: Props<T> & { nomeAnimal: (e: T) => string; abas?: React.ReactNode }) {
   const visual = useVisualizacaoConsulta("visualExames", "sanidade");
-  return <><div className="consulta-visual-barra"><span>{props.itens.length} exames nesta página</span><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos exames" /></div>{visual.modo === "tabela" ? <TabelaFinanceira {...props} visualizacao="tabela" /> : <div className="consulta-entidades san-exames-cartoes">{props.itens.map(e => {
+  return <><div className="consulta-visual-barra sanidade-agenda-visoes">{abas ?? <span />}<AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos exames" /></div>{visual.modo === "tabela" ? <TabelaFinanceira {...props} visualizacao="tabela" /> : <div className="consulta-entidades san-exames-cartoes">{props.itens.map(e => {
     const resultado = resultadoExameSanitario(e);
     const pendente = resultado === "Aguardando resultado";
     return <CartaoConsulta className="san-exame-cartao" key={props.chaveDe(e)} icon={FlaskConical} titulo={nomeAnimal(e)} detalhe={e.tipoExame.nome} onAbrir={() => props.onAbrir?.(e)} status={<EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : pendente ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : pendente ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario>} acoes={props.colunas.find(c => c.chave === "acoes")?.celula(e)}><div className="consulta-fatos san-exame-fatos"><FatoConsulta rotulo="Coleta">{dataSanitaria(e.data)}</FatoConsulta><FatoConsulta rotulo="Resultado"><ResultadoVisualExame exame={e} onAbrirCompleto={props.onAbrir ? () => props.onAbrir?.(e) : undefined} /></FatoConsulta></div></CartaoConsulta>;
@@ -38,12 +39,9 @@ export function ConsultaAplicacoes(props: Props<AplicacaoSanitaria>) {
   </CartaoConsulta>;
 
   return <>
-    <div className="consulta-visual-barra">
-      <span>Aplicações registradas</span>
+    <div className="consulta-visual-barra sanidade-agenda-visoes">
+      <SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Visão das aplicações" active={mostrarCronologia ? "linha" : "lista"} onSelect={v => setMostrarCronologia(v === "linha")} tabs={[{ id: "lista", label: "Lista" }, { id: "linha", label: "Linha do tempo" }]} />
       {!mostrarCronologia && <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização das aplicações" />}
-      {props.itens.length > 0 && <Button secondary onClick={() => setMostrarCronologia(v => !v)}>
-        {mostrarCronologia ? "Voltar à lista" : "Ver linha do tempo"}
-      </Button>}
     </div>
     {!props.itens.length ? <Empty>Nenhuma aplicação sanitária registrada neste recorte.</Empty> :
       mostrarCronologia ? <LinhaTempoConsulta rotulo="Histórico de aplicações" itens={props.itens}
@@ -61,8 +59,9 @@ export function ConsultaCarencias<T extends CarenciaVisual>(props: Props<T>) {
   const minimo = Math.min(agora, ...datas) - 86400000;
   const maximo = Math.max(agora, ...datas) + 86400000;
   const posicao = (n: number) => `${(n - minimo) / (maximo - minimo) * 100}%`;
-  return <><div className="consulta-visual-barra"><span>Consulta em {new Date(agora).toLocaleDateString("pt-BR")}</span>{!mostrarPrazos && <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização das carências" />}
-    <Button secondary onClick={() => setMostrarPrazos(v => !v)}>{mostrarPrazos ? "Voltar à lista" : "Ver gráfico de prazos"}</Button>
+  return <><div className="consulta-visual-barra sanidade-agenda-visoes">
+    <SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Visão das carências" active={mostrarPrazos ? "prazos" : "lista"} onSelect={v => setMostrarPrazos(v === "prazos")} tabs={[{ id: "lista", label: "Lista" }, { id: "prazos", label: "Prazos" }]} />
+    {!mostrarPrazos && <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização das carências" />}
   </div>{!mostrarPrazos ? visual.modo === "tabela" ? <TabelaFinanceira {...props} visualizacao="tabela" /> :
     props.itens.length ? <div className="consulta-entidades san-carencias-cartoes">{props.itens.map(c =>
       <CartaoConsulta key={props.chaveDe(c)} titulo={nomeAnimalSanitario(c.animal)} onAbrir={props.onAbrir && (() => props.onAbrir?.(c))}>

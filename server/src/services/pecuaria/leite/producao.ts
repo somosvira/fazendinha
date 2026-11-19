@@ -1,3 +1,4 @@
+import { consultarAplicacoesTabletPendentes } from "../sanidade/tablet-pendencias.js";
 import { Prisma } from "@prisma/client";
 import { auditar, hojeFazendaDate, RebanhoError, travarAnimais, type DbPecuaria } from "../rebanho/regras.js";
 import { operacaoIdempotenteTx } from "../reproducao/operacoes.js";
@@ -77,12 +78,20 @@ export async function consultarOrigensAutomaticasGeraisTx(tx: DbPecuaria, propri
 function medicaoPendente(posicaoId: string): MedicaoLeiteDTO {
   return { id: null, posicaoId, estado: "PENDENTE", litros: null, motivo: null, versao: 0, confirmacaoEstoque: null };
 }
+async function sinalizarAplicacoesTablet(tx: Prisma.TransactionClient, data: Date, folha: FolhaLeiteDTO) {
+  const envios = await consultarAplicacoesTabletPendentes(tx, data, { animalIds: folha.animais.map(a => a.animalId) });
+  const pendentes = new Set(envios.flatMap(e => e.animalIds));
+  for (const animal of folha.animais) {
+    if (pendentes.has(animal.animalId)) animal.pendencias.push("APLICACAO_TABLET_PENDENTE");
+  }
+  return folha;
+}
 export async function consultarFolha(propriedadeId: number, dataOperacional: string): Promise<FolhaLeiteDTO> {
   return transacaoPecuaria(async tx => {
     await conferirSitioLeiteTx(tx, propriedadeId);
     const data = new Date(`${dataOperacional}T00:00:00Z`);
     const dia = await tx.diaProducaoLeite.findUnique({ where: { propriedadeId_dataOperacional: { propriedadeId, dataOperacional: data } }, include: incluirDia });
-    if (dia && (dia.participantes.length || dia.configuracao.fonteProducao !== "GERAL")) return folhaLeiteDTO(dia);
+    if (dia && (dia.participantes.length || dia.configuracao.fonteProducao !== "GERAL")) return sinalizarAplicacoesTablet(tx, data, folhaLeiteDTO(dia));
     const configuracao = configuracaoDTO(await buscarConfiguracaoLeiteTx(tx, propriedadeId, data), propriedadeId);
     const populacao = await populacaoTx(tx, await carregarAnimaisTx(tx, propriedadeId, data), propriedadeId, data);
     const animais = populacao.map(p => {
@@ -95,7 +104,7 @@ export async function consultarFolha(propriedadeId: number, dataOperacional: str
       const f = resolverFinalidadeLeite(a.destinos, data, a.baixas);
       return f.elegivel ? [] : [{ animalId: a.id, brinco: a.brinco, nome: a.nome, codigo: f.codigo, motivo: f.motivo }];
     });
-    return folha;
+    return sinalizarAplicacoesTablet(tx, data, folha);
   });
 }
 export async function listarCandidatos(propriedadeId: number, dataOperacional: string, busca = "", pagina = 1) {

@@ -219,7 +219,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
           onSalvo={() => salvo("Amostra atualizada com histórico preservado.")}
         /></DialogContent></Dialog>
       )}
-      <SecaoDetalhesLeite className="leite-formatos-dialog" titulo={<>Formatos de laudo</>} acoes={<AjudaCampo rotulo="Sobre os formatos de laudo" texto={"Campos e unidades vêm do laudo. Alterar um formato já utilizado exige nova versão; não altera amostras anteriores."} />}>
+      <SecaoDetalhesLeite className="leite-formatos-dialog" titulo={<>Formatos de laudo</>}>
 
 
         {!formatos.length && <Empty>Nenhum formato configurado.</Empty>}

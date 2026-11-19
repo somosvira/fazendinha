@@ -116,6 +116,7 @@ export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boole
 export type ItemCatalogoBusca = {
   id: string; nome: string; apresentacao: string | null; nomeCompleto: string;
   fabricante: { id: string; nome: string } | null; classificacaoTecnica: { id: string; nome: string } | null;
+  conteudoEmbalagem?: string | null; rotuloEmbalagem?: string | null;
   unidadeSugerida: UnidadeMedida; categoriaSugeridaId: string | null;
   usoSanitario: boolean; usoNutricional: boolean; usoGenetico: boolean;
 };

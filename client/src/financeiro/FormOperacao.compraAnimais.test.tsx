@@ -141,7 +141,7 @@ describe("compra de animais: tela", () => {
     expect(lista.textContent).toContain("Sem peso de entrada");
     expect(cadastrarAnimal).not.toHaveBeenCalled();
     const previa = screen.getByTestId("conteudo-resumo-operacao");
-    expect(within(previa).getByText("Prévia indisponível")).toBeTruthy();
+    expect(within(previa).getByText("Campos pendentes")).toBeTruthy();
     expect(previa.textContent).not.toContain("Cadastrar 2 animais no Rebanho");
   });
 

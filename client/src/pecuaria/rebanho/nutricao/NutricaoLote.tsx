@@ -47,7 +47,7 @@ export function NutricaoLote({ loteId, podeLancar, vista }: { loteId: string; pr
         ]} />}<PaginacaoNutricao pagina={pagina} total={historico.dados.total} limite={historico.dados.limite} onPagina={setPagina} nome="dietas" /></>}
       </Panel>}
       {completa && <section className="nutricao-lote-fechamentos" aria-labelledby="fechamentos-lote"><h2 id="fechamentos-lote" className="h3">Fechamentos</h2><FechamentosNutricao loteId={loteId} /></section>}
-      {r.referenciaLeite && <Panel><div className="nutricao-card-cabecalho"><h2 className="h3">Referência comercial do leite fornecido <AjudaCampo rotulo="Sobre a referência comercial do leite" texto={"Medida gerencial separada do custo de produção, sem somar um novo gasto da fazenda. Confira a fonte e revise após o fechamento comercial nos detalhes do consumo."} /></h2></div><div className="nutricao-card-corpo grid gap-2"><p>{formatarLitros(Number(r.referenciaLeite.quantidadeLitros))} confirmados · referência conhecida <strong>{custoTexto(r.referenciaLeite.valorConhecido)}</strong></p><p>{r.referenciaLeite.pendentes} fornecimento(s) com preço pendente · {r.referenciaLeite.provisorios} com preço provisório do mês anterior.</p></div></Panel>}
+      {r.referenciaLeite && <Panel><div className="nutricao-card-cabecalho"><h2 className="h3">Referência comercial do leite fornecido </h2></div><div className="nutricao-card-corpo grid gap-2"><p>{formatarLitros(Number(r.referenciaLeite.quantidadeLitros))} confirmados · referência conhecida <strong>{custoTexto(r.referenciaLeite.valorConhecido)}</strong></p><p>{r.referenciaLeite.pendentes} fornecimento(s) com preço pendente · {r.referenciaLeite.provisorios} com preço provisório do mês anterior.</p></div></Panel>}
     </div>
   </>}</div>;
 }

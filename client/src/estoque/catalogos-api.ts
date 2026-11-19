@@ -15,9 +15,13 @@ export const listarCatalogo = (tipo: TipoCatalogo, filtro: FiltroCatalogo = {}) 
 
 /** Item da aba Catálogo: produto do catálogo do sistema e, se já adotado, o produto da fazenda (`produtoId`). */
 export type ItemCatalogoProduto = {
+  conferenciaBula?: import("./ReferenciaMedicamento").ConferenciaBula | null;
+  orientacaoBula?: import("./ReferenciaMedicamento").ReferenciaMedicamento | null;
   id: string; nomeCompleto: string; apresentacao: string | null;
   fabricante: { id: string; nome: string } | null; classificacaoTecnica: { id: string; nome: string } | null;
   usoSanitario: boolean; usoNutricional: boolean; usoGenetico: boolean; produtoId: string | null;
 };
 export type PaginaCatalogoProdutos = { itens: ItemCatalogoProduto[]; total: number; pagina: number; porPagina: number };
 export const listarCatalogoProdutos = (filtro: { busca?: string; pagina?: number; porPagina?: number } = {}) => consultar<PaginaCatalogoProdutos>('catalogo', filtro);
+
+export const obterReferenciaCatalogo = (id: string) => consultar<ItemCatalogoProduto>("catalogo/" + encodeURIComponent(id), {});

@@ -271,3 +271,22 @@ Na lista de produtos das configurações financeiras, Ver no estoque é uma aç�
 As ações de linha Editar, Desativar/Reativar e Ver no estoque exibem o nome em dica visual compartilhada ao passar o mouse ou focar pelo teclado, sem depender do título nativo do navegador. A dica preserva o clique da ação e a navegação dos links.
 
 As ações de produto nas configurações usam colunas de igual largura dentro da célula, mantendo distâncias iguais entre Ver no estoque, Editar e Desativar/Reativar.
+
+### Compra de medicamento por embalagem
+
+Quando o produto adotado do catálogo tem conteúdo de embalagem estruturado e
+unidade compatível, a compra de estoque permite informar embalagens inteiras.
+O item preserva a medida e o preço de compra; `embalagemSnapshot` guarda o fator
+e a quantidade recebida na unidade de estoque. A entrada e a valorização usam
+o conteúdo convertido. Exemplo: um frasco de 100 mL por R$ 100 entra como 100 mL
+a R$ 1/mL. Uma aplicação de 10 mL aprovada consome 10 mL e apropria R$ 10.
+Envio pendente no tablet apenas sinaliza a ordenha. A aprovação confirma
+aplicação, saída e custo atomicamente. Correções e estornos preservam os
+movimentos originais. Confira o contrato de Produtos para o tratamento dos
+cadastros antigos e apresentações sem conteúdo aferível.
+
+O formulário de operação preserva a data do rascunho sem aviso auxiliar de data anterior e não exibe a legenda de última compra abaixo do valor unitário. A prévia apresenta diretamente valores, itens e efeitos, sem parágrafo introdutório nem legenda explicativa acima do botão de confirmação. O preenchimento dos valores e as validações permanecem inalterados.
+
+Calendário de compromissos, lista de contas, saldo geral, extrato e análise não exibem as legendas genéricas de clique, seleção, escopo ou agrupamento removidas na revisão da interface. O bloco introdutório “Entradas e saídas” foi retirado da análise; gráficos, totais, filtros e recortes permanecem.
+
+A análise de contas abre “Ver valores por mês” (ou por dia, conforme o período) em modal centralizado, com a mesma série do gráfico, fechamento por Escape e retorno de foco ao acionador. Não altera filtros, URL, consulta ou permissões; a busca global mantém o destino da análise existente.

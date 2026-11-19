@@ -97,7 +97,7 @@ export function ResumoCustosDiretos({ mostrarMediaPorTentativa=false, dados, aoM
       <Button variant="outline" disabled={pagina * dados.limite >= dados.totalComponentes} onClick={() => aoMudarPagina(pagina + 1)}>Próxima</Button>
     </nav>}
     {(dados.atribuicoesPaginadas?.total || dados.atribuicoesPreparos.some(a => a.aAtribuir)) && !tentativaId && <section className="custos-preparos" aria-label="Preparatórios a atribuir">
-      <header><h4>Preparatórios a atribuir <AjudaCampo rotulo="Ajuda sobre preparatórios a atribuir" texto="Incluídos no animal/protocolo até a atribuição; não somar novamente."/></h4><span>{dados.atribuicoesPaginadas?.total ?? dados.atribuicoesPreparos.filter(a => a.aAtribuir).length} registros</span></header>
+      <header><h4>Preparatórios a atribuir </h4><span>{dados.atribuicoesPaginadas?.total ?? dados.atribuicoesPreparos.filter(a => a.aAtribuir).length} registros</span></header>
       <dl className="custos-preparos-linhas">{dados.atribuicoesPreparos.filter(a => a.aAtribuir).map(a => <div key={`${a.tipo}:${a.fonteId}`}>
         <dt>{descricaoCusto(a.descricao)}</dt>
         <dd>{dados.situacao === "OCULTO" ? "Valores ocultos" : a.parcelas.filter(p => p.restante != null && Number(p.restante) > 0).map(p => `${p.natureza === "MATERIAL" ? "Material" : "Serviço"}: ${brl(Number(p.restante))} a atribuir`).join(" · ") || "Valor pendente de comprovação ou atribuição"}</dd>

@@ -29,7 +29,7 @@ export function ReferenciaLeite({ leite, propriedadeId, verValores, verReferenci
         {verValores && <p>Custo de produção: <strong>{custoTexto(leite.custoProducao)}</strong></p>}
       </div>
       {verReferenciasComerciais && <div>
-        <p>Referência gerencial <AjudaCampo rotulo="Sobre a referência gerencial" texto="A referência mostra o valor comercial dos litros. Ela não é somada ao custo de produção e não cria compra ou receita interna." /></p>
+        <p>Referência gerencial </p>
         <strong>{leite.referencia ? custoTexto(leite.referencia.valorTotal) : "Pendente — sem preço comprovado"}</strong>
         {leite.referencia && <p className="nutricao-secundario">{leite.referencia.provisoria ? "Provisória, mês anterior" : "Preço do período"} · versão {leite.referencia.versao}</p>}
       </div>}

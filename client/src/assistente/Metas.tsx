@@ -189,7 +189,6 @@ export default function Metas({
       <div className="metas-abertura">
         <div>
           <h1>Metas da fazenda</h1>
-          <p>Acompanhe a evolução dos registros em relação ao alvo.</p>
         </div>
         {podeEditar && (
           <Button

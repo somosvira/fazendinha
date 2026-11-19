@@ -52,3 +52,14 @@ describe("fontes da busca global", () => {
     expect(consulta.values.filter(v => v === "%estrela%").length).toBe(fontesAutorizadas(usuario({ dono: true })).length);
   });
 });
+
+it("referências conferidas abrem o item exato e herdam o acesso ao estoque", () => {
+  const fontes = fontesAutorizadas(usuario({ areas: ["pecuaria"] }));
+  const fonte = fontes.find(f => f.tipo === "referencia-medicamento")!;
+  expect(fonte.global).toBe(true);
+  expect(fonte.consulta.sql).toContain("Referência oficial parcial");
+  expect(fonte.consulta.sql).toContain('"orientacaoBula" IS NOT NULL');
+  expect(fonte.caminho({ tipo: "referencia-medicamento", id: "id-referencia", label: "Pirosan — Frasco 30 ml", contexto: "", alvoId: "", propriedadeId: null }))
+    .toBe("/estoque?aba=catalogo&referenciaCatalogo=id-referencia&buscaCatalogo=Pirosan");
+  expect(fontesAutorizadas(usuario()).some(f => f.tipo === fonte.tipo)).toBe(false);
+});

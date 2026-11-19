@@ -240,6 +240,14 @@ describe("troca de unidade com movimento/dieta registrados", () => {
 });
 
 describe("obterUltimoPreco", () => {
+  it("normaliza preço da embalagem para a unidade de estoque pelo snapshot da compra", async () => {
+    mocks.itemFindFirst.mockResolvedValue({
+      valorUnitario: new Prisma.Decimal(100), valorTotal: new Prisma.Decimal(100),
+      embalagemSnapshot: { versao: 1, quantidadeEstoque: "100", conteudo: "100", unidadeEstoque: "ML" },
+      operacao: { data: new Date("2026-11-17"), parceiro: null },
+    });
+    expect(await obterUltimoPreco(uid(12))).toEqual({ valorUnitario: "1", data: "2026-11-17", parceiro: null });
+  });
   const item = (valor: string, parceiro: { id: string; nome: string } | null) => ({ valorUnitario: new Prisma.Decimal(valor), operacao: { data: new Date("2026-09-01T00:00:00Z"), parceiro } });
   beforeEach(() => vi.clearAllMocks());
 

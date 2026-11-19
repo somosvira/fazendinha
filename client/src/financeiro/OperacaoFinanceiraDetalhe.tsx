@@ -143,10 +143,9 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
           {operacao.centroCusto?.nome && <div><dt>{algumItemComCentroProprio ? "Centro padrão" : "Centro de custo"}</dt><dd><Layers size={18} aria-hidden />{operacao.centroCusto.nome}</dd></div>}
           <div><dt>Categoria</dt><dd><Tag size={18} aria-hidden />{operacao.categoriaNome ?? (() => { const doItens = [...new Set(operacao.itens.map(i => i.categoriaNome).filter(Boolean))]; return doItens.length === 1 ? doItens[0] : doItens.length > 1 ? `${doItens.length} categorias nos itens` : "Sem categoria"; })()}</dd></div>
         </dl>
-        <div className="fin-ficha-total"><h2>{transferencia ? "Valor do estoque transferido" : perdas.length ? "Custo da perda" : "Valor da operação"}{transferencia && <AjudaCampo rotulo="Ajuda: transferência de estoque" texto="Movimenta estoque entre sítios, conservando seu valor. Não gera pagamento nem nova despesa financeira." />}{perdas.length > 0 && <AjudaCampo rotulo="Ajuda: custo da perda" texto="Baixa física do estoque. Não gera nova despesa financeira." />}</h2><strong>{brl(operacao.valorTotal)}</strong></div>
+        <div className="fin-ficha-total"><h2>{transferencia ? "Valor do estoque transferido" : perdas.length ? "Custo da perda" : "Valor da operação"}</h2><strong>{brl(operacao.valorTotal)}</strong></div>
       </div>
       {!podeVerValoresFinanceiros() && <p role="status" className="px-5 pb-4 text-sm text-muted-foreground">Valores financeiros ocultos pelo seu perfil. Quantidades, vínculos e histórico operacional continuam disponíveis.</p>}
-      {operacao.status === "CANCELADA" && perdas.length > 0 && <p className="px-4 pb-3 text-xs text-ink-3">Para lançar uma nova perda, abra <a className="font-semibold underline" href="/estoque">Estoque</a> e escolha Registrar perda.</p>}
 
     <div className="fin-ficha-grid">
         {transferencia && <div id="estoque-operacao" tabIndex={-1} className="lg:col-span-2">{transferencias.length ? <Transferencias transferencias={transferencias} /> : <p className="p-6 text-sm text-ink-3">Transferência sem movimentos originais identificados.</p>}</div>}

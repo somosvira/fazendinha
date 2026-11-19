@@ -149,7 +149,7 @@ describe('ordem dos fatos da seed', () => {
     const c = contexto('2026-10-24'); await nutricaoGeral(c);
     expect(estado.consumos).toHaveLength(11);
     expect(estado.consumos[0].itens.map(i => i.quantidadeConfirmada)).toEqual([10, 0, 0]);
-    expect(estado.eventos[0]).toEqual({ tipo: 'estorno', data: c.dias(-79) });
+    expect(estado.eventos[0]).toEqual({ tipo: 'estorno', data: c.mes(-2, 11) });
     expect(estado.consumos.slice(1, 6).every(i => i.fim === '2026-09-30')).toBe(true);
     expect(estado.consumos.slice(6).every(i => i.fim === '2026-10-23')).toBe(true);
   });

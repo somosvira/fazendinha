@@ -45,7 +45,6 @@ export function GraficoPeso({ historicoPesagens, desde = null, ate = null }: { h
     return <div className="peso-sem-dados" role="status"><Scale size={28} aria-hidden="true" className="shrink-0 text-mast"/><div>
       <h3>{historicoPesagens.length === 0 ? "Ainda não há pesagens deste animal" : recortado ? "Poucas pesagens no período selecionado" : "Uma pesagem ainda não forma uma curva"}</h3>
       <p>{recortado ? "Menos de duas pesagens neste período — escolha um período maior para ver a curva." : "É preciso pelo menos duas pesagens para o gráfico."}</p>
-      {historicoPesagens.length === 0 && <p>Use Mais ações → Registrar pesagem para começar o acompanhamento, se tiver permissão de lançamento.</p>}
     </div></div>;
   }
 

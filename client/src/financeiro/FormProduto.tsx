@@ -214,27 +214,25 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       <section className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
         <h3 className="text-sm font-semibold text-ink sm:col-span-2">Identificação comercial</h3>
       <div className="grid content-start gap-1"><CampoFormulario id="produto-nome" rotulo="Nome do produto" obrigatorio erro={erros.nome}>{(p) => <Input {...p} maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ração 22%" className={classeInput} />}</CampoFormulario>{marca("nome")}</div>
-      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio ajuda="Organiza relatórios e classificação financeira." erro={erros.categoriaId}>{(p) => <SelectCampo {...p} value={categoriaId} onValueChange={(valor) => setCategoriaId(valor)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</SelectCampo>}</CampoFormulario>
+      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio erro={erros.categoriaId}>{(p) => <SelectCampo {...p} value={categoriaId} onValueChange={(valor) => setCategoriaId(valor)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</SelectCampo>}</CampoFormulario>
       <CampoFormulario id="produto-codigo" rotulo="Código de referência">{p => <Input {...p} maxLength={80} value={codigoReferencia} onChange={e => setCodigoReferencia(e.target.value)} className={classeInput} />}</CampoFormulario>
       <div className="grid content-start gap-1"><CampoFormulario id="produto-apresentacao" rotulo="Apresentação">{p => <Input {...p} maxLength={200} value={apresentacao} onChange={e => setApresentacao(e.target.value)} placeholder="Ex.: frasco de 500 mL" className={classeInput} />}</CampoFormulario>{marca("apresentacao")}</div>
       <div className="grid content-start gap-1"><SeletorCatalogoProduto tipo="fabricantes" rotulo="Fabricante" valor={fabricanteId} onChange={id => { setFabricanteId(id); setCatalogoAlterado(true); }} somenteLeitura={somenteLeitura} />{marca("fabricante")}</div>
       <div className="grid content-start gap-1"><SeletorCatalogoProduto tipo="classificacoes-tecnicas" rotulo="Classificação técnica" valor={classificacaoTecnicaId} onChange={id => { setClassificacaoTecnicaId(id); setCatalogoAlterado(true); }} somenteLeitura={somenteLeitura} />{marca("classificacaoTecnica")}</div>
       {adotado && <section aria-labelledby="produto-principios" className="grid gap-1 text-sm sm:col-span-2"><h4 id="produto-principios" className="font-medium">Princípios ativos</h4>{produto?.principiosAtivos?.length ? <ul className="flex flex-wrap gap-2">{produto.principiosAtivos.map(pa => <li key={pa.id} className="rounded-md border border-border bg-muted px-2 py-1 text-xs">{pa.nome}</li>)}</ul> : <p className="text-ink-3">Nenhum princípio ativo informado no catálogo.</p>}<p className="text-xs text-ink-3">Do catálogo; a fazenda não edita.</p></section>}
-      <p className="text-xs text-ink-3 sm:col-span-2">Fabricante identifica quem produz. Fornecedores continuam vinculados às compras. A classificação técnica é independente da categoria financeira.</p>
       <CampoFormulario id="produto-observacao" rotulo="Observações do produto">{p => <textarea {...p} maxLength={2000} value={observacao} onChange={e => setObservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
       </section>
-      <fieldset className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3"><legend className="px-1 text-sm font-semibold">Tipos de uso<AjudaCampo rotulo="Ajuda: tipos de uso" texto={<>Escolha um ou mais. Sem seleção, o produto tem uso geral.</>} /></legend>{TIPOS.map((t) => <div key={t.campo}><label className="flex items-center gap-2 text-sm"><Checkbox id={t.campo} aria-invalid={!!erros[t.campo]} aria-describedby={erros[t.campo] ? `${t.campo}-erro` : undefined}  checked={usos[t.campo]} onCheckedChange={(checked) => setUsos({ ...usos, [t.campo]: checked === true })} />{t.nome}</label>{erros[t.campo] && <p id={`${t.campo}-erro`} role="alert" className="text-xs text-destructive">{erros[t.campo]}</p>}</div>)}</fieldset>
+      <fieldset className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3"><legend className="px-1 text-sm font-semibold">Tipos de uso</legend>{TIPOS.map((t) => <div key={t.campo}><label className="flex items-center gap-2 text-sm"><Checkbox id={t.campo} aria-invalid={!!erros[t.campo]} aria-describedby={erros[t.campo] ? `${t.campo}-erro` : undefined}  checked={usos[t.campo]} onCheckedChange={(checked) => setUsos({ ...usos, [t.campo]: checked === true })} />{t.nome}</label>{erros[t.campo] && <p id={`${t.campo}-erro`} role="alert" className="text-xs text-destructive">{erros[t.campo]}</p>}</div>)}</fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio ajuda="Unidade em que o produto é comprado e baixado. Não pode mudar depois que houver movimento." erro={erros.unidade}>{(p) => <SelectCampo {...p} value={unidade} onValueChange={(valor) => setUnidade(valor as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</SelectCampo>}</CampoFormulario>
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" ajuda="Abaixo dessa quantidade o produto aparece com alerta na tela de Estoque." erro={erros.minimoEstoque}>{(p) => <Input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
       {usos.usoSanitario && <fieldset className="grid gap-4 rounded-lg border border-border p-3 sm:col-span-2">
-        <legend className="px-1 text-sm font-semibold">Perfil sanitário — sugestões para revisão<AjudaCampo rotulo="Ajuda: perfil sanitário" texto={<>Sem tipo padrão, o atendimento exige classificação manual. O cadastro do produto não define indicação clínica.</>} /></legend>
+        <legend className="px-1 text-sm font-semibold">Perfil sanitário — sugestões para revisão</legend>
         <div className="grid gap-3">
           <CampoCarenciaProduto destino="leite" escolha={escolhaLeite} prazo={leite} permiteDesconhecida={legadoLeiteDesconhecido} erro={erros.carenciaLeiteHoras} onEscolha={setEscolhaLeite} onPrazo={setLeite} />
           <CampoCarenciaProduto destino="carne" escolha={escolhaCarne} prazo={carne} permiteDesconhecida={legadoCarneDesconhecido} erro={erros.carenciaCarneHoras} onEscolha={setEscolhaCarne} onPrazo={setCarne} />
         </div>
-        {(legadoLeiteDesconhecido || legadoCarneDesconhecido) && <p className="text-sm text-ink-3">Prazos antigos não informados permanecem desconhecidos até serem conferidos.</p>}
         <CampoFormulario id="produto-via" rotulo="Via de aplicação sugerida" erro={erros.viaPadrao}>{(p) => <Input {...p} maxLength={80} value={via} onChange={(e) => setVia(e.target.value)} className={classeInput} />}</CampoFormulario>
         <SelectBuscavel rotulo="Tipo de aplicação padrão (opcional)" valor={tipoAplicacaoId} onChange={setTipoAplicacaoId} buscar={buscarTiposAplicacao} erroCampo={erros.tipoAplicacaoId} />
 
@@ -261,7 +259,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
         placeholder="Nenhum fornecedor"
         searchPlaceholder="Buscar fornecedor…"
         emptyText="Nenhum parceiro com papel de fornecedor."
-        ajuda="Opcional. A compra continua podendo usar outro fornecedor."
+       
         error={erros.fornecedorIds}
         contentClassName="z-[1200]"
         options={opcoesFornecedores}

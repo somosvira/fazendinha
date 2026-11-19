@@ -1,3 +1,5 @@
+import * as tablet from "../../services/pecuaria/sanidade/tablet.js";
+import type { Flag } from "../../services/auth/papeis.js";
 import { detalheErroProduto } from "../../services/estoque/produtos-catalogo.js";
 import { registrarRetiradaDispositivo, retiradaDispositivoAvulsaSchema, corrigirRetiradaDispositivo, corrigirRetiradaDispositivoSchema } from "../../services/pecuaria/reproducao/retirada-dispositivo.js";
 import { preverImpactos, revisarImpactoParticipacao } from "../../services/pecuaria/reproducao/impactos.js";
@@ -71,7 +73,58 @@ const escopoDetalhe = async (c: Context) => {
 const ocultarCustos = <T extends { valorProdutoAtribuido: unknown; valorServicoAtribuido: unknown }>(item: T, c: Context): T =>
   podeConsultarCustos(c) ? item : { ...item, valorProdutoAtribuido: null, valorServicoAtribuido: null, ...("resumoCusto" in item ? { resumoCusto: null } : {}) };
 
+
+function rotaTablet(c: Context, flags: Flag[], executar: (usuario: NonNullable<ReturnType<typeof getUsuario>>) => Promise<Response>) {
+  const usuario = getUsuario(c);
+  if (!usuario || usuario.id < 1) return c.json({ error: "Entre com sua conta para usar o tablet" }, 401);
+  if (!temArea(usuario, "pecuaria") || !flags.some(flag => temPermissao(usuario, flag))) return c.json({ error: "Sem permissão para esta ação" }, 403);
+  return executar(usuario).catch(e => falha(c, e));
+}
+const flagsTablet: Flag[] = ["enviarAplicacoesTablet", "revisarAplicacoesTablet", "gerenciarTemplatesTablet"];
+const consultaTablet = z.object({ propriedadeId: z.coerce.number().int().positive() });
+
 export const sanidadeRouter = new Hono()
+  .get("/tablet/animais", zValidator("query", consultaTablet.extend({ modo: z.enum(["numero", "nome"]), termo: z.string().trim().min(1).max(100) })), c =>
+    rotaTablet(c, ["enviarAplicacoesTablet"], async () => {
+      const { propriedadeId, modo, termo } = c.req.valid("query");
+      return c.json(await tablet.buscarVacas(await resolverEscopoEscrita(c, propriedadeId), modo, termo));
+    }))
+  .get("/tablet/medicamentos/:id", zValidator("query", consultaTablet), c =>
+    rotaTablet(c, flagsTablet, async () => {
+      await resolverEscopoEscrita(c, c.req.valid("query").propriedadeId);
+      return c.json(await tablet.dadosMedicamento(uuid.parse(c.req.param("id"))));
+    }))
+  .get("/tablet/opcoes", zValidator("query", consultaTablet), c =>
+    rotaTablet(c, flagsTablet, async usuario => {
+      const sitio = await resolverEscopoEscrita(c, c.req.valid("query").propriedadeId);
+      return c.json(await tablet.opcoesTablet(sitio, temPermissao(usuario, "revisarAplicacoesTablet")));
+    }))
+  .post("/tablet/templates", validar(tablet.templateSchema), c =>
+    rotaTablet(c, ["gerenciarTemplatesTablet"], async usuario => {
+      const body = c.req.valid("json");
+      return c.json(await tablet.salvarTemplate({ ...body, propriedadeId: await resolverEscopoEscrita(c, body.propriedadeId) }, usuario.id));
+    }))
+  .get("/tablet/devolvidos", zValidator("query", consultaTablet), c =>
+    rotaTablet(c, ["enviarAplicacoesTablet"], async usuario =>
+      c.json(await tablet.listarDevolvidos(await resolverEscopoEscrita(c, c.req.valid("query").propriedadeId), usuario.id))))
+  .get("/tablet/envios", zValidator("query", consultaTablet.extend({ id: uuid.optional() })), c =>
+    rotaTablet(c, ["revisarAplicacoesTablet"], async () => {
+      const { propriedadeId, id } = c.req.valid("query");
+      return c.json(await tablet.listarEnvios(await resolverEscopoEscrita(c, propriedadeId), id));
+    }))
+  .post("/tablet/envios", validar(tablet.envioSchema), c =>
+    rotaTablet(c, ["enviarAplicacoesTablet"], async usuario => {
+      const body = c.req.valid("json");
+      return c.json(await tablet.enviarAplicacoes({ ...body, propriedadeId: await resolverEscopoEscrita(c, body.propriedadeId) }, usuario), 201);
+    }))
+  .get("/tablet/envios/:id/previa", zValidator("query", consultaTablet), c =>
+    rotaTablet(c, ["revisarAplicacoesTablet"], async () =>
+      c.json(await tablet.preverRevisaoEnvio(uuid.parse(c.req.param("id")), await resolverEscopoEscrita(c, c.req.valid("query").propriedadeId)))))
+  .post("/tablet/envios/:id/revisao", validar(tablet.decisaoSchema), c =>
+    rotaTablet(c, ["revisarAplicacoesTablet"], async usuario => {
+      const body = c.req.valid("json");
+      return c.json(await tablet.revisarEnvio(uuid.parse(c.req.param("id")), { ...body, propriedadeId: await resolverEscopoEscrita(c, body.propriedadeId) }, usuario));
+    }))
   .route("/", rodadasRouter)
   .route("/", execucaoEtapasRouter)
   .post("/manejos/:id/correcao-retirada", validar(corrigirRetiradaDispositivoSchema), async c=>{
