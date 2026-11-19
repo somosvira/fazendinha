@@ -1,0 +1,442 @@
+[
+  {
+    "nomeCatalogo": "Nuflor",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "02bf3fc5-79bb-5ac4-9a61-627c590a1b19",
+        "apresentacao": "Frasco 10 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha oficial confirma frascos de 20, 30, 50, 100 e 250 mL; o frasco de 10 mL do catálogo não está confirmado."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/nuflor-solucao-injetavel/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Supramec Pour On",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "f8044e24-5c26-549b-958c-678ca7de9691",
+        "apresentacao": "Bombona 20 l"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha oficial confirma frascos de 1 L e 5 L. Esta apresentação permanece sem comprovação; não herdar os dados automaticamente."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Supramec Pour On",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "ba22ecda-610c-550b-a4b7-ab8fa31a67ae",
+        "apresentacao": "Frasco 2 l"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha oficial confirma frascos de 1 L e 5 L. Esta apresentação permanece sem comprovação; não herdar os dados automaticamente."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Calminex",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "2b95a7a8-e417-583d-a46f-9e1db3f2d145",
+        "apresentacao": "Bisnaga 200 g"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha oficial da pomada confirma somente bisnagas de 30 g e 100 g. A bisnaga de 200 g permanece pendente."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/calminex/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Calminex Creme",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "107ea0e2-5ee2-5803-94b9-10e293707bf1",
+        "apresentacao": "Bisnaga 100 g"
+      }
+    ],
+    "conferencia": {
+      "estado": "IDENTIDADE_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "identidade",
+          "motivo": "A fonte consultada é de Calminex pomada; a identidade da versão Creme não foi confirmada. Não associar dose ou carências por semelhança de nome."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/calminex/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Calminex Creme",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "b196221a-9d72-56cb-8852-5379c878fc10",
+        "apresentacao": "Bisnaga 200 g"
+      }
+    ],
+    "conferencia": {
+      "estado": "IDENTIDADE_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "identidade",
+          "motivo": "A fonte consultada é de Calminex pomada; a identidade da versão Creme não foi confirmada. Não associar dose ou carências por semelhança de nome."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/calminex/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Ciosin",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "77377057-ba73-5adc-a319-65e99a9f3328",
+        "apresentacao": "Ampola 4 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha atual confirma frascos-ampola de 2, 10 e 20 mL; não confirma a ampola de 4 mL cadastrada."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/ciosin/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Naquasone Pó",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "de232974-9349-5bb6-a8b9-721d56265d9d",
+        "apresentacao": "Sachê 18 g"
+      }
+    ],
+    "conferencia": {
+      "estado": "IDENTIDADE_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "identidade",
+          "motivo": "A ficha encontrada é da versão injetável de 10 mL. Não confirma a composição, dose ou via da versão em pó de 18 g."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/naquasone-injetavel/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Covexin 10 Vac. Clostridioses Bov Ovi",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "e81f9f58-d8cf-59de-b851-51344ddf26ac",
+        "apresentacao": "Fr. 100 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "IDENTIDADE_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "identidade",
+          "motivo": "A fonte examinada descreve Covexin 9; não comprova a vacina Covexin 10. Manter identidade e esquema vacinal pendentes."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/covexin-9/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Covexin 10 Vac. Clostridioses Bov Ovi",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "3fbaa451-1181-52a5-9b9e-a20e10b7568e",
+        "apresentacao": "Fr. 20 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "IDENTIDADE_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "identidade",
+          "motivo": "A fonte examinada descreve Covexin 9; não comprova a vacina Covexin 10. Manter identidade e esquema vacinal pendentes."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/covexin-9/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Covexin 10 Vac. Clostridioses Bov Ovi",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "071e7d83-a9da-5531-8648-5fefdbf5a48e",
+        "apresentacao": "Fr. 250 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "IDENTIDADE_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "identidade",
+          "motivo": "A fonte examinada descreve Covexin 9; não comprova a vacina Covexin 10. Manter identidade e esquema vacinal pendentes."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/covexin-9/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Covexin 10 Vac. Clostridioses Bov Ovi",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "8d298b44-8625-516f-bfb8-212ca9aa81a6",
+        "apresentacao": "Fr. 50 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "IDENTIDADE_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "identidade",
+          "motivo": "A fonte examinada descreve Covexin 9; não comprova a vacina Covexin 10. Manter identidade e esquema vacinal pendentes."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://www.msd-saude-animal.com.br/produto/covexin-9/"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Rilexine 150 Injetável",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "e449d375-3c16-5305-b06f-e80e33e7b097",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha oficial atual publica somente frasco de 250 mL. As apresentações de 50 e 100 mL exigem comprovação documental."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://br.virbac.com/products/antibioticos-injetaveis/rilexine-150-injetavel"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Rilexine 150 Injetável",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "51ff220f-2021-5fc5-828b-86c3895a6775",
+        "apresentacao": "Frasco 100 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha oficial atual publica somente frasco de 250 mL. As apresentações de 50 e 100 mL exigem comprovação documental."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://br.virbac.com/products/antibioticos-injetaveis/rilexine-150-injetavel"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Virbamec LA",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "15c69511-6a9b-5044-a572-d952ab4a5653",
+        "apresentacao": "Frasco 20 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha oficial confirma 50, 200, 500 mL e 1 L; não confirma o frasco de 20 mL."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://br.virbac.com/products/antiparasitarios-injetaveis/virbamec-la"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Virbamec Platinum",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "8f72e4f7-a411-5999-9a01-7868db2cceb6",
+        "apresentacao": "Frasco 20 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha oficial confirma 50, 500 mL e 1 L; as apresentações de 20, 100 e 200 mL do catálogo não foram confirmadas."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://br.virbac.com/products/antiparasitarios-injetaveis/virbamec-platinum"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Virbamec Platinum",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "efba5518-8b0a-5fea-937c-326bc88203e0",
+        "apresentacao": "Frasco 100 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha oficial confirma 50, 500 mL e 1 L; as apresentações de 20, 100 e 200 mL do catálogo não foram confirmadas."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://br.virbac.com/products/antiparasitarios-injetaveis/virbamec-platinum"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Virbamec Platinum",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "26a6cfbf-626e-5216-b251-d86a2e97a9db",
+        "apresentacao": "Frasco 200 ml"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A ficha oficial confirma 50, 500 mL e 1 L; as apresentações de 20, 100 e 200 mL do catálogo não foram confirmadas."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://br.virbac.com/products/antiparasitarios-injetaveis/virbamec-platinum"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Fencare 4% Premix",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "0fb1e6fb-d2b1-5777-885a-248b5924faba",
+        "apresentacao": "Balde 5 kg"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A fonte confirma display com frascos de 100 g para suínos. Não confirma balde de 5 kg nem embalagem cadastrada como pote; conferir apresentação e espécie antes do vínculo."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://br.virbac.com/products/antiparasitarios-externos/fencare"
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Fencare 4% Premix",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "a998d07c-b751-52c3-85f0-7964e23d5b0f",
+        "apresentacao": "Pote 100 g"
+      }
+    ],
+    "conferencia": {
+      "estado": "CONFERENCIA_PENDENTE",
+      "pendencias": [
+        {
+          "campo": "apresentacao",
+          "motivo": "A fonte confirma display com frascos de 100 g para suínos. Não confirma balde de 5 kg nem embalagem cadastrada como pote; conferir apresentação e espécie antes do vínculo."
+        }
+      ],
+      "fontesParaConferencia": [
+        "https://br.virbac.com/products/antiparasitarios-externos/fencare"
+      ]
+    }
+  }
+]

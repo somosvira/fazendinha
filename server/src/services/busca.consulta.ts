@@ -1,11 +1,11 @@
 import { Prisma } from "@prisma/client";
-import { temArea, temPermissao, type Area } from "./auth/papeis.js";
+import { temArea, temPermissao, type Area, type Flag } from "./auth/papeis.js";
 import type { UsuarioContexto } from "./auth/sessao.js";
 
 export type LinhaBusca = { tipo: string; id: string; label: string; contexto: string; alvoId: string; propriedadeId: number | null };
 export type FonteBusca = {
   tipo: string; grupo: string; tab: string; area?: Area | "estoque"; aba?: string;
-  valores?: boolean; gestao?: boolean; global?: boolean; consulta: Prisma.Sql;
+  flag?: Flag; valores?: boolean; gestao?: boolean; global?: boolean; consulta: Prisma.Sql;
   caminho: (r: LinhaBusca) => string;
 };
 const sql = Prisma.sql;
@@ -23,6 +23,15 @@ function fatoAnimal(tipo: string, tabela: string, grupo: string, titulo: Prisma.
     consulta: sql`SELECT t.id, concat_ws(' — ', ${titulo}, a.brinco, a.nome) AS label, concat_ws(' › ', ${grupo}::text, p.nome, to_char(t.data, 'DD/MM/YYYY')) AS contexto, concat_ws(' ', ${titulo}, a.brinco, a.nome, to_char(t.data, 'DD/MM/YYYY')) AS texto, a.id AS "alvoId", t."propriedadeId" FROM ${Prisma.raw('pecuaria."' + tabela + '"')} t JOIN pecuaria."Animal" a ON a.id = t."animalId" LEFT JOIN public."Propriedade" p ON p.id = t."propriedadeId"`, caminho };
 }
 export const FONTES_BUSCA: FonteBusca[] = [
+  { tipo: "referencia-medicamento", grupo: "Referências de medicamentos", tab: "estoque", area: "estoque", global: true,
+    consulta: sql`SELECT p.id::text AS id, concat_ws(' — ', p.nome, p.apresentacao) AS label,
+      concat_ws(' › ', CASE WHEN p."orientacaoBula"->>'versao' = '3' THEN 'Referência oficial parcial' ELSE 'Referência oficial' END, f.nome) AS contexto,
+      concat_ws(' ', p.nome, p.apresentacao, f.nome) AS texto,
+      p.id::text AS "alvoId", NULL::integer AS "propriedadeId"
+      FROM public."ProdutoCatalogo" p LEFT JOIN public."FabricanteProduto" f ON f.id = p."fabricanteId"
+      WHERE p.ativo AND p."orientacaoBula" IS NOT NULL`,
+    caminho: r => `/estoque?aba=catalogo&referenciaCatalogo=${encodeURIComponent(r.id)}&buscaCatalogo=${encodeURIComponent(r.label.split(" — ")[0])}` },
+
   { tipo: "animal", grupo: "Animais", tab: "pec-rebanho", area: "pecuaria",
     consulta: sql`SELECT a.id, concat_ws(' — ', a.brinco, nullif(a.nome, '')) AS label, concat_ws(' › ', 'Rebanho', p.nome) AS contexto, concat_ws(' ', a.brinco, a.nome, a."brincoEletronico", a.sisbov, a."codigoProvisorio", a."ideagriId"::text) AS texto, a.id AS "alvoId", loc."propriedadeId" FROM pecuaria."Animal" a ${localAnimal}`,
     caminho: r => `/pecuaria/rebanho/animais/${r.id}` },
@@ -89,6 +98,16 @@ export const FONTES_BUSCA: FonteBusca[] = [
     caminho: r => r.alvoId === "SANITARIO" ? `/pecuaria/sanidade?aba=agenda&rodadaId=${r.id}` : `/pecuaria/reproducao/programacoes/${r.id}` },
   fatoAnimal("tentativa", "TentativaReprodutiva", "Tentativas reprodutivas", sql`concat('Tentativa ', t.tipo, ' ', t.ordem)`, r => `/pecuaria/reproducao?rotina=ciclos&visao=historico&animalId=${r.alvoId}&tentativaId=${r.id}`),
   fatoAnimal("parto", "PartoAnimal", "Partos", sql`concat('Parto ', t.tipo)`, r => `/pecuaria/reproducao/partos/${r.id}`),
+  { tipo: "envio-aplicacoes-tablet", grupo: "Aplicações do tablet", tab: "pec-sanidade", area: "pecuaria", flag: "revisarAplicacoesTablet",
+    consulta: sql`SELECT e.id, concat_ws(' — ', 'Aplicações do tablet', animais.rotulo) AS label,
+      concat_ws(' › ', p.nome, e."autorNome", to_char(e.data, 'DD/MM/YYYY')) AS contexto,
+      concat_ws(' ', animais.rotulo, e."autorNome", to_char(e.data, 'DD/MM/YYYY'),
+        (SELECT string_agg(item->>'nome', ' ') FROM jsonb_array_elements(e.itens) AS item)) AS texto,
+      e.id AS "alvoId", e."propriedadeId"
+      FROM pecuaria."EnvioAplicacoesTablet" e JOIN public."Propriedade" p ON p.id = e."propriedadeId"
+      LEFT JOIN LATERAL (SELECT string_agg(concat_ws(' ', a.brinco, a.nome), ' / ' ORDER BY a.brinco) AS rotulo
+        FROM pecuaria."Animal" a WHERE a.id = ANY(e."animalIds")) animais ON true`,
+    caminho: r => `/pecuaria/sanidade/tablet/aprovacao?envio=${encodeURIComponent(r.id)}` },
   fatoAnimal("aplicacao", "AplicacaoProduto", "Aplicações sanitárias", sql`t."nomeProdutoAplicado"`, r => `/pecuaria/sanidade?aba=aplicacoes&aplicacaoId=${r.id}&animalId=${r.alvoId}`, "pec-sanidade"),
   { tipo: "fechamento-nutricao", grupo: "Fechamentos nutricionais", tab: "pec-nutricao", area: "pecuaria",
     consulta: sql`SELECT t.id, concat('Consumo — ', l.nome, ' — ', to_char(t.inicio, 'DD/MM/YYYY')) AS label, concat_ws(' › ', 'Nutrição', p.nome) AS contexto, concat_ws(' ', l.nome, 'consumo fechamento', to_char(t.inicio, 'DD/MM/YYYY'), to_char(t.fim, 'DD/MM/YYYY')) AS texto, l.id AS "alvoId", t."propriedadeId" FROM pecuaria."FechamentoConsumo" t JOIN pecuaria."Lote" l ON l.id = t."loteId" JOIN public."Propriedade" p ON p.id = t."propriedadeId"`,
@@ -121,6 +140,7 @@ export const FONTES_BUSCA: FonteBusca[] = [
 
 export function fontesAutorizadas(u: UsuarioContexto): FonteBusca[] {
   return FONTES_BUSCA.filter(f => {
+    if (f.flag && !temPermissao(u, f.flag)) return false;
     if (f.gestao && !temPermissao(u, "gerenciarAcessos")) return false;
     if (f.area === "estoque" ? !temArea(u, "pecuaria") && !temArea(u, "financeiro") : f.area && !temArea(u, f.area)) return false;
     if (f.aba && !u.dono && !u.abas.includes(f.aba) && !(f.aba === "caixinha" && u.abas.includes("cadastros"))) return false;

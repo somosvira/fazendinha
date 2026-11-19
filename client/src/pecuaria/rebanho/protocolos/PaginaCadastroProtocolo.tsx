@@ -1,10 +1,9 @@
 import { EditorRegrasAcompanhamentoModelo, type ConfiguracaoAcompanhamentoV2 } from "../reproducao/EditorRegrasAcompanhamentoModelo";
 import { validarConfiguracaoAcompanhamento } from "../reproducao/acompanhamento-api";
 import { ResumoCustoModelo } from "./ResumoCustoModelo";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { registrarGuardaNavegacao } from "../../../navegacaoGuardada";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ClipboardList } from "lucide-react";
+import { ArrowLeft, ClipboardList, Copy, FilePlus } from "lucide-react";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -39,7 +38,7 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
   const raiz = caminhoCadastroProtocolo(tipo);
   const destino = new URL(params.get("retorno") ?? raiz, window.location.origin);
   const retorno = destino.origin === window.location.origin && destino.pathname === raiz ? destino.pathname + destino.search : raiz;
-  const [escolha, setEscolha] = useState<"base" | "zero">("base");
+  const [baseAberta, setBaseAberta] = useState(false);
   const [origem, setOrigem] = useState<CadastroProtocoloMeta | null>(null);
   const [iniciado, setIniciado] = useState(false);
   const [nome, setNome] = useState("");
@@ -74,14 +73,14 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
   const versao = origem ? editarId ? origem.versao : origem.proximaVersao : 1;
   useEffect(() => { vivo.current = true; return () => { vivo.current = false; geracao.current++; }; }, []);
   useEffect(() => {
-    if (!podeLancar || iniciado || escolha !== "base") return;
+    if (!podeLancar || iniciado || !baseAberta) return;
     let ativo = true;
     setCarregandoLista(true); setErroLista(null); setLista(null);
     listarCadastrosProtocolos(tipo, pagina, busca).then(p => { if (ativo) setLista(p); })
       .catch(e => { if (ativo) setErroLista(e instanceof Error ? e.message : "Não foi possível carregar os protocolos-base."); })
       .finally(() => { if (ativo) setCarregandoLista(false); });
     return () => { ativo = false; };
-  }, [tipo, pagina, busca, escolha, iniciado, podeLancar, revisao]);
+  }, [tipo, pagina, busca, baseAberta, iniciado, podeLancar, revisao]);
   useEffect(() => {
     if (!iniciado) return;
     const removerGuarda = registrarGuardaNavegacao(() => {
@@ -167,14 +166,27 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
   const materiais = tipo === "SANITARIO" ? sanitarias.filter(e => e.tipo === "APLICACAO").map(e => ({ id: e.produtoId, quantidade: Number(e.dose), unidade: e.unidade })) : reprodutivas.flatMap(e => e.tipo === "APLICACAO" && e.planoAplicacao ? [{ id: e.planoAplicacao.produtoId, quantidade: Number(e.planoAplicacao.dose), unidade: e.planoAplicacao.unidadeDose }] : []);
   for (const p of materiais) if (p.id) { const chave = `${p.id}:${p.unidade}`; const anterior = produtos.get(chave); produtos.set(chave, { ...p, quantidade: (anterior?.quantidade ?? 0) + (Number.isFinite(p.quantidade) ? p.quantidade : 0) }); }
   if (!podeLancar) return <p role="alert">Você não tem permissão para cadastrar protocolos.</p>;
-  return <Dialog open onOpenChange={aberto => { if (!aberto && !salvando) sair(); }}><DialogContent aria-describedby={undefined} className="z-[1100] max-h-[90dvh] w-[calc(100%-2rem)] max-w-6xl overflow-y-auto p-0" overlayClassName="z-[1090]" onEscapeKeyDown={evento => { if (salvando) evento.preventDefault(); }}><div className={`protocolos-pagina protocolos-superficie cadastro-protocolo-pagina${tipo === "REPRODUTIVO" ? " cadastro-protocolo-continuo" : ""}`}>
+  return <div className="protocolos-pagina protocolos-superficie cadastro-protocolo-pagina cadastro-protocolo-continuo">
     <form id="cadastro-protocolo" noValidate onChangeCapture={() => setIndiceErro(null)} onSubmit={e => { e.preventDefault(); void salvar(); }} className="cadastro-protocolo-editor">
       <nav aria-label="Cadastro de protocolos" className="cadastro-protocolo-caminho"><button type="button" disabled={salvando} onClick={sair}><ArrowLeft size={16} aria-hidden />Protocolos {tipo === "SANITARIO" ? "sanitários" : "reprodutivos"}</button><span>/</span><span>{editarId ? "Editar protocolo" : origem ? "Nova versão" : "Novo protocolo"}</span></nav>
-      <DialogTitle asChild><h1 className="flex items-center gap-3"><ClipboardList size={26} aria-hidden />{editarId ? "Editar protocolo" : origem ? "Nova versão de protocolo" : "Novo protocolo"}</h1></DialogTitle>
+      <h1 className="flex items-center gap-3"><ClipboardList size={26} aria-hidden />{editarId ? "Editar protocolo" : origem ? "Nova versão de protocolo" : "Novo protocolo"}</h1>
       <div ref={erroRef} tabIndex={-1}><ErrorBox erro={erro} /></div>
       {carregando && <EsqueletoFormulario label="Carregando protocolo-base" />}
-      {!iniciado && !carregando && <section aria-labelledby="origem-protocolo"><h2 id="origem-protocolo">Como deseja começar?</h2><fieldset className="cadastro-protocolo-origens" disabled={carregando}><legend className="sr-only">Origem do protocolo</legend><label><input type="radio" name="origem" checked={escolha === "zero"} onChange={() => setEscolha("zero")} /><span><strong>Começar do zero</strong><small>Definir etapas e procedimentos.</small></span></label><label><input type="radio" name="origem" checked={escolha === "base"} onChange={() => setEscolha("base")} /><span><strong>Usar protocolo como base</strong><small>Criar uma nova versão e adaptar.</small></span></label></fieldset>
-        {escolha === "zero" ? <Button type="button" onClick={comecar}>Definir novo protocolo</Button> : <><label>Buscar protocolo-base<input type="search" className={classeInput} value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} /></label><ErrorBox erro={erroLista} />{erroLista && <Button secondary type="button" onClick={() => setRevisao(v => v + 1)}>Tentar carregar bases novamente</Button>}{carregandoLista && <EsqueletoLista label="Carregando protocolos-base" />}{lista && <><div className="cadastro-protocolo-bases-rolagem" role="region" aria-label="Escolha de protocolo-base, com rolagem horizontal" tabIndex={0}><table className="consulta-tabela" aria-label="Protocolos-base"><thead><tr><th>Protocolo</th><th>Versão</th><th>Procedimentos</th><th><span className="sr-only">Escolher</span></th></tr></thead><tbody>{lista.itens.map(p => <tr key={p.id}><td>{p.nome}</td><td>v{p.versao}</td><td>{p.totalEtapas}</td><td><Button secondary type="button" aria-label={`Usar ${p.nome} v${p.versao} como base`} onClick={() => void usarBase(p.id)}>Usar como base</Button></td></tr>)}</tbody></table></div>{!lista.total && <Empty>Nenhum protocolo corresponde à busca. Você pode começar do zero.</Empty>}{lista.total > 10 && <Paginacao paginaAtual={lista.pagina} totalPaginas={Math.ceil(lista.total / 10)} totalItens={lista.total} itensPorPagina={10} onPaginaChange={setPagina} rotulo="protocolos-base" idSelect="pagina-protocolos-base" />}</>}</>}
+      {!iniciado && !carregando && <section aria-labelledby="origem-protocolo">
+        <h2 id="origem-protocolo">Como deseja começar?</h2>
+        <div className="cadastro-protocolo-origens">
+          <button type="button" onClick={comecar}>
+            <FilePlus size={20} aria-hidden="true" />
+            <span><strong>Começar do zero</strong><small>Definir etapas e procedimentos.</small></span>
+          </button>
+          <button type="button" aria-expanded={baseAberta} aria-controls="protocolos-base"
+            onClick={() => setBaseAberta(aberta => !aberta)}>
+            <Copy size={20} aria-hidden="true" />
+            <span><strong>Usar protocolo como base</strong><small>Criar uma nova versão e adaptar.</small></span>
+          </button>
+        </div>
+        <div id="protocolos-base" hidden={!baseAberta}>{baseAberta && <>
+          <label>Buscar protocolo-base<input type="search" className={classeInput} value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} /></label><ErrorBox erro={erroLista} />{erroLista && <Button secondary type="button" onClick={() => setRevisao(v => v + 1)}>Tentar carregar bases novamente</Button>}{carregandoLista && <EsqueletoLista label="Carregando protocolos-base" />}{lista && <><div className="cadastro-protocolo-bases-rolagem" role="region" aria-label="Escolha de protocolo-base, com rolagem horizontal" tabIndex={0}><table className="consulta-tabela" aria-label="Protocolos-base"><thead><tr><th>Protocolo</th><th>Versão</th><th>Procedimentos</th><th><span className="sr-only">Escolher</span></th></tr></thead><tbody>{lista.itens.map(p => <tr key={p.id}><td>{p.nome}</td><td>v{p.versao}</td><td>{p.totalEtapas}</td><td><Button secondary type="button" aria-label={`Usar ${p.nome} v${p.versao} como base`} onClick={() => void usarBase(p.id)}>Usar como base</Button></td></tr>)}</tbody></table></div>{!lista.total && <Empty>Nenhum protocolo corresponde à busca. Você pode começar do zero.</Empty>}{lista.total > 10 && <Paginacao paginaAtual={lista.pagina} totalPaginas={Math.ceil(lista.total / 10)} totalItens={lista.total} itensPorPagina={10} onPaginaChange={setPagina} rotulo="protocolos-base" idSelect="pagina-protocolos-base" />}</>}</>}</div>
       </section>}
       {iniciado && <fieldset disabled={salvando} className="cadastro-protocolo-campos">
         <section><div className="cadastro-protocolo-origem"><div><h2>Origem do protocolo</h2><p>{origem ? `${origem.nome} · v${origem.versao}` : "Protocolo iniciado do zero"}</p>{origem && <p className="text-sm">{editarId ? "A gravação conclui o cadastro desta versão ainda não utilizada." : "As versões anteriores e seus atendimentos permanecem preservados."}</p>}</div>{!editarId && <Button secondary type="button" onClick={() => setConfirmar("origem")}>Trocar origem</Button>}</div></section>
@@ -185,5 +197,5 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
     </form>
     <aside className="cadastro-protocolo-revisao" aria-labelledby="revisao-protocolo"><div className="cadastro-protocolo-resumo"><h2 id="revisao-protocolo">Revisão do protocolo</h2>{!iniciado ? <p>Escolha uma base ou comece do zero para revisar a estrutura.</p> : <><h3>{nome || "Nome não informado"}</h3><p>{finalidade ? finalidades[finalidade] : "Finalidade não informada"} · versão {versao ?? "a confirmar"}</p><p>{etapasTotal} {etapasTotal === 1 ? "etapa" : "etapas"} · {total} {total === 1 ? "procedimento" : "procedimentos"}{!completo ? " · carregamento incompleto" : ""}</p>{origem && <><h3>Origem</h3><p>{origem.nome} · v{origem.versao}</p><p>Somente a configuração é copiada. Animais e atendimentos permanecem na versão de origem.</p></>}{tipo === "REPRODUTIVO" && ["IATF", "TETF"].includes(finalidade) && <dl className="cadastro-protocolo-modalidades"><div><dt>Tentativa</dt><dd>{modalidadeTentativa === "EXTERNA" ? "Acompanhar separadamente" : modalidadeTentativa === "ETAPA" ? "No protocolo" : editarId ? "Conforme versão anterior" : "A definir"}</dd></div><div><dt>Diagnóstico</dt><dd>{modalidadeDiagnostico === "EXTERNO" ? "Acompanhar separadamente" : modalidadeDiagnostico === "PROTOCOLO" ? "No protocolo" : editarId ? "Conforme versão anterior" : "A definir"}</dd></div></dl>}{tipo === "REPRODUTIVO"&&<ResumoCustoModelo etapas={reprodutivas} propriedadeId={getPropriedadeAtiva()} completo={completo&&iniciado}/>}<h3>Produtos previstos por animal</h3>{produtos.size ? <ListaRascunho itens={[...produtos.values()]} rotulo="produtos previstos" renderizar={p => <div className="cadastro-protocolo-produto" key={`${p.id}:${p.unidade}`}><SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: tipo })} rotulo="Produto previsto" valor={p.id} onChange={() => {}} /><span>{p.quantidade.toLocaleString("pt-BR")} {p.unidade}</span></div>} /> : <Empty>Nenhum produto predefinido.</Empty>}{reprodutivas.some(e => e.tipo === "TENTATIVA") && <p>O sêmen ou embrião será definido no atendimento individual ou coletivo.</p>}</>}</div></aside><footer className="cadastro-protocolo-acoes"><p>Salvar o modelo não inclui animais nem movimenta estoque.</p><Button type="submit" form="cadastro-protocolo" disabled={!iniciado || !completo || salvando || carregando || !versao}>{salvando ? "Salvando…" : "Salvar protocolo"}</Button><Button secondary type="button" disabled={salvando} onClick={sair}>Cancelar</Button></footer>
     <ConfirmDialog open={!!confirmar} title={confirmar === "origem" ? "Trocar a origem do protocolo?" : "Sair sem salvar?"} message="As alterações desta página serão descartadas. Os protocolos já cadastrados permanecem preservados." confirmLabel={confirmar === "origem" ? "Escolher outra origem" : "Sair sem salvar"} onCancel={() => { resolverSaida.current?.(false); resolverSaida.current = null; setConfirmar(null); }} onConfirm={() => { if (confirmar === "sair") { liberarSaida.current = true; if (resolverSaida.current) { resolverSaida.current(true); resolverSaida.current = null; } else navegarPara(retorno); } else { geracao.current++; setIniciado(false); setOrigem(null); setErro(null); setSanitarias([]); setReprodutivas([]); } setConfirmar(null); }} />
-  </div></DialogContent></Dialog>;
+  </div>;
 }

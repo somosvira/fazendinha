@@ -9,8 +9,9 @@ it("Voltar da página de novo protocolo aguarda confirmação e cancelar preserv
   const lista = "/configuracoes/pecuaria/sanidade/protocolos";
   window.history.replaceState(null, "", nova);
   render(<ConfiguracoesPecuaria podeLancar />);
-  fireEvent.click(screen.getByRole("radio", { name: /Começar do zero/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Definir novo protocolo" }));
+  expect(screen.getByRole("heading", { name: "Novo protocolo", level: 1 })).toBeTruthy();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /Começar do zero/ }));
   fireEvent.change(screen.getByLabelText("Nome do protocolo"), { target: { value: "Edição em campo" } });
   window.history.pushState(null, "", lista);
   fireEvent(window, new PopStateEvent("popstate"));

@@ -42,6 +42,9 @@ export const AREAS: Area[] = [
 
 // Permissões sensíveis (além da visibilidade de abas)
 export const FLAGS: Flag[] = [
+  { id: "enviarAplicacoesTablet", label: "Enviar aplicações pelo tablet", desc: "Registrar aplicações para revisão em Sanidade" },
+  { id: "revisarAplicacoesTablet", label: "Revisar aplicações do tablet", desc: "Aprovar com baixa de estoque ou devolver com motivo" },
+  { id: "gerenciarTemplatesTablet", label: "Gerenciar templates do tablet", desc: "Escolher os produtos de cada template por sítio" },
   { id: "verValores", label: "Ver valores em R$", desc: "Sem isso, vê estrutura e categorias mas com valores ocultos" },
   { id: "verSalarios", label: "Ver Pessoal / Salários", desc: "Folha, salários e detalhe de pessoal" },
   { id: "lancar", label: "Registrar operações", desc: "Criar compras, vendas, serviços e seus efeitos financeiros" },

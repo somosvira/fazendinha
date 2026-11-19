@@ -1,0 +1,428 @@
+[
+  {
+    "nomeCatalogo": "Cobactan Vl",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "itens": [
+      {
+        "id": "5b5935f9-c42a-5136-b3a7-90c7f003d5c2",
+        "apresentacao": "Seringa 8 g"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/cobactan-vl/",
+      "titulo": "Ficha oficial brasileira — Cobactan Vl",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "33393976af080e350d08e7b5c3a7af77b6e87424c1cef0ffd6ea69824b15a968",
+      "proporcoes": [],
+      "especie": "Bovinos — vacas em lactação",
+      "concentracao": "Cada seringa de 8 g contém 75 mg de cefquinoma base.",
+      "dosagem": "Uma seringa por quarto infectado após cada ordenha, totalizando três infusões.",
+      "via": "Intramamária",
+      "carencias": {
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 48,
+          "condicao": "Após a última aplicação."
+        },
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Texto oficial contraditório sobre destinação do leite; confirmar com o fabricante."
+        }
+      },
+      "cuidados": "Esgotar e higienizar o quarto antes da infusão. Não usar em animais com hipersensibilidade a cefalosporinas. Conservar entre 2 e 8 °C, protegido da luz; não congelar.",
+      "pendencias": [
+        {
+          "campo": "carenciasLeite",
+          "motivo": "A página usa “destinado ao consumo humano até 4,5 dias (108 HORAS)”, redação contraditória que não confirma um prazo seguro de descarte. Aguardar correção ou confirmação oficial."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cobactan-vl/",
+          "secao": "Resumo da bula — especie"
+        },
+        "concentracao": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cobactan-vl/",
+          "secao": "Composição / descrição"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cobactan-vl/",
+          "secao": "Resumo da bula — dosagem"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cobactan-vl/",
+          "secao": "Resumo da bula — via"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cobactan-vl/",
+          "secao": "Resumo da bula — cuidados"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cobactan-vl/",
+          "secao": "Períodos de carência — carne"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Cobactan",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "itens": [
+      {
+        "id": "a7217a0d-842e-506d-aa74-efb87f6e939d",
+        "apresentacao": "Frasco 100 ml"
+      },
+      {
+        "id": "f8a83e4a-d430-5257-bbca-e877c01c7047",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/cobactan/",
+      "titulo": "Ficha oficial brasileira — Cobactan",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "d1cd1c5320fee4cb150045db5da7195b96f062674a11d3f7e9973e1a66da3d51",
+      "proporcoes": [
+        {
+          "quantidade": "2",
+          "unidade": "ML",
+          "pesoKg": "50",
+          "condicao": "Bovinos: indicações respiratórias, podais e mastite sistêmica descritas na tabela."
+        },
+        {
+          "quantidade": "4",
+          "unidade": "ML",
+          "pesoKg": "50",
+          "condicao": "Bezerros com septicemia por E. coli."
+        }
+      ],
+      "especie": "Bovinos",
+      "concentracao": null,
+      "dosagem": "Bovinos: 2 mL/50 kg diariamente, por 3–5 dias nas indicações respiratórias e podais; na mastite aguda por E. coli com sinais sistêmicos, por dois dias. Bezerros com septicemia por E. coli: 4 mL/50 kg diariamente por 3–5 dias.",
+      "via": "Intramuscular",
+      "carencias": {
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 96,
+          "condicao": "Bovinos, após a última aplicação."
+        },
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Bovinos: carência zero expressamente declarada."
+        }
+      },
+      "cuidados": "Contraindicado em hipersensibilidade a betalactâmicos. Armazenar entre 2 e 8 °C, protegido da luz; não congelar.",
+      "pendencias": [
+        {
+          "campo": "concentracao",
+          "motivo": "A ficha e sua tabela de dosagem não publicam a composição quantitativa completa; não deduzir a concentração a partir da dose."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cobactan/",
+          "secao": "Resumo da bula — especie"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/wp-content/uploads/sites/55/2024/01/DOSAGEM_c06564.png",
+          "secao": "Tabela — bovinos"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/wp-content/uploads/sites/55/2024/01/DOSAGEM_c06564.png",
+          "secao": "Tabela — bovinos"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cobactan/",
+          "secao": "Resumo da bula — cuidados"
+        },
+        "carenciasLeite": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cobactan/",
+          "secao": "Períodos de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cobactan/",
+          "secao": "Períodos de carência — carne"
+        },
+        "proporcoes": {
+          "url": "https://www.msd-saude-animal.com.br/wp-content/uploads/sites/55/2024/01/DOSAGEM_c06564.png",
+          "secao": "Tabela — bovinos"
+        }
+      },
+      "documentosComplementares": [
+        {
+          "url": "https://www.msd-saude-animal.com.br/wp-content/uploads/sites/55/2024/01/DOSAGEM_c06564.png",
+          "secao": "Tabela oficial de dosagem e administração",
+          "documentoSha256": "c1f55051934e3932186c48f7122d3fcd8ceb7dbcb9b66c5bcf79b4bcdd3ca609"
+        }
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Imizol Injetável",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "4dcf7e40-6579-5a74-9fe2-e06a1c5d69ad",
+        "apresentacao": "Frasco 1 ml"
+      },
+      {
+        "id": "ab7ccb03-b235-5b5e-8911-0e2312e90ba9",
+        "apresentacao": "Frasco 100 ml"
+      },
+      {
+        "id": "5673f371-3968-529f-833c-67f54be84528",
+        "apresentacao": "Frasco 15 ml"
+      },
+      {
+        "id": "845eb685-8f01-5e24-a694-a6da2cc316d9",
+        "apresentacao": "Frasco 2 ml"
+      },
+      {
+        "id": "ddccc8ee-c7bf-5996-80de-22b840d158db",
+        "apresentacao": "Frasco 200 ml"
+      },
+      {
+        "id": "3e16ffa8-3acb-5b63-ad1a-83b2c1c1ae22",
+        "apresentacao": "Frasco 4 ml"
+      },
+      {
+        "id": "06a09845-bd90-599c-86ef-c81dabb89201",
+        "apresentacao": "Frasco 5 ml"
+      },
+      {
+        "id": "11fd9406-a0f5-5fa2-9c9c-8c1fdbf3e9a5",
+        "apresentacao": "Frasco 50 ml"
+      },
+      {
+        "id": "bf3f5456-5346-5585-aed8-b3cd431e8755",
+        "apresentacao": "Frasco 500 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/imizol/",
+      "titulo": "Ficha oficial brasileira — Imizol Injetável",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "31476987625273b9c836f223e910dc66b576f1cf88bcde17077da0e69db7ffc4",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "40",
+          "condicao": "Tratamento de anaplasmose ou infecções mistas em bovinos."
+        },
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "100",
+          "condicao": "Tratamento de babesiose confirmada em bovinos."
+        }
+      ],
+      "especie": "Bovinos",
+      "concentracao": null,
+      "dosagem": "Tratamento em bovinos: anaplasmose ou infecção mista, 1 mL/40 kg; babesiose confirmada, 1 mL/100 kg. Não repetir antes de sete dias. A quimioprofilaxia tem condições próprias na fonte e não se confunde com estas doses de tratamento.",
+      "via": "Subcutânea em bovinos.",
+      "carencias": {
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 5784,
+          "condicao": "Bovinos: 241 dias após a última aplicação, conforme o fabricante."
+        },
+        "leite": {
+          "estado": "PROIBIDO",
+          "horas": null,
+          "condicao": "Não aplicar em fêmeas produtoras de leite destinado ao consumo humano."
+        }
+      },
+      "cuidados": "Conservar entre 2 e 25 °C, em local seco e protegido da luz. Uso sob orientação veterinária; não repetir o tratamento antes de sete dias.",
+      "pendencias": [
+        {
+          "campo": "concentracao",
+          "motivo": "O resumo oficial não publica a composição quantitativa; conferir fórmula na bula ou rotulagem brasileira."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/imizol/",
+          "secao": "Resumo da bula — especie"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/produto/imizol/",
+          "secao": "Resumo da bula — dosagem"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/produto/imizol/",
+          "secao": "Resumo da bula — via"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/imizol/",
+          "secao": "Resumo da bula — cuidados"
+        },
+        "carenciasLeite": {
+          "url": "https://www.msd-saude-animal.com.br/produto/imizol/",
+          "secao": "Períodos de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/imizol/",
+          "secao": "Períodos de carência — carne"
+        },
+        "proporcoes": {
+          "url": "https://www.msd-saude-animal.com.br/produto/imizol/",
+          "secao": "Posologia — bovinos"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Cepravin Anti-Mastitico P/ Vaca Sec.",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "27e90c72-fac7-5b1d-b4dc-708ea502d13e",
+        "apresentacao": "Seringa 3 g"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/cepravin/",
+      "titulo": "Ficha oficial brasileira — Cepravin Anti-Mastitico P/ Vaca Sec.",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "e877e0e97e850a88cc033fc953d88241f5d6be42dbf373c27d83b5ed7de806b2",
+      "proporcoes": [],
+      "especie": "Bovinos — vacas secas; não usar em lactação.",
+      "concentracao": null,
+      "dosagem": "Uma seringa por quarto após a última ordenha da lactação.",
+      "via": "Intramamária, pelo canal do teto.",
+      "carencias": {
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Bovinos: carência zero expressamente declarada."
+        },
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A fonte autoriza o leite quatro dias após o PARTO somente se houver pelo menos 54 dias entre administração e parto. Não é prazo contado da aplicação; para intervalo menor, não há orientação publicada."
+        }
+      },
+      "cuidados": "Não usar em vacas em lactação nem em animais hipersensíveis a betalactâmicos. Higienizar o teto antes de infundir. Guardar em local seco, fresco e protegido da luz.",
+      "pendencias": [
+        {
+          "campo": "concentracao",
+          "motivo": "O resumo oficial não publica a composição quantitativa."
+        },
+        {
+          "campo": "carenciasLeite",
+          "motivo": "A condição oficial depende da data do parto e de intervalo mínimo de 54 dias desde a administração. Mantido sem horas fixas após aplicação; confirmar orientação para parto antes desse intervalo."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cepravin/",
+          "secao": "Resumo da bula — especie"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cepravin/",
+          "secao": "Resumo da bula — dosagem"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cepravin/",
+          "secao": "Resumo da bula — via"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cepravin/",
+          "secao": "Resumo da bula — cuidados"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/cepravin/",
+          "secao": "Períodos de carência — carne"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Chorulon 5000 Ui",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "itens": [
+      {
+        "id": "0b842944-184a-5219-9a88-0705b842e170",
+        "apresentacao": "Frasco 5 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 2,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/chorulon-5000-ui/",
+      "titulo": "Ficha oficial brasileira — Chorulon 5000 Ui",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "4f61d4c5af7241179ebcc51206c43ebe126e699c086393726cfd77da16057fa4",
+      "proporcoes": [],
+      "especie": "Bovinos — vacas e novilhas",
+      "concentracao": "5.000 UI de hCG por frasco, acompanhado de 5 mL de diluente.",
+      "dosagem": "Vacas e novilhas: para melhora da concepção, 1.500 UI por via IM ou IV na inseminação ou monta; doença cística ovariana, 3.000 UI por via IV. Doses expressas em UI por indicação, sem proporção por kg.",
+      "via": "Intramuscular ou intravenosa na indicação de concepção; intravenosa na doença cística ovariana.",
+      "carencias": {
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Bovinos: carência zero declarada."
+        },
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Bovinos: carência zero declarada."
+        }
+      },
+      "cuidados": "Reconstituir com todo o diluente. Conservar entre 2 e 8 °C, protegido da luz; após reconstituição, manter refrigerado e utilizar em até 12 horas. Podem ocorrer reações anafiláticas.",
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/chorulon-5000-ui/",
+          "secao": "Resumo da bula — especie"
+        },
+        "concentracao": {
+          "url": "https://www.msd-saude-animal.com.br/produto/chorulon-5000-ui/",
+          "secao": "Composição / descrição"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/wp-content/uploads/sites/55/2020/07/chorulon-table.png",
+          "secao": "Tabela — bovinos"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/wp-content/uploads/sites/55/2020/07/chorulon-table.png",
+          "secao": "Tabela — bovinos"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/chorulon-5000-ui/",
+          "secao": "Resumo da bula — cuidados"
+        },
+        "carenciasLeite": {
+          "url": "https://www.msd-saude-animal.com.br/produto/chorulon-5000-ui/",
+          "secao": "Períodos de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/chorulon-5000-ui/",
+          "secao": "Períodos de carência — carne"
+        },
+        "proporcoes": {
+          "url": "https://www.msd-saude-animal.com.br/produto/chorulon-5000-ui/",
+          "secao": "Dosagem por indicação, sem proporção por peso"
+        }
+      },
+      "documentosComplementares": [
+        {
+          "url": "https://www.msd-saude-animal.com.br/wp-content/uploads/sites/55/2020/07/chorulon-table.png",
+          "secao": "Tabela oficial de dosagem e administração",
+          "documentoSha256": "2325752caadbb1a6f60c59faac22dedae7770acdfe42cde36f3ce3e24fab7a1c"
+        }
+      ]
+    }
+  }
+]

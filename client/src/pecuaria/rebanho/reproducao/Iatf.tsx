@@ -37,7 +37,6 @@ import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type Cabecalh
 import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
 import { OperacaoProtocolo } from "../protocolos/OperacaoProtocolo";
-import {BibliotecaReprodutiva} from "./BibliotecaReprodutiva";
 import { CampoDataIatf, dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 export { dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 import { navegarPara } from "../../../router";
@@ -495,7 +494,6 @@ export function Iatf({
         onCancel={() => setConferenciaInicio(null)}
       />}
       {!paginaProgramacao && <ErrorBox erro={erro} />}
-      {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={sitioEfetivo} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
       {modo === "operacao" && !programacaoId && !paginaProgramacao && <Panel>
         <div className="repro-consulta-titulo"><h2>Protocolos</h2><div className="flex gap-1" role="group" aria-label="Situação dos protocolos">
           {[["", "Todos"], ["ABERTA", "Ativos"], ["ENCERRADA", "Histórico"]].map(([status, rotulo]) => <Button key={status} secondary={criterios.status !== status} aria-pressed={criterios.status === status} onClick={() => {
@@ -573,8 +571,20 @@ export function Iatf({
         <div className="repro-programacao-detalhe pec-ficha ficha-v4 ficha-animal-geral">
           <header className="ficha-animal-cabecalho">
             <div className="ficha-animal-ilustracao bg-accent text-primary"><ClipboardList size={36} strokeWidth={1.6}/></div>
-            <div className="ficha-animal-identidade"><h2 className="ficha-animal-identificacao"><span className="ficha-animal-brinco">{detalhe.nome}</span><span className="ficha-animal-nome">{detalhe.protocolo.nome}</span><span className="ficha-animal-lote">Versão {detalhe.protocolo.versao} · Início {horarioIatf(detalhe.inicioReferencia, detalhe.precisaoTemporal).replace(" · horário não informado", "")} · {detalhe.participantesTotal ?? "—"} participantes <span className="protocolo-status-inline"><Pill tone={detalhe.status === "ABERTA" ? "green" : "neutral"}>{detalhe.status === "ABERTA" ? "Em andamento" : detalhe.status === "ENCERRADA" ? "Encerrada" : "A conferir"}</Pill></span></span></h2></div>
-
+            <div className="ficha-animal-identidade">
+              <h2 className="ficha-animal-identificacao">
+                <span className="ficha-animal-brinco">{detalhe.nome}</span>
+                <span className="ficha-animal-nome">{detalhe.protocolo.nome}</span>
+              </h2>
+              <ul className="col-span-full flex flex-wrap items-center gap-2" aria-label="Dados da programação">
+                <li><Pill>Versão {detalhe.protocolo.versao}</Pill></li>
+                <li><Pill>Início {horarioIatf(detalhe.inicioReferencia, detalhe.precisaoTemporal).replace(" · horário não informado", "")}</Pill></li>
+                <li><Pill>{detalhe.participantesTotal ?? "—"} {detalhe.participantesTotal === 1 ? "participante" : "participantes"}</Pill></li>
+                <li><Pill tone={detalhe.status === "ABERTA" ? "green" : "neutral"}>
+                  {detalhe.status === "ABERTA" ? "Em andamento" : detalhe.status === "ENCERRADA" ? "Encerrada" : "A conferir"}
+                </Pill></li>
+              </ul>
+            </div>
           </header>
 
           {!onFecharDetalhe && <div className="mb-3 flex justify-end"><Button secondary onClick={() => { void executarComGuardaNavegacao(() => { aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }); }}>Fechar detalhes</Button></div>}

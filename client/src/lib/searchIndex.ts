@@ -123,6 +123,9 @@ const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
   { id: "acao-nova-operacao", tab: "lancar", label: "Nova operação", grupo: "Ações", acao: true, exigeLancamento: true, caminho: "/financeiro/operacoes/nova", sinonimos: ["registrar compra", "registrar venda", "lançar despesa"] },
   { id: "acao-nova-visita", tab: "pec-visitas", label: "Planejar visita", grupo: "Ações", acao: true, exigeLancamento: true, caminho: "/pecuaria/visitas/nova", sinonimos: ["nova visita", "veterinário"] },
 
+  { id: "tablet-registro", tab: "pec-sanidade", label: "Registrar aplicações no tablet", grupo: "Pecuária", caminho: "/pecuaria/sanidade/tablet", sinonimos: ["medicamentos", "tratamento", "vacas"] },
+  { id: "tablet-aprovacao", tab: "pec-sanidade", label: "Aprovação de aplicações do tablet", grupo: "Pecuária", caminho: "/pecuaria/sanidade/tablet/aprovacao", sinonimos: ["conferir", "pendentes"] },
+  { id: "tablet-templates", tab: "pec-sanidade", label: "Templates por doença no tablet", grupo: "Pecuária", caminho: "/pecuaria/sanidade/tablet/templates", sinonimos: ["modelo", "medicamentos"] },
 ];
 
 export const COMANDOS: Comando[] = comandosBase.map(c => ({ ...c,

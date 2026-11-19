@@ -21,7 +21,7 @@ vi.mock("../../../estoque/api",()=>({listarProdutos:vi.fn().mockResolvedValue([]
 vi.mock("../api",()=>({listarMaterialGenetico:vi.fn().mockResolvedValue([])}));
 afterEach(() => { cleanup(); setPropriedadeAtiva(null); window.history.replaceState(null, "", "/"); });
 function paginaNova(query = "") { setPropriedadeAtiva(7); window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo" + query); render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />); }
-function comecarZero() { paginaNova(); fireEvent.click(screen.getByRole("radio", { name: /Começar do zero/ })); fireEvent.click(screen.getByRole("button", { name: "Definir novo protocolo" })); }
+function comecarZero() { paginaNova(); fireEvent.click(screen.getByRole("button", { name: /Começar do zero/ })); }
 it.each(["IA", "TE"] as const)("cria modelo %s com procedimentos no mesmo calendário e material definido no atendimento", async tentativaTipo => {
   vi.clearAllMocks();
   vi.mocked(reqV4).mockImplementation(async path => path.startsWith("/reproducao/biblioteca") ? [] : {});
@@ -78,31 +78,10 @@ it.each(["Editar rascunho","Nova versão"])("%s envia apenas parâmetros editáv
   expect(JSON.stringify(body)).not.toContain("referencias");
 });
 
-it.each([
-  { propriedadeId: undefined, sitioEsperado: 7 },
-  { propriedadeId: 9, sitioEsperado: 9 },
-])("copia a referência no sítio $sitioEsperado usando o contexto disponível", async ({ propriedadeId, sitioEsperado }) => {
-  vi.clearAllMocks();
-  setPropriedadeAtiva(7);
-  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos");
-  const referencia = {
-    id: "referencia", nome: "Referência técnica", familia: "Família", versaoReferencia: "1",
-    fonte: { titulo: "Publicação técnica", url: "https://example.org/referencia", pagina: 1, data: "2026-01-01", consultadaEm: "2026-10-16" },
-    objetivo: "Conferir manejo", populacaoIndicada: "Matrizes", camposACompletar: ["Produtos e doses"], observacoes: [],
-  };
-  vi.mocked(reqV4).mockImplementation(async path => path === "/reproducao/biblioteca" ? [referencia] : []);
-  render(<Iatf modo="cadastros" podeLancar propriedadeId={propriedadeId} />);
-  await screen.findByText("Referência técnica");
-  fireEvent.click(screen.getByText("Biblioteca de referências reprodutivas"));
-  mudarCampo(screen.getByLabelText("Nome do novo rascunho"), { target: { value: "Manejo da fazenda" } });
-  mudarCampo(screen.getByLabelText("Versão do novo rascunho"), { target: { value: "1" } });
-  fireEvent.click(screen.getByRole("button", { name: "Copiar como rascunho" }));
-  await waitFor(() => expect(reqV4).toHaveBeenCalledWith(
-    "/reproducao/biblioteca/referencia/copiar",
-    expect.objectContaining({ propriedadeId: sitioEsperado, nome: "Manejo da fazenda", versao: 1 }),
-    "POST", sitioEsperado,
-  ));
-  expect(screen.queryByText("Selecione um sítio para registrar a autoria da cópia.")).toBeNull();
+it("cadastro de protocolos abre sem a biblioteca de referências", async () => {
+  render(<Iatf modo="cadastros" podeLancar propriedadeId={7} />);
+  await screen.findByRole("heading", { name: "Protocolos reprodutivos" });
+  expect(screen.queryByText("Biblioteca de referências reprodutivas")).toBeNull();
 });
 it("editar quantidade conserva classificação explícita da aplicação", async () => {
   vi.clearAllMocks();

@@ -10,6 +10,11 @@ import { processarRadarDiario } from "./services/assistente/radar/servico.js";
 import { apurarMetasAutomaticas } from "./services/assistente/metas/servico.js";
 import { processarAutomacoes } from "./services/pecuaria/protocolos/automacao.js";
 
+import { sincronizarPrograma } from "./services/pecuaria/leiloes/sincronizacao.js";
+
+import { sincronizarAmostraErural } from "./services/pecuaria/leiloes/erural.js";
+
+
 export default {
   fetch: app.fetch.bind(app),
   async scheduled(controller: { scheduledTime: number; cron?: string }) {
@@ -19,6 +24,17 @@ export default {
     }
     // Manter rotinas existentes a cada 15 minutos.
     if (controller.cron && Math.floor(controller.scheduledTime / 60_000) % 15 !== 0) return;
+    if (env.LEILOES_ERURAL_ENABLED && new Date(controller.scheduledTime).getUTCMinutes() === 0) {
+      try { await comPrismaPorRequisicao(() => sincronizarAmostraErural(new Date(controller.scheduledTime))); }
+      catch (erro) { console.error("[leiloes/erural]", erro instanceof Error ? erro.message : "Erro"); }
+    }
+    if (env.LEILOES_PROGRAMA_ENABLED) {
+      try {
+        console.info("[leiloes/programa]", await comPrismaPorRequisicao(() => sincronizarPrograma(new Date(controller.scheduledTime))));
+      } catch (erro) {
+        console.error("[leiloes/programa] falha de sincronização", erro instanceof Error ? erro.name : "Erro");
+      }
+    }
     if (env.ALERTAS_CRON_ENABLED) {
       const db = criarPrismaClient();
       try { await avaliarAlertasTemporais(db, new Date(controller.scheduledTime)); await avaliarAlertasReprodutivos(db, new Date(controller.scheduledTime)); }

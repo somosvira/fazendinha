@@ -121,6 +121,7 @@ describe("critério versionado de colostro", () => {
         movimento: { data }, sessao: { horario: "06:00" }, vinculosMedicoes: [] }]) },
       movimentoEstoque: { findUniqueOrThrow: vi.fn(async () => ({ propriedadeId: 2 })) },
       aplicacaoProduto: { findMany: vi.fn(async () => [aplicacao]) },
+      envioAplicacoesTablet: { findMany: vi.fn(async () => []) },
     };
     await expect(conferirCarenciaOrigensVendaTx(vendaTx as unknown as Prisma.TransactionClient, [id(60)])).rejects.toMatchObject({ code: "CONFLITO" });
     expect(carencia.animais[0].evidencias).toHaveLength(1);

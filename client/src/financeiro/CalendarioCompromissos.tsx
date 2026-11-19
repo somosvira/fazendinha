@@ -43,7 +43,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
       </div>
       <Button variant="outline" size={resumo ? "sm" : "default"} onClick={() => mudarMes(mesAtual())}>Hoje</Button>
     </div>
-    <div className={`flex flex-wrap gap-x-4 gap-y-2 text-ink-3 ${resumo ? "px-3 py-2 text-xs" : "px-4 py-3 text-sm"}`}><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--fin-pendente)]" />A pagar</span><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--fin-entrada)]" />A receber</span><span className={resumo ? "sr-only" : undefined}>Clique em um compromisso para consultar os detalhes.</span></div>
+    <div className={`flex flex-wrap gap-x-4 gap-y-2 text-ink-3 ${resumo ? "px-3 py-2 text-xs" : "px-4 py-3 text-sm"}`}><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--fin-pendente)]" />A pagar</span><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[var(--fin-entrada)]" />A receber</span></div>
     {!temCompromissosNoMes && <p role="status" className="px-4 pb-3 text-sm text-ink-3">Nenhum compromisso neste mês para a visão selecionada.</p>}
     {telaPequena && !resumo ? <ul aria-label="Agenda do mês" className="max-h-[60dvh] divide-y divide-border overflow-y-auto">
       {itens.filter(c => c.dataVencimento.startsWith(mes)).sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento)).map(c => <li key={c.id}>

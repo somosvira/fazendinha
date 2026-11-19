@@ -160,7 +160,15 @@ it("mantém fluxo consolidado independente dos filtros dentro do extrato", async
   fireEvent.mouseDown(screen.getByRole("tab", { name: "Análise" }));
   const grafico = await screen.findByRole("region", { name: "Gráfico de entradas e saídas" });
   expect(screen.queryByRole("button", { name: "Mostrar receitas e despesas" })).toBeNull();
-  expect(screen.getByText(/Todas as contas da fazenda; inclui contas/)).toBeTruthy();
+  expect(screen.queryByText(/Todas as contas da fazenda; inclui contas/)).toBeNull();
+  const abrirValores = screen.getByRole("button", { name: "Ver valores por mês" });
+  abrirValores.focus();
+  fireEvent.click(abrirValores);
+  const modalValores = await screen.findByRole("dialog", { name: "Valores por mês" });
+  expect(within(modalValores).getByRole("table", { name: "Valores de entradas e saídas por mês" })).toBeTruthy();
+  fireEvent.keyDown(modalValores, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Valores por mês" })).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(abrirValores));
   fireEvent.mouseDown(screen.getByRole("tab", { name: "Extrato geral" }));
   const secaoExtrato = document.getElementById("extrato-geral")!;
   await alterarFiltroAdicional("Filtrar por conta", uid(1), secaoExtrato);

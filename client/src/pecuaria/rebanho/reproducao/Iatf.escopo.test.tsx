@@ -39,16 +39,6 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); setPropriedadeAtiva(null); });
 
-it('cópia na montagem Iatf usa o sítio explícito mesmo com outro ativo', async () => {
-  render(<Iatf propriedadeId={7} modo="cadastros" podeLancar />);
-  await screen.findByText('Referência QA');
-  fireEvent.click(screen.getByText('Biblioteca de referências reprodutivas'));
-  fireEvent.change(screen.getByLabelText('Nome do novo rascunho'), { target: { value: 'Cópia no sítio explícito' } });
-  fireEvent.change(screen.getByLabelText('Versão do novo rascunho'), { target: { value: '1' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Copiar como rascunho' }));
-  await waitFor(() => expect(reqV4).toHaveBeenCalledWith('/reproducao/biblioteca/ref/copiar', expect.objectContaining({ propriedadeId: 7 }), 'POST', 7));
-});
-
 it.each([99, null])('custos da programação inteira conservam sítio explícito com ativo %s', async ativo => {
   setPropriedadeAtiva(ativo);
   render(<Iatf propriedadeId={7} podeLancar />);

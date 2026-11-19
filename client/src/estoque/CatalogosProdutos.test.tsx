@@ -2,13 +2,14 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CatalogoProdutos, SeletorCatalogoProduto, rotuloUsoCatalogo } from './CatalogosProdutos';
-const mocks = vi.hoisted(() => ({ listarCatalogo: vi.fn(), listarCatalogoProdutos: vi.fn() }));
+const mocks = vi.hoisted(() => ({ listarCatalogo: vi.fn(), listarCatalogoProdutos: vi.fn(), obterReferenciaCatalogo: vi.fn() }));
 vi.mock('./catalogos-api', async importar => ({ ...(await importar<typeof import('./catalogos-api')>()), ...mocks }));
 const base = { apresentacao: 'Frasco 50 ml', fabricante: { id: 'f1', nome: 'Fabricante A' }, classificacaoTecnica: { id: 'c1', nome: 'Endectocidas' }, usoSanitario: true, usoNutricional: false, usoGenetico: false };
 const naoAdotado = { ...base, id: 'cat-1', nomeCompleto: 'Abamectina 1% (Frasco 50 ml)', produtoId: null };
 const adotado = { ...base, id: 'cat-2', nomeCompleto: 'Ivermectina 1% (Frasco 50 ml)', produtoId: 'prod-9' };
 beforeEach(() => {
   vi.clearAllMocks();
+  history.replaceState(null, "", "/estoque?aba=catalogo");
   mocks.listarCatalogoProdutos.mockResolvedValue({ itens: [naoAdotado, adotado], total: 2, pagina: 1, porPagina: 10 });
   mocks.listarCatalogo.mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 });
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} }); Element.prototype.scrollIntoView = vi.fn();
@@ -52,4 +53,19 @@ it('rótulo de uso junta os usos marcados', () => {
 it('seletor de fabricante não oferece cadastro rápido', () => {
   render(<SeletorCatalogoProduto tipo="fabricantes" rotulo="Fabricante" valor="" onChange={vi.fn()} />);
   expect(screen.queryByRole('button', { name: 'Cadastrar fabricante' })).toBeNull();
+});
+
+it("abre a referência exata pela URL e conserva fonte e condição", async () => {
+  const item = { ...naoAdotado, orientacaoBula: {
+    fonte: "https://calbos.com.br/produto/pirosan/", titulo: "Ficha oficial", consultadaEm: "2026-11-17",
+    especie: "Bovinos", concentracao: "Formulação conferida", dosagem: "Dose específica", via: "Intramuscular",
+    cuidados: "Condição conferida na fonte", tipoFonte: "FICHA_OFICIAL",
+  } };
+  history.replaceState(null, "", "/estoque?aba=catalogo&referenciaCatalogo=cat-1&buscaCatalogo=Abamectina");
+  mocks.obterReferenciaCatalogo.mockResolvedValue(item);
+  render(<CatalogoProdutos />);
+  expect(await screen.findByRole("dialog")).toBeTruthy();
+  expect(mocks.obterReferenciaCatalogo).toHaveBeenCalledWith("cat-1");
+  expect(screen.getByText("Dose específica")).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Abrir documento oficial" }).getAttribute("href")).toBe(item.orientacaoBula.fonte);
 });

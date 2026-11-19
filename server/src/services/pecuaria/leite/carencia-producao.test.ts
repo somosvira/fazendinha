@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Prisma } from "@prisma/client";
-import { classificarCarenciaProducao, conferirCarenciaOrigensVendaTx, type AplicacaoCarenciaProducao } from "./carencia-producao.js";
+import { classificarCarenciaProducao, conferirCarenciaOrigensVendaTx, conferirCarenciaProducaoTx, type AplicacaoCarenciaProducao } from "./carencia-producao.js";
 const dados = { data: new Date("2026-10-19"), horario: "08:00", animalIds: ["vaca"] };
 const aplicacao: AplicacaoCarenciaProducao = { id: "aplicacao", animalId: "vaca", data: new Date("2026-10-18"), aplicadaEm: new Date("2026-10-18T13:00:00Z"), precisaoTemporal: "HORA", estadoCarenciaLeite: "INFORMADO", carenciaLeiteHoras: 24, aptidaoCarenciaSnapshot: "LEITE", consumoMantido: false, administracaoMantida: null };
 const estado = (aplicacoes: AplicacaoCarenciaProducao[], horario: string | null = "08:00") => classificarCarenciaProducao({ ...dados, horario }, aplicacoes).animais[0].estado;
@@ -30,10 +30,21 @@ describe("carência comercial na data da produção", () => {
     const tx = {
       entradaProducaoLeite: { findMany: vi.fn(async () => [{ id: "origem", movimento: { data: dados.data }, sessao: { horario: dados.horario }, vinculosMedicoes: [{ medicao: { participante: { animalId: "vaca" } } }] }]) },
       aplicacaoProduto: { findMany: vi.fn(async () => [aplicacao]) },
+      envioAplicacoesTablet: { findMany: vi.fn(async () => []) },
     };
     await expect(conferirCarenciaOrigensVendaTx(tx as unknown as Prisma.TransactionClient, ["origem"])).rejects.toMatchObject({ code: "CONFLITO" });
     expect(Object.keys(tx.entradaProducaoLeite)).toEqual(["findMany"]);
     tx.aplicacaoProduto.findMany.mockResolvedValue([]);
     await expect(conferirCarenciaOrigensVendaTx(tx as unknown as Prisma.TransactionClient, ["origem"])).resolves.toBeUndefined();
+  });
+  it("sinaliza envio pendente apenas a partir do horário do fato e retira o aviso após substituição", async () => {
+    const pendente = { id: "envio", animalIds: ["vaca"], data: dados.data, aplicadaEm: new Date("2026-10-19T12:00:00Z") };
+    const findMany = vi.fn().mockResolvedValueOnce([pendente]).mockResolvedValueOnce([])
+      .mockResolvedValueOnce([pendente]).mockResolvedValueOnce([])
+      .mockResolvedValueOnce([pendente]).mockResolvedValueOnce([{ corrigeId: "envio" }]);
+    const tx = { aplicacaoProduto: { findMany: vi.fn(async () => []) }, envioAplicacoesTablet: { findMany } } as unknown as Prisma.TransactionClient;
+    expect((await conferirCarenciaProducaoTx(tx, dados)).animais[0].estado).toBe("SEM_RESTRICAO_REGISTRADA");
+    expect((await conferirCarenciaProducaoTx(tx, { ...dados, horario: "10:00" })).animais[0].estado).toBe("NAO_AFERIVEL");
+    expect((await conferirCarenciaProducaoTx(tx, { ...dados, horario: "10:00" })).animais[0].estado).toBe("SEM_RESTRICAO_REGISTRADA");
   });
 });

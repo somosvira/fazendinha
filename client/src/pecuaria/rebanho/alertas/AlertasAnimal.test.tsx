@@ -70,7 +70,8 @@ describe("alertas na ficha do animal", () => {
     await screen.findByText("Falha de conexão");
     expect(screen.queryByText(/Nenhum cuidado/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-    await screen.findByText("As regras ainda não foram avaliadas.");
+    await screen.findByText("Nenhum cuidado disponível neste recorte.");
+    expect(screen.queryByText("As regras ainda não foram avaliadas.")).toBeNull();
     expect(screen.queryByText("Nenhum cuidado encontrado nesta consulta.")).toBeNull();
     window.dispatchEvent(new Event("pecuaria:alertas-atualizados"));
     await screen.findByText("Nenhum cuidado encontrado nesta consulta.");

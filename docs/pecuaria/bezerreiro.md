@@ -101,3 +101,5 @@ A API em `/api/pecuaria/rebanho/bezerreiro` exige área Pecuária e sítio; coma
 Rotas ficam em `server/src/routes/pecuaria/bezerreiro.ts`; serviços/cálculos/schemas em `server/src/services/pecuaria/bezerreiro`; interface em `client/src/pecuaria/rebanho/bezerreiro`. A migration acrescenta integridade de intervalos, programa publicado, origem, conservação, reservas e autoria, sem alterar a baseline aplicada.
 
 Critérios de homologação incluem parto → 6 L retirados → Brix 27% → 4 L para a cria + uma unidade de 2 L; reenvio e concorrência sem duplicação; enriquecimento com sobras; leitura sem valores; correções/estornos; retomada de rascunho; navegação por URL; histórico após saída; desktop/celular e teclado. Integração real somente em `fazendinha_seedatev3`, com fixtures próprias e autorização de aplicação da migration; sem reset ou banco auxiliar.
+
+A consulta de custos não exibe o parágrafo explicativo de atribuição da mistura nem a lista de lacunas no rodapé. A regra de atribuição e os dados de cobertura, pendências e custo conhecido das tabelas permanecem.

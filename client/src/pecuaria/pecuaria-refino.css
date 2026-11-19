@@ -235,7 +235,7 @@
 .pec-ajuda-recolhida { margin-top: 14px; padding: 12px 16px; border: 1px solid var(--border); background: var(--card); border-radius: 10px; font-size: 13px; }
 .pec-ajuda-recolhida summary { cursor: pointer; font-weight: 500; }
 .pec-config-busca { margin-block: 16px; }
-:is(.pecuaria-content,.cooperativa-content) .pec-config-grid { align-items: start; gap: 16px; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grid { align-items: stretch; gap: 16px; }
 :is(.pecuaria-content,.cooperativa-content) .pec-config-grupo { padding: 18px; border-radius: 12px; }
 :is(.pecuaria-content,.cooperativa-content) .pec-config-grupo h2 { margin-bottom: 8px; }
 .pec-config-descricao { margin-bottom: 14px; font-size: 12px; line-height: 1.6; color: var(--muted-foreground); }
@@ -274,6 +274,3 @@
 :is(.pecuaria-content,.cooperativa-content) .pec-config-grid .pec-config-grupo a { min-height: 44px; padding-block: 8px; }
 .pec-config-grupo a > svg { flex: none; }
 .pec-config-grupo a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-@media (min-width: 1320px) {
-  :is(.pecuaria-content,.cooperativa-content) .pec-config-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}

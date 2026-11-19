@@ -1,4 +1,5 @@
 import { prisma } from "../../../db.js";
+import type { Prisma } from "@prisma/client";
 import { auditar, RebanhoError, type DbPecuaria } from "./regras.js";
 import { validarComposicao, rotuloComposicao, type FracaoRaca } from "./composicao.calc.js";
 import type { CriarGenitorInput, EditarGenitorInput, ListarGenitoresQuery, SubstituirComposicaoGenitorInput } from "./schemas.js";
@@ -98,29 +99,33 @@ async function exigirFornecedorValido(db: DbPecuaria, fornecedorId: string | nul
   return parceiro;
 }
 
-export async function criarGenitor(input: CriarGenitorInput, usuarioId: number | null): Promise<GenitorDTO> {
+export async function criarGenitorTx(
+  tx: Prisma.TransactionClient, input: CriarGenitorInput, usuarioId: number | null,
+  identidadeIdeagri?: { id: string; ideagriId: number },
+) {
   validarComposicaoInput(input.composicao);
-  await exigirRacasValidas(prisma, input.composicao);
-
-  const criado = await prisma.$transaction(async (tx) => {
-    await exigirNomeLivre(tx, input.sexo, input.nome);
-    const fornecedor = await exigirFornecedorValido(tx, input.fornecedorId);
-    const genitor = await tx.genitorExterno.create({
-      data: {
-        sexo: input.sexo, nome: input.nome, codigo: input.codigo ?? null,
-        fornecedor: fornecedor?.nome ?? input.fornecedor ?? null, fornecedorId: fornecedor?.id ?? null,
-        observacao: input.observacao ?? null, criadoPorId: usuarioId,
-      },
-    });
-    if (input.composicao.length) {
-      await tx.composicaoGenitorExterno.createMany({
-        data: input.composicao.map((c) => ({ genitorId: genitor.id, racaId: c.racaId, fracao64: c.fracao64 })),
-      });
-    }
-    await auditar(tx, { entidade: "GenitorExterno", entidadeId: genitor.id, acao: "CADASTRO", usuarioId, depois: { ...genitor, composicao: input.composicao } });
-    return genitor;
+  await exigirRacasValidas(tx, input.composicao);
+  await exigirNomeLivre(tx, input.sexo, input.nome);
+  const fornecedor = await exigirFornecedorValido(tx, input.fornecedorId);
+  const genitor = await tx.genitorExterno.create({
+    data: {
+      ...identidadeIdeagri,
+      sexo: input.sexo, nome: input.nome, codigo: input.codigo ?? null,
+      fornecedor: fornecedor?.nome ?? input.fornecedor ?? null, fornecedorId: fornecedor?.id ?? null,
+      observacao: input.observacao ?? null, criadoPorId: usuarioId,
+    },
   });
+  if (input.composicao.length) {
+    await tx.composicaoGenitorExterno.createMany({
+      data: input.composicao.map((c) => ({ genitorId: genitor.id, racaId: c.racaId, fracao64: c.fracao64 })),
+    });
+  }
+  await auditar(tx, { entidade: "GenitorExterno", entidadeId: genitor.id, acao: "CADASTRO", usuarioId, depois: { ...genitor, composicao: input.composicao } });
+  return genitor;
+}
 
+export async function criarGenitor(input: CriarGenitorInput, usuarioId: number | null): Promise<GenitorDTO> {
+  const criado = await prisma.$transaction(tx => criarGenitorTx(tx, input, usuarioId));
   return buscarGenitor(criado.id);
 }
 

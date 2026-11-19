@@ -30,6 +30,8 @@ O acesso de desmama/castração não foi removido: enquanto B estiver pendente, 
 
 O IDEAGRI é fonte da carga inicial e de reconciliação. O importador original cobre Rebanho/Genética; a ferramenta técnica V4 acrescenta prévia e reconciliação de reprodução. A ferramenta `import:pecuaria:stg` incorpora pesos, documentos de leite e fatos clínicos mapeados, com manifesto e recibo, conforme [desenvolvimento](../desenvolvimento.md) e [contrato histórico](leite.md#incorporação-documental-e-clínica). Produção é bloqueada nos executores V4/STG. A entrega de código não significa carga realizada: lotes, mapeamentos, SQL implantado e homologação exigem evidência própria. Não reintroduza o módulo anterior no schema `public`, sincronização contínua ou estruturas de estoque paralelo.
 
+Na reconciliação pontual de novembro de 2026, o executor de manutenção usa os cadastros transacionais para preservar a identidade IDEAGRI de animais e genitores e gravar vínculo e autoria junto com o fato. O mapeamento racial segue o código de origem vinculado, pois a mesma sigla pode designar raças diferentes nos dois catálogos. Veja [a operação de manutenção](../desenvolvimento.md#reconciliação-pontual-ideagri-de-novembro-de-2026).
+
 ## Rebanho e genética
 
 - A contagem de partos soma o saldo de entrada aos partos válidos não incluídos nesse saldo, incluindo aborto e natimorto, conforme a regra aprovada da V4.
@@ -358,3 +360,5 @@ O [contrato de nutrição mensal](nutricao-mensal.md) descreve os três modelos,
 ### Pesagem pelo assistente
 
 O Assistente Terrano pode preparar uma pesagem individual de rotina no modo Editar para perfis com Pecuária e `lancar`. A conferência de animal, sítio, data e peso antecede a confirmação humana; não há gravação ao ditar/anexar. Reutiliza `registrarPesagemTx`, validação do sítio na data, autoria/auditoria e idempotência de `confirmarFato`. Outros tipos de pesagem continuam nos seus fluxos. Contrato e limites em [assistente](../assistente-consulta.md#editar-pesagem-individual-com-confirmação).
+
+O [piloto de leilões externos](leiloes.md) descreve a coleta da Programa Leilões e as fontes avaliadas para expansão.

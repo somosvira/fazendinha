@@ -1,0 +1,977 @@
+[
+  {
+    "nomeCatalogo": "Agrisept Mc Tabs",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "11f9b2fc-f4c4-5a11-9a81-f0acc3f1b0f3",
+        "apresentacao": "Cartela 10 comprimidos"
+      }
+    ],
+    "orientacao": {
+      "versao": 2,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/agrisept-mc-tabs/",
+      "titulo": "Ficha oficial brasileira — Agrisept Mc Tabs",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "388b2cd611ef273513ce9c66c755fd6a2da9fb80fcd72b2c9a43b6325c7c78aa",
+      "proporcoes": [],
+      "especie": "Bovinos — higienização de tetos na ordenha.",
+      "concentracao": "Cada comprimido de 5 g contém 2,5 g de dicloroisocianurato de sódio anidro.",
+      "dosagem": "Pré-ordenha: diluir um comprimido em 1 L de água (1.400 ppm de cloro). Pós-ordenha: um comprimido em 10 L (140 ppm). Pulverização ou imersão dos tetos; não é medicamento injetável.",
+      "via": "Tópica, após diluição em água.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Bovinos: não requer carência para leite."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Bovinos: não requer carência para abate."
+        }
+      },
+      "cuidados": "Preferir solução recém-preparada; não guardar solução por mais de sete dias. Conservar o produto entre 15 e 30 °C, em local seco e protegido da luz.",
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/agrisept-mc-tabs/",
+          "secao": "Indicações / espécies"
+        },
+        "concentracao": {
+          "url": "https://www.msd-saude-animal.com.br/produto/agrisept-mc-tabs/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/wp-content/uploads/sites/55/2020/07/posologia-agrisept.png",
+          "secao": "Pré e pós-ordenha"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/produto/agrisept-mc-tabs/",
+          "secao": "Modo de usar"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/agrisept-mc-tabs/",
+          "secao": "Precauções / conservação"
+        },
+        "carenciasLeite": {
+          "url": "https://www.msd-saude-animal.com.br/produto/agrisept-mc-tabs/",
+          "secao": "Período de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/agrisept-mc-tabs/",
+          "secao": "Período de carência — abate"
+        },
+        "proporcoes": {
+          "url": "https://www.msd-saude-animal.com.br/produto/agrisept-mc-tabs/",
+          "secao": "Posologia: sem relação por peso publicada"
+        }
+      },
+      "documentosComplementares": [
+        {
+          "url": "https://www.msd-saude-animal.com.br/wp-content/uploads/sites/55/2020/07/posologia-agrisept.png",
+          "secao": "Tabela oficial de diluição",
+          "documentoSha256": "69d05f12ca178dc1fc868fd77d03eded7df8e913dbcc1a8c612307890ac29689"
+        }
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Nuflor",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "ead96156-4c3b-5a08-858d-e08b23f03e15",
+        "apresentacao": "Frasco 100 ml"
+      },
+      {
+        "id": "482d92ef-bdb9-58f9-af72-bef8599e9d95",
+        "apresentacao": "Frasco 30 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/nuflor-solucao-injetavel/",
+      "titulo": "Ficha oficial brasileira — Nuflor",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "22fe9839af1738509b870d5a1df81276f2ef96740cd20b7891d199a142a75c51",
+      "proporcoes": [
+        {
+          "quantidade": "2",
+          "pesoKg": "15",
+          "unidade": "ML",
+          "condicao": "Bovinos: via subcutânea, dose única."
+        },
+        {
+          "quantidade": "1",
+          "pesoKg": "15",
+          "unidade": "ML",
+          "condicao": "Bovinos: intramuscular no pescoço, duas aplicações com intervalo de 48 horas."
+        }
+      ],
+      "especie": "Bovinos",
+      "concentracao": null,
+      "dosagem": "Bovinos: via subcutânea, 2 mL/15 kg em dose única; ou via intramuscular no pescoço, 1 mL/15 kg por aplicação, duas aplicações separadas por 48 horas.",
+      "via": "Subcutânea ou intramuscular, conforme o esquema descrito.",
+      "carencias": {
+        "leite": {
+          "estado": "PROIBIDO",
+          "horas": null,
+          "condicao": "Não aplicar em fêmeas produtoras de leite para consumo humano."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 912,
+          "condicao": "Bovinos: após a última aplicação."
+        }
+      },
+      "cuidados": "Não usar em gestantes, touros em reprodução, vacas lactantes, recém-nascidos ou animais com hepatopatias. Conservar a 15–30 °C e utilizar em até 28 dias após a primeira retirada.",
+      "pendencias": [
+        {
+          "campo": "concentracao",
+          "motivo": "A ficha identifica florfenicol, mas não publica a fórmula quantitativa. Não deduzir a concentração pela relação entre dose e peso."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/nuflor-solucao-injetavel/",
+          "secao": "Indicações / espécies"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/produto/nuflor-solucao-injetavel/",
+          "secao": "Posologia / modo de usar"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/produto/nuflor-solucao-injetavel/",
+          "secao": "Modo de usar"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/nuflor-solucao-injetavel/",
+          "secao": "Precauções / conservação"
+        },
+        "carenciasLeite": {
+          "url": "https://www.msd-saude-animal.com.br/produto/nuflor-solucao-injetavel/",
+          "secao": "Período de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/nuflor-solucao-injetavel/",
+          "secao": "Período de carência — abate"
+        },
+        "proporcoes": {
+          "url": "https://www.msd-saude-animal.com.br/produto/nuflor-solucao-injetavel/",
+          "secao": "Posologia / modo de usar"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Supramec Pour On",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "379459a9-b6e7-5815-9136-de8888990424",
+        "apresentacao": "Frasco 1 l"
+      },
+      {
+        "id": "5ba6e982-5bb3-5f14-a3c0-337b1c733d3e",
+        "apresentacao": "Frasco 5 l"
+      }
+    ],
+    "orientacao": {
+      "versao": 2,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/",
+      "titulo": "Ficha oficial brasileira — Supramec Pour On",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "5aa937d714a870d2d32514af26abd18ddf829c20fb5bb37d2b6cc0069f49cd4e",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "pesoKg": "10",
+          "unidade": "ML",
+          "condicao": "Bovinos, pour-on; observar instrução específica para animais acima de 650 kg."
+        }
+      ],
+      "especie": "Bovinos",
+      "concentracao": "Ivermectina 5 mg por mL.",
+      "dosagem": "Aplicar 1 mL/10 kg na linha dorsal, do final do pescoço à inserção da cauda. Acima de 650 kg, acrescentar 5 mL por 50 kg excedentes. Não repetir em menos de 42 dias.",
+      "via": "Tópica, sistema pour-on; não usar por via oral ou injetável.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "Bovinos: não requer carência para consumo do leite."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 672,
+          "condicao": "Bovinos: após a última aplicação."
+        }
+      },
+      "cuidados": "Não recomendado abaixo de quatro meses. Aplicar em pele seca, sem chuva e longe de feridas, lama ou esterco. Produto inflamável; usar EPI, em local ventilado. Conservar a 15–30 °C e usar em até 180 dias após aberto.",
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/",
+          "secao": "Indicações / espécies"
+        },
+        "concentracao": {
+          "url": "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/",
+          "secao": "Posologia / modo de usar"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/",
+          "secao": "Modo de usar"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/",
+          "secao": "Precauções / conservação"
+        },
+        "carenciasLeite": {
+          "url": "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/",
+          "secao": "Período de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/",
+          "secao": "Período de carência — abate"
+        },
+        "proporcoes": {
+          "url": "https://www.msd-saude-animal.com.br/produto/supramec-pour-on/",
+          "secao": "Posologia / modo de usar"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Triatox Pulverização",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "29f10ce6-d6f2-52f4-a8aa-beee085a71c5",
+        "apresentacao": "Frasco 1 l"
+      },
+      {
+        "id": "0ba20644-4e05-5861-b275-4291bef765c3",
+        "apresentacao": "Frasco 200 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 2,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/triatox-pecuaria/",
+      "titulo": "Ficha oficial brasileira — Triatox Pulverização",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "cbc42f7622a7ef7f9d427532c0db1f660ed7af4e8628340e2304627fa32982b8",
+      "proporcoes": [],
+      "especie": "Bovinos — pulverização.",
+      "concentracao": "Amitraz 12,5 g por 100 mL.",
+      "dosagem": "Diluir uma parte do produto em 500 partes de água. Pulverizar sob os pelos, utilizando pelo menos 5 L de calda por bovino adulto. Calda diluída não equivale ao volume de concentrado retirado do estoque.",
+      "via": "Tópica por pulverização, após diluição.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 72,
+          "condicao": "Bovinos: após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 72,
+          "condicao": "Bovinos: após a última aplicação."
+        }
+      },
+      "cuidados": "Usar luvas, evitar contato com o concentrado e não tratar sob calor intenso ou chuva. Conservar na embalagem original, em local seco, fresco e protegido da luz.",
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/triatox-pecuaria/",
+          "secao": "Indicações / espécies"
+        },
+        "concentracao": {
+          "url": "https://www.msd-saude-animal.com.br/produto/triatox-pecuaria/",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/produto/triatox-pecuaria/",
+          "secao": "Posologia / modo de usar"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/produto/triatox-pecuaria/",
+          "secao": "Modo de usar"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/triatox-pecuaria/",
+          "secao": "Precauções / conservação"
+        },
+        "carenciasLeite": {
+          "url": "https://www.msd-saude-animal.com.br/produto/triatox-pecuaria/",
+          "secao": "Período de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/triatox-pecuaria/",
+          "secao": "Período de carência — abate"
+        },
+        "proporcoes": {
+          "url": "https://www.msd-saude-animal.com.br/produto/triatox-pecuaria/",
+          "secao": "Posologia: sem relação por peso publicada"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Covexin 9 - Vacina X Clostridioses",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "cedd58f9-61cb-5d89-800a-b4ce42e16b98",
+        "apresentacao": "Frasco 100 ml"
+      },
+      {
+        "id": "4f9de10a-6d2f-5d7f-896c-f77671f31dd4",
+        "apresentacao": "Frasco 250 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/covexin-9/",
+      "titulo": "Ficha oficial brasileira — Covexin 9 - Vacina X Clostridioses",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "7c4347f6348885a50567ae1cf9ae5663afe52490f4f52eb1c38bdad9351b96ba",
+      "proporcoes": [],
+      "especie": "Bovinos",
+      "concentracao": null,
+      "dosagem": "Rotina publicada: 3 mL por via subcutânea, com revacinação semestral. Gestantes regularmente vacinadas: reforço no início do último mês de gestação. Não vacinadas: primeira aplicação 60 dias antes do parto previsto e segunda 30 dias depois. O esquema especial de crias permanece pendente de conferência.",
+      "via": "Subcutânea",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "A ficha consultada não informa carência para o leite."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 504,
+          "condicao": "A fonte orienta não vacinar nos 21 dias anteriores ao abate."
+        }
+      },
+      "cuidados": "Não vacinar animais doentes ou debilitados. Minimizar estresse em gestantes. Agitar antes do uso; descartar sobras ao final do dia. Conservar a 2–8 °C, protegido da luz; não congelar.",
+      "pendencias": [
+        {
+          "campo": "concentracao",
+          "motivo": "O resumo lista os agentes imunizantes, mas não publica a composição antigênica quantitativa."
+        },
+        {
+          "campo": "dosagem",
+          "motivo": "A tabela para crias de mães não vacinadas tem disposição e valores que precisam ser esclarecidos; não aplicar a dose de rotina como padrão para bezerros."
+        },
+        {
+          "campo": "carenciasLeite",
+          "motivo": "Prazo para leite não publicado na ficha oficial consultada; ausência não significa zero."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/covexin-9/",
+          "secao": "Indicações / espécies"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/produto/covexin-9/",
+          "secao": "Posologia / modo de usar"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/produto/covexin-9/",
+          "secao": "Modo de usar"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/covexin-9/",
+          "secao": "Precauções / conservação"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/covexin-9/",
+          "secao": "Período de carência — abate"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Agroplus",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "9d5e49af-85e5-5113-867d-48451d3eb772",
+        "apresentacao": "Frasco 100 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 2,
+      "fonte": "https://br.virbac.com/products/antibioticos/agroplus",
+      "titulo": "Ficha oficial brasileira — Agroplus",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "8cc93525466ebb181551a5bf23869f099021588fff471cf387830c7de15652cd",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "pesoKg": "10",
+          "unidade": "ML",
+          "condicao": "Bovinos: a cada 24 horas durante 3–5 dias, observando duração clínica indicada."
+        }
+      ],
+      "especie": "Bovinos",
+      "concentracao": "Por 100 mL: ampicilina anidra 10 g, sulfato de colistina 25.000.000 UI e acetato de dexametasona 25 mg.",
+      "dosagem": "Bovinos: 1 mL/10 kg a cada 24 horas, durante 3–5 dias. A ficha orienta manter por pelo menos 48 horas após desaparecimento dos sintomas, conforme avaliação veterinária.",
+      "via": "Intramuscular ou subcutânea; não intravenosa.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 144,
+          "condicao": "Bovinos: após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 456,
+          "condicao": "Bovinos: após a última aplicação."
+        }
+      },
+      "cuidados": "Agitar antes de usar. Não aplicar em gestantes ou animais hipersensíveis a penicilinas; cuidado em disfunção renal. Conservar a 15–30 °C, protegido da luz.",
+      "camposFonte": {
+        "especie": {
+          "url": "https://br.virbac.com/products/antibioticos/agroplus",
+          "secao": "Indicações / espécies"
+        },
+        "concentracao": {
+          "url": "https://br.virbac.com/products/antibioticos/agroplus",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://br.virbac.com/products/antibioticos/agroplus",
+          "secao": "Posologia / modo de usar"
+        },
+        "via": {
+          "url": "https://br.virbac.com/products/antibioticos/agroplus",
+          "secao": "Modo de usar"
+        },
+        "cuidados": {
+          "url": "https://br.virbac.com/products/antibioticos/agroplus",
+          "secao": "Precauções / conservação"
+        },
+        "carenciasLeite": {
+          "url": "https://br.virbac.com/products/antibioticos/agroplus",
+          "secao": "Período de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://br.virbac.com/products/antibioticos/agroplus",
+          "secao": "Período de carência — abate"
+        },
+        "proporcoes": {
+          "url": "https://br.virbac.com/products/antibioticos/agroplus",
+          "secao": "Posologia / modo de usar"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Rilexine 500",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "bcfa3a33-8074-538e-8fdb-205917318fdc",
+        "apresentacao": "Injetor 10 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://br.virbac.com/products/antibioticos-intramamarios/rilexine-500",
+      "titulo": "Ficha oficial brasileira — Rilexine 500",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "e81fb0cf7157d6496a1be1cb15ff6278fe5a39abe4f078ad6fc5fc8723759a90",
+      "proporcoes": [],
+      "especie": "Bovinos — vacas no período seco.",
+      "concentracao": "Por injetor de 10 mL: cefalexina 250 mg e neomicina 250 mg.",
+      "dosagem": "Uma seringa inteira de 10 mL por quarto em dose única, tratando simultaneamente os quatro quartos após a última ordenha da lactação, aproximadamente dois meses antes do parto previsto.",
+      "via": "Intramamária",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Em parto antecipado, a fonte cita faixa de 6–10 dias após a aplicação, sem critério para escolher o prazo. Confirmar com o fabricante."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 240,
+          "condicao": "Bovinos: após a última aplicação."
+        }
+      },
+      "cuidados": "Higienizar o teto antes da aplicação. Não usar em hipersensibilidade a cefalosporinas ou aminoglicosídeos; cautela em alergia a penicilinas e alterações renais. Conservar a 15–30 °C, protegido da luz.",
+      "pendencias": [
+        {
+          "campo": "carenciasLeite",
+          "motivo": "A ficha estabelece faixa de 6–10 dias se houver parto antecipado, sem definir um prazo único nem todas as condições de liberação. Não converter em horas fixas."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://br.virbac.com/products/antibioticos-intramamarios/rilexine-500",
+          "secao": "Indicações / espécies"
+        },
+        "concentracao": {
+          "url": "https://br.virbac.com/products/antibioticos-intramamarios/rilexine-500",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://br.virbac.com/products/antibioticos-intramamarios/rilexine-500",
+          "secao": "Posologia / modo de usar"
+        },
+        "via": {
+          "url": "https://br.virbac.com/products/antibioticos-intramamarios/rilexine-500",
+          "secao": "Modo de usar"
+        },
+        "cuidados": {
+          "url": "https://br.virbac.com/products/antibioticos-intramamarios/rilexine-500",
+          "secao": "Precauções / conservação"
+        },
+        "carenciasCarne": {
+          "url": "https://br.virbac.com/products/antibioticos-intramamarios/rilexine-500",
+          "secao": "Período de carência — abate"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Glicose 50%",
+    "fabricanteCatalogo": "Laboratório Prado S.A.",
+    "itens": [
+      {
+        "id": "5ad9a157-38a4-5d68-af3b-eb83117f1b6a",
+        "apresentacao": "Frasco 500 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://laboratorioprado.com.br/produto/glicose-50-prado/",
+      "titulo": "Ficha oficial brasileira — Glicose 50%",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "8e160959c90628c932cd41cee3941628049f8812867775309360a49e082a3166",
+      "proporcoes": [],
+      "especie": "Bovinos e equinos",
+      "concentracao": "Glicose 50 g por 100 mL.",
+      "dosagem": null,
+      "via": "Endovenosa",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "A ficha declara carência zero para leite."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 0,
+          "condicao": "A ficha declara carência zero para abate."
+        }
+      },
+      "cuidados": null,
+      "pendencias": [
+        {
+          "campo": "dosagem",
+          "motivo": "A ficha cita 10 mL/kg, dose usual de 500 mL e máximo diário de 2.000 mL, sem esclarecer como conciliar a relação por peso em animais maiores. Aguardar confirmação do fabricante."
+        },
+        {
+          "campo": "cuidados",
+          "motivo": "O resumo oficial não publica condições completas de conservação e precauções."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://laboratorioprado.com.br/produto/glicose-50-prado/",
+          "secao": "Indicações / espécies"
+        },
+        "concentracao": {
+          "url": "https://laboratorioprado.com.br/produto/glicose-50-prado/",
+          "secao": "Fórmula"
+        },
+        "via": {
+          "url": "https://laboratorioprado.com.br/produto/glicose-50-prado/",
+          "secao": "Modo de usar"
+        },
+        "carenciasLeite": {
+          "url": "https://laboratorioprado.com.br/produto/glicose-50-prado/",
+          "secao": "Período de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://laboratorioprado.com.br/produto/glicose-50-prado/",
+          "secao": "Período de carência — abate"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Pangram 10%",
+    "fabricanteCatalogo": "Virbac do Brasil Indústria e Comércio Ltda.",
+    "itens": [
+      {
+        "id": "59ebfaa1-6c19-58ea-aadb-5499ba13b633",
+        "apresentacao": "Frasco 100 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://br.virbac.com/products/antibioticos-injetaveis/pangram-10",
+      "titulo": "Ficha oficial brasileira — Pangram 10%",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "77d5cce6604d2e9190c750377e1fa35ba18241a2a2b85838a003965376c07f8e",
+      "proporcoes": [
+        {
+          "quantidade": "4",
+          "pesoKg": "100",
+          "unidade": "ML",
+          "condicao": "Exclusivamente suínos e equinos: diariamente por três dias; não é dose bovina."
+        }
+      ],
+      "especie": "Suínos e equinos. Uso em bovinos não confirmado nesta ficha.",
+      "concentracao": "Sulfato de gentamicina 10 g por 100 mL.",
+      "dosagem": "Somente suínos e equinos: 4 mL/100 kg por dia, durante três dias. Não extrapolar para bovinos.",
+      "via": "Intramuscular em suínos e equinos.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Sem orientação para leite ou uso em bovinos na ficha consultada."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Suínos: 24 dias após última aplicação. Equinos destinados ao consumo humano: uso proibido. Não há prazo bovino confirmado."
+        }
+      },
+      "cuidados": "Não usar em insuficiência renal, gestantes ou potros recém-nascidos. Há interações com furosemida, heparina, betalactâmicos, anestésicos e bloqueadores neuromusculares. Conservar a 15–30 °C, protegido da luz.",
+      "pendencias": [
+        {
+          "campo": "carenciasLeite",
+          "motivo": "A fonte não indica o produto para bovinos nem publica carência para leite."
+        },
+        {
+          "campo": "carenciasCarne",
+          "motivo": "A fonte distingue prazo de 24 dias em suínos e proibição em equinos de consumo. Não existe um prazo único para ambas as espécies, nem carência bovina confirmada."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://br.virbac.com/products/antibioticos-injetaveis/pangram-10",
+          "secao": "Indicações / espécies"
+        },
+        "concentracao": {
+          "url": "https://br.virbac.com/products/antibioticos-injetaveis/pangram-10",
+          "secao": "Fórmula"
+        },
+        "dosagem": {
+          "url": "https://br.virbac.com/products/antibioticos-injetaveis/pangram-10",
+          "secao": "Posologia / modo de usar"
+        },
+        "via": {
+          "url": "https://br.virbac.com/products/antibioticos-injetaveis/pangram-10",
+          "secao": "Modo de usar"
+        },
+        "cuidados": {
+          "url": "https://br.virbac.com/products/antibioticos-injetaveis/pangram-10",
+          "secao": "Precauções / conservação"
+        },
+        "proporcoes": {
+          "url": "https://br.virbac.com/products/antibioticos-injetaveis/pangram-10",
+          "secao": "Posologia / modo de usar"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Calminex",
+    "fabricanteCatalogo": "Schering-Plough Saúde Animal Ind. e Com. Ltda.",
+    "itens": [
+      {
+        "id": "66d05002-57e0-5786-af79-dde2f58f27a6",
+        "apresentacao": "Bisnaga 100 g"
+      },
+      {
+        "id": "3c39a571-b5eb-524d-b7a0-0e66fdab72bf",
+        "apresentacao": "Bisnaga 30 g"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/calminex/",
+      "titulo": "Ficha oficial brasileira — Calminex",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "d496a7cf276e1c134ec34821b23989ea201e33491459d49972f503737324a5d1",
+      "proporcoes": [],
+      "especie": "Equinos, citados nas restrições da ficha; uso em bovinos não confirmado.",
+      "concentracao": null,
+      "dosagem": "Uso tópico: espalhar camada fina sobre a região afetada e repetir a cada 12 horas até a cura. A fonte não confirma este uso em bovinos.",
+      "via": "Tópica",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Sem prazo para leite ou uso bovino confirmado na fonte."
+        },
+        "carne": {
+          "estado": "PROIBIDO",
+          "horas": null,
+          "condicao": "Equinos destinados à produção de carne para consumo humano; esta restrição não define prazo para bovinos."
+        }
+      },
+      "cuidados": "Guardar a 15–30 °C, em local seco e protegido da luz; após aberto, utilizar em até 90 dias.",
+      "pendencias": [
+        {
+          "campo": "concentracao",
+          "motivo": "O resumo identifica a pomada, mas não publica composição quantitativa."
+        },
+        {
+          "campo": "carenciasLeite",
+          "motivo": "A fonte não publica carência para leite nem confirma uso em bovinos."
+        },
+        {
+          "campo": "especie",
+          "motivo": "A restrição de abate publicada é específica para equinos. Não extrapolar indicação ou carências para vacas."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/calminex/",
+          "secao": "Indicações / espécies"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/produto/calminex/",
+          "secao": "Posologia / modo de usar"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/produto/calminex/",
+          "secao": "Modo de usar"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/calminex/",
+          "secao": "Precauções / conservação"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/calminex/",
+          "secao": "Período de carência — abate"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Dornil",
+    "fabricanteCatalogo": "Laboratório Bravet Ltda.",
+    "itens": [
+      {
+        "id": "8301ccf6-1f15-549e-ab68-92a3b67f2d52",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.bravet.com.br/files/product/leaflet/24/BULA%20DORNIL%20-%20GG.pdf",
+      "titulo": "Bula oficial brasileira — Dornil",
+      "tipoFonte": "BULA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "cf169102fbe569e52ca13f1a1864835588d4565222f5931e97568a414e840790",
+      "proporcoes": [],
+      "especie": "Bovinos, exceto fêmeas lactantes e prenhes conforme contraindicação da página 2.",
+      "concentracao": "Dipirona sódica 50 g por 100 mL.",
+      "dosagem": "Bovinos adultos: 12–25 mL por aplicação; bezerros: 10 mL. Repetição a cada oito horas ou conforme veterinário, respeitando as contraindicações.",
+      "via": "Intramuscular profunda ou endovenosa lenta.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Conflito entre prazo de quatro dias na página 1 e contraindicação em lactantes na página 2. Não considerar o leite liberado."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 96,
+          "condicao": "Bovinos: após a última aplicação."
+        }
+      },
+      "cuidados": "Não usar em lactantes, gestantes, hipersensibilidade ou insuficiência renal, cardíaca ou hepática. Avaliar interações medicamentosas descritas na bula. Conservar a 15–30 °C; utilizar em até 30 dias após aberto.",
+      "pendencias": [
+        {
+          "campo": "carenciasLeite",
+          "motivo": "A página 1 publica quatro dias, mas a página 2 proíbe uso em fêmeas lactantes. Necessário esclarecimento do fabricante; prazo mantido sem horas fixas."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/24/BULA%20DORNIL%20-%20GG.pdf",
+          "secao": "Indicações / espécies",
+          "pagina": 1
+        },
+        "concentracao": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/24/BULA%20DORNIL%20-%20GG.pdf",
+          "secao": "Fórmula",
+          "pagina": 1
+        },
+        "dosagem": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/24/BULA%20DORNIL%20-%20GG.pdf",
+          "secao": "Posologia / modo de usar",
+          "pagina": 1
+        },
+        "via": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/24/BULA%20DORNIL%20-%20GG.pdf",
+          "secao": "Modo de usar",
+          "pagina": 1
+        },
+        "cuidados": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/24/BULA%20DORNIL%20-%20GG.pdf",
+          "secao": "Precauções / conservação",
+          "pagina": 2
+        },
+        "carenciasCarne": {
+          "url": "https://www.bravet.com.br/files/product/leaflet/24/BULA%20DORNIL%20-%20GG.pdf",
+          "secao": "Período de carência — abate",
+          "pagina": 1
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Quinolon 10%",
+    "fabricanteCatalogo": "Laboratório Bravet Ltda.",
+    "itens": [
+      {
+        "id": "9c6ea33a-a5ba-5070-8831-69b04e094aa8",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.bravet.com.br/quinolon-10",
+      "titulo": "Ficha oficial brasileira — Quinolon 10%",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "7ad8b87faf0fe6acd13fa3a08f805bc3315659891eddf61bc1bbbac08a2a313d",
+      "proporcoes": [],
+      "especie": null,
+      "concentracao": "Enrofloxacino 10 g por 100 mL.",
+      "dosagem": null,
+      "via": null,
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não conferida no documento oficial disponível nesta rodada."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não conferida no documento oficial disponível nesta rodada."
+        }
+      },
+      "cuidados": null,
+      "pendencias": [
+        {
+          "campo": "especie",
+          "motivo": "O resumo não identifica expressamente as espécies-alvo; não inferir pelo grupo comercial."
+        },
+        {
+          "campo": "dosagem",
+          "motivo": "A página oficial confirma composição e apresentação, mas o link da bula retornou HTTP 400 nesta consulta. Este campo aguarda acesso ao documento oficial completo."
+        },
+        {
+          "campo": "via",
+          "motivo": "A página oficial confirma composição e apresentação, mas o link da bula retornou HTTP 400 nesta consulta. Este campo aguarda acesso ao documento oficial completo."
+        },
+        {
+          "campo": "cuidados",
+          "motivo": "A página oficial confirma composição e apresentação, mas o link da bula retornou HTTP 400 nesta consulta. Este campo aguarda acesso ao documento oficial completo."
+        },
+        {
+          "campo": "carenciasLeite",
+          "motivo": "A página oficial confirma composição e apresentação, mas o link da bula retornou HTTP 400 nesta consulta. Este campo aguarda acesso ao documento oficial completo."
+        },
+        {
+          "campo": "carenciasCarne",
+          "motivo": "A página oficial confirma composição e apresentação, mas o link da bula retornou HTTP 400 nesta consulta. Este campo aguarda acesso ao documento oficial completo."
+        }
+      ],
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://www.bravet.com.br/quinolon-10",
+          "secao": "Fórmula"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "Quinolon 2,5%",
+    "fabricanteCatalogo": "Laboratório Bravet Ltda.",
+    "itens": [
+      {
+        "id": "17830ae1-f013-5a74-8eac-c85e10840cf7",
+        "apresentacao": "Frasco 20 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.bravet.com.br/quinolon-2_5",
+      "titulo": "Ficha oficial brasileira — Quinolon 2,5%",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "89e57df5a89de994f95fa4e9a48884e452b4f4de2738838468d7dc74c740183f",
+      "proporcoes": [],
+      "especie": "Cães e gatos. Uso em bovinos não confirmado.",
+      "concentracao": "Enrofloxacino 2,5 g por 100 mL.",
+      "dosagem": null,
+      "via": null,
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não conferida no documento oficial disponível nesta rodada."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Não conferida no documento oficial disponível nesta rodada."
+        }
+      },
+      "cuidados": null,
+      "pendencias": [
+        {
+          "campo": "dosagem",
+          "motivo": "A página oficial confirma composição e apresentação, mas o link da bula retornou HTTP 400 nesta consulta. Este campo aguarda acesso ao documento oficial completo."
+        },
+        {
+          "campo": "via",
+          "motivo": "A página oficial confirma composição e apresentação, mas o link da bula retornou HTTP 400 nesta consulta. Este campo aguarda acesso ao documento oficial completo."
+        },
+        {
+          "campo": "cuidados",
+          "motivo": "A página oficial confirma composição e apresentação, mas o link da bula retornou HTTP 400 nesta consulta. Este campo aguarda acesso ao documento oficial completo."
+        },
+        {
+          "campo": "carenciasLeite",
+          "motivo": "A página oficial confirma composição e apresentação, mas o link da bula retornou HTTP 400 nesta consulta. Este campo aguarda acesso ao documento oficial completo."
+        },
+        {
+          "campo": "carenciasCarne",
+          "motivo": "A página oficial confirma composição e apresentação, mas o link da bula retornou HTTP 400 nesta consulta. Este campo aguarda acesso ao documento oficial completo."
+        }
+      ],
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.bravet.com.br/quinolon-2_5",
+          "secao": "Indicações / espécies"
+        },
+        "concentracao": {
+          "url": "https://www.bravet.com.br/quinolon-2_5",
+          "secao": "Fórmula"
+        }
+      }
+    }
+  }
+]

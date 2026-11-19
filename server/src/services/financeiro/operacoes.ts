@@ -1,3 +1,4 @@
+import { quantidadeDaEmbalagem } from "../estoque/embalagem.js";
 import { transacaoValidada } from "../../lib/transacao-validada.js";
 import { Prisma, type ItemOperacao, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
@@ -159,7 +160,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
     const produtosIds = input.itens.flatMap((item) => item.produtoId ? [item.produtoId] : []);
     await travarValorizacaoTx(tx, produtosIds);
     const produtos = produtosIds.length
-      ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ...(historicoComercial ? {} : { ativo: true }) }, include: { centrosCusto: { select: { centroCustoId: true } } } })
+      ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ...(historicoComercial ? {} : { ativo: true }) }, include: { centrosCusto: { select: { centroCustoId: true } }, produtoCatalogo: true } })
       : [];
     const produtosPorId = new Map(produtos.map((produto) => [produto.id, produto]));
     // Produto com exatamente um centro cadastrado o transmite ao item; com vários
@@ -198,7 +199,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
     });
     input.itens.forEach((item, indice) => {
       const produto = item.produtoId ? produtosPorId.get(item.produtoId) : undefined;
-      if (estocavelItens[indice] && produto && item.unidade.trim().toLocaleLowerCase() !== rotuloUnidade(produto.unidade).toLocaleLowerCase()) {
+      if (estocavelItens[indice] && produto && !(input.tipo === "COMPRA_ESTOQUE" && item.unidade === "embalagem" && produto.produtoCatalogo?.conteudoEmbalagem && produto.unidade === produto.produtoCatalogo.unidadeSugerida) && item.unidade.trim().toLocaleLowerCase() !== rotuloUnidade(produto.unidade).toLocaleLowerCase()) {
         throw new FinanceiroError("VALIDACAO", `Informe a quantidade na unidade do produto (${rotuloUnidade(produto.unidade)}).`, `itens.${indice}.unidade`);
       }
       if (estocavelItens[indice] && (!item.produtoId || !produtosPorId.has(item.produtoId))) {
@@ -230,6 +231,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
         : centrosItens[indice] ? centros.get(centrosItens[indice]!) ?? null : null,
       descricao: item.descricao,
       quantidade: new Prisma.Decimal(item.quantidade),
+      ...(item.unidade === "embalagem" && estocavelItens[indice] ? { embalagemSnapshot: { versao: 1, conteudo: produtosPorId.get(item.produtoId!)!.produtoCatalogo!.conteudoEmbalagem!.toString(), unidadeEstoque: produtosPorId.get(item.produtoId!)!.unidade, quantidadeEstoque: quantidadeDaEmbalagem(new Prisma.Decimal(item.quantidade), produtosPorId.get(item.produtoId!)!.produtoCatalogo!.conteudoEmbalagem!).toString() } } : {}),
       unidade: item.unidade,
       // Quando o item vem por valor total, `valorTotal` é o campo autoritativo
       // (é ele que soma para o total da operação, nunca a reconstrução
@@ -317,10 +319,11 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
       for (const item of itensEstoque) {
         const entrada = input.itens[item.ordem - 1];
         const produto = produtosPorId.get(item.produtoId!)!;
+        const quantidadeEstoque = item.unidade === "embalagem" ? quantidadeDaEmbalagem(item.quantidade, produto.produtoCatalogo!.conteudoEmbalagem!) : item.quantidade;
         const distribuicao = await prepararPartidasTx(tx, {
           produtoId: produto.id, rastrearPartidas: produto.rastrearPartidas, propriedadeId: input.propriedadeId,
-          tipo: tipoMovimento, data: input.data, quantidade: item.quantidade,
-          partidas: entrada.partidas,
+          tipo: tipoMovimento, data: input.data, quantidade: quantidadeEstoque,
+          partidas: entrada.partidas?.map(p => ({ ...p, quantidade: item.unidade === "embalagem" ? quantidadeDaEmbalagem(new Prisma.Decimal(p.quantidade), produto.produtoCatalogo!.conteudoEmbalagem!).toString() : p.quantidade })),
           usuarioId: input.usuarioId,
         }).catch((erro: unknown) => {
           if (erro instanceof EstoqueError && (erro.code === "VALIDACAO" || erro.code === "CONFLITO")) {
@@ -331,9 +334,9 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
         const planoLeite = leite?.modo === "RETIRAR" && leite.produtoId === produto.id ? leite.plano : null;
         const plano = tipoMovimento === "SAIDA" && !planoLeite ? await planejarSaidaTx(tx, { produtoId: produto.id, propriedadeId: input.propriedadeId, data: input.data, quantidade: item.quantidade, partidas: distribuicao }) : null;
         const valores = planoLeite ? { custoUnitario: planoLeite.valorTotal?.div(item.quantidade).toDecimalPlaces(4) ?? null, valorTotal: planoLeite.valorTotal }
-          : plano ? { custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal } : { custoUnitario: item.valorUnitario, valorTotal: item.valorTotal };
+          : plano ? { custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal } : { custoUnitario: item.unidade === "embalagem" ? item.valorTotal.div(quantidadeEstoque).toDecimalPlaces(4) : item.valorUnitario, valorTotal: item.valorTotal };
         const movimento = await tx.movimentoEstoque.create({ data: {
-          produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, quantidade: item.quantidade,
+          produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, quantidade: quantidadeEstoque,
           ...valores, ...(planoLeite ? { metodoValorizacao: METODO_LEITE } : {}), ...(input.documentacaoValor ? { evidenciaValor: { ...input.documentacaoValor, usuarioId: input.usuarioId ?? null, valorTotal: valores.valorTotal?.toFixed(2) ?? null } } : {}), operacaoId: operacao.id, itemOperacaoId: item.id,
           centroCustoId: item.centroCustoId ?? input.centroCustoId ?? null,
           propriedadeId: input.propriedadeId, criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
@@ -344,7 +347,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
         else if (plano) await registrarSaidaValorizadaTx(tx, movimento.id, plano);
         else await registrarEntradaValorizadaTx(tx, movimento, distribuicao);
         if (distribuicao.length) await tx.itemOperacao.update({ where: { id: item.id }, data: {
-          partidasSnapshot: distribuicao.map((p) => ({ partidaId: p.partidaId, codigo: p.codigo, nome: p.nome, validade: p.validade?.toISOString().slice(0, 10) ?? null, quantidade: p.quantidade.toString(), cienciaValidadeDesconhecida: p.cienciaValidadeDesconhecida })),
+          partidasSnapshot: distribuicao.map((p) => ({ partidaId: p.partidaId, codigo: p.codigo, nome: p.nome, validade: p.validade?.toISOString().slice(0, 10) ?? null, quantidade: (item.unidade === "embalagem" ? p.quantidade.div(produto.produtoCatalogo!.conteudoEmbalagem!) : p.quantidade).toString(), cienciaValidadeDesconhecida: p.cienciaValidadeDesconhecida })),
         } });
       }
     }

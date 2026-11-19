@@ -6,7 +6,7 @@
 .cadastro-protocolo-editor .overflow-x-auto > table { min-width: 620px; }
 .cadastro-protocolo-editor table caption { text-align: left; white-space: normal; overflow-wrap: anywhere; }
 .cadastro-protocolo-caminho, .cadastro-protocolo-caminho button { display: flex; align-items: center; gap: 8px; font-size: .875rem; }
-.cadastro-protocolo-caminho { flex-wrap: wrap; margin-bottom: 24px; padding-right: 32px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.cadastro-protocolo-caminho { flex-wrap: wrap; margin-bottom: 24px; color: var(--muted-foreground); overflow-wrap: anywhere; }
 .cadastro-protocolo-caminho > *, .cadastro-protocolo-caminho button { min-width: 0; white-space: normal; }
 .cadastro-protocolo-caminho button { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
 .cadastro-protocolo-editor h1 { font-size: 2rem; line-height: 1.2; font-weight: 750; margin: 0 0 28px; }
@@ -14,9 +14,9 @@
 .cadastro-protocolo-editor section + section { margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--border); }
 .cadastro-protocolo-pagina label { font-size: .875rem; }
 .cadastro-protocolo-origens { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
-.cadastro-protocolo-origens label { display: flex; gap: 10px; align-items: flex-start; padding: 16px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; }
-.cadastro-protocolo-origens label:has(input:checked) { background: var(--secondary); border-color: var(--primary); }
-.cadastro-protocolo-origens input { margin-top: 4px; accent-color: var(--primary); }
+.cadastro-protocolo-origens button { display: flex; text-align: left; background: var(--card); gap: 10px; align-items: flex-start; padding: 16px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; }
+.cadastro-protocolo-origens button:is(:hover, [aria-expanded="true"]) { background: var(--secondary); border-color: var(--primary); }
+.cadastro-protocolo-origens svg { flex-shrink: 0; color: var(--primary); }
 .cadastro-protocolo-origens small { display: block; margin-top: 5px; color: var(--muted-foreground); }
 .cadastro-protocolo-editor table { margin-top: 20px; width: 100%; }
 .cadastro-protocolo-editor th, .cadastro-protocolo-editor td { padding: 12px; text-align: left; }
@@ -46,17 +46,16 @@
 @media (max-width: 1100px) { .cadastro-protocolo-pagina { grid-template-columns: minmax(0,1fr); } .cadastro-protocolo-revisao { position: static; max-height: none; } .cadastro-protocolo-resumo { overflow: visible; } }
 @media (max-width: 600px) { .cadastro-protocolo-editor { padding: 18px; } .cadastro-protocolo-origens, .cadastro-protocolo-identificacao { grid-template-columns: minmax(0,1fr); } .cadastro-protocolo-origem { flex-direction: column; } .cadastro-protocolo-pagina .builder-etapas-lista { grid-template-columns: repeat(2,minmax(0,1fr)); } .cadastro-protocolo-editor h1 { font-size: 1.625rem; } }
 
-/* O editor é uma abertura central; revisão e ações seguem o formulário. */
+/* A revisão e as ações acompanham o formulário. */
 .cadastro-protocolo-pagina { grid-template-columns:minmax(0,1fr); gap:0; }
 .cadastro-protocolo-editor { border:0; border-radius:0; padding:28px; }
-.cadastro-protocolo-editor h1 { padding-right:30px; margin-bottom:24px; }
+.cadastro-protocolo-editor h1 { margin-bottom:24px; }
 .cadastro-protocolo-revisao { position:static; max-height:none; border:0; border-top:1px solid var(--border); border-radius:0; background:var(--secondary); }
 .cadastro-protocolo-resumo { padding:24px 28px; }
 .cadastro-protocolo-acoes { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; padding:20px 28px; background:var(--card); }
 .cadastro-protocolo-acoes > p { flex:1 1 300px; }
 .cadastro-protocolo-origens { gap:16px; }
-.cadastro-protocolo-origens label { padding:20px; }
-.cadastro-protocolo-origens input { width:20px; height:20px; flex-shrink:0; }
+.cadastro-protocolo-origens button { padding:20px; }
 .cadastro-protocolo-pagina .builder-etapas-opcao { padding:18px; }
 @media(max-width:600px) {
  .cadastro-protocolo-editor,.cadastro-protocolo-resumo { padding:20px; }
@@ -64,10 +63,10 @@
  .cadastro-protocolo-pagina .builder-etapas-lista { grid-template-columns:minmax(0,1fr); }
 }
 
-/* A base pode ter várias colunas; somente sua região rola, sem alargar o modal. */
+/* A base pode ter várias colunas; somente sua região rola, sem alargar a página. */
 .cadastro-protocolo-pagina > *,
 .cadastro-protocolo-editor :is(section,fieldset,.builder-etapas,.builder-etapas-layout,.builder-etapas-lista,.builder-etapas-editor),
-.cadastro-protocolo-origens > label > span,
+.cadastro-protocolo-origens > button > span,
 .cadastro-protocolo-origem > div { min-width:0; max-width:100%; }
 .cadastro-protocolo-bases-rolagem { position:relative; display:block; width:100%; min-width:0; max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; }
 .cadastro-protocolo-bases-rolagem > table { min-width:620px; }
@@ -80,7 +79,7 @@
 .cadastro-protocolo-continuo .cadastro-protocolo-campos > section { padding:24px; margin:0; }
 .cadastro-protocolo-continuo .cadastro-protocolo-campos > section + section { border-top:1px solid var(--border); }
 .cadastro-protocolo-continuo .cadastro-protocolo-origem { padding:0; background:transparent; }
-.cadastro-protocolo-continuo .cadastro-protocolo-revisao { position:sticky; top:0; margin-top:104px; border:1px solid var(--border); border-radius:12px; background:var(--secondary); }
+.cadastro-protocolo-continuo .cadastro-protocolo-revisao { position:sticky; top:80px; max-height:calc(100dvh - 96px); margin-top:104px; border:1px solid var(--border); border-radius:12px; background:var(--secondary); }
 .cadastro-protocolo-continuo .cadastro-protocolo-resumo { padding:20px; }
 .cadastro-protocolo-modalidades { display:grid; gap:12px; margin-top:20px; font-size:14px; }
 .cadastro-protocolo-modalidades > div { border-top:1px solid var(--border); padding-top:12px; }
@@ -88,6 +87,6 @@
 .cadastro-protocolo-modalidades dd { margin-top:4px; font-weight:600; }
 .cadastro-protocolo-acoes { grid-column:1/-1; }
 .cadastro-protocolo-continuo > .cadastro-protocolo-acoes { border-radius:0; padding:20px 0 0; }
-@media(max-width:1000px) { .cadastro-protocolo-continuo { grid-template-columns:minmax(0,1fr); padding:20px; } .cadastro-protocolo-continuo .cadastro-protocolo-revisao { position:static; margin-top:0; } }
+@media(max-width:1000px) { .cadastro-protocolo-continuo { grid-template-columns:minmax(0,1fr); padding:20px; } .cadastro-protocolo-continuo .cadastro-protocolo-revisao { position:static; max-height:none; margin-top:0; } }
 @media(max-width:600px) { .cadastro-protocolo-continuo { padding:16px; gap:20px; } .cadastro-protocolo-continuo .cadastro-protocolo-campos > section { padding:16px; } }
 .cadastro-protocolo-continuo .builder-etapas-em-lista .builder-etapas-lista { display:block; padding-bottom:0; }

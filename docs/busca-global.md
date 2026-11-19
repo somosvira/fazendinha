@@ -92,3 +92,21 @@ Conversas privadas e propostas temporárias de pesagem não são indexadas na bu
 Metas individuais e medições ainda não têm fonte de registros na busca: a projeção versionada e os gates conservadores por indicador precisam de integração própria antes de indexar títulos com segurança. Nesta versão, a busca abre a página Metas, onde a lista é filtrada no servidor; não promete abrir uma meta exata a partir de seu título. Snapshots privados do Radar também não são indexados. Fontes do Radar e das medições automáticas abrem as consultas operacionais já filtradas, respeitando sítio e guarda de navegação.
 
 Filtros salvos da seleção de participantes são critérios reutilizáveis por sítio. Eles são consultados pelo seletor da programação, que fornece o contexto de sítio e data necessário para aplicar a prévia.
+
+Eventos, lotes externos e vínculos do [piloto de leilões](pecuaria/leiloes.md) ficam fora da busca global enquanto o fluxo é interno e não possui destino navegável.
+
+A conferência simulada de arremate é exclusiva do desenvolvimento local. A compra e a ficha, depois de confirmadas, seguem os destinos de Operações e Rebanho já indexados.
+
+Os destinos Aplicações no tablet, Aprovação e Templates por doença respeitam
+as permissões específicas do tablet. Envios localizados por animal, produto,
+data ou autor abrem a conferência exata no sítio do registro e exigem permissão
+de revisão. Templates usam a busca da própria página por doença e medicamento,
+pois são configurações por sítio sem ficha individual. Envios devolvidos para
+o autor aparecem no tablet.
+
+Referências oficiais de medicamentos com informações confirmadas, inclusive parciais, são registros do catálogo
+compartilhado, pesquisáveis por nome, apresentação e fabricante. O resultado
+abre o modal exato em Estoque → Catálogo usando `referenciaCatalogo`, mantendo
+a busca `buscaCatalogo` e o escopo ativo. O gate é o de Estoque (Financeiro ou
+Pecuária). Produtos sem dados oficiais vinculados continuam disponíveis na consulta
+do Catálogo e exibem o motivo da pendência. Não geram resultado do tipo referência oficial apenas por possuírem pesquisa pendente ou links a conferir. Referências parciais são identificadas como tais no contexto do resultado e abrem o modal exato com seus campos e pendências.
