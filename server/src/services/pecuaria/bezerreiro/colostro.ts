@@ -176,10 +176,10 @@ export async function consultarOrigemColostro(id: string, propriedadeId: number,
   return transacaoPecuaria(async tx => {
   const origem = await origemTx(tx, id, propriedadeId);
   const [destinacoes, enriquecimentos] = await Promise.all([
-    tx.destinacaoColostro.findMany({where:{origemId:origem.id,propriedadeId:origem.propriedadeId},select:{id:true,data:true,status:true},orderBy:[{data:'desc'},{id:'asc'}]}),
+    tx.destinacaoColostro.findMany({where:{origemId:origem.id,propriedadeId:origem.propriedadeId},select:{id:true,data:true,status:true,responsavel:true,alocacoes:{where:{ativo:true},select:{quantidadeLitros:true,unidade:{select:{codigo:true}},fornecimento:{select:{tipo:true,forma:true,cria:{select:{animalId:true,Animal:{select:{brinco:true,nome:true}}}}}}}},unidades:{select:{codigo:true,volumeLitros:true}}},orderBy:[{data:'desc'},{id:'asc'}]}),
     tx.preparoColostro.findMany({where:{propriedadeId:origem.propriedadeId,origens:{some:{origemId:origem.id}}},select:{id:true,data:true,status:true},orderBy:[{data:'desc'},{id:'asc'}]}),
   ]);
-  const historico = {destinacoes:destinacoes.map(d=>({...d,data:d.data.toISOString().slice(0, 10)})),enriquecimentos:enriquecimentos.map(d=>({...d,data:d.data.toISOString().slice(0, 10)}))};
+  const historico = {destinacoes:destinacoes.map(({alocacoes,unidades,...d})=>({...d,data:d.data.toISOString().slice(0, 10),destinatarios:alocacoes.map(a=>({animalId:a.fornecimento.cria?.animalId??null,brinco:a.fornecimento.cria?.Animal?.brinco??null,nome:a.fornecimento.cria?.Animal?.nome??null,quantidadeLitros:a.quantidadeLitros.toString(),unidadeCodigo:a.unidade?.codigo??null,tipo:a.fornecimento.tipo,forma:a.fornecimento.forma})),unidadesCongeladas:unidades.map(u=>({codigo:u.codigo,volumeLitros:u.volumeLitros.toString()}))})),enriquecimentos:enriquecimentos.map(d=>({...d,data:d.data.toISOString().slice(0, 10)}))};
   return {...await origemColostroDTO(tx, origem, options), historico};
   });
 }

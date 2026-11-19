@@ -42,7 +42,7 @@ describe('Regularização de colostro',()=>{
   it('abre enriquecimento com volume final e permite seu estorno contextual',async()=>{
     vi.mocked(consultarBezerreiro).mockResolvedValue({...base,id:'preparo',volumeFinalLitros:'2.2',origemResultadoId:'enriquecida',origens:[],insumos:[]});
     render(<DetalheColostro sitio={7} revisao={0} tipo="enriquecimentos" id="preparo" podeLancar mudar={mudar} aoSalvar={salvar}/>);
-    await screen.findByText(/Volume final medido:/);fireEvent.click(screen.getByRole('button',{name:'Abrir origem enriquecida'}));expect(mudar).toHaveBeenCalledWith(parametrosDetalheColostro('origens','enriquecida'));
+    await screen.findByRole('rowheader',{name:'Volume final medido'});fireEvent.click(screen.getByRole('button',{name:'Abrir origem enriquecida'}));expect(mudar).toHaveBeenCalledWith(parametrosDetalheColostro('origens','enriquecida'));
     fireEvent.click(screen.getByRole('button',{name:'Estornar enriquecimento'}));fireEvent.change(screen.getByLabelText('Motivo do estorno'),{target:{value:'Correção do preparo registrado'}});fireEvent.submit(document.getElementById('estorno-registro-colostro')!);
     await waitFor(()=>expect(salvar).toHaveBeenCalledTimes(1));expect(consultarBezerreiro).toHaveBeenLastCalledWith('/colostro/enriquecimentos/preparo/estorno',7,expect.objectContaining({motivo:'Correção do preparo registrado',versaoEsperada:3}));
   });
@@ -61,7 +61,7 @@ describe('Regularização de colostro',()=>{
     vi.mocked(consultarBezerreiro).mockResolvedValue({...base,dependencias:[{tipo:'fornecimentos',id:'legado',animalId:'animal',brinco:'601',unidadeCodigo:null}]});tela();
     fireEvent.click(await screen.findByRole('button',{name:'Ver na ficha da cria'}));expect(navegarPara).toHaveBeenCalledWith('/pecuaria/rebanho/animais/animal#bezerreiro');expect(screen.getByRole('button',{name:'Estornar destinação'})).toHaveProperty('disabled',true);
   });
-  it('conserva navegação de leitura sem expor estorno para usuário sem lançamento',async()=>{tela(false);await screen.findByText('Responsável: Maria · Horário não informado');expect(screen.queryByRole('button',{name:'Estornar destinação'})).toBeNull();expect(screen.getByRole('button',{name:'Abrir origem'})).toBeTruthy();});
+  it('conserva navegação de leitura sem expor estorno para usuário sem lançamento',async()=>{tela(false);expect((await screen.findByRole('rowheader',{name:'Responsável'})).closest('tr')?.textContent).toBe('ResponsávelMaria');expect(screen.getByRole('rowheader',{name:'Horário'}).closest('tr')?.textContent).toBe('HorárioNão informado');expect(screen.queryByRole('button',{name:'Estornar destinação'})).toBeNull();expect(screen.getByRole('button',{name:'Abrir origem'})).toBeTruthy();});
   it('históricos seguem filtros de período e paginação independente incluindo estornados',async()=>{
     vi.mocked(consultarBezerreiro).mockResolvedValue({itens:[{...base,status:'ESTORNADO'}],total:31,pagina:2,tamanho:30});
     render(<HistoricoColostro sitio={7} revisao={0} params={new URLSearchParams('de=2026-10-01&ate=2026-10-28&paginaDestinacoes=2')} mudar={mudar}/>);
