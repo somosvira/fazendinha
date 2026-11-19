@@ -1,5 +1,6 @@
+import { z } from "zod";
 import { marcarReavaliacaoDestinoTx } from "../pecuaria/sanidade/alertas/avaliador.js";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { inicioDePalavra } from "../../lib/busca-palavras.js";
 import { papeisDoParceiro } from "../financeiro/papeis.js";
@@ -44,6 +45,8 @@ function herancaDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof includeP
   );
   return {
     ...efetivos,
+    conteudoEmbalagem: catalogo && produto.unidade === catalogo.unidadeSugerida ? catalogo.conteudoEmbalagem?.toString() ?? null : null,
+    rotuloEmbalagem: catalogo?.rotuloEmbalagem ?? null,
     produtoCatalogoId: produto.produtoCatalogoId ?? null,
     nomeAlterado: produto.nomeAlterado ?? false,
     catalogo: catalogo ? { id: catalogo.id, nomeCompleto: nomeCompletoCatalogo(catalogo), ativo: catalogo.ativo } : null,
@@ -303,12 +306,14 @@ export async function obterUltimoPreco(produtoId: string, f: { parceiroId?: stri
       },
     },
     orderBy: [{ operacao: { data: "desc" } }, { operacao: { numero: "desc" } }],
-    select: { valorUnitario: true, operacao: { select: { data: true, parceiro: { select: { id: true, nome: true } } } } },
+    select: { valorUnitario: true, valorTotal: true, embalagemSnapshot: true, operacao: { select: { data: true, parceiro: { select: { id: true, nome: true } } } } },
   });
   const item = (f.parceiroId != null ? await buscar(f.parceiroId) : null) ?? await buscar();
   if (!item) return null;
+  const embalagem = z.object({ quantidadeEstoque: z.string().regex(/^\d+(\.\d{1,3})?$/) }).safeParse(item.embalagemSnapshot);
+  const quantidadeEstoque = embalagem.success ? new Prisma.Decimal(embalagem.data.quantidadeEstoque) : null;
   return {
-    valorUnitario: item.valorUnitario.toString(),
+    valorUnitario: quantidadeEstoque?.gt(0) ? item.valorTotal.div(quantidadeEstoque).toDecimalPlaces(4).toString() : item.valorUnitario.toString(),
     data: item.operacao.data.toISOString().slice(0, 10),
     parceiro: item.operacao.parceiro ? { id: item.operacao.parceiro.id, nome: item.operacao.parceiro.nome } : null,
   };

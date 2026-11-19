@@ -1,3 +1,4 @@
+import { AvisosAplicacoesTablet } from "./AvisosAplicacoesTablet";
 import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, ArrowLeft, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -148,6 +149,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
   const animais: { animalId: string; brinco: string; nome: string | null; ausente?: boolean }[] = [...animaisAtuais, ...[...new Set(rascunho.parcelas.flatMap(p => p.animais))].filter(id => !idsAtuais.has(id)).map(id => ({ animalId: id, brinco: id, nome: null, ausente: true }))];
   const soma = rascunho.parcelas.filter(p => p.litros.trim());
   return <div className="leite-page leite-registro" data-confirmada={confirmada || undefined}>
+    <AvisosAplicacoesTablet key={`${sitio}:${rascunho.data}`} sitio={sitio} data={rascunho.data} />
     <CabecalhoTabela titulo={confirmada ? "Consultar ordenha" : "Registrar ordenha"} descricao={confirmada ? [contexto?.sessoes.find(s => s.posicaoId === rascunho.posicao)?.nome, formatarDataBR(rascunho.data)].filter(Boolean).join(" · ") : undefined} acao={confirmada ? undefined : <Button variant="outline" disabled={ocupado} onClick={aoVoltar}><ArrowLeft size={16} aria-hidden />Voltar à consulta</Button>} />
     <div className="leite-registro-corpo">
       {!confirmada && <div className="leite-registro-campos">

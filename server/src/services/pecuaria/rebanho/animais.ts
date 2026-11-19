@@ -311,7 +311,12 @@ async function rotularComposicaoCalculada(db: DbPecuaria, itens: FracaoRaca[] | 
  * animais, que precisa criar operação e animais no mesmo commit. Leituras de validação usam
  * a própria transação para enxergar o mesmo estado que a escrita.
  */
-export async function cadastrarTx(tx: Prisma.TransactionClient, input: CadastrarAnimalInput, usuarioId: number | null, contextoTecnico?: { nascimentoHistorico: true }): Promise<{ animal: { id: string; brinco: string }; avisos: Array<{ campo: string; mensagem: string }> }> {
+export async function cadastrarTx(
+  tx: Prisma.TransactionClient,
+  input: CadastrarAnimalInput,
+  usuarioId: number | null,
+  contextoTecnico?: { nascimentoHistorico: true; identidadeIdeagri?: { id: string; ideagriId: number } },
+): Promise<{ animal: { id: string; brinco: string }; avisos: Array<{ campo: string; mensagem: string }> }> {
   // A exceção existe apenas para preparação técnica de históricos/seeds; não é campo da API.
   if (input.origem === "NASCIDO" && !contextoTecnico?.nascimentoHistorico) throw new RebanhoError("VALIDACAO", "Registre o parto da matriz para cadastrar as crias nascidas na fazenda", "origem");
   const erosDatas = validarDatasAnimal({ dataNascimento: input.dataNascimento, dataEntrada: input.dataEntrada, origem: input.origem });
@@ -358,6 +363,7 @@ export async function cadastrarTx(tx: Prisma.TransactionClient, input: Cadastrar
 
     const animal = await tx.animal.create({
       data: {
+        ...contextoTecnico?.identidadeIdeagri,
         brinco: input.brinco,
         nome: input.nome ?? null,
         brincoEletronico: input.brincoEletronico ?? null,

@@ -1,3 +1,4 @@
+import { AplicacoesTablet } from "./AplicacoesTablet";
 import { ConsultaExames, ConsultaCarencias } from "./ConsultasSanitariasVisuais";
 import { AgendaCuidados } from "./AgendaCuidados";
 import { AgendaCalendario } from "./AgendaCalendario";
@@ -186,14 +187,24 @@ import { FormFatoSanitario, type TipoFatoSanitario } from "./FormFatoSanitario";
 import { Empty } from "@/financeiro/financeiro-ui";
 
 export function Sanidade(props: { podeLancar: boolean }) {
-  const [caminho,setCaminho]=useState(window.location.pathname);
-  useEffect(()=>{const atualizar=()=>setCaminho(window.location.pathname);window.addEventListener("popstate",atualizar);return()=>window.removeEventListener("popstate",atualizar);},[]);
+  const [url,setUrl]=useState(() => window.location.pathname + window.location.search);
+  const caminho = url.split("?")[0];
+  useEffect(()=>{const atualizar=()=>setUrl(window.location.pathname + window.location.search);window.addEventListener("popstate",atualizar);return()=>window.removeEventListener("popstate",atualizar);},[]);
+  if (caminho === "/pecuaria/sanidade/tablet" || caminho.startsWith("/pecuaria/sanidade/tablet/")) return <AplicacoesTablet caminho={caminho} sitio={Number(new URLSearchParams(window.location.search).get("sitio")) || getPropriedadeAtiva()} />;
   return caminho.endsWith("/calendario") ? <AgendaCalendario /> : <SanidadeRotina {...props} />;
 }
 function SanidadeRotina({ podeLancar }: { podeLancar: boolean }) {
   const participacaoRota = window.location.pathname.match(/^\/pecuaria\/sanidade\/participacoes\/([^/]+)\/?$/);
   if (participacaoRota) return <ParticipacaoProtocolo key={participacaoRota[1]} id={decodeURIComponent(participacaoRota[1])} tipo="SANITARIO" propriedadeId={Number(new URLSearchParams(window.location.search).get("sitio")) || getPropriedadeAtiva() || undefined} podeLancar={podeLancar} />;
-  return <ConteudoSanidade podeLancar={podeLancar}/>;
+  const usuario = getUsuario();
+  const acessosTablet = [
+    ["enviarAplicacoesTablet", "", "Aplicações no tablet"],
+    ["revisarAplicacoesTablet", "/aprovacao", "Aprovação do tablet"],
+    ["gerenciarTemplatesTablet", "/templates", "Templates do tablet"],
+  ].filter(([flag]) => usuario?.dono || usuario?.flags.includes(flag));
+  return <>{acessosTablet.length > 0 && <nav aria-label="Aplicações do tablet" className="mb-3 flex flex-wrap gap-2">
+    {acessosTablet.map(([flag, rota, rotulo]) => <Button key={flag} onClick={() => navegarPara("/pecuaria/sanidade/tablet" + rota)}>{rotulo}</Button>)}
+  </nav>}<ConteudoSanidade podeLancar={podeLancar}/></>;
 }
 function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const [rateando, setRateando] = useState(false);

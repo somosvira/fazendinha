@@ -1,3 +1,4 @@
+import { AvisosAplicacoesTablet } from "./AvisosAplicacoesTablet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Info, ArrowUpRight } from "lucide-react";
@@ -418,6 +419,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
   ) : null;
   return (
     <section className="leite-page" aria-label="Ordenha">
+    <AvisosAplicacoesTablet key={`${sitio}:${data}`} sitio={sitio} data={data} />
       <header className="leite-header">
         <div>
           <h2 className="leite-titulo-secao">Ordenha em foco</h2>
@@ -574,7 +576,9 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                                   <small className="leite-pendencia" key={p}>
                                     {p === "LACTACAO_NAO_INFORMADA"
                                       ? "Lactação a conciliar"
-                                      : p === "FINALIDADE_NAO_COMPROVADA"
+                                      : p === "APLICACAO_TABLET_PENDENTE"
+                                        ? "Aplicação aguardando conferência"
+                                        : p === "FINALIDADE_NAO_COMPROVADA"
                                         ? "Finalidade histórica a conciliar; litros registrados preservados"
                                         : p
                                           .replaceAll("_", " ")

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UsuarioSessao } from "./lib/auth";
-import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarTab, returnToInterna, urlSigninPara } from "./navegacaoAuth";
+import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarCaminho, podeAcessarTab, returnToInterna, urlSigninPara } from "./navegacaoAuth";
 
 const usuarioPecuaria: UsuarioSessao = {
   id: 20,
@@ -81,4 +81,15 @@ describe("aba Estoque", () => {
   it("bloqueia quem só tem a área equipe", () => {
     expect(podeAcessarTab({ ...base, areas: ["equipe"] }, "estoque")).toBe(false);
   });
+});
+
+it("autoriza destinos do tablet por ação e mantém o Financeiro fora do perfil de operação", () => {
+  const operador = { ...usuarioPecuaria, flags: ["enviarAplicacoesTablet"] };
+  const revisor = { ...usuarioPecuaria, flags: ["revisarAplicacoesTablet"] };
+  const tablet = "/pecuaria/sanidade/tablet";
+  expect(podeAcessarCaminho(operador, tablet)).toBe(true);
+  expect(podeAcessarCaminho(operador, tablet + "/aprovacao")).toBe(false);
+  expect(podeAcessarCaminho(operador, "/financeiro/operacoes")).toBe(false);
+  expect(podeAcessarCaminho(revisor, tablet + "/aprovacao?envio=registro&sitio=2")).toBe(true);
+  expect(podeAcessarCaminho(revisor, tablet + "/templates")).toBe(false);
 });

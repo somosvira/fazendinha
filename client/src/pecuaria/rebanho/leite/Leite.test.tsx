@@ -13,6 +13,7 @@ import { obterCandidatos, obterFolha, salvarFolha } from "./api";
 import type { FolhaLeite } from "./types";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 vi.mock("./api", () => ({
+  obterAvisosAplicacoes: vi.fn(async () => []),
   obterFolha: vi.fn(),
   salvarFolha: vi.fn(),
   salvarConfiguracao: vi.fn(),

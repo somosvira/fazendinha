@@ -1,3 +1,5 @@
+import { ArremateSimulado } from "./ArremateSimulado";
+import { getPropriedadeAtiva } from "../propriedadeScope";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
 import { useOrdenacaoTabela } from "./OrdenarConsulta";
@@ -67,6 +69,7 @@ const COLUNAS: ColunaTabela<Operacao>[] = [
 
 export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boolean }) {
   const visual = useVisualizacaoConsulta("visualOperacoes");
+  const [conferirArremate, setConferirArremate] = useState(false);
   const podeRascunho = podeVerValoresFinanceiros();
   const [carregou, setCarregou] = useState(false);
   const [itens, setItens] = useState<Operacao[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const { rascunho, recuperacao } = useRascunhoAtivo(); const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
@@ -148,6 +151,8 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   if (detalheId != null) return <OperacaoFinanceiraDetalhe operacaoId={detalheId} onVoltar={voltar} urlVoltar={retorno ?? "/financeiro/operacoes"} rotuloVoltar={retorno?.startsWith("/pecuaria/rebanho/sanidade") ? "Voltar à Sanidade" : retorno?.startsWith("/estoque") ? "Voltar ao Estoque" : undefined} onAbrir={abrirDetalhe} onCorrigir={corrigir} podeLancar={podeLancar} />;
   if (loading && !carregou) return <PaginaCarregando label="Carregando operações" />;
   const parametrosUrl = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
+  const pilotoLocal = import.meta.env.DEV && ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  const arremateSimulado = pilotoLocal && podeRascunho && getPropriedadeAtiva() != null && !operacaoBase && parametrosUrl.get("simulacao") === "erural";
   const compromissoInicial = parametrosUrl.get("compromisso");
   // Atalho do Estoque: /financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=<id>.
   const ajusteInicial = !operacaoBase && parametrosUrl.get("tipo") === "AJUSTE_ESTOQUE";
@@ -155,13 +160,15 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   // A chave separa correção de rascunho: trocar de um para o outro remonta o
   // formulário, senão o autosave gravaria os dados da correção no rascunho.
   if (form && !podeLancar) return <PaginaFinanceira colorida><PageHeader eyebrow="" titulo="Nova operação" descricao="O seu perfil pode consultar operações, mas não pode criar ou corrigir lançamentos." /><ErrorBox erro="Você não tem permissão para lançar operações financeiras." /></PaginaFinanceira>;
-  if (form && config) return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : "rascunho"} config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
+  if (form && config) return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : arremateSimulado ? "arremate-erural" : "rascunho"} arremateSimulado={arremateSimulado} config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={arremateSimulado ? "COMPRA_ANIMAIS" : ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
 
   const acoesCabecalho = podeLancar ? <div className="flex flex-wrap gap-2">{(rascunho || recuperacao) && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined;
 
   return <PaginaFinanceira colorida>
     <PageHeader eyebrow="" titulo="Operações" descricao="Consulte compras, vendas e serviços e acompanhe seus efeitos financeiros e no estoque." acao={acoesCabecalho} />
     <ErrorBox erro={erro} />
+    {pilotoLocal && podeLancar && podeRascunho && !rascunho && !recuperacao && getPropriedadeAtiva() != null && <Button secondary onClick={() => setConferirArremate(true)}>Conferir compra de leilão simulada</Button>}
+    {conferirArremate && <ArremateSimulado onFechar={() => setConferirArremate(false)} onRevisar={() => { setConferirArremate(false); navegarPara(URL_NOVA_OPERACAO + "?simulacao=erural"); setForm(true); }} />}
     {erro && <Button secondary disabled={loading} className="mb-4" onClick={() => { void carregar(); }}>Tentar novamente</Button>}
     {recuperacao && <p role="status" className="mb-4 rounded-lg bg-muted p-3 text-sm">{recuperacao.erro ? `Não foi possível salvar: ${recuperacao.erro} As alterações estão preservadas. Continue a operação para tentar novamente.` : "As últimas alterações estão sendo salvas. Você pode continuar a operação."}</p>}
     {/* overflow-clip (não overflow-hidden): overflow-hidden faria deste Panel o

@@ -1,3 +1,4 @@
+import { AvisosAplicacoesTablet } from "./AvisosAplicacoesTablet";
 import { createPortal } from "react-dom";
 import { Milk, Clock3, ClipboardList, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -96,6 +97,7 @@ export function OrdenhasGerais({ podeLancar, acoesContainer }: { podeLancar: boo
   function litrosNatureza(r: RegistroOrdenhaConsulta, n: string) { const p = r.porNatureza.find(p => p.natureza === n); return p?.litros == null ? "—" : formatarLitros(p.litros); }
   const acoesRegistro = <>{rascunhoRetomavel && (!rascunhoRetomavel.parcelas.length || rascunhoRetomavel.parcelas.some(p => !p.entradaId)) && <Button data-ordenha-registro="rascunho" variant="outline" onClick={() => { origemRegistro.current = "rascunho"; atualizar({ leiteModo: "registro", rascunhoOrdenha: ultimo, registroId: null, dataOperacional: rascunhoRetomavel.data }, true); }}>Retomar rascunho</Button>}{podeLancar && <Button data-ordenha-registro="novo" onClick={novo}><Plus size={18}/>Registrar ordenha</Button>}</>;
   return <div ref={consultaRef} tabIndex={-1} className="leite-page leite-ordenhas-consulta">
+    <AvisosAplicacoesTablet key={`${sitio}:${fim}`} sitio={sitio} data={fim} />
     {acoesContainer ? createPortal(<><DatePicker aria-label="Dia das ordenhas" value={inicio === fim ? inicio : ""} onChange={dia => { if (dia) atualizar({ordenhasInicio:dia,ordenhasFim:dia,paginaOrdenhas:null}); }} />{acoesRegistro}</>, acoesContainer) : <CabecalhoTabela titulo="Ordenhas" acao={acoesRegistro} />}
     <BarraConsulta acao={<AlternarVisualizacaoConsulta modo={visualizacao.modo} mudar={visualizacao.mudar} rotulo="Visualização de ordenhas registradas" />} edicaoFiltros={filtros} erroFiltros={filtros.rascunho.inicio > filtros.rascunho.fim ? "A data inicial deve ser igual ou anterior à final." : null} adicionais={<>
       <CampoFiltro rotulo="Data inicial"><DatePicker aria-label="Data inicial das ordenhas" value={filtros.rascunho.inicio} onChange={v => filtros.editar("inicio", v)} /></CampoFiltro>

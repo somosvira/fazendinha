@@ -154,7 +154,7 @@ it("permite focar e rolar as colunas de uma tabela explícita estreita pelo tecl
     expect(regiao.scrollLeft).toBe(96);
     fireEvent.keyDown(regiao, { key: "ArrowLeft" });
     expect(regiao.scrollLeft).toBe(0);
-    expect(screen.getByText("Role horizontalmente para ver todas as colunas.")).toBeTruthy();
+    expect(screen.queryByText("Role horizontalmente para ver todas as colunas.")).toBeNull();
     expect(regiao.className).not.toContain("scrollbar-width:none");
     expect(regiao.className).not.toContain("webkit-scrollbar");
   } finally { globalThis.ResizeObserver = observerOriginal; }

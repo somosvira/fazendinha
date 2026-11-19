@@ -8,10 +8,10 @@ import type { UnidadeMedida } from "../lib/unidades";
 /** Produto da fazenda ("Meus produtos") ou item do catálogo ainda não adotado (docs/produtos.md, Adoção e Interface). */
 export type ProdutoEscolhido =
   | { tipo: "produto"; produtoId: string; nome: string; produto?: ProdutoDTO }
-  | { tipo: "catalogo"; produtoCatalogoId: string; nomeCompleto: string; unidadeSugerida: UnidadeMedida; categoriaSugeridaId: string | null; fabricante?: string | null };
+  | { tipo: "catalogo"; produtoCatalogoId: string; nomeCompleto: string; conteudoEmbalagem?: string | null; rotuloEmbalagem?: string | null; unidadeSugerida: UnidadeMedida; categoriaSugeridaId: string | null; fabricante?: string | null };
 
 export const escolherProduto = (produto: Pick<ProdutoDTO, "id" | "nome">): ProdutoEscolhido => ({ tipo: "produto", produtoId: produto.id, nome: produto.nome, produto: produto as ProdutoDTO });
-export const escolherCatalogo = (item: ItemCatalogoBusca): ProdutoEscolhido => ({ tipo: "catalogo", produtoCatalogoId: item.id, nomeCompleto: item.nomeCompleto, unidadeSugerida: item.unidadeSugerida, categoriaSugeridaId: item.categoriaSugeridaId, fabricante: item.fabricante?.nome ?? null });
+export const escolherCatalogo = (item: ItemCatalogoBusca): ProdutoEscolhido => ({ tipo: "catalogo", produtoCatalogoId: item.id, nomeCompleto: item.nomeCompleto, unidadeSugerida: item.unidadeSugerida, categoriaSugeridaId: item.categoriaSugeridaId, conteudoEmbalagem: item.conteudoEmbalagem, rotuloEmbalagem: item.rotuloEmbalagem, fabricante: item.fabricante?.nome ?? null });
 export const nomeEscolhido = (v: ProdutoEscolhido) => (v.tipo === "produto" ? v.nome : v.nomeCompleto);
 
 type Linha = { chave: string; grupo: "meus" | "catalogo"; escolha: ProdutoEscolhido; titulo: string; detalhe: string };

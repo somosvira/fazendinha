@@ -1,3 +1,4 @@
+import { consultarAplicacoesTabletPendentes } from "../sanidade/tablet-pendencias.js";
 import { z } from "zod";
 import { conferirAnimaisOrigemGeralTx } from "./producao.js";
 import type { Prisma } from "@prisma/client";
@@ -32,7 +33,7 @@ export function classificarCarenciaProducao(input: { data: Date; horario?: strin
           aptidaoCarenciaSnapshot: a.aptidaoCarenciaSnapshot, revisaoAdministracaoPendente: revisao,
           terminoLimiteConservador: terminoLimite?.toISOString() ?? null }];
       });
-      return { animalId, estado, evidencias };
+      return { animalId, estado: estado as "SEM_RESTRICAO_REGISTRADA" | "EM_CARENCIA" | "NAO_AFERIVEL", evidencias };
     }) };
 }
 export async function conferirCarenciaProducaoTx(tx: Prisma.TransactionClient, input: { data: Date; horario?: string | null; animalIds: string[] }) {
@@ -40,7 +41,14 @@ export async function conferirCarenciaProducaoTx(tx: Prisma.TransactionClient, i
     OR: [{ status: "VALIDO" }, { consumoMantido: true, OR: [{ administracaoMantida: true }, { administracaoMantida: null }] }] },
     select: { id: true, animalId: true, data: true, aplicadaEm: true, precisaoTemporal: true, estadoCarenciaLeite: true, carenciaLeiteHoras: true,
       aptidaoCarenciaSnapshot: true, consumoMantido: true, administracaoMantida: true }, orderBy: [{ animalId: "asc" }, { data: "asc" }, { id: "asc" }] });
-  return classificarCarenciaProducao(input, aplicacoes);
+  const pendentes = await consultarAplicacoesTabletPendentes(tx, input.data, { animalIds: input.animalIds });
+  const resultado = classificarCarenciaProducao(input, aplicacoes);
+  const dia = input.data.toISOString().slice(0, 10);
+  const limite = new Date(dia + (input.horario ? "T" + input.horario + ":00-03:00" : "T23:59:59.999-03:00"));
+  for (const animal of resultado.animais) {
+    if (pendentes.some(e => e.animalIds.includes(animal.animalId) && e.aplicadaEm <= limite)) animal.estado = "NAO_AFERIVEL";
+  }
+  return resultado;
 }
 
 /** Uma aplicação retroativa exige regularização; nunca reclassifica/reescreve consumos existentes. */

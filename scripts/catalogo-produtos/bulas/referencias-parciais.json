@@ -1,0 +1,381 @@
+[
+  {
+    "nomeCatalogo": "Mastijet Forte",
+    "fabricanteCatalogo": "Intervet do Brasil Veterinária Ltda.",
+    "itens": [
+      {
+        "id": "54bf9b59-c6a0-57ab-91f1-98f939383fc4",
+        "apresentacao": "Seringa 8 g"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://www.msd-saude-animal.com.br/produto/mastijet-forte/",
+      "titulo": "Resumo oficial brasileiro — Mastijet Forte",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "8236921688d29e67c25ef09379b6ded86a52b8bd0e2f1db370e406d9cd04adf3",
+      "especie": "Bovinos — vacas em lactação",
+      "concentracao": null,
+      "dosagem": "Em vacas em lactação, infundir uma seringa inteira em cada teto infectado. A quantidade por vaca depende do número de tetos tratados; não há proporção por peso publicada.",
+      "proporcoes": [],
+      "via": "Intramamária",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 216,
+          "condicao": "Nove dias após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 240,
+          "condicao": "Dez dias após a aplicação, conforme redação do fabricante."
+        }
+      },
+      "cuidados": "Conservar refrigerado entre 2 e 8 °C, protegido da luz; não congelar. Higienizar o teto e retirar o leite antes da infusão.",
+      "camposFonte": {
+        "especie": {
+          "url": "https://www.msd-saude-animal.com.br/produto/mastijet-forte/",
+          "secao": "Indicação para vacas em lactação"
+        },
+        "dosagem": {
+          "url": "https://www.msd-saude-animal.com.br/produto/mastijet-forte/",
+          "secao": "Dosagem e administração"
+        },
+        "via": {
+          "url": "https://www.msd-saude-animal.com.br/produto/mastijet-forte/",
+          "secao": "Descrição e instruções de uso"
+        },
+        "carenciasLeite": {
+          "url": "https://www.msd-saude-animal.com.br/produto/mastijet-forte/",
+          "secao": "Períodos de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://www.msd-saude-animal.com.br/produto/mastijet-forte/",
+          "secao": "Períodos de carência — abate"
+        },
+        "cuidados": {
+          "url": "https://www.msd-saude-animal.com.br/produto/mastijet-forte/",
+          "secao": "Instruções de uso e armazenagem"
+        }
+      },
+      "pendencias": [
+        {
+          "campo": "concentracao",
+          "motivo": "O resumo oficial brasileiro identifica a seringa de 8 g, mas não publica a composição quantitativa. Conferir a fórmula completa na bula ou rotulagem brasileira."
+        }
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Catosal B12",
+    "fabricanteCatalogo": null,
+    "itens": [
+      {
+        "id": "b1a2ac71-82d3-55ac-82ca-b2906ecfedae",
+        "apresentacao": null
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://agropecuaria.elanco.com/br/produtos/leite/catosal",
+      "titulo": "Ficha oficial Elanco Brasil — Catosal B12",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "47c3235b3ddee98e27fc9448377d27545c9ea51de79357b60a2a1c485c200cb7",
+      "especie": "Bovinos",
+      "concentracao": "Por 100 mL: butafosfana 10 g e cianocobalamina 5.000 µg.",
+      "dosagem": "Nas doenças agudas: bovinos adultos 5 a 25 mL; bezerros 5 a 12 mL. O documento não define intervalos nem duração; não é uma dose fixa para todas as vacas.",
+      "proporcoes": [],
+      "via": "Em bovinos: intravenosa, intramuscular ou subcutânea.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Prazo não publicado no documento oficial consultado; permanece pendente."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Prazo não publicado no documento oficial consultado; permanece pendente."
+        }
+      },
+      "cuidados": null,
+      "camposFonte": {
+        "especie": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/catosal",
+          "secao": "Indicações"
+        },
+        "concentracao": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/catosal",
+          "secao": "Composição"
+        },
+        "dosagem": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/catosal",
+          "secao": "Administração — doenças agudas"
+        },
+        "via": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/catosal",
+          "secao": "Administração"
+        }
+      },
+      "pendencias": [
+        {
+          "campo": "carenciasLeite",
+          "motivo": "A ficha consultada não publica carência do leite; não interpretar como zero."
+        },
+        {
+          "campo": "carenciasCarne",
+          "motivo": "A ficha consultada não publica carência para abate; não interpretar como zero."
+        },
+        {
+          "campo": "cuidados",
+          "motivo": "Cuidados completos e conservação não estão publicados nesta ficha."
+        },
+        {
+          "campo": "intervalo",
+          "motivo": "A ficha apresenta faixas de dose, mas não define intervalo entre aplicações."
+        },
+        {
+          "campo": "duracao",
+          "motivo": "Duração não especificada no documento consultado."
+        },
+        {
+          "campo": "apresentacao",
+          "motivo": "O cadastro histórico não identifica o tamanho do frasco utilizado. A ficha atual lista 20 e 100 mL."
+        }
+      ]
+    }
+  },
+  {
+    "nomeCatalogo": "Kinetomax",
+    "fabricanteCatalogo": null,
+    "itens": [
+      {
+        "id": "3f620bfb-07eb-566e-8678-b0b144c52ec1",
+        "apresentacao": "Frasco 100 mL"
+      }
+    ],
+    "orientacao": {
+      "versao": 3,
+      "fonte": "https://assets.elanco.com/7eafa302-37b3-00f8-2e74-bb902d1a0ba2/8d53248d-11a1-4615-b6c5-b6fab6218b4c/Elanco-kinetomax-folder-28x21-Dourado.pdf",
+      "titulo": "Informativo oficial Elanco Brasil — Kinetomax",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "b1594f510cbcf706958c26a63569111efc2c8f48c38af26dd107225dd7d5bc9f",
+      "especie": "Bovinos",
+      "concentracao": null,
+      "dosagem": "Bovinos: 3 mL para 40 kg de peso corporal (7,5 mg/kg), em dose única, conforme informativo do fabricante.",
+      "proporcoes": [
+        {
+          "quantidade": "3",
+          "unidade": "ML",
+          "pesoKg": "40",
+          "condicao": "Bovinos; dose única por via intramuscular ou subcutânea."
+        }
+      ],
+      "via": "Intramuscular ou subcutânea.",
+      "carencias": {
+        "leite": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Prazo não publicado no documento oficial consultado; permanece pendente."
+        },
+        "carne": {
+          "estado": "NAO_INFORMADO",
+          "horas": null,
+          "condicao": "Prazo não publicado no documento oficial consultado; permanece pendente."
+        }
+      },
+      "cuidados": null,
+      "camposFonte": {
+        "especie": {
+          "url": "https://assets.elanco.com/7eafa302-37b3-00f8-2e74-bb902d1a0ba2/8d53248d-11a1-4615-b6c5-b6fab6218b4c/Elanco-kinetomax-folder-28x21-Dourado.pdf",
+          "secao": "Dados técnicos em bezerros",
+          "pagina": 2
+        },
+        "dosagem": {
+          "url": "https://assets.elanco.com/7eafa302-37b3-00f8-2e74-bb902d1a0ba2/8d53248d-11a1-4615-b6c5-b6fab6218b4c/Elanco-kinetomax-folder-28x21-Dourado.pdf",
+          "secao": "Modo de usar",
+          "pagina": 1
+        },
+        "proporcoes": {
+          "url": "https://assets.elanco.com/7eafa302-37b3-00f8-2e74-bb902d1a0ba2/8d53248d-11a1-4615-b6c5-b6fab6218b4c/Elanco-kinetomax-folder-28x21-Dourado.pdf",
+          "secao": "Modo de usar",
+          "pagina": 1
+        },
+        "via": {
+          "url": "https://assets.elanco.com/7eafa302-37b3-00f8-2e74-bb902d1a0ba2/8d53248d-11a1-4615-b6c5-b6fab6218b4c/Elanco-kinetomax-folder-28x21-Dourado.pdf",
+          "secao": "Modo de usar",
+          "pagina": 1
+        }
+      },
+      "pendencias": [
+        {
+          "campo": "concentracao",
+          "motivo": "O informativo identifica enrofloxacina nos dados técnicos, mas não publica a fórmula quantitativa completa; não calcular a concentração a partir da dose."
+        },
+        {
+          "campo": "carenciasLeite",
+          "motivo": "Carência de leite não publicada neste informativo; conferir bula brasileira."
+        },
+        {
+          "campo": "carenciasCarne",
+          "motivo": "Carência para abate não publicada neste informativo; conferir bula brasileira."
+        },
+        {
+          "campo": "cuidados",
+          "motivo": "Conservação e advertências completas dependem da bula; o informativo não as apresenta."
+        }
+      ],
+      "origemOficial": "https://agropecuaria.elanco.com/br/produtos/corte/kinetomax"
+    }
+  },
+  {
+    "nomeCatalogo": "Ganaseg 7%",
+    "fabricanteCatalogo": "Novartis Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "13606375-9212-5a8a-917a-b992f37f9280",
+        "apresentacao": "Frasco 30 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 2,
+      "fonte": "https://agropecuaria.elanco.com/br/produtos/leite/ganaseg",
+      "titulo": "Ficha oficial Elanco Brasil — Ganaseg 7%",
+      "tipoFonte": "FICHA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "181080bba6c5d731ca59a86f7f912ba962211d46ebedf15f4f4e2d47e95b15a1",
+      "especie": "Bovinos",
+      "concentracao": "Por 100 mL: diaceturato de diminazeno 7 g e antipirina 37,5 g.",
+      "dosagem": "Bovinos: 1 mL por 20 kg de peso corporal, por via intramuscular, em dose única. Volumes superiores a 10 mL devem ser divididos em dois locais.",
+      "proporcoes": [
+        {
+          "quantidade": "1",
+          "unidade": "ML",
+          "pesoKg": "20",
+          "condicao": "Bovinos; intramuscular, dose única."
+        }
+      ],
+      "via": "Intramuscular.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 96,
+          "condicao": "Após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 816,
+          "condicao": "34 dias após a última aplicação."
+        }
+      },
+      "cuidados": "Pronto para uso. Dividir doses maiores que 10 mL em dois locais de aplicação. Respeitar condições de uso e períodos de carência.",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/ganaseg",
+          "secao": "Composição"
+        },
+        "dosagem": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/ganaseg",
+          "secao": "Administração e tabela por peso"
+        },
+        "proporcoes": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/ganaseg",
+          "secao": "Administração e tabela por peso"
+        },
+        "via": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/ganaseg",
+          "secao": "Administração"
+        },
+        "carenciasLeite": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/ganaseg",
+          "secao": "Período de carência — leite"
+        },
+        "carenciasCarne": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/ganaseg",
+          "secao": "Período de carência — corte"
+        },
+        "cuidados": {
+          "url": "https://agropecuaria.elanco.com/br/produtos/leite/ganaseg",
+          "secao": "Administração e advertência sobre resíduos"
+        }
+      }
+    }
+  },
+  {
+    "nomeCatalogo": "D-500",
+    "fabricanteCatalogo": "Fort Dodge Saúde Animal Ltda.",
+    "itens": [
+      {
+        "id": "27ee55e3-b9a8-576e-b5ca-20298f8b1fdb",
+        "apresentacao": "Frasco 50 ml"
+      }
+    ],
+    "orientacao": {
+      "versao": 2,
+      "fonte": "https://www2.zoetis.com.br/content/pt/pages/Especies/Equinos/D-500/_assets/pdf/bula-d-500.pdf",
+      "titulo": "Bula oficial brasileira — D-500",
+      "tipoFonte": "BULA_OFICIAL",
+      "consultadaEm": "2026-11-18",
+      "documentoSha256": "4cf2520a90ed675e7103515d91abf8d28a6f70cb57be1958a2941aef6e216fae",
+      "especie": "Bovinos",
+      "concentracao": "Dipirona sódica 500 mg/mL.",
+      "dosagem": "Bovinos adultos de grande porte: 20 mL por aplicação. A repetição nas 24 horas deve ser orientada pelo médico veterinário; não é uma proporção por peso.",
+      "proporcoes": [],
+      "via": "Intramuscular ou intravenosa.",
+      "carencias": {
+        "leite": {
+          "estado": "PRAZO",
+          "horas": 72,
+          "condicao": "Após a última aplicação."
+        },
+        "carne": {
+          "estado": "PRAZO",
+          "horas": 144,
+          "condicao": "Seis dias após a última aplicação."
+        }
+      },
+      "cuidados": "Conservar na embalagem original entre 15 e 30 °C, protegido da luz. Usar doses moderadas em animais muito velhos ou gravemente enfermos. Venda sob prescrição e aplicação sob orientação veterinária.",
+      "camposFonte": {
+        "concentracao": {
+          "url": "https://www2.zoetis.com.br/content/pt/pages/Especies/Equinos/D-500/_assets/pdf/bula-d-500.pdf",
+          "secao": "Fórmula",
+          "pagina": 1
+        },
+        "dosagem": {
+          "url": "https://www2.zoetis.com.br/content/pt/pages/Especies/Equinos/D-500/_assets/pdf/bula-d-500.pdf",
+          "secao": "Dose, administração e instruções de uso",
+          "pagina": 1
+        },
+        "proporcoes": {
+          "url": "https://www2.zoetis.com.br/content/pt/pages/Especies/Equinos/D-500/_assets/pdf/bula-d-500.pdf",
+          "secao": "Dose, administração e instruções de uso",
+          "pagina": 1
+        },
+        "via": {
+          "url": "https://www2.zoetis.com.br/content/pt/pages/Especies/Equinos/D-500/_assets/pdf/bula-d-500.pdf",
+          "secao": "Dose, administração e instruções de uso",
+          "pagina": 1
+        },
+        "carenciasLeite": {
+          "url": "https://www2.zoetis.com.br/content/pt/pages/Especies/Equinos/D-500/_assets/pdf/bula-d-500.pdf",
+          "secao": "Períodos de carência",
+          "pagina": 1
+        },
+        "carenciasCarne": {
+          "url": "https://www2.zoetis.com.br/content/pt/pages/Especies/Equinos/D-500/_assets/pdf/bula-d-500.pdf",
+          "secao": "Períodos de carência",
+          "pagina": 1
+        },
+        "cuidados": {
+          "url": "https://www2.zoetis.com.br/content/pt/pages/Especies/Equinos/D-500/_assets/pdf/bula-d-500.pdf",
+          "secao": "Precauções e cuidados",
+          "pagina": 1
+        }
+      },
+      "registroMapa": "1416, de 31/07/1981"
+    }
+  }
+]

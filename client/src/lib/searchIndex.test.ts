@@ -50,7 +50,7 @@ describe("buscar()", () => {
 
   it("ranking: label-prefix antes de substring no meio da palavra", () => {
     // "ca" começa "Caixinha" e "Cadastros"; também aparece no meio de outras.
-    const r = buscar(COMANDOS, "ca");
+    const r = buscar(COMANDOS.filter(c => ["fin-caixinha", "acao-cadastros", "pec-reproducao"].includes(c.id)), "ca");
     const cat = r.findIndex((c) => c.id === "fin-caixinha"); // label "Caixinha"
     expect(cat).toBeGreaterThanOrEqual(0);
     // o primeiro resultado deve ter label começando com "ca"

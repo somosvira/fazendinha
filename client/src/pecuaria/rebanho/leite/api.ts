@@ -53,3 +53,9 @@ export const obterCandidatos = (
     `/candidatos?${new URLSearchParams({ dataOperacional: data, busca, pagina: String(pagina) })}`,
     propriedadeId,
   );
+
+export const obterAvisosAplicacoes = (data: string, propriedadeId: number | null) =>
+  req<{ id: string; brinco: string; nome: string | null }[]>(
+    `/avisos-aplicacoes?dataOperacional=${encodeURIComponent(data)}`,
+    propriedadeId,
+  );

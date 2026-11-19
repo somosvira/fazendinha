@@ -35,6 +35,8 @@ A pesquisa externa inspira soluções; não muda contratos. Quando a organizaç�
 
 ### Aberturas em modal
 
+A criação e a edição de modelos de protocolo usam uma página própria, com retorno à lista e confirmação ao sair com edição em andamento.
+
 Detalhes de registro, formulários, conferências e filtros abrem em **modal centralizado**, também em telas pequenas. Não criar drawers, sheets ou painéis que entram pela lateral para esses fluxos. Usar os diálogos existentes com largura adequada, altura limitada à janela e rolagem interna, mantendo título, botão de fechar e ações acessíveis. Formulários de cadastro, incluindo os do Bezerreiro, usam `PainelCadastro` para manter cabeçalho e ações fixos e rolar só o corpo.
 
 Preservar foco dentro do modal, retorno ao acionador, fechamento por Escape quando permitido, proteção de rascunho e bloqueio durante gravação. As URLs e os retornos dos fluxos continuam funcionando, inclusive ao abrir um registro pela busca global. A navegação fixa entre áreas não é um painel de detalhe.
@@ -198,7 +200,7 @@ As medidas abaixo são referências CSS para validar nas próximas composições
 
 Não usar 10–12 px para instruções, estados ou dados necessários à operação. Se o conteúdo não cabe, rever colunas, agrupamento e prioridade. Se não é útil, retirar da primeira leitura. Evitar paredes de texto cinza-claro, caixa alta longa e abreviações sem definição.
 
-Usar espaçamento para indicar relação: rótulo próximo do valor; maior separação entre assuntos. Reduzir a quantidade de contêineres antes de reduzir padding e fonte indiscriminadamente. Seção → conteúdo costuma bastar; não acumular painel → card → card → tabela interna.
+Usar espaçamento para indicar relação: rótulo próximo do valor; maior separação entre assuntos. Em cabeçalhos de detalhe, agrupar versão, data, contagem e situação em rótulos ou etiquetas que possam quebrar de linha. Usar cartões quando os dados precisarem de mais espaço ou contexto. Reduzir a quantidade de contêineres antes de reduzir padding e fonte indiscriminadamente. Seção → conteúdo costuma bastar; não acumular painel → card → card → tabela interna.
 
 Uma borda agrupa algo; uma sombra diferencia uma camada. Não aplicar ambas em todo elemento. Ícones indicam assunto ou ação, não preenchem todos os títulos. Ilustrações ajudam identidade ou estado vazio e não devem competir com dados nem parecer foto real de um animal quando são genéricas.
 
@@ -316,3 +318,5 @@ O cabeçalho reúne a busca global, o atalho Buscar animal e o menu da conta. O 
 O shell usa gutters iguais: 24px no desktop, 20px entre 901–1100px e 16px até 900px. IA Terrano e Metas usam páginas próprias na sidebar, sem botão flutuante. IA Terrano reúne Conversa/Radar; Metas é independente e conserva seleção de fazenda, gráficos, histórico e formulários em modal centralizado. Títulos compartilhados usam 24px/22px; abas usam 14px e alvos de 40px no desktop e 44px no móvel. Escalas específicas de documentos e indicadores continuam próprias. A sidebar recolhida centraliza desenhos proporcionais em acionadores de 44px, com um único fundo no seletor de sítio; mantém navegação móvel, colapso manual e expansão temporária do trilho automático.
 
 Protocolos sanitários apresentam Protocolo, Situação, Versão, Estrutura e Ações; a finalidade continua nas consultas reprodutivas. Ver detalhes é direto; Mais ações reúne os comandos autorizados, com seus bloqueios e confirmações existentes. Cartões organizam nome, situação e estrutura em leitura curta, sem altura reservada para uma prévia ausente. A largura do contêiner governa sua grade; nomes, procedimentos e alertas podem aumentar a altura sem corte.
+
+As consultas não exibem a instrução “Role horizontalmente para ver todas as colunas.”. A região rolável conserva nome acessível, foco e navegação por setas. Textos auxiliares removidos por revisão não devem ser reintroduzidos como legendas soltas.

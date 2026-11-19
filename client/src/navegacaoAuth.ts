@@ -69,6 +69,11 @@ export function podeAcessarTab(usuario: UsuarioSessao, tab: Tab): boolean {
 export function podeAcessarCaminho(usuario: UsuarioSessao, caminho: string): boolean {
   const url = new URL(normalizarRotaPecuaria(caminho), "https://terrano.internal");
   const tab = pathToTab(url.pathname);
+  const tablet = /^\/pecuaria\/sanidade\/tablet(?:\/(aprovacao|templates))?\/?$/.exec(url.pathname);
+  if (tablet) {
+    const flag = tablet[1] === "aprovacao" ? "revisarAplicacoesTablet" : tablet[1] === "templates" ? "gerenciarTemplatesTablet" : "enviarAplicacoesTablet";
+    return usuario.id > 0 && podeAcessarTab(usuario, "pec-sanidade") && (!!usuario.dono || usuario.flags.includes(flag));
+  }
   return !!tab && podeAcessarTab(usuario, tab)
     && (!url.pathname.startsWith("/configuracoes/pecuaria") || podeAcessarTab(usuario, "pec-rebanho"));
 }

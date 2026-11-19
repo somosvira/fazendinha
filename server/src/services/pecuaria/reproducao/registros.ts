@@ -203,7 +203,7 @@ export async function consultaAlertasSanitariosTx(tx: Prisma.TransactionClient, 
   const ocorrencias = await tx.ocorrenciaSanitaria.findMany({ where: { animalId, status: "VALIDO", inicio: { lte: data }, OR: [{ fim: null }, { fim: { gte: data } }], doencaId: { in: regras.map((r) => r.doencaId) } } });
   return regras.filter((r) => ocorrencias.some((o) => o.doencaId === r.doencaId)).map((r) => ({ motivo: r.motivo, efeito: r.efeito, doencaId: r.doencaId }));
 }
-async function genitorTx(
+export async function genitorTx(
   tx: Prisma.TransactionClient,
   id: string | null | undefined,
   externo: string | null | undefined,

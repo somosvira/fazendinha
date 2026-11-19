@@ -10,6 +10,8 @@ import { PropriedadeError, resolverEscopoEscrita, resolverEscopoLeitura } from "
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { criarConfiguracao, listarConfiguracoes } from "../../services/pecuaria/leite/configuracoes.js";
 import { consultarFolha, listarCandidatos, salvarFolha } from "../../services/pecuaria/leite/producao.js";
+import { consultarAplicacoesTabletPendentes } from "../../services/pecuaria/sanidade/tablet-pendencias.js";
+import { transacaoPecuaria } from "../../services/pecuaria/transacao.js";
 import { configuracaoOrdenhaSchema, consultaCandidatosSchema, consultaConfiguracaoSchema, consultaFolhaSchema, salvarFolhaSchema } from "../../services/pecuaria/leite/schemas.js";
 
 const validar = <T extends z.ZodTypeAny>(schema: T) => zValidator("json", schema, (r, c) => !r.success ? c.json({ error: r.error.issues[0].message, code: "VALIDACAO" }, 422) : undefined);
@@ -71,6 +73,20 @@ export const leiteRouter = new Hono()
   .get("/folha", validarQuery(consultaFolhaSchema), async c => {
     try { return c.json(await consultarFolha(await sitioLeitura(c), c.req.valid("query").dataOperacional)); }
     catch (erro) { return falha(c, erro); }
+  })
+  .get("/avisos-aplicacoes", validarQuery(consultaFolhaSchema), async c => {
+    try {
+      const propriedadeId = await sitioLeitura(c);
+      const data = new Date(c.req.valid("query").dataOperacional + "T00:00:00Z");
+      const animais = await transacaoPecuaria(async tx => {
+        const envios = await consultarAplicacoesTabletPendentes(tx, data, { propriedadeId });
+        return tx.animal.findMany({
+          where: { id: { in: [...new Set(envios.flatMap(e => e.animalIds))] } },
+          select: { id: true, nome: true, brinco: true }, orderBy: { brinco: "asc" },
+        });
+      });
+      return c.json(animais);
+    } catch (erro) { return falha(c, erro); }
   })
   .post("/folha", exigePermissao("lancar"), validar(salvarFolhaSchema), async c => {
     try {
