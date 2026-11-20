@@ -553,6 +553,7 @@ export function Acessos() {
   return (
     <PaginaFinanceira>
       <PageHeader
+        nivel={2}
         titulo={<span className="rotina-titulo"><span><Users/></span>Acessos</span>}
         acao={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} /> Convidar pessoa</Button>}
       />

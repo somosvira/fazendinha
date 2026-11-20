@@ -446,10 +446,6 @@ function RevisaoMensal({
             maxLength={500}
           />
         </label>
-        <p className="mensal-ajuda">
-          Os ajustes conservam o mês de consumo e movimentam o estoque na data
-          da confirmação. Perda física deve ser registrada como perda.
-        </p>
       </fieldset>
       {!fechado && podeLancar && (
         <Button

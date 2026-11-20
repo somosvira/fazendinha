@@ -103,3 +103,6 @@
 @media print {
   .fin-tabela-cartoes { display: none; }
 }
+
+/* Alvo de clique mínimo de 24px para links dentro de células (WCAG 2.5.8). */
+:root :is(.app-main, .financeiro-colorido) table td a { display: inline-flex; align-items: center; min-height: 24px; }

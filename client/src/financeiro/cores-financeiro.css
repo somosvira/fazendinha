@@ -5,7 +5,7 @@
   --fin-pendente: var(--rural);
   --fin-info: var(--rural);
   --fin-alerta: var(--prejuizo);
-  --fin-superficie: var(--color-white);
+  --fin-superficie: var(--color-white, #fff);
 }
 .financeiro-colorido {
   --card: var(--fin-superficie);
@@ -64,3 +64,10 @@
 .fin-vazio-texto { max-width: 52ch; font-size: 14px; line-height: 1.5; color: var(--muted-foreground); }
 .fin-vazio-texto :is(strong, h3) { display: block; margin: 0 0 2px; font-size: 15px; font-weight: 600; color: var(--foreground); }
 .fin-vazio-acao { margin-top: 4px; }
+
+/* Nível interno de abas: controle segmentado, menor e mais leve que as abas raiz. */
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .abas-segmentadas .fin-abas { display: inline-flex; flex-wrap: nowrap; width: fit-content; max-width: 100%; overflow-x: auto; gap: 2px; padding: 3px; margin: 0; background: var(--muted); border: 0; border-radius: 10px; }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .abas-segmentadas .fin-abas [role="tab"] { min-height: 32px; height: auto; padding: 4px 14px; gap: 6px; font-size: 14px; font-weight: 500; border: 0; border-radius: 8px; background: transparent; color: var(--muted-foreground); box-shadow: none; }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .abas-segmentadas .fin-abas [role="tab"]:hover { background: transparent; color: var(--foreground); }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .abas-segmentadas .fin-abas [role="tab"][data-state="active"] { background: var(--card); color: var(--foreground); font-weight: 600; box-shadow: 0 0 0 1px var(--border); }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .abas-segmentadas .fin-abas [role="tab"] svg { width: 16px; height: 16px; }

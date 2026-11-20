@@ -78,17 +78,8 @@ export function EditorRegrasAcompanhamentoModelo({
   return (
     <fieldset disabled={disabled} className="min-w-0 space-y-4">
       <legend className="font-semibold">Prazos de acompanhamento</legend>
-      <p className="text-sm text-ink-3">
-        Data individual → modelo → padrão do sítio. Sem regra, o planejamento
-        fica pendente. Prazos e origem são preservados na adoção.
-      </p>
       {erro && (
         <p role="alert">Não foi possível carregar os tipos de exame: {erro}</p>
-      )}
-      {!regras.length && (
-        <p className="text-sm">
-          Sem prazo próprio. Usa a regra do sítio, quando configurada.
-        </p>
       )}
       {regras.map((r, i) => (
         <fieldset

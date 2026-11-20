@@ -73,3 +73,11 @@
 /* Ícone do item (o mesmo do cartão) na coluna principal da tabela. */
 .tabela-item-com-icone { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .tabela-item-icone { display: inline-grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: var(--primary); }
+
+/* Contadores clicáveis: cada número filtra a lista. */
+.chips-filtro { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-filtro { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--muted-foreground); font-size: 14px; cursor: pointer; }
+.chip-filtro strong { color: var(--foreground); font-weight: 600; }
+.chip-filtro:hover { background: var(--muted); }
+.chip-filtro[aria-pressed="true"] { background: var(--accent); border-color: var(--primary); color: var(--primary); }
+.chip-filtro[aria-pressed="true"] strong { color: var(--primary); }

@@ -905,10 +905,6 @@ export function PlanoEtapa({
       });
     return (
       <div className="col-span-full grid gap-3 sm:grid-cols-2">
-        <p className="col-span-full text-sm">
-          Informe os parâmetros definidos pelo responsável. Planejar não aplica
-          nem consome estoque.
-        </p>
         <SelectBuscavel buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO", propriedadeId })} detalhe={detalheProdutoSanitario} rotulo="Produto planejado" valor={p?.produtoId ?? ""} onChange={(produtoId, produto) => produtoId ? alterar({ produtoId, dose: produtoId === p?.produtoId ? p.dose : "", unidadeDose: produtoId === p?.produtoId ? p.unidadeDose : (produto?.unidade ?? "ML") as UnidadeMedida, via: produtoId === p?.produtoId ? p.via : produto?.perfilSanitario?.viaPadrao ?? null, tipoAplicacaoId: produtoId === p?.produtoId ? p.tipoAplicacaoId : produto?.perfilSanitario?.tipoAplicacaoId ?? null }) : onChange({ ...etapa, planoAplicacao: undefined })}/>
         <label>
           Dose planejada
@@ -930,7 +926,7 @@ export function PlanoEtapa({
     );
   }
   if (etapa.tipo === "TENTATIVA") {
-    if (contratoNovo) return <div className="col-span-full grid gap-3">{!tipoDefinido && <label>Procedimento de reprodução<SelectCampo required className={classeInput} value={etapa.tentativaTipo ?? etapa.planoTentativa?.tipo ?? ""} onValueChange={(valor) => onChange({ ...etapa, tentativaTipo: valor as "IA" | "TE", planoTentativa: undefined })}><option value="" disabled>Selecione o procedimento</option><option value="IA">Inseminação artificial</option><option value="TE">Transferência de embrião</option></SelectCampo></label>}<p className="text-sm">Material genético e quantidade são obrigatórios no atendimento. Nenhum material é fixado neste modelo.</p></div>;
+    if (contratoNovo) return <div className="col-span-full grid gap-3">{!tipoDefinido && <label>Procedimento de reprodução<SelectCampo required className={classeInput} value={etapa.tentativaTipo ?? etapa.planoTentativa?.tipo ?? ""} onValueChange={(valor) => onChange({ ...etapa, tentativaTipo: valor as "IA" | "TE", planoTentativa: undefined })}><option value="" disabled>Selecione o procedimento</option><option value="IA">Inseminação artificial</option><option value="TE">Transferência de embrião</option></SelectCampo></label>}</div>;
     const p = etapa.planoTentativa;
     const alterar = (
       campos: Partial<NonNullable<EtapaIatf["planoTentativa"]>>,
@@ -979,7 +975,6 @@ export function PlanoEtapa({
     return (
       <div className="col-span-full grid gap-3">
       <SelectBuscavel buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO", propriedadeId })} rotulo="Tipo de exame reprodutivo" valor={etapa.planoAvaliacao?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoAvaliacao: { tipo: etapa.planoAvaliacao?.tipo ?? "DIAGNOSTICO", tipoExameId: tipoExameId || undefined } })}/>
-      <p className="text-sm">Sem tipo definido, mantém a avaliação reprodutiva padrão de compatibilidade.</p>
       <label>
         Avaliação planejada
         <SelectCampo
@@ -1011,12 +1006,7 @@ export function PlanoEtapa({
         </SelectCampo>
       </label></div>
     );
-  return (
-    <p className="col-span-full text-sm">
-      A confirmação registra esta ação com horário e autoria. Não implica
-      aplicação de medicamento.
-    </p>
-  );
+  return null;
 }
 export function OrientacaoTemporalEtapa({etapa,onChange}:{etapa:EtapaIatf;onChange:(e:EtapaIatf)=>void}){
  const r=etapa.orientacaoTemporal;const mudar=(v:Partial<NonNullable<EtapaIatf["orientacaoTemporal"]>>)=>r&&onChange({...etapa,orientacaoTemporal:{...r,...v}});

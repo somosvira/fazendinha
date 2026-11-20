@@ -61,19 +61,6 @@ export function LeiteModulo({ podeLancar, podeFinanceiro, podeExportar = false, 
     void executarComGuardaNavegacao(() => navegarPara(url.pathname + url.search + url.hash));
   }
   const operacional = consultas.some(c => c.id === secao);
-  const descricoes: Record<string, string> = {
-    ordenhas: modo === "registro" ? "Registre o volume desta ordenha, confira as origens e depois confirme o estoque." : modo === "individual" ? "Registre a aferição por animal, uma ordenha de cada vez." : "Confira cada turno e continue os registros que faltam.",
-    producao: "Compare os volumes registrados e consulte a cobertura dos custos.",
-    estoque: "Consulte o saldo físico confirmado e a origem de cada quantidade.",
-    coletas: "Acompanhe as retiradas físicas, mesmo quando o preço ainda não foi definido.",
-    qualidade: "Acompanhe amostras e consulte os resultados e seus laudos.",
-    vendas: "Reúna coletas, negociação e recebimentos por comprador e período.",
-    destinos: "Consulte o destino físico do leite e os vínculos com a nutrição.",
-    configuracoes: "Organize a rotina por vigência e mantenha as medições anteriores preservadas.",
-    relatorios: "Consulte produção, custos e cobertura antes de exportar.",
-    historico: "Confira a proveniência e as pendências da carga histórica.",
-    programacao: "Organize as retiradas previstas e acompanhe seus registros.",
-  };
   const rotina = consultas.find(c => c.id === secao);
   const IconeRotina = rotina?.Icon ?? Milk;
   return <div className="leite-modulo leite-rotina-reformulada">
@@ -86,7 +73,7 @@ export function LeiteModulo({ podeLancar, podeFinanceiro, podeExportar = false, 
         : secao === "estoque" ? <EstoqueLeite podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />
         : secao === "coletas" ? <ConsultasComerciaisLeite tipo="coletas" podeLancar={podeLancar} />
         : secao === "vendas" ? <VendasLeite podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />
-        : secao === "destinos" ? <><ResumoDestinosLeite revisao={revisaoDestinos}/><div className="leite-historicos-destinos"><SubTabs variant="financeiro" ariaLabel="Históricos dos destinos" tabs={[{id:"fornecimentos",label:"Fornecimentos"},{id:"retiradas",label:"Casa e Funcionários"},{id:"descarte",label:"Descarte físico"}]} active={destinosAba} onSelect={id=>{setDestinosAba(id);const url=new URL(location.href);url.searchParams.set("destinosAba",id);history.replaceState(history.state,"",url);}}/>
+        : secao === "destinos" ? <><ResumoDestinosLeite revisao={revisaoDestinos}/><div className="leite-historicos-destinos"><SubTabs aparencia="segmentado" variant="financeiro" ariaLabel="Históricos dos destinos" tabs={[{id:"fornecimentos",label:"Fornecimentos"},{id:"retiradas",label:"Casa e Funcionários"},{id:"descarte",label:"Descarte físico"}]} active={destinosAba} onSelect={id=>{setDestinosAba(id);const url=new URL(location.href);url.searchParams.set("destinosAba",id);history.replaceState(history.state,"",url);}}/>
           <div hidden={destinosAba!=="fornecimentos"}><DestinosLeite podeLancar={podeLancar} aoMudou={()=>setRevisaoDestinos(v=>v+1)}/></div>
           <div hidden={destinosAba!=="retiradas"}><DescarteLeite modo="retirada" podeLancar={podeLancar} aoMudou={()=>setRevisaoDestinos(v=>v+1)}/></div>
           <div hidden={destinosAba!=="descarte"}><DescarteLeite podeLancar={podeLancar} aoMudou={()=>setRevisaoDestinos(v=>v+1)}/></div>
@@ -97,7 +84,7 @@ export function LeiteModulo({ podeLancar, podeFinanceiro, podeExportar = false, 
         : secao === "programacao" ? <ProgramacaoRetirada podeLancar={podeLancar} />
         : secao === "configuracoes" ? <><ConfiguracoesProducaoLeite podeLancar={podeLancar} /><ProgramacaoRetirada podeLancar={podeLancar} /></>
         : <>
-          {modo !== "registro" && <SubTabs variant="financeiro" aparencia="botoes" className="leite-modos" ariaLabel="Forma de aferição" tabs={[{ id: "geral", label: "Ordenhas registradas" }, { id: "individual", label: "Controle individual" }]} active={modo} onSelect={id => selecionar("ordenhas", id)} />}
+          {modo !== "registro" && <SubTabs variant="financeiro" aparencia="segmentado" className="leite-modos" ariaLabel="Forma de aferição" tabs={[{ id: "geral", label: "Ordenhas registradas" }, { id: "individual", label: "Controle individual" }]} active={modo} onSelect={id => selecionar("ordenhas", id)} />}
           {modo === "individual" ? <Leite podeLancar={podeLancar} acoesContainer={acoesContainer} /> : <OrdenhasGerais podeLancar={podeLancar} acoesContainer={acoesContainer} />}
         </>}
     </div>

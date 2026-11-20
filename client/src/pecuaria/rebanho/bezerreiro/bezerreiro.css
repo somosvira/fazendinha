@@ -24,7 +24,7 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .bez-animal-cartao-topo,
@@ -49,12 +49,12 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
 }
 .bez-regularizacao fieldset { margin: 0; }
 .bez-regularizacao .bez-ajuda:first-child { margin: 0; }
-.bez-animal-cartao dt { color: var(--text-muted); font-size: 12px; }
+.bez-animal-cartao dt { color: var(--muted-foreground); font-size: 12px; }
 .bez-animal-cartao dd { margin: 0; }
 .bez-animal-cartao-corpo { margin-top: 8px; align-items: end; }
 .bez-animal-cartao-corpo dl {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(min-content, 1fr));
   flex: 1 1 220px;
   gap: 8px;
   margin: 0;
@@ -94,7 +94,7 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
   font-size: 13px;
 }
 
-.bez-alimentacao-cartao-corpo dt { color: var(--text-muted); font-size: 12px; }
+.bez-alimentacao-cartao-corpo dt { color: var(--muted-foreground); font-size: 12px; }
 .bez-alimentacao-cartao-corpo dd { margin: 0; font-weight: 600; }
 .bez-alimentacao-cartao-corpo button { margin-left: auto; }
 
@@ -116,7 +116,7 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
   gap: 6px 10px;
   margin: 0;
 }
-.bez-lista-cartao dt { color: var(--text-muted); font-size: 12px; }
+.bez-lista-cartao dt { color: var(--muted-foreground); font-size: 12px; }
 .bez-lista-cartao dd { margin: 0; font-size: 13px; font-weight: 600; }
 .bez-lista-cartao .bez-subtexto { margin-top: 2px; font-weight: 400; }
 .bez-lista-cartao-acoes { margin-top: auto; }
@@ -148,7 +148,7 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
   gap: 8px;
   margin: 0;
 }
-.bez-sanidade-cartao-corpo dt { color: var(--text-muted); font-size: 12px; }
+.bez-sanidade-cartao-corpo dt { color: var(--muted-foreground); font-size: 12px; }
 .bez-sanidade-cartao-corpo dd { margin: 0; font-size: 13px; font-weight: 600; }
 .bez-sanidade-cartao-corpo button { margin-left: auto; min-height: 32px; height: auto; padding: 4px 10px; font-size: 12px; }
 

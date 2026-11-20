@@ -1,3 +1,4 @@
+import { carregarAlertasNutricao } from "./AlertasNutricao";
 import { Plus, Settings2 } from "lucide-react";
 import { ProximosFechamentos } from "./ProximosFechamentos";
 import { AlertasNutricao } from "./AlertasNutricao";
@@ -35,11 +36,17 @@ export function Nutricao({ podeLancar }: { podeLancar: boolean }) {
     window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar);
   }, []);
   useEffect(() => { titulo.current?.focus({ preventScroll: true }); }, [url.aba, url.loteId, url.fechamentoId, url.acao, url.formReceita]);
+  const [qtdAlertas, setQtdAlertas] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    carregarAlertasNutricao().then(d => { if (vivo) setQtdAlertas(d.aFechar.length + d.aProcessar.length + d.semDieta.length + d.revisar.length + d.estoque.length); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [url.aba]);
   const operacao = url.acao === "atribuir" || url.acao === "corrigir" || url.acao === "consumo" ? url.acao : null;
   const voltar = () => navegarPara(rotaRetornoNutricional());
   const subpagina = !!url.fechamentoId || (url.aba === "lotes" && !!url.loteId);
   return <PaginaFinanceira><ConteudoEstavel contexto={url.aba}><div className="nutricao-pagina" ref={titulo} tabIndex={-1}>
-    {!subpagina && !url.formReceita && <><PageHeader titulo={<span className="flex items-center gap-3">Nutrição </span>} acao={<div className="nutricao-cabecalho-acoes"><LinkNutricional className="nutricao-botao-secundario" href="/configuracoes/pecuaria/nutricao"><Settings2 size={18} aria-hidden />Configurações</LinkNutricional>{url.aba !== "receitas" && podeLancar && <LinkNutricional className="nutricao-botao" href={rotaOperacaoNutricional("consumo")}><Plus size={18} aria-hidden />Novo fechamento</LinkNutricional>}</div>} /><SubTabs variant="financeiro" ariaLabel="Nutrição" tabs={[{ id: "lotes", label: "Visão geral" }, { id: "receitas", label: "Receitas" }, { id: "fechamentos", label: "Fechamentos" }, { id: "alertas", label: "Alertas" }]} active={url.aba === "mensal" ? "fechamentos" : url.aba} onSelect={aba => navegarPara(rotaNutricao({ aba }))} /></>}
+    {!subpagina && !url.formReceita && <><PageHeader titulo={<span className="flex items-center gap-3">Nutrição </span>} acao={<div className="nutricao-cabecalho-acoes"><LinkNutricional className="nutricao-botao-secundario" href="/configuracoes/pecuaria/nutricao"><Settings2 size={18} aria-hidden />Configurações</LinkNutricional>{url.aba !== "receitas" && podeLancar && <LinkNutricional className="nutricao-botao" href={rotaOperacaoNutricional("consumo")}><Plus size={18} aria-hidden />Novo fechamento</LinkNutricional>}</div>} /><SubTabs variant="financeiro" ariaLabel="Nutrição" tabs={[{ id: "lotes", label: "Visão geral" }, { id: "receitas", label: "Receitas" }, { id: "fechamentos", label: "Fechamentos" }, { id: "alertas", label: qtdAlertas ? `Alertas (${qtdAlertas})` : "Alertas" }]} active={url.aba === "mensal" ? "fechamentos" : url.aba} onSelect={aba => navegarPara(rotaNutricao({ aba }))} /></>}
     {/* A operação abre em painel sobre a consulta de origem, que continua visível ao fundo. */}
     {operacao && (podeLancar ? <FormOperacaoNutricional key={`${operacao}:${url.loteId}:${url.vigenciaId}`} acao={operacao} loteId={url.loteId} vigenciaId={url.vigenciaId} dietaInicialId={url.dietaId} onVoltar={voltar} onSalvo={(loteId) => navegarPara(retornoFichaNutricional() ?? rotaNutricao({ loteId }))} /> : <p role="alert" className="nutricao-aviso">Você não tem permissão para lançar alterações.</p>)}
     {url.fechamentoId ? <ConsultaFechamento key={url.fechamentoId} id={url.fechamentoId} podeLancar={podeLancar} estorno={url.acao === "estorno"} onVoltar={voltar} /> : url.aba === "receitas" ? <ReceitasDieta podeLancar={podeLancar} /> : url.aba === "alertas" ? <><AlertasNutricao podeLancar={podeLancar} /><GestaoMensal podeLancar={podeLancar} vista="alertas" /></> : (url.aba === "fechamentos" || url.aba === "mensal") ? (new URLSearchParams(window.location.search).has("mesId") ? <GestaoMensal podeLancar={podeLancar} vista="mensal" /> : <><ProximosFechamentos podeLancar={podeLancar} loteId={url.loteId} /><GestaoMensal podeLancar={podeLancar} vista="mensal"><section className="nutricao-ultimos"><h2>Últimos fechamentos</h2><FechamentosNutricao loteId={url.loteId} /></section></GestaoMensal></>) : url.loteId ? <NutricaoLote key={url.loteId} loteId={url.loteId} podeLancar={podeLancar} vista="lotes" /> : <VisaoGeralNutricao podeLancar={podeLancar} />}

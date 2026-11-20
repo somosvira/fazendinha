@@ -79,7 +79,6 @@ export function RelatorioGerencial({ onVoltar }: { onVoltar?: () => void }) {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="m-0 font-serif text-[42px] font-normal leading-tight">Relatório financeiro gerencial</h1>
-            <p className="mb-0 mt-2 max-w-2xl text-sm text-ink-3">Escolha período, propriedade e regime; monte as seções e exporte. Os valores vêm dos lançamentos reais e não podem ser editados aqui.</p>
           </div>
           {onVoltar && <button type="button" className="btn-ghost font-sans text-sm" onClick={onVoltar}>← Voltar para relatórios</button>}
         </div>
@@ -109,7 +108,6 @@ export function RelatorioGerencial({ onVoltar }: { onVoltar?: () => void }) {
       <div className="mt-6 grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
         <aside className="rounded-[10px] border border-border bg-card p-4" aria-label="Montar relatório">
           <h2 className="m-0 font-serif text-xl font-medium">Montar relatório</h2>
-          <p className="mb-4 mt-1 text-xs text-ink-3">Texto e ordem das seções. Os números não mudam.</p>
           <label className="mb-3 flex flex-col gap-1 text-xs text-ink-3">Título<input className="rounded-md border border-border bg-[color:var(--bg)] px-3 py-2 text-sm text-foreground" value={template.titulo} onChange={(e) => setTemplate((t) => editarTexto(t, "titulo", e.target.value))} /></label>
           <label className="mb-3 flex flex-col gap-1 text-xs text-ink-3">Subtítulo<input className="rounded-md border border-border bg-[color:var(--bg)] px-3 py-2 text-sm text-foreground" value={template.subtitulo} onChange={(e) => setTemplate((t) => editarTexto(t, "subtitulo", e.target.value))} placeholder="Ex.: Posição para reunião de sócios" /></label>
           <label className="mb-4 flex flex-col gap-1 text-xs text-ink-3">Observações<textarea rows={3} className="rounded-md border border-border bg-[color:var(--bg)] px-3 py-2 text-sm text-foreground" value={template.observacoes} onChange={(e) => setTemplate((t) => editarTexto(t, "observacoes", e.target.value))} placeholder="Notas editoriais que saem no fim do documento" /></label>

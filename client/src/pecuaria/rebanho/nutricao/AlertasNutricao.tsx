@@ -34,15 +34,18 @@ export function fechamentosParaRevisar(fechamentos: Fechamento[]): Revisao[] {
   }).filter(r => r.motivos.length);
 }
 
-export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
-  const visual = useVisualizacaoConsulta("visualAlertasNutricao", "nutricao", "visual");
-  const visualizacao = visual.modo === "visual" ? "cartoes" : "tabela";
-  const consulta = useConsulta(useCallback(async () => {
+/** Alertas da nutrição: usados pela aba Alertas e pelo contador da aba. */
+export async function carregarAlertasNutricao() {
     const [situacoes, visao, recentes] = await Promise.all([consultarSituacaoFechamentos(), consultarVisaoNutricional(), listarFechamentos(undefined, 1, "CONFIRMADO")]);
     // Estoque é complemento: se a consulta falhar, os demais alertas continuam.
     const cobertura = await consultarCobertura(visao.lotes).catch(() => null);
     return { aFechar: situacoes.filter(s => s.dias > 0), aProcessar: situacoes.filter(s => (s.diarios?.dias ?? 0) > 0), semDieta: visao.lotes.filter(l => !l.vigente && l.lote.ativo !== false), revisar: fechamentosParaRevisar(recentes.itens), estoque: cobertura ? ingredientesEmFalta(cobertura, visao.lotes) : [], estoqueIndisponivel: !cobertura };
-  }, []));
+}
+
+export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
+  const visual = useVisualizacaoConsulta("visualAlertasNutricao", "nutricao", "visual");
+  const visualizacao = visual.modo === "visual" ? "cartoes" : "tabela";
+  const consulta = useConsulta(useCallback(carregarAlertasNutricao, []));
   if (consulta.carregando) return <EsqueletoTabela label="Carregando alertas da nutrição" colunas={3} linhas={4} />;
   if (consulta.erro) return <p role="alert" className="nutricao-aviso">{consulta.erro}</p>;
   const d = consulta.dados!;

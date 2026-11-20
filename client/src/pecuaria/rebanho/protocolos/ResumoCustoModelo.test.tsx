@@ -149,5 +149,4 @@ it("oferece seleção local dentro da revisão e só estima após escolher o sí
       expect.objectContaining({ propriedadeId: 7 }),
     ),
   );
-  expect(screen.getByText(/preserva a visão global/)).toBeTruthy();
 });

@@ -62,11 +62,11 @@ export function PaginaSemDados({ titulo, descricao, label, erro, onTentarNovamen
   return <PaginaFinanceira><PageHeader eyebrow="" titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} />{onTentarNovamente && <Button secondary className="mt-4" onClick={onTentarNovamente}>Tentar novamente</Button>}</PaginaFinanceira>;
 }
 
-export function PageHeader({ titulo, descricao, acao, extra, contexto, children, eyebrow = "", integrado = false }: { titulo: React.ReactNode; descricao?: React.ReactNode; acao?: React.ReactNode; extra?: React.ReactNode; contexto?: React.ReactNode; children?: React.ReactNode; eyebrow?: string; integrado?: boolean }) {
+export function PageHeader({ titulo, descricao, acao, extra, contexto, children, eyebrow = "", integrado = false, nivel = 1 }: { nivel?: 1 | 2; titulo: React.ReactNode; descricao?: React.ReactNode; acao?: React.ReactNode; extra?: React.ReactNode; contexto?: React.ReactNode; children?: React.ReactNode; eyebrow?: string; integrado?: boolean }) {
   return <header className={`fin-cabecalho-pagina ${integrado ? "fin-cabecalho-integrado" : ""}`}>
     <div className="fin-cabecalho-identidade">
       {eyebrow && <div className="eyebrow">{eyebrow}</div>}
-      <h1 className="h1">{titulo}</h1>
+      {nivel === 1 ? <h1 className="h1">{titulo}</h1> : <h2 className="h1">{titulo}</h2>}
       {descricao && <p className="fin-cabecalho-descricao">{descricao}</p>}
       {contexto && <div className="fin-cabecalho-contexto">{contexto}</div>}
       {children}

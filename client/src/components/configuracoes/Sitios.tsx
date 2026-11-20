@@ -79,7 +79,7 @@ export function Sitios() {
   const paginacao = usePaginacaoLocal(visiveis, `${busca}|${mostrarInativos}|${consulta.criterios.map(c=>c.rotulo).join("|")}`);
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><MapPin/></span>Sítios</span>} acao={<Button onClick={abrirNovo}><Plus size={16} /> Novo sítio</Button>} />
+    <PageHeader nivel={2} eyebrow="" titulo={<span className="rotina-titulo"><span><MapPin/></span>Sítios</span>} acao={<Button onClick={abrirNovo}><Plus size={16} /> Novo sítio</Button>} />
     <ErrorBox erro={erro} />
 
     <fieldset disabled={processando} aria-busy={processando} className="min-w-0">

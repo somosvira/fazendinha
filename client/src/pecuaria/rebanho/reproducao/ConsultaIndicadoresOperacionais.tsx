@@ -62,14 +62,15 @@ export function ConsultaIndicadoresOperacionais({ propriedadeId }: { propriedade
       ...(criterios.estimativa!==""?[{id:"estimativa",rotulo:`Concepção estimada: ${criterios.estimativa}%`,limpar:()=>remover("estimativa","Estimativa")}]:[]),
       ...(criterios.perdas!==""?[{id:"perdas",rotulo:`Perdas: ${criterios.perdas} dias`,limpar:()=>remover("perdas","Perdas")}]:[]),
       ...(criterios.iep!==padrao.iep?[{id:"iep",rotulo:"IEP: todos os partos",limpar:()=>remover("iep","Iep")}]:[]),
-    ]}><label className="flex items-center gap-3">Mês de referência
+    ]}><div className="flex flex-wrap items-center gap-3"><span className="text-sm font-medium">Mês de referência</span>
       <input type="month" className={classeInput} aria-label="Mês de referência" max={getHojeISO().slice(0,7)} value={periodo.inicio.slice(0,7)} onChange={e => {
         const mes = e.target.value;
         if (!/^\d{4}-\d{2}$/.test(mes)) return;
         const [ano, numeroMes] = mes.split("-").map(Number);
         periodo.alterar({start: dateFromIso(`${mes}-01`), end: new Date(ano, numeroMes, 0)});
       }}/>
-    </label><span className="text-sm text-muted-foreground">{periodo.inicio.split("-").reverse().join("/")} a {periodo.fim.split("-").reverse().join("/")}{periodo.fim.slice(0,7) === getHojeISO().slice(0,7) ? " · Mês em andamento" : ""}</span></BarraConsulta>
+      {periodo.fim.slice(0,7) === getHojeISO().slice(0,7) && <span className="text-sm text-muted-foreground">Mês em andamento</span>}
+    </div></BarraConsulta>
     {periodo.aviso&&<p role="status" className="text-sm">{periodo.aviso}</p>}{erroLotes&&<p role="status" className="text-sm">{erroLotes}</p>}
     <ErrorBox erro={erro}/>{erro&&<Button secondary onClick={()=>setRevisao(v=>v+1)}>Tentar novamente</Button>}
     {carregando&&<EsqueletoPainel label="Carregando indicadores" />}

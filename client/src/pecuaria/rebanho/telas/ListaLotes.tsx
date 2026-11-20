@@ -182,7 +182,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
 
   return <PaginaFinanceira>
     <PageHeader titulo={<span className="rotina-titulo"><span><Layers aria-hidden/></span>Lotes</span>} acao={podeLancar ? <Button onClick={abrirNovo}><Plus size={16} /> Novo lote</Button> : undefined} />
-    <NavRebanho ativa="lotes" />
+    <NavRebanho ativa="lotes" contagens={{ lotes: lotes?.filter(l => l.ativo !== false).length }} />
     <ErrorBox erro={erro} />
 
     <Panel className="mt-5 overflow-hidden">

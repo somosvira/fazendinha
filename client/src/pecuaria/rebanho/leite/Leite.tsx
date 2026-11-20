@@ -887,7 +887,6 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                       {resumo.resolvidas} de {resumo.esperadas} animais
                       resolvidos
                     </span>
-                    <span>{resumo.pendentes} pendentes</span>
                   </div>
                   <p>
                     {resumo.medidas} medidos · {resumo.naoOrdenhadas} não
