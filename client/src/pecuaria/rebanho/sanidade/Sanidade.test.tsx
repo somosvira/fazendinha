@@ -24,7 +24,7 @@ describe("busca e atualização da Sanidade", () => {
 
     expect(screen.queryByRole("tab", { name: "Semana" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Lista" })).toBeNull();
-    expect(screen.getByRole("group", { name: /Etapas dos próximos 14 dias/ })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: /Etapas dos próximos 14 dias/ })).toBeNull();
     expect(screen.getByRole("tab", { name: /^Tarefas/ })).toBeTruthy();
   });
 
