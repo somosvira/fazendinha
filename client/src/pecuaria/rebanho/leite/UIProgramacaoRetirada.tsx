@@ -349,7 +349,7 @@ function ConfigurarRetirada({
         <Button variant="outline" type="button" disabled={salvando} onClick={fechar}>Cancelar</Button>
         <Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar rotina de coleta"}</Button>
       </>}>
-        <p className="text-sm text-muted-foreground">Escolha uma única regra. A nova vigência preserva as programações anteriores e não registra retirada física.</p>
+        
         <form id={formId} className="leite-operacoes"
           onSubmit={(e) => {
             e.preventDefault();
@@ -454,10 +454,7 @@ function ConfigurarRetirada({
                     onChange={(e) => setMeta(e.target.value)}
                   />
                 </label>
-                <small>
-                  Saldo físico disponível do produto neste sítio. Produção
-                  acumulada não comprova disponibilidade.
-                </small>
+                
               </>
             )}
             {erro && <p role="alert">{erro}</p>}

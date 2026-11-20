@@ -61,7 +61,7 @@ export function FormCategoria({ categoria, salvando, erro, onSalvar, onFechar }:
       <CampoFormulario id="categoria-sexo" rotulo="Sexo" obrigatorio>{(p) => <SelectCampo {...p} value={sexo} onValueChange={(valorSelecionado) => { const novo = valorSelecionado as Sexo; setSexo(novo); if (novo === "M") setPartos("QUALQUER"); }} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></SelectCampo>}</CampoFormulario>
       <label className="flex items-start gap-3 text-sm font-medium">
         <input type="checkbox" aria-label="Calculada por regra" checked={automatica} onChange={(e) => setAutomatica(e.target.checked)} className="mt-1" />
-        <span>Calculada por regra<span className="block text-xs font-normal text-ink-3">Desmarque para uma categoria só manual (ex.: Reprodutor, Boi carreiro) — sem regra automática, atribuída só pela ficha do animal.</span></span>
+        <span>Calculada por regra</span>
       </label>
       {automatica && <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="categoria-idade-min" rotulo="Idade mínima (meses)" erro={erros.idadeMinMeses}>{(p) => <input {...p} type="number" min={0} step={1} placeholder="Sem mínimo" value={idadeMinMeses} onChange={(e) => setIdadeMinMeses(e.target.value)} className={classeInput} />}</CampoFormulario>

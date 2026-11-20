@@ -676,10 +676,7 @@ function FormularioDestino({
             onChange={(e) => mudar({ declaracao: e.target.value })}
           />
         </label>
-        <small>
-          A natureza não certifica segurança sanitária. Trocar a natureza exige
-          selecionar novamente os destinatários.
-        </small>
+        
         <h2>Destinatários na data do fornecimento</h2>
         <label>
           Buscar nome ou brinco
@@ -721,10 +718,7 @@ function FormularioDestino({
           </>
         )}
         <h2>Litros por destinatário</h2>
-        <small>
-          Informe litros positivos com até três casas decimais. Cada parcela
-          corresponde à quantidade servida ao animal.
-        </small>
+        
         {!rascunho.parcelas.length ? (
           <p>
             Adicione animais e informe a quantidade servida a cada um. Não há
@@ -837,10 +831,7 @@ function FormularioDestino({
           </label>
         </div>
         {erro && <p role="alert">{erro}</p>}
-        <small>
-          A confirmação registra as parcelas e uma única baixa do estoque. Em
-          caso de falha, o rascunho e a chave do retry são preservados.
-        </small>
+        
       </fieldset>
     </form>
     </PainelCadastro>

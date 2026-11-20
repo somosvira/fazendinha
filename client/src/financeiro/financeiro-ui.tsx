@@ -11,7 +11,9 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCap
 import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
 import { forwardRef, useEffect, useId, useRef, useState, type CSSProperties } from "react";
-import type { LucideIcon } from "lucide-react";
+import type { LucideIcon, LucideProps } from "lucide-react";
+import type { ComponentType } from "react";
+type IconeItem = ComponentType<Pick<LucideProps, "size" | "aria-hidden">>;
 import { ArrowDown, ArrowUp, Check, Inbox, LoaderCircle, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -214,9 +216,17 @@ export type ColunaTabela<T> = {
   acoes?: boolean;
 };
 
+function ComIconeItem<T>({ item, icone, iconeDe, children }: { item: T; icone?: IconeItem; iconeDe?: (item: T) => IconeItem | undefined; children: React.ReactNode }) {
+  const Icone = iconeDe?.(item) ?? icone;
+  if (!Icone) return <>{children}</>;
+  return <div className="tabela-item-com-icone"><span className="tabela-item-icone" aria-hidden><Icone size={18} aria-hidden /></span><div className="min-w-0">{children}</div></div>;
+}
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas, larguraMinimaParaTabela = 640, visualizacao = "automatica", rodape, ordenacao }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas, larguraMinimaParaTabela = 640, visualizacao = "automatica", rodape, ordenacao, icone, iconeDe }: {
+  /** Mesmo ícone do cartão do item, exibido antes da coluna principal. */
+  icone?: IconeItem;
+  iconeDe?: (item: T) => IconeItem | undefined;
   ordenacao?: { campo: string; direcao: "asc" | "desc" };
   filtrosColunas?: FiltrosColunas;
   /** Totais já calculados pelo chamador, associados às chaves das colunas. */
@@ -308,7 +318,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-muted" : ""} ${classeLinha?.(item) ?? ""}`}
-          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} data-fin-principal={coluna === principal || undefined} data-fin-acoes={coluna.acoes || undefined} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna.celula(item)}</TableCell>)}</TableRow>)}
+          >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} data-fin-principal={coluna === principal || undefined} data-fin-acoes={coluna.acoes || undefined} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna === principal ? <ComIconeItem item={item} icone={icone} iconeDe={iconeDe}>{coluna.celula(item)}</ComIconeItem> : coluna.celula(item)}</TableCell>)}</TableRow>)}
         </TableBody>
         {rodape && <TableFooter className="fin-tabela-rodape"><TableRow>{colunas.map(coluna => <TableCell key={coluna.chave} className={alinhaCelula(coluna.alinhamento)}>{rodape[coluna.chave] ?? null}</TableCell>)}</TableRow></TableFooter>}
       </Table>
@@ -318,7 +328,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     <ul className="fin-tabela-cartoes divide-y divide-border border-t border-border" aria-label={rotulo}>
       {itens.map((item) => {
         const corpo = <>
-          <div id={`${idCartao}-${chaveDe(item)}`} className="min-w-0 break-words text-left">{principal.celula(item)}</div>
+          <div id={`${idCartao}-${chaveDe(item)}`} className="min-w-0 break-words text-left"><ComIconeItem item={item} icone={icone} iconeDe={iconeDe}>{principal.celula(item)}</ComIconeItem></div>
           <dl className={compacta ? "mt-2 grid grid-cols-2 gap-x-4 gap-y-2" : "mt-3 space-y-2"}>
             {secundarias.map((coluna) => <div key={coluna.chave} className={compacta ? "min-w-0" : "flex items-start justify-between gap-3"}>
               <dt className="shrink-0 pt-0.5 text-[11px] font-semibold uppercase tracking-[.08em] text-ink-3">{coluna.titulo}</dt>

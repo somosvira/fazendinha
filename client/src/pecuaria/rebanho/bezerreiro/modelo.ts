@@ -2,7 +2,7 @@ import { hojeOperacional } from "../leite/modelo";
 import type { AcompanhamentoAnimal, Coleira, Configuracao, Fase, OfertaProgramada, Participacao, Previsao, UnidadeColostro } from './types';
 export const numero = (n: string | number | null | undefined) => n == null ? 'Não informado' : Number(n).toLocaleString('pt-BR', {maximumFractionDigits: 3});
 export const litros = (n: string | number | null | undefined) => n == null ? 'Não informado' : `${numero(n)} L`;
-export const dinheiro = (n: string | number | null | undefined) => n == null ? 'A apurar' : Number(n).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+export const dinheiro = (n: string | number | null | undefined) => n == null ? 'Sem valor' : Number(n).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
 export function coleiraHistoricaFase(fase: Fase): Coleira | null {
   return fase.coleiraSnapshot ?? fase.coleira;
 }

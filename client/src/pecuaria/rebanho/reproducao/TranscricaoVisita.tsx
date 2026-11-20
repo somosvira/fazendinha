@@ -1073,7 +1073,7 @@ export function Transcricao({
             })}
           </ul>}
           {revisao.length > 10 && <div className="flex gap-3"><Button secondary disabled={paginaRevisao === 1} onClick={() => setPaginaRevisao(p => p - 1)}>Anterior</Button><span>Página {paginaRevisao} de {Math.ceil(revisao.length / 10)}</span><Button secondary disabled={paginaRevisao * 10 >= revisao.length} onClick={() => setPaginaRevisao(p => p + 1)}>Próxima</Button></div>}
-          {revisao.length > 100 && <p className="text-sm">Escolha até 100 animais para uma confirmação única. Volte ao preenchimento para ajustar a seleção.</p>}
+          
         </PainelCadastro>}
         {indicadosIatf.length > 0 && podeLancar && <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
           <p>{indicadosIatf.length} animal(is) com indicação de IATF confirmada. A indicação não inicia protocolo nem consome materiais.</p>
@@ -1163,7 +1163,7 @@ export function Transcricao({
                         <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} /></label></>}
                         {r.dados?.conduta === "DESCARTE" && <label>Motivo do descarte<input aria-label={`Motivo do descarte · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} value={String(r.dados?.motivo ?? "")} onChange={e => atualizarDados(p, { motivo: e.target.value })} /></label>}
                         {(r.dados?.conduta === "AGUARDAR" || !!r.dados?.retornoEm) && <label>Retorno<DatePicker aria-label={`Retorno · ${p.snapshot.brinco ?? p.ordem}`} className="mt-1.5" value={String(r.dados?.retornoEm ?? "")} onChange={(valor) => atualizarDados(p, { retornoEm: valor || undefined })} /></label>}
-                        {r.dados?.conduta === "IATF" && <div><p>A indicação não inicia o protocolo. A programação fica disponível após confirmar.</p><AlertasSanitarios animalId={p.animalId} data={(r.realizadaEm || visita.data).slice(0,10)} acao="IATF" propriedadeId={visita.propriedadeId} /><label><input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`} checked={r.dados?.cienciaSanitaria === true} onChange={e => atualizarDados(p, { cienciaSanitaria: e.target.checked })} />Revisei os alertas sanitários para esta indicação.</label></div>}
+                        {r.dados?.conduta === "IATF" && <div><AlertasSanitarios animalId={p.animalId} data={(r.realizadaEm || visita.data).slice(0,10)} acao="IATF" propriedadeId={visita.propriedadeId} /><label><input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`} checked={r.dados?.cienciaSanitaria === true} onChange={e => atualizarDados(p, { cienciaSanitaria: e.target.checked })} />Revisei os alertas sanitários para esta indicação.</label></div>}
                       </fieldset>
                       {r.dados?.resultado === "POSITIVO" && !r.dados?.tentativaId && !r.dados?.gestacaoId && <label>Justificativa do vínculo desconhecido<input className={classeInput} value={String(r.dados?.motivoVinculoDesconhecido ?? "")} onChange={e => atualizarDados(p, { motivoVinculoDesconhecido: e.target.value })} onBlur={() => void persistir(p)} /></label>}
                       {r.dados?.resultado === "NEGATIVO" && gestacoesDoAnimal(p).length > 0 && <div role="alert" className="rounded-lg border border-border p-3 space-y-3"><p>Há gestação conhecida na data. O resultado vazio não registra perda automaticamente; registre a perda ou corrija o diagnóstico antes de confirmar.</p>{painel && <AcoesReprodutivas painel={painel} animalId={p.animalId} propriedadeId={visita.propriedadeId} podeLancar={!bloqueado} onMudou={onMudou} />}</div>}
@@ -1199,7 +1199,7 @@ export function Transcricao({
                             {(!temProtocolo || compativeis.length > 1) && compativeis.map(t => <option key={t.id} value={t.id}>{t.protocoloNome ?? "Protocolo"} · v{t.protocoloVersao ?? "?"} · {t.programacaoNome ?? "Programação"} · previsto {t.inicioPrevisto.slice(0, 10)}</option>)}
                           </SelectCampo></label>
                         </> : <>
-                          {temProtocolo && compativeis.length === 0 && <p className="text-sm">A participação e as tarefas serão criadas ao confirmar este início.</p>}
+                          
                           {compativeis.length === 1 && <p className="text-sm">Participação pendente: {compativeis[0].programacaoNome ?? compativeis[0].protocoloNome ?? "programação existente"} · previsto {compativeis[0].inicioPrevisto.slice(0, 10)}. Será reutilizada na confirmação.</p>}
                           {(compativeis.length > 1 || !temProtocolo) && select(p, "participanteIatfId", "Participação IATF", compativeis.map(t => [t.id, `${t.protocoloNome ?? "Protocolo"} · v${t.protocoloVersao ?? "?"} · ${t.programacaoNome ?? "Programação"} · previsto ${t.inicioPrevisto.slice(0, 10)}`]))}
                         </>}

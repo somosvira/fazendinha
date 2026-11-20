@@ -69,3 +69,7 @@
 .operacoes-filtro-corpo label:has(input[type="checkbox"]) { flex-direction: row; align-items: center; gap: 8px; }
 .operacoes-filtro-corpo input[type="checkbox"] { min-height: 16px; width: 16px; accent-color: var(--primary); }
 @media print { .consulta-barra { display: none !important; } }
+
+/* Ícone do item (o mesmo do cartão) na coluna principal da tabela. */
+.tabela-item-com-icone { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tabela-item-icone { display: inline-grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: var(--primary); }

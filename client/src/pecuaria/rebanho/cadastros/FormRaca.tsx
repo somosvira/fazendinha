@@ -48,7 +48,7 @@ export function FormRaca({ raca, onSalvo, onFechar }: { raca: Raca | null; onSal
       <CampoFormulario id="raca-sigla" rotulo="Sigla" obrigatorio erro={erros.sigla} ajuda="2 ou 3 letras, usada na composição racial (ex.: GIR, HOL).">{(p) => <input {...p} required maxLength={3} value={sigla} onChange={(e) => setSigla(e.target.value.toUpperCase())} placeholder="Ex.: GIR" className={`${classeInput} uppercase`} />}</CampoFormulario>
       <label className="flex items-start gap-3 text-sm font-medium">
         <input type="checkbox" aria-label="Raça base — entra no cálculo de composição" checked={base} onChange={(e) => setBase(e.target.checked)} className="mt-1" />
-        <span>Raça base — entra no cálculo de composição<span className="block text-xs font-normal text-ink-3">Desmarque para raças compostas, como Girolando: elas já são o resultado da mistura de raças base e não entram como fração na composição de um animal.</span></span>
+        <span>Raça base — entra no cálculo de composição</span>
       </label>
     </form>
   </PainelCadastro>;

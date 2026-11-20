@@ -454,7 +454,6 @@ it("início IATF mostra versão escolhida e confirma animal novo sem cadastro pr
   render(<Transcricao visita={visita} atividade={inicio} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)} />);
   fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
   expect(await screen.findByText("Protocolo X · versão 3")).toBeTruthy();
-  expect(screen.getByText("A participação e as tarefas serão criadas ao confirmar este início.")).toBeTruthy();
   expect(screen.queryByRole("combobox", { name: "Participação IATF · 100" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Conferir animal" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));

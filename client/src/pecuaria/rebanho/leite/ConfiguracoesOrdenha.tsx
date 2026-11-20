@@ -165,10 +165,7 @@ export function ConfiguracoesOrdenha({
               <option value="INDIVIDUAL">Medições individuais completas</option>
             </SelectCampo>
           </label>
-          <p>
-            O controle individual permanece disponível nos dois modos. Somente a
-            fonte escolhida compõe a produção diária e pode confirmar estoque.
-          </p>
+          
         </fieldset>
         <fieldset disabled={salvando} className="leite-ajuste-secao">
           <legend>Critério de colostro</legend>
@@ -180,15 +177,12 @@ export function ConfiguracoesOrdenha({
             </SelectCampo>
           </label>
           {criterio === "JANELA_DIAS" && <><label>Dias da janela<Input className={classeInput} type="number" min="1" step="1" value={diasColostro} onChange={e => setDiasColostro(Number(e.target.value))} /></label><p>Inclui o dia do parto (D0). Uma janela de {diasColostro || "N"} dias abrange D0 até D{Math.max(0, diasColostro - 1)}.</p></>}
-          {criterio === "PRIMEIRA_ORDENHA" && <p>Exige declaração explícita da primeira ordenha dos animais após o parto.</p>}
-          <p>Nova vigência preserva os registros históricos. Ausência de regra permanece não informada.</p>
+          
+          
         </fieldset>
         <fieldset disabled={salvando} className="leite-ajuste-secao">
           <legend>Controle individual dos animais</legend>
-          <p>
-            Periodicidade para todos os animais deste sítio. Medições extras
-            continuam permitidas.
-          </p>
+          
           <div className="leite-ajuste-grade">
             <label>
               Aferir a cada
@@ -218,10 +212,7 @@ export function ConfiguracoesOrdenha({
               </SelectCampo>
             </label>
           </div>
-          <p>
-            Mensal: 1 mês. Para medição diária com máquinas: 1 dia. A frequência
-            das ordenhas abaixo é independente.
-          </p>
+          
         </fieldset>
         <section className="leite-ajuste-secao">
           <h3>Ordenhas do dia</h3>
@@ -307,9 +298,7 @@ export function ConfiguracoesOrdenha({
             <Plus size={18} />
             Adicionar ordenha
           </Button>
-          <p className="leite-muted">
-            De 1 a 12 ordenhas. A ordem das linhas define a sequência.
-          </p>
+          
         </section>
         {erro && (
           <p role="alert" className="leite-erro">

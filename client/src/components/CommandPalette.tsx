@@ -103,7 +103,7 @@ function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLan
           {familias.map(g => <button key={g.familia} type="button" aria-pressed={familia === g.familia} onClick={() => setFamilia(g.familia)}>{g.familia}<span>{g.itens.length}</span></button>)}
         </nav>}
         <CommandList ref={listaRef} className="busca-global-lista" aria-label="Resultados da busca" aria-busy={mostrarRegistros && buscando}>
-          {!termo && <p className="busca-global-dica">Busque por nome, brinco, número ou referência.</p>}
+          
           {mostrarRegistros && gruposVisiveis.map(g => <CommandGroup key={g.familia} heading={g.familia}>{g.itens.map(e => <CommandItem key={`${e.tipo}:${e.entidadeId}`} value={`${e.tipo}:${e.entidadeId}`} onSelect={() => escolher(e.tab as Tab, e.entidadeId, e.caminho)} className="busca-global-linha">
             <FileText size={19} aria-hidden /><span className="busca-global-texto"><span>{e.label}</span><small>{e.sublabel}</small></span><span className="busca-global-tipo">{e.grupo}</span>
           </CommandItem>)}</CommandGroup>)}

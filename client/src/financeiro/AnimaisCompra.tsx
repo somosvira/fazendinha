@@ -210,7 +210,7 @@ function ModalAnimalCompra({ sitio, dataOperacao, inicial, erro, brincosReservad
 
   return <DialogFinanceiro
     titulo={inicial ? `Editar animal ${inicial.resumo.brinco}` : "Adicionar animal"}
-    eyebrow={`Compra de animais · ${sitio.nome}. O animal só é cadastrado no Rebanho quando a compra é confirmada.`}
+    eyebrow={`Compra de animais · ${sitio.nome}.`}
     onClose={onFechar}
     className="max-w-4xl"
     rodape={<div className="flex flex-wrap items-center justify-end gap-3">

@@ -41,7 +41,7 @@ export function NovaVendaAvulsaLeite({ sitio, config, produtos, onSalvar, onCanc
     </>}>
     <form id={formId} className="leite-operacoes" onSubmit={e => { e.preventDefault(); void salvar(); }}><fieldset disabled={salvando}>
     <legend>Registrar retirada e venda avulsa</legend>
-    <p>O preço deve estar acordado. Confirmar registra uma saída física e a venda no Financeiro.</p>
+    
     <div className="leite-form-inline">
       <label>Produto de leite<SelectCampo required value={produto} onValueChange={setProduto}><option value="">Selecione</option>{produtos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
       <label>Comprador<SelectCampo required value={parceiro} onValueChange={setParceiro}><option value="">Selecione</option>{config.parceiros.filter(p => p.ativo).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
@@ -53,7 +53,7 @@ export function NovaVendaAvulsaLeite({ sitio, config, produtos, onSalvar, onCanc
     </div>
     {produto && !saldo && !erro && <p role="status">Consultando saldo comercial…</p>}
     {saldo && <p>{saldo.comercial.confiavel ? `Disponível para venda: ${formatarLitros(saldo.comercial.quantidadeLitros === null ? null : Number(saldo.comercial.quantidadeLitros))}.` : saldo.comercial.motivoNaoAferivel ?? "Saldo comercial não aferível. Confira as origens no Estoque."}</p>}
-    {condicao === "A_VISTA" && <p>Recebido agora também registra o recebimento na conta escolhida.</p>}
+    
     {erro && <p role="alert">{erro}</p>}
 
   </fieldset></form></PainelCadastro>;

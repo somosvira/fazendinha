@@ -10,7 +10,7 @@ export function registrarOrigemDialogo(elemento: HTMLElement | null, acionador: 
   if (elemento && acionador) origensDialogo.set(elemento, [acionador]);
 }
 
-export function DialogFinanceiro({ titulo, eyebrow, onClose, children, className = "", tom = "info", rodape }: { titulo: string; eyebrow: string; onClose: () => void; children: ReactNode; className?: string; tom?: TomFinanceiro; rodape?: ReactNode; /** Ignorado: o título do diálogo não leva ícone. */ icon?: LucideIcon }) {
+export function DialogFinanceiro({ titulo, eyebrow, onClose, children, className = "", tom = "info", rodape }: { titulo: string; eyebrow?: string; onClose: () => void; children: ReactNode; className?: string; tom?: TomFinanceiro; rodape?: ReactNode; /** Ignorado: o título do diálogo não leva ícone. */ icon?: LucideIcon }) {
   const [acionadores] = useState(() => {
     const atual = document.activeElement;
     if (!(atual instanceof HTMLElement)) return [];

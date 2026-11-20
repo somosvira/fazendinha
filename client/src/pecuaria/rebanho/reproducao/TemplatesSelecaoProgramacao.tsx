@@ -160,7 +160,7 @@ export function TemplatesSelecaoProgramacao({ propriedadeId, criteriosAtuais, op
           {!previa.todas.length && !previa.qualquer.length && <p className="text-sm">Nenhuma condição definida.</p>}
           {!!previa.todas.length && <ResumoCondicoes condicoes={previa.todas} opcoes={opcoes} />}
           {!!previa.qualquer.length && <>
-            <p className="text-sm">O animal precisa atender a pelo menos um dos grupos abaixo, além dos filtros gerais.</p>
+            
             {previa.qualquer.map((grupo, indice) => <div key={grupo.id}>
               <p className="mb-1 text-sm font-medium">Grupo {indice + 1}</p>
               <ResumoCondicoes condicoes={grupo.todas} opcoes={opcoes} />

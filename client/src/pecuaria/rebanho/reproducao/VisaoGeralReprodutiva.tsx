@@ -679,9 +679,7 @@ function AnimaisDoCuidado({
           <p role="status">Consultando animais deste cuidado…</p>
         ) : (
           <>
-            <p>
-              Consulta da agenda, sem incluir animais nem registrar atendimento.
-            </p>
+            
             {dados.animais.map((a) => {
               const demanda = demandaDoGrupo(grupo, a.animalId);
               const q = new URLSearchParams({

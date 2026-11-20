@@ -59,12 +59,9 @@ export function IncluirAnimal({
         if (!aberto) aoFechar();
       }}
     >
-      <DialogContent className="leite-config">
+      <DialogContent className="leite-config" aria-describedby={undefined}>
         <DialogTitle>Incluir animal no dia</DialogTitle>
-        <DialogDescription>
-          Consulte fêmeas com finalidade Leite comprovada neste sítio na data
-          operacional. Lactação ausente fica pendente de conciliação.
-        </DialogDescription>
+        
         <label>
           Nome ou brinco
           <Input

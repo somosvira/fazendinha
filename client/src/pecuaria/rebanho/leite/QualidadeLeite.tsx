@@ -1,7 +1,7 @@
 import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays, FlaskConical, Plus } from "lucide-react";
 import { useBuscaUrl } from "../../../lib/useBuscaUrl";
 import { valorResultadoQualidade } from './resultado-qualidade';
 import { Badge } from "@/components/ui/badge";
@@ -198,7 +198,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
               resultado ainda não chegou.
             </p>
           )}
-          <ListaConsultaLeite layout="grade" renderizarVisual={a => <CartaoAmostraVisual amostra={a} abrir={() => { setSelecionada(a); setNova(false); }}/>} preferencia="qualidadeLeiteVisualizacao" compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
+          <ListaConsultaLeite icone={FlaskConical} layout="grade" renderizarVisual={a => <CartaoAmostraVisual amostra={a} abrir={() => { setSelecionada(a); setNova(false); }}/>} preferencia="qualidadeLeiteVisualizacao" compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
             { chave: "data", titulo: "Coleta", principal: true, celula: a => a.data.slice(0, 10).split("-").reverse().join("/") },
             { chave: "tipo", titulo: "Tipo", celula: a => a.sujeito.tipo === "ANIMAL" ? "Individual" : "Coletiva" },
             { chave: "origem", titulo: "Origem", celula: a => a.sujeito.tipo === "ANIMAL" ? a.animal?.brinco ?? "Sem brinco" : a.sujeito.origem },
