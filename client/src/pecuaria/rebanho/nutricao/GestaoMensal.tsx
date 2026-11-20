@@ -240,10 +240,10 @@ export function GestaoMensal({
             </div>
           )}
           <Dialog open={processando} onOpenChange={(v) => { if (!ocupado) setProcessando(v); }}>
-            <DialogContent>
+            <DialogContent aria-describedby={undefined}>
               <DialogHeader className="border-b border-border px-5 pb-4 pt-5 pr-12">
                 <DialogTitle>Processar dias encerrados</DialogTitle>
-                <DialogDescription>Recupera dias não processados e tenta novamente as baixas pendentes, sem repetir as já efetivadas.</DialogDescription>
+                
               </DialogHeader>
               <div className="grid gap-4 px-5 py-5">
               <ErrorBox erro={erro} />

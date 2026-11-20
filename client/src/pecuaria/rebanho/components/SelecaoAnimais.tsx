@@ -213,7 +213,7 @@ export function SelecaoAnimais({ excluirLoteId, sexo: sexoFixo, titulo = "Seleci
               <label className="grid gap-2"><span className="text-sm font-medium leading-5">Idade de (meses)</span><input type="number" min={0} inputMode="numeric" value={filtros.idadeMin} onChange={e => editar("idadeMin", e.target.value)} className={campo} /></label>
               <label className="grid gap-2"><span className="text-sm font-medium leading-5">até (meses)</span><input type="number" min={0} inputMode="numeric" value={filtros.idadeMax} onChange={e => editar("idadeMax", e.target.value)} className={campo} /></label>
             </div>
-            {(filtros.situacoesReprodutivas.length > 0 || filtros.situacoesProdutivas.length > 0) && <p className="text-sm text-ink-3 sm:col-span-2 xl:col-span-3">Situações reprodutiva e produtiva consideram somente fêmeas ativas, calculadas na data de hoje.</p>}
+            
           </div>}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
             {itens.length > 0 && <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos da página" checked={todosDaPaginaSelecionados} onChange={alternarTodosDaPagina} /> Selecionar todos da página</label>}

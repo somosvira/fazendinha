@@ -1,6 +1,7 @@
 import "../telas/rotinas-aprovadas.css";
 import {Plus,Layers,CalendarDays} from "lucide-react";
 import {VacaIcon} from "../../../components/icons/VacaIcon";
+const IconeVaca = () => <VacaIcon/>;
 import { incorporarAptidaoManejo } from "./manejo-aptidao";
 import { listarCategorias } from "../api";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
@@ -129,7 +130,7 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
             <div className="reproducao-cartao-acompanhamento">{fila === "pendencias" ? <ul>{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <strong>{prazo(a)}</strong>}</div>
             <footer><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao>{a.visitas?.map(v => <LinkReproducao key={v.id} botao sitio={propriedadeId} href={`/pecuaria/visitas/${v.id}`}>{v.nome}</LinkReproducao>)}</footer>
           </article>;
-        })}</div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={filtrosDasColunas(campos,edicaoFiltros)} rotulo={atual?.titulo ?? "Animais e acompanhamentos"} itens={linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho)} chaveDe={a => a.animalId} colunas={[
+        })}</div> : <TabelaFinanceira icone={IconeVaca} visualizacao="tabela" filtrosColunas={filtrosDasColunas(campos,edicaoFiltros)} rotulo={atual?.titulo ?? "Animais e acompanhamentos"} itens={linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho)} chaveDe={a => a.animalId} colunas={[
           { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: a => <IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/> },
           { chave: "lote", titulo: "Lote", larguraMinima: 110, celula: a => a.lote?.nome ?? "Não informado" },
           { chave: "data", titulo: "Data de referência", celula: a => a.data ? <div>{formatBRDateISO(a.data)}<p className="text-sm text-muted-foreground">{prazo(a)}</p></div> : "Não comprovada" },

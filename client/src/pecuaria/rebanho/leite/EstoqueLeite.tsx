@@ -1,7 +1,7 @@
 import { DatePicker } from "../../../components/DatePicker";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, Milk } from "lucide-react";
 import { ProdutoEstoqueVisual, ResumoEstoqueVisual } from "./VisuaisConsultaLeite";
 import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
@@ -135,8 +135,6 @@ function DetalheEstoqueLeite({
   const alvo = estoque?.origens.find((o) => o.entradaId === operacaoOrigem?.id);
   return (
     <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Da ordenha ao estoque <AjudaCampo rotulo="Sobre a confirmação de estoque" texto={"Salvar a folha registra as medições. A confirmação de cada grupo dá entrada apenas nas medições selecionadas, uma única vez, com custo a apurar."} /></h2>
-
       <div className="leite-form-inline">
         <label>
           Produto de leite
@@ -184,7 +182,7 @@ function DetalheEstoqueLeite({
               </dd>
             </div>
             <div>
-              <dt>Saldo comercial declarado</dt>
+              <dt>Saldo comercial</dt>
               <dd>
                 {estoque.comercial.confiavel &&
                 estoque.comercial.quantidadeLitros !== null
@@ -198,7 +196,7 @@ function DetalheEstoqueLeite({
                 {estoque.estadoValor === "OCULTO"
                   ? "Sem acesso a valores"
                   : estoque.estadoValor === "PENDENTE"
-                    ? "A apurar"
+                    ? "Sem valor"
                     : Number(estoque.valorTotal).toLocaleString("pt-BR", {
                         style: "currency",
                         currency: "BRL",
@@ -209,20 +207,20 @@ function DetalheEstoqueLeite({
           {!estoque.confiavel && (
             <p role="status">{estoque.motivoNaoAferivel}</p>
           )}
-          <h2>Confirmar grupos da produção do dia</h2>
-          <Button variant="outline" type="button"
-            className="leite-secondary"
-            disabled={ocupado}
-            onClick={() => setRevisao((r) => r + 1)}>
-            Atualizar conferência das medições
-          </Button>
-          {folha?.configuracao.fonteProducao === "GERAL" ? <p>A produção desta data é aferida nos tanques. Confirme as aferições em Ordenhas → Produção geral; o controle individual não cria outra entrada.</p> : !folha?.id ? (
-            <p>
-              A folha desse dia ainda não foi salva. Registre as medições em
-              Ordenhas.
-            </p>
-          ) : (
-            <>
+          {folha?.configuracao.fonteProducao !== "GERAL" && <>
+            <h2>Confirmar grupos da produção do dia</h2>
+            <Button variant="outline" type="button"
+              className="leite-secondary"
+              disabled={ocupado}
+              onClick={() => setRevisao((r) => r + 1)}>
+              Atualizar conferência das medições
+            </Button>
+            {!folha?.id ? (
+              <p>
+                A folha desse dia ainda não foi salva. Registre as medições em
+                Ordenhas.
+              </p>
+            ) : (
               <ConfirmacaoGruposLeite
                 folha={folha}
                 produtoId={produto}
@@ -231,9 +229,9 @@ function DetalheEstoqueLeite({
                 ocupado={ocupado}
                 executar={executar}
               />
-            </>
-          )}
-          <h2>Origens, natureza e apuração </h2>
+            )}
+          </>}
+          <h2>Origens</h2>
 
           {!estoque.origens.length ? (
             <Empty>Nenhuma produção confirmada para este produto neste sítio.</Empty>
@@ -244,7 +242,7 @@ function DetalheEstoqueLeite({
                   <TableRow>
                     <TableHead>Data de origem</TableHead>
                     <TableHead>Saldo da origem</TableHead>
-                    <TableHead>Natureza declarada</TableHead>
+                    <TableHead>Natureza</TableHead>
                     <TableHead>Valor do saldo</TableHead>
                     <TableHead>Ação</TableHead>
                   </TableRow>
@@ -271,15 +269,15 @@ function DetalheEstoqueLeite({
                         {o.estadoValor === "OCULTO"
                           ? "Restrito"
                           : o.valorTotal === null
-                            ? "A apurar"
+                            ? "Sem valor"
                             : Number(o.valorTotal).toLocaleString("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
                               })}
                       </TableCell>
                       <TableCell>
-                        {podeLancar && (
-                          <div className="leite-form-inline">
+                        <div className="flex flex-wrap items-center gap-2">
+                        {podeLancar && (<>
                             {!["COLOSTRO", "NAO_COMERCIAL"].includes(
                               o.natureza,
                             ) && (
@@ -306,8 +304,7 @@ function DetalheEstoqueLeite({
                               }}>
                               Regularizar entrada
                             </Button>
-                          </div>
-                        )}
+                        </>)}
                         {podeFinanceiro && podeLancar && (
                           <Button variant="outline" className="leite-secondary"
                             disabled={ocupado}
@@ -321,6 +318,7 @@ function DetalheEstoqueLeite({
                               : "Apurar custo"}
                           </Button>
                         )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -511,15 +509,15 @@ export function EstoqueLeite({ podeLancar, podeFinanceiro }: { podeLancar: boole
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando estoque…</p> : <>
       <ResumoEstoqueVisual resumo={dados.resumo}/>
       {dados.resumo.produtosSemLastro > 0 && <p role="status">Há produtos com saldo sem lastro conciliado.</p>}
-      <ListaConsultaLeite layout="grade" renderizarVisual={i => <ProdutoEstoqueVisual item={i} abrir={() => setSelecionado(i)}/>} preferencia="estoqueLeiteVisualizacao" destaque="saldo" rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
+      <ListaConsultaLeite icone={Milk} layout="grade" renderizarVisual={i => <ProdutoEstoqueVisual item={i} abrir={() => setSelecionado(i)}/>} preferencia="estoqueLeiteVisualizacao" destaque="saldo" rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
         { chave: "produto", titulo: "Produto", principal: true, celula: i => i.nome },
         { chave: "saldo", titulo: "Saldo físico", alinhamento: "direita", celula: i => litrosResumo(i.quantidadeLitros) },
         { chave: "comercial", titulo: "Comercial", alinhamento: "direita", celula: i => litrosResumo(i.comercial.quantidadeLitros) },
-        { chave: "valor", titulo: "Valor", alinhamento: "direita", celula: i => i.estadoValor === "OCULTO" ? "Restrito" : i.valorTotal === null ? "A apurar" : Number(i.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) },
+        { chave: "valor", titulo: "Valor", alinhamento: "direita", celula: i => i.estadoValor === "OCULTO" ? "Restrito" : i.valorTotal === null ? "Sem valor" : Number(i.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) },
         { chave: "acao", titulo: "Ações", celula: i => <Button variant="outline" onClick={() => setSelecionado(i)}>Ver origens</Button> },
       ]} />
       <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação do estoque de leite" substantivo="produtos" idSelect="pagina-estoque-leite" onPagina={setPagina} />
     </>}
-    <Dialog open={!!selecionado || confirmacao} onOpenChange={v => { if (!v) { setSelecionado(null); setConfirmacao(false); setRevisao(r => r + 1); } }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>{confirmacao ? "Confirmar produção individual" : `${selecionado?.nome} · origens e operações`}</DialogTitle></DialogHeader>{(selecionado || confirmacao) && <DetalheEstoqueLeite key={selecionado?.produtoId ?? "confirmar"} produtoInicial={selecionado?.produtoId ?? ""} podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />}</DialogContent></Dialog>
+    <Dialog open={!!selecionado || confirmacao} onOpenChange={v => { if (!v) { setSelecionado(null); setConfirmacao(false); setRevisao(r => r + 1); } }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>{confirmacao ? "Confirmar produção individual" : "Origens e operações"}</DialogTitle></DialogHeader>{(selecionado || confirmacao) && <DetalheEstoqueLeite key={selecionado?.produtoId ?? "confirmar"} produtoInicial={selecionado?.produtoId ?? ""} podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />}</DialogContent></Dialog>
   </section>;
 }

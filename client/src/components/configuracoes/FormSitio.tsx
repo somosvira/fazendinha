@@ -57,7 +57,7 @@ export function FormSitio({ sitio, onSalvo, onFechar }: { sitio: PropriedadeDTO 
       </div>
       </section><section className="sitio-form-secao" aria-labelledby="sitio-preferencia"><h2 id="sitio-preferencia">Uso na fazenda</h2><label className="flex items-start gap-3 text-sm font-medium">
         <input type="checkbox" aria-label="Principal — sítio padrão quando não há filtro" checked={principal} onChange={(e) => setPrincipal(e.target.checked)} className="mt-1" />
-        <span>Principal<span className="block text-xs font-normal text-ink-3">Sítio padrão quando não há filtro selecionado. Só um sítio pode ser principal.</span></span>
+        <span>Principal</span>
       </label></section>
     </form>
   </PainelCadastro>;

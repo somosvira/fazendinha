@@ -1,4 +1,4 @@
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Moon, Sun, Sunset } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -21,7 +21,7 @@ export function TabelaOrdenhasPorDia({ itens, abrir, podeLancar, exibirDatas }: 
     {[...grupos].map(([data, registros]) => <TableBody key={data} aria-label={`Ordenhas de ${formatarDataBR(data)}`}>
       {variosDias && <TableRow className="ordenhas-dia-titulo"><TableCell colSpan={7}><time dateTime={data}><CalendarDays size={17} aria-hidden /><strong>{formatarDataBR(data)}</strong></time></TableCell></TableRow>}
       {registros.map(r => <TableRow key={r.id} className="ordenha-linha" onClick={() => abrir(r)}>
-        <TableCell><strong>{r.nome}</strong></TableCell>
+        <TableCell><div className="tabela-item-com-icone"><span className="tabela-item-icone" aria-hidden>{(() => { const Icone = r.ordem === 1 ? Sun : r.ordem === 2 ? Sunset : Moon; return <Icone size={18} aria-hidden />; })()}</span><strong>{r.nome}</strong></div></TableCell>
         {['COMERCIAL', 'NAO_COMERCIAL', 'COLOSTRO'].map(n => { const litros = r.porNatureza.find(p => p.natureza === n)?.litros; return <TableCell key={n} className="numero">{litros == null ? '—' : formatarLitros(litros)}</TableCell>; })}
         <TableCell className="numero"><strong>{r.litros == null ? 'Não aferido' : formatarLitros(r.litros)}</strong></TableCell>
         <TableCell><Badge variant="outline">{situacaoOrdenha(r)}</Badge></TableCell>

@@ -130,11 +130,7 @@ export function ConferenciaImpactos({
       }
     >
       <div className="grid gap-4">
-        <p>
-          O fato e seus efeitos serão confirmados juntos. Se regras,
-          participações ou automações mudarem, será necessário conferir
-          novamente.
-        </p>
+        
         <ListaRascunho
           itens={previas.filter((p) => p.exigeConfirmacao)}
           rotulo="animais com impacto"

@@ -756,10 +756,7 @@ export function AssistenteConsulta({
               </Button>
             </div>
           </div>
-          <DialogDescription className="sr-only">
-            Converse sobre o Terrano, consulte dados ou prepare uma pesagem para
-            confirmação.
-          </DialogDescription>
+          
           <div className="assistente-contexto">
             {!pagina && <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1378,5 +1375,5 @@ export function AssistenteConsulta({
 
 function SuperficieChat({ pagina, onOpenAutoFocus, children, ...props }: React.ComponentProps<typeof DialogContent> & { pagina: boolean }) {
   if (pagina) return <div {...props} role="region" aria-label="Conversa com IA Terrano">{children}</div>;
-  return <DialogContent {...props} onOpenAutoFocus={onOpenAutoFocus}>{children}</DialogContent>;
+  return <DialogContent aria-describedby={undefined} {...props} onOpenAutoFocus={onOpenAutoFocus}>{children}</DialogContent>;
 }

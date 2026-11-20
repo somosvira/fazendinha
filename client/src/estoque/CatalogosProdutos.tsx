@@ -87,9 +87,9 @@ export function CatalogoProdutos() {
       {dados && !carregando && !erro && <Paginacao rotulo="Catálogo de produtos" substantivo="produtos" idSelect="pagina-catalogo" pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / POR_PAGINA))} total={dados.total} porPagina={POR_PAGINA} onPagina={setPagina} />}
     </Panel>
     <Dialog open={!!referencia} onOpenChange={aberto => { if (!aberto) fecharReferencia(); }}>
-      <DialogContent className="max-h-[calc(100dvh-32px)] overflow-y-auto p-6 gap-5">
+      <DialogContent className="max-h-[calc(100dvh-32px)] overflow-y-auto p-6 gap-5" aria-describedby={undefined}>
         <DialogTitle>{referencia?.nomeCompleto}</DialogTitle>
-        <DialogDescription>{referencia?.orientacaoBula ? "Informações disponíveis e fontes de conferência" : "Pendências de conferência deste medicamento"}</DialogDescription>
+        
         {referencia?.orientacaoBula ? <ConteudoReferenciaMedicamento referencia={referencia.orientacaoBula} /> : referencia?.conferenciaBula && <PendenciasMedicamento pendencias={referencia.conferenciaBula.pendencias} fontes={referencia.conferenciaBula.fontesParaConferencia} />}
       </DialogContent>
     </Dialog>

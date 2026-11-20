@@ -245,7 +245,7 @@ function Registro({ sitio, autor, nomeSitio }: { sitio: number; autor: string; n
     </section>
     <InformacoesMedicamento produto={medicamentoAberto} sitio={sitio} fechar={() => setMedicamentoAberto(null)} />
     <Dialog open={escolhendoDoenca} onOpenChange={setEscolhendoDoenca}>
-      <DialogContent className="tablet-dialogo"><DialogTitle>Selecionar doença</DialogTitle><DialogDescription>Escolha um template para conferir os medicamentos aplicados.</DialogDescription>
+      <DialogContent className="tablet-dialogo" aria-describedby={undefined}><DialogTitle>Selecionar doença</DialogTitle>
         {erroOpcoes ? <div role="alert">{erroOpcoes} <Button type="button" variant="outline" onClick={repetir}>Tentar novamente</Button></div> : <><div className="tablet-pilha">{opcoes?.templates.filter(t => t.produtoIds.length).map(t => {
           const nome = opcoes.doencas.find(d => d.id === t.doencaId)?.nome;
           if (!nome) return null;
@@ -255,7 +255,7 @@ function Registro({ sitio, autor, nomeSitio }: { sitio: number; autor: string; n
       </DialogContent>
     </Dialog>
     <Dialog open={!!template} onOpenChange={aberto => { if (!aberto) setTemplate(null); }}>
-      <DialogContent className="tablet-dialogo tablet-dialogo-template"><DialogHeader><DialogTitle>{template?.nome}</DialogTitle><DialogDescription>Marque os medicamentos que foram aplicados.</DialogDescription></DialogHeader>
+      <DialogContent className="tablet-dialogo tablet-dialogo-template" aria-describedby={undefined}><DialogHeader><DialogTitle>{template?.nome}</DialogTitle></DialogHeader>
         <div className="tablet-pilha">
         {template?.produtos.map(p => <label className="tablet-check" key={p.id}><input type="checkbox" checked={marcados.includes(p.id)} onChange={e => setMarcados(e.target.checked ? [...marcados, p.id] : marcados.filter(id => id !== p.id))} />{p.nome}{template.quantidades[p.id] && <span className="tablet-template-quantidade">{template.quantidades[p.id].quantidade} {rotuloUnidade(template.quantidades[p.id].unidade)}</span>}</label>)}
         </div>
@@ -480,9 +480,9 @@ function InformacoesMedicamento({ produto, sitio, fechar }: { produto: Produto |
   return () => abort.abort();
  }, [produto, sitio]);
  return <Dialog open={!!produto} onOpenChange={aberto => { if (!aberto) fechar(); }}>
-  <DialogContent className="tablet-dialogo tablet-dialogo-medicamento">
+  <DialogContent className="tablet-dialogo tablet-dialogo-medicamento" aria-describedby={undefined}>
    <DialogHeader><DialogTitle>{produto?.nome}</DialogTitle>
-    <DialogDescription>Dados do cadastro e referências de uso</DialogDescription></DialogHeader>
+    </DialogHeader>
    {erro ? <p role="alert">{erro}</p> : !dados ? <p role="status">Carregando medicamento…</p> : <div className="tablet-pilha">
     <dl className="tablet-medicamento-dados">{[
      ["Apresentação", dados.apresentacao], ["Unidade do estoque", rotuloUnidade(dados.unidade)],

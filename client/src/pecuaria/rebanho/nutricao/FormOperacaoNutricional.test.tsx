@@ -119,7 +119,7 @@ describe("formulários próprios de nutrição", () => {
     vi.mocked(lotesApi.listarLotes).mockResolvedValue([lote, outro]);
     vi.mocked(api.consultarVisaoNutricional).mockResolvedValue({ verValores: false, lotes: [comDieta("2026-11-01"), { ...comDieta("2026-11-01"), lote: outro, vigente: null }] });
     render(<FormOperacaoNutricional acao="consumo" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
-    await screen.findByText(/Lotes sem dieta vigente não aparecem/);
+    await screen.findByLabelText("Lote");
     fireEvent.click(screen.getByLabelText("Lote"));
     expect(await screen.findByRole("option", { hidden: true, name: "Matrizes · Destino · 3 dias a fechar" })).toBeTruthy();
     expect(screen.queryByRole("option", { hidden: true, name: /Secas/ })).toBeNull();

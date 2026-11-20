@@ -62,10 +62,7 @@ export function IdentificarCria({
         }}
       >
         <ErrorBox erro={erro} />
-        <p className="text-sm">
-          O código provisório, a filiação e os fatos anteriores permanecem no
-          histórico.
-        </p>
+        
         <CampoFormulario
           id="cria-brinco-definitivo"
           rotulo="Brinco definitivo"

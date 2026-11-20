@@ -56,7 +56,7 @@ export function RegularizarOrigem({path, propriedadeId, consumoMantido, reabrirP
           </SelectCampo></label>
           {!erroConsulta&&total>10&&<Paginacao paginaAtual={pagina} totalPaginas={Math.max(1,Math.ceil(total/10))} totalItens={total} itensPorPagina={10} onPaginaChange={setPagina} rotulo="fatos substitutos" idSelect="pagina-substitutos"/>}
           {selecionado&&<p role="status">Fato selecionado: <strong>{selecionado.descricao}</strong></p>}
-          <p className="text-sm">Vincular reutiliza o fato registrado e seus efeitos. Esta ação não registra outro procedimento ou despesa.</p>
+          
         </>}
         <label>Motivo<textarea required minLength={5} className={classeInput} value={motivo} onChange={e=>setMotivo(e.target.value)}/></label>
       </form>

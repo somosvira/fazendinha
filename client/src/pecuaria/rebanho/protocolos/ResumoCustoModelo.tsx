@@ -219,11 +219,7 @@ export function ResumoCustoModelo({
             </Button>
           }
         >
-          <p>
-            Estimativa sem reserva ou baixa de estoque. Materiais sem
-            quantidade/produto, unidades incompatíveis e serviços sem referência
-            permanecem não apurados.
-          </p>
+          
           {!dados ? (
             erro ? (
               <ErrorBox erro={erro} />

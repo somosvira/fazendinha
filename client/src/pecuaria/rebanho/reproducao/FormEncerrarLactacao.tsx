@@ -32,7 +32,7 @@ export function FormEncerrarLactacao({ lactacao, animalRotulo, propriedadeId, on
       <ErrorBox erro={erro} /><p className="text-sm">{animalRotulo} · Lactação iniciada em {formatarDataBR(lactacao.inicio)}</p>
       <div className="grid gap-4 sm:grid-cols-2"><CampoFormulario id="secagem-encerramento" rotulo="Data de encerramento" obrigatorio erro={erros.dataEncerramento}>{p => <DatePicker {...p} required min={lactacao.inicio.slice(0, 10)} max={hoje()} value={data} onChange={setData} className="mt-1.5" />}</CampoFormulario><CampoFormulario id="secagem-motivo" rotulo="Motivo do encerramento" obrigatorio erro={erros.motivo}>{p => <textarea {...p} required minLength={5} maxLength={1000} className={classeInput} value={motivo} onChange={e => setMotivo(e.target.value)} rows={2} />}</CampoFormulario></div>
       <div className="border-t border-border pt-4"><h3 className="mb-3 text-sm font-semibold">Peso da matriz <span className="font-normal text-ink-3">· Opcional</span></h3><PesoSecagemCampos animalId={lactacao.animalId} propriedadeId={propriedadeId} dataEncerramento={data} valor={peso} onChange={setPeso} erros={erros} /></div>
-      <p className="text-sm text-ink-3">Encerrar lactação é uma ação manual. O encerramento e o eventual peso/vínculo serão confirmados juntos. Registrar uma pesagem isolada não encerra a lactação.</p>
+      
     </form>
   </PainelCadastro>;
 }

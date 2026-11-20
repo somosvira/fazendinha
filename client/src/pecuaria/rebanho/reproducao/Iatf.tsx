@@ -852,10 +852,7 @@ export function Iatf({
             )}
             {acao.tipo !== "inicio" && (
               <>
-                <p className="text-sm">
-                  Esta revisão altera somente a etapa selecionada. As demais
-                  datas exigem revisão individual.
-                </p>
+                
                 <label className="text-sm">
                   Motivo
                   <input

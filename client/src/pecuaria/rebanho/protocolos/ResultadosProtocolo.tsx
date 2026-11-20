@@ -684,11 +684,7 @@ function VinculoTentativaExterna({
         </p>
       ) : (
         <>
-          <p>
-            Escolha o fato realizado. O vínculo conserva a tentativa e seu custo
-            único. Prazos já existentes permanecem; novos acompanhamentos usam
-            os parâmetros adotados pela participação.
-          </p>
+          
           {!dados && !erro && (
             <p role="status">Consultando tentativas compatíveis…</p>
           )}

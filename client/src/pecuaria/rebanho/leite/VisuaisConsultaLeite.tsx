@@ -42,7 +42,7 @@ export function ProdutoEstoqueVisual({item,abrir}:{item:ProdutoVisualLeite;abrir
   return <Card asChild className="leite-card-visual leite-produto-visual"><article>
     <span className="leite-produto-simbolo"><Milk size={23} aria-hidden/></span><div className="leite-produto-nome"><h3>{item.nome}</h3><EstadoLeite texto={item.confiavel?'Lastro conciliado':'Conferir lastro'} pendente={!item.confiavel}/></div>
     <div className="leite-produto-saldo"><strong>{formatarLitros(item.quantidadeLitros==null?null:Number(item.quantidadeLitros))}</strong><span>Saldo físico</span></div>
-    <div className="leite-produto-valor"><span>Valor do saldo</span><strong>{item.estadoValor==='OCULTO'?'Restrito':item.valorTotal===null?'A apurar':Number(item.valorTotal).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>
+    <div className="leite-produto-valor"><span>Valor do saldo</span><strong>{item.estadoValor==='OCULTO'?'Restrito':item.valorTotal===null?'Sem valor':Number(item.valorTotal).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>
     <Button variant="outline" onClick={abrir}>Ver origens<ArrowUpRight size={14}/></Button>
   </article></Card>;
 }

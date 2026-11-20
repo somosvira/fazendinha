@@ -417,7 +417,7 @@ function ModalMeta({
         if (!v) void sair();
       }}
     >
-      <DialogContent
+      <DialogContent aria-describedby={undefined}
         className="metas-dialogo"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
@@ -443,13 +443,7 @@ function ModalMeta({
                 ? "Editar meta"
                 : "Nova meta"}
         </DialogTitle>
-        <DialogDescription>
-          {modal.tipo === "historico"
-            ? "Definições e medições preservadas com autoria."
-            : modal.tipo === "definicao"
-              ? "Defina o indicador, o alvo e a forma de acompanhamento."
-              : "A medição fica no histórico. Correções são novos registros."}
-        </DialogDescription>
+        
         {modal.tipo === "historico" ? (
           <div className="metas-historico">
             {[...modal.meta.historico].reverse().map((h) => (
@@ -648,10 +642,7 @@ function ModalMeta({
                         }}
                         placeholder="Adquirir equipamento\nConcluir instalação\nTestar a ordenha"
                       />
-                      <span className="metas-formula">
-                        Até 20 etapas. A conclusão é registrada por etapa, sem
-                        percentual estimado.
-                      </span>
+                      
                     </label>
                   )}
                   <label>

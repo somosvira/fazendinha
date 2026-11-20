@@ -139,7 +139,7 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
 
         {tipo === "EMBRIAO" && <>
           <CampoGenitor rotulo="Doadora" sexo="F" valor={doadora} onChange={setDoadora} />
-          <p className="text-xs text-ink-3">Se a doadora ainda não for conhecida, marque Desconhecida/o. Ela poderá ser informada depois.</p>
+          
           {erros.doadora && <p role="alert" className="-mt-2 text-sm text-destructive">{erros.doadora}</p>}
         </>}
 
@@ -160,7 +160,7 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
 
       {editando && material.tipo === "EMBRIAO" && !material.doadora && <>
         <CampoGenitor rotulo="Doadora" sexo="F" valor={doadora} onChange={setDoadora} />
-        <p className="text-xs text-ink-3">Doadora ainda não informada. Se for identificada, selecione-a para completar o cadastro.</p>
+        
         {erros.doadora && <p role="alert" className="text-sm text-destructive">{erros.doadora}</p>}
       </>}
 

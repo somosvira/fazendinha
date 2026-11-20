@@ -39,13 +39,13 @@ export function FiltrosBuscaAnimais({aberto,onAbertoChange,valor,onAplicar,catal
           <section><h3>Idade</h3><div className="busca-animais-filtros-grade">
             <label>Mínima, em meses<input type="number" min="0" max="600" step="1" value={rascunho.idadeMin} onChange={e=>alterar("idadeMin",e.target.value)} placeholder="Sem mínimo"/></label>
             <label>Máxima, em meses<input type="number" min="0" max="600" step="1" value={rascunho.idadeMax} onChange={e=>alterar("idadeMax",e.target.value)} placeholder="Sem máximo"/></label>
-          </div><p>Para animais baixados, considera a idade na data da baixa.</p></section>
+          </div></section>
           <details><summary>Baixa</summary><div className="busca-animais-filtros-grade">
             <label>Tipo de baixa<SelectCampo aria-label="Tipo de baixa" value={rascunho.tipoBaixa} onValueChange={v=>alterar("tipoBaixa",v as FiltrosAvancadosAnimais["tipoBaixa"])} disabled={situacao==="ATIVO"}><option value="">Todos</option>{Object.entries(ROTULO_TIPO_BAIXA).filter(([v])=>v!=="CADASTRO_INDEVIDO").map(([v,r])=><option key={v} value={v}>{r}</option>)}</SelectCampo></label>
             <span aria-hidden/>
             <label>Data inicial<DatePicker aria-label="Data inicial da baixa" value={rascunho.baixaDe} max={rascunho.baixaAte || undefined} onChange={v=>alterar("baixaDe",v)} disabled={situacao==="ATIVO"}/></label>
             <label>Data final<DatePicker aria-label="Data final da baixa" value={rascunho.baixaAte} min={rascunho.baixaDe || undefined} onChange={v=>alterar("baixaAte",v)} disabled={situacao==="ATIVO"}/></label>
-          </div><p>Aplica-se a animais baixados. Para usar, selecione Todos ou Baixados na lista.</p></details>
+          </div></details>
           {erro&&<p className="busca-animais-filtros-erro" role="alert">{erro}</p>}
         </div>
         <footer><Button type="button" variant="link" className="busca-animais-filtros-limpar" onClick={()=>{setRascunho({...FILTROS_AVANCADOS_VAZIOS});setErro(null)}}>Limpar filtros</Button><Button type="button" variant="outline" onClick={()=>onAbertoChange(false)}>Cancelar</Button><Button type="submit">Aplicar filtros</Button></footer>

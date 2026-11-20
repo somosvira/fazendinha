@@ -57,7 +57,7 @@ export function AlimentacaoBezerreiro({sitio,config,podeLancar,revisao,aoSalvar,
   const camposOferta: ColunaTabela<Oferta>[] = [
       {chave:'horario',titulo:'Horário realizado',celula:o=>o.ocorridoEm?new Date(o.ocorridoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'Não informado'},
       {chave:'volume',titulo:'Fornecido',alinhamento:'direita',celula:o=>litros(o.grupos.reduce((n,g)=>n+Number(g.quantidadeLitros),0))},
-      {chave:'custo',titulo:'Custo',alinhamento:'direita',celula:o=>o.grupos.every(g=>g.custoProducao!=null)?dinheiro(o.grupos.reduce((n,g)=>n+Number(g.custoProducao),0)):'A apurar / oculto'},
+      {chave:'custo',titulo:'Custo',alinhamento:'direita',celula:o=>o.grupos.every(g=>g.custoProducao!=null)?dinheiro(o.grupos.reduce((n,g)=>n+Number(g.custoProducao),0)):'Sem valor / oculto'},
   ];
   const situacaoOferta = (o: Oferta) => o.status === 'CONFIRMADO' ? 'Confirmado' : 'Estornado';
   const acaoEstorno = (o: Oferta) => podeLancar && o.status === 'CONFIRMADO'
