@@ -142,3 +142,8 @@
 .repro-indicadores-resultado .reproducao-pendencias{display:flex;align-items:center;gap:12px;margin:16px 20px 0;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--muted)}.repro-indicadores-resultado .reproducao-pendencias>div{flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.repro-indicadores-resultado .reproducao-pendencias strong{font-size:14px}
 .rel-indicadores .repro-indicadores-painel{margin-top:0}
 @media(max-width:700px){.repro-indicadores-resultado .reproducao-pendencias{flex-wrap:wrap}.repro-indicadores-resultado .indicadores-taxas strong{font-size:28px}.repro-indicadores-resultado .indicadores-taxas .indicador-sem-base{font-size:18px}}
+
+/* Sem serviços no período: uma linha só, em vez de três colunas sem número. */
+.indicadores-vazio{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;padding:18px 20px;border-block:1px solid var(--border)}
+.indicadores-vazio strong{font-size:18px;font-weight:650}
+.indicadores-vazio span{font-size:14px;color:var(--muted-foreground)}

@@ -62,8 +62,8 @@ export function ConsultaIndicadoresOperacionais({ propriedadeId }: { propriedade
       ...(criterios.estimativa!==""?[{id:"estimativa",rotulo:`Concepção estimada: ${criterios.estimativa}%`,limpar:()=>remover("estimativa","Estimativa")}]:[]),
       ...(criterios.perdas!==""?[{id:"perdas",rotulo:`Perdas: ${criterios.perdas} dias`,limpar:()=>remover("perdas","Perdas")}]:[]),
       ...(criterios.iep!==padrao.iep?[{id:"iep",rotulo:"IEP: todos os partos",limpar:()=>remover("iep","Iep")}]:[]),
-    ]}><div className="flex flex-wrap items-center gap-3"><span className="text-sm font-medium">Mês de referência</span>
-      <input type="month" className={classeInput} aria-label="Mês de referência" max={getHojeISO().slice(0,7)} value={periodo.inicio.slice(0,7)} onChange={e => {
+    ]}><div className="flex flex-wrap items-center gap-3">
+      <input type="month" className={`${classeInput} sm:w-56`} aria-label="Mês de referência" max={getHojeISO().slice(0,7)} value={periodo.inicio.slice(0,7)} onChange={e => {
         const mes = e.target.value;
         if (!/^\d{4}-\d{2}$/.test(mes)) return;
         const [ano, numeroMes] = mes.split("-").map(Number);
