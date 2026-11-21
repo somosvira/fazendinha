@@ -40,7 +40,7 @@ export function ConsultaAplicacoes(props: Props<AplicacaoSanitaria>) {
 
   return <>
     <div className="consulta-visual-barra sanidade-agenda-visoes">
-      <SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Visão das aplicações" active={mostrarCronologia ? "linha" : "lista"} onSelect={v => setMostrarCronologia(v === "linha")} tabs={[{ id: "lista", label: "Lista" }, { id: "linha", label: "Linha do tempo" }]} />
+      <SubTabs variant="financeiro" aparencia="segmentado" ariaLabel="Visão das aplicações" active={mostrarCronologia ? "linha" : "lista"} onSelect={v => setMostrarCronologia(v === "linha")} tabs={[{ id: "lista", label: "Lista" }, { id: "linha", label: "Linha do tempo" }]} />
       {!mostrarCronologia && <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização das aplicações" />}
     </div>
     {!props.itens.length ? <Empty>Nenhuma aplicação sanitária registrada neste recorte.</Empty> :
@@ -60,7 +60,7 @@ export function ConsultaCarencias<T extends CarenciaVisual>(props: Props<T>) {
   const maximo = Math.max(agora, ...datas) + 86400000;
   const posicao = (n: number) => `${(n - minimo) / (maximo - minimo) * 100}%`;
   return <><div className="consulta-visual-barra sanidade-agenda-visoes">
-    <SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Visão das carências" active={mostrarPrazos ? "prazos" : "lista"} onSelect={v => setMostrarPrazos(v === "prazos")} tabs={[{ id: "lista", label: "Lista" }, { id: "prazos", label: "Prazos" }]} />
+    <SubTabs variant="financeiro" aparencia="segmentado" ariaLabel="Visão das carências" active={mostrarPrazos ? "prazos" : "lista"} onSelect={v => setMostrarPrazos(v === "prazos")} tabs={[{ id: "lista", label: "Lista" }, { id: "prazos", label: "Prazos" }]} />
     {!mostrarPrazos && <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização das carências" />}
   </div>{!mostrarPrazos ? visual.modo === "tabela" ? <TabelaFinanceira {...props} visualizacao="tabela" /> :
     props.itens.length ? <div className="consulta-entidades san-carencias-cartoes">{props.itens.map(c =>

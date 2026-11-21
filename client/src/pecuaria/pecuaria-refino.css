@@ -44,13 +44,6 @@
 .pecuaria-content .sanidade-abas-principais [role="tablist"] { min-width: 0; max-width: 100%; }
 .pecuaria-content .sanidade-pagina .sanidade-abas-principais .fin-abas [role="tab"] { min-height: 48px; padding: 12px 6px; font-size: 16px; white-space: nowrap; }
 .pecuaria-content .sanidade-agenda-visoes { padding: 12px 16px; border-bottom: 1px solid var(--border); }
-.pecuaria-content .sanidade-agenda-visoes .fin-abas { width: fit-content; gap: 8px; padding: 0; border: 0; }
-.pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"] { min-width: 104px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--foreground); }
-.pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"]:hover { background: var(--muted); }
-.pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"][data-state="active"] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
-@media (max-width: 900px) {
-  .pecuaria-content .sanidade-agenda-visoes .fin-abas [role="tab"] { min-height: 44px; }
-}
 .pecuaria-content .sanidade-lista .fin-tabela-cabecalho { padding: 12px 16px; }
 .pecuaria-content .sanidade-lista .pec-filtros-sanidade { padding: 12px 16px; gap: 10px; }
 .pecuaria-content .sanidade-lista .pec-filtros-sanidade[hidden] { display: none; }

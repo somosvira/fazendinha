@@ -293,7 +293,7 @@ describe("Lotes — histórico de movimentações (sempre visível)", () => {
 
   it("lotes e histórico ficam visíveis ao mesmo tempo, sem sub-abas", async () => {
     await montar();
-    expect(screen.getByRole("tab", { name: "Lotes", selected: true })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /^Lotes/ , selected: true })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Histórico de movimentações" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Histórico" })).toBeNull();
   });

@@ -475,13 +475,13 @@ it("atalho de reposição seleciona Produtos e preserva os filtros ao alternar a
   mostrarMovimentos();
   expect(new URLSearchParams(window.location.search).get("aba")).toBe("movimentacoes");
   fireEvent.click(screen.getByRole("button", { name: "1 abaixo do mínimo" }));
-  expect(screen.getByRole("tab", { name: "Produtos" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("tab", { name: /^Produtos/ }).getAttribute("aria-selected")).toBe("true");
   const tabela = within(screen.getByRole("table", { name: "Saldos de estoque" }));
   expect(tabela.getByText("Ração")).toBeTruthy();
   expect(tabela.queryByText("Sal")).toBeNull();
   fireEvent.change(screen.getByLabelText("Buscar produto"), { target: { value: "Ração" } });
   mostrarMovimentos();
-  fireEvent.mouseDown(screen.getByRole("tab", { name: "Produtos" }));
+  fireEvent.mouseDown(screen.getByRole("tab", { name: /^Produtos/ }));
   expect((screen.getByLabelText("Buscar produto") as HTMLInputElement).value).toBe("Ração");
   expect(screen.getByRole("button", { name: "1 abaixo do mínimo" }).getAttribute("aria-pressed")).toBe("true");
 });
@@ -494,7 +494,7 @@ it("não apresenta valor desconhecido como zero e acompanha a aba no histórico"
   mostrarMovimentos();
   window.history.replaceState(null, "", "/estoque?aba=produtos");
   fireEvent(window, new PopStateEvent("popstate"));
-  expect(screen.getByRole("tab", { name: "Produtos" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("tab", { name: /^Produtos/ }).getAttribute("aria-selected")).toBe("true");
 });
 
 it('aplica filtro de princípio ativo antes de paginar saldos e conserva parâmetros ao mudar de aba', async () => {
@@ -521,7 +521,7 @@ it.each(['financeiro', 'pecuaria'])('consulta de %s conserva produtos e moviment
   vi.stubGlobal('fetch', mockFetch({ saldos: [saldo({})] }));
   render(<EstoqueContent />);
   expect(await screen.findByRole('table', { name: 'Saldos de estoque' })).toBeTruthy();
-  expect(screen.getByRole('tab', { name: 'Produtos' })).toBeTruthy();
+  expect(screen.getByRole('tab', { name: /^Produtos/ })).toBeTruthy();
   expect(screen.getByRole('tab', { name: 'Movimentações' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Cadastrar produto' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Movimentar estoque' })).toBeNull();

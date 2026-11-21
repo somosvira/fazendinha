@@ -23,11 +23,6 @@ export function DatasDiagnosticoIndividual({
       aria-label="Agendamentos individuais de diagnóstico"
     >
       <h3 className="font-semibold">Agendamento individual de DG</h3>
-      <p className="text-sm text-ink-3">
-        Uma data informada para o animal prevalece sobre o modelo e a regra
-        geral do sítio. Deixe em branco para seguir as regras disponíveis, sem
-        criar um prazo presumido.
-      </p>
       {exibidos.length ? (
         <ListaRascunho
           itens={exibidos}

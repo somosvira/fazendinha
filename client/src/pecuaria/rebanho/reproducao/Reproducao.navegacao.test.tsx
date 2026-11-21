@@ -57,13 +57,13 @@ it("troca rotina pela URL preservando filtros e deep links e responde ao histór
   expect(screen.queryByRole("tab", { name: "Política reprodutiva" })).toBeNull();
   expect(screen.queryByRole("link", { name: "Política reprodutiva" })).toBeNull();
 });
-it.each(["partos", "indicadores"])("consolidado oferece seletor dentro da página para %s", async rotina => {
+it.each(["partos", "indicadores"])("consolidado pede o sítio no estado inicial, sem seletor na página, para %s", async rotina => {
   setPropriedadeAtiva(null);
   window.history.replaceState(null, "", `/pecuaria/reproducao?rotina=${rotina}`);
   render(<Reproducao podeLancar />);
-  const seletor = await screen.findByLabelText("Sítio da consulta");
-  await screen.findByText("Escolha um sítio");
-  await alterarControle(seletor, { target: { value: "7" } });
+  await screen.findByText("Em qual sítio você quer trabalhar?");
+  expect(screen.queryByLabelText("Sítio da consulta")).toBeNull();
+  fireEvent.click(await screen.findByRole("button", { name: /Escola/ }));
   await screen.findByText(rotina === "partos" ? "Partos do sítio 7" : "Indicadores do sítio 7");
   expect(obterReproducao).not.toHaveBeenCalled();
 });
