@@ -8,10 +8,7 @@ import {Badge} from "@/components/ui/badge";
 import {ResumoRelatorioLeite} from "../../relatorios/ResumoRelatorioLeite";
 import {Dialog,DialogContent,DialogHeader,DialogTitle} from "@/components/ui/dialog";
 import {Input} from "@/components/ui/input";
-import {History,Archive,SlidersHorizontal} from "lucide-react";
-import { BalancoPreservadoVisual } from "./BalancoPreservadoVisual";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
-import { AjudaCampo } from "@/components/Dica";
+import {History,SlidersHorizontal} from "lucide-react";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ExportacaoProducaoLeite } from "./ExportacaoProducaoLeite";
@@ -443,7 +440,6 @@ export function RelatoriosLeite({
   );
 }
 function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFinanceiro: boolean }) {
-  const visualizacaoBalanco = useVisualizacaoConsulta("balancoRelatorioLeiteVisualizacao", "leite", "visual");
   const ancora = (secao: string) => `leite-relatorio-${emissao.id}-${secao}`;
   const s = { ...emissao.snapshot, valores: podeFinanceiro ? emissao.snapshot.valores : null };
   const [paginaAnimal, setPaginaAnimal] = useState(1),
@@ -500,8 +496,8 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
         total={s.dados.producao.animais.length}
         onChange={setPaginaAnimal}
       />
-      <div className="leite-secao-visual-cab" id={ancora("estoque")}><h2>Balanço do estoque</h2><AlternarVisualizacaoConsulta modo={visualizacaoBalanco.modo} mudar={visualizacaoBalanco.mudar} rotulo="Visualização do balanço preservado"/></div>
-      {visualizacaoBalanco.modo === "visual" ? <BalancoPreservadoVisual itens={s.dados.balanco}/> : (
+      <div className="leite-secao-visual-cab" id={ancora("estoque")}><h2>Balanço do estoque</h2></div>
+      {(
       <div className="leite-tabela-scroll">
         <Table semContainer>
           <TableCaption>Balanço do razão de estoque</TableCaption>

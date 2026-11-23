@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption, TableFooter } from "@/components/ui/table";
 import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
-import { forwardRef, useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { forwardRef, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { LucideIcon, LucideProps } from "lucide-react";
 import type { ComponentType } from "react";
 type IconeItem = ComponentType<Pick<LucideProps, "size" | "aria-hidden">>;
@@ -166,6 +166,11 @@ export function ErrorBox({ erro }: { erro: string | null }) {
 }
 
 /** Lista, gráfico ou seção sem registros: mesmo desenho do EmptyState compacto. */
+export type DestaqueDado = { valor: React.ReactNode; rotulo: string; tom?: "alerta" | "ok" };
+/** Números-chave logo abaixo de um título: valor grande + rótulo curto, em vez de uma linha cinza de texto. */
+export function Destaques({ itens, className = "" }: { itens: DestaqueDado[]; className?: string }) {
+  return <ul className={`destaques ${className}`.trim()}>{itens.map(i => <li key={i.rotulo} className="destaque" data-tom={i.tom}><strong>{i.valor}</strong><span>{i.rotulo}</span></li>)}</ul>;
+}
 export function Empty({ children, icone: Icone = Inbox, acao }: { children: React.ReactNode; icone?: LucideIcon; acao?: React.ReactNode }) {
   return <div className="fin-vazio" role="note"><span aria-hidden className="fin-vazio-icone"><Icone size={20} strokeWidth={1.5} /></span><div className="fin-vazio-texto">{children}</div>{acao && <div className="fin-vazio-acao">{acao}</div>}</div>;
 }
@@ -207,10 +212,8 @@ export type ColunaTabela<T> = {
   larguraMinima?: number;
   /** coluna que vira o título do cartão no mobile (uma por tabela) */
   principal?: boolean;
-  /** Recebe a largura restante no desktop; o título do cartão permanece independente. */
+  /** Recebe a largura restante da tabela. */
   larguraFlexivel?: boolean;
-  /** já representada no título do cartão — não repetir como par rótulo/valor */
-  ocultarNoCartao?: boolean;
   /** célula com botões próprios: no cartão é renderizada FORA do botão que abre
    *  a linha (evita <button> dentro de <button>) */
   acoes?: boolean;
@@ -223,7 +226,7 @@ function ComIconeItem<T>({ item, icone, iconeDe, children }: { item: T; icone?: 
 }
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas, larguraMinimaParaTabela = 640, visualizacao = "automatica", rodape, ordenacao, icone, iconeDe }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, filtrosColunas, rodape, ordenacao, icone, iconeDe }: {
   /** Mesmo ícone do cartão do item, exibido antes da coluna principal. */
   icone?: IconeItem;
   iconeDe?: (item: T) => IconeItem | undefined;
@@ -231,13 +234,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   filtrosColunas?: FiltrosColunas;
   /** Totais já calculados pelo chamador, associados às chaves das colunas. */
   rodape?: Partial<Record<string, React.ReactNode>>;
-  /** Limite do contêiner para tabelas curtas em painéis; respeita também a soma das colunas. */
-  larguraMinimaParaTabela?: number;
-  /** Uma escolha explícita de tabela conserva as colunas com rolagem horizontal. */
-  visualizacao?: "automatica" | "tabela" | "cartoes";
   compacta?: boolean;
-  /** Mantém links independentes da área clicável do cartão. */
-  cartaoComLinks?: boolean;
   colunas: ColunaTabela<T>[];
   itens: T[];
   chaveDe: (item: T) => React.Key;
@@ -248,15 +245,10 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   /** Exibe uma barra horizontal acima da tabela em telas intermediárias. */
   barraRolagemSuperior?: boolean;
 }) {
-  const idCartao = useId();
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
   const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
   const flexivel = colunas.find((coluna) => coluna.larguraFlexivel);
-  const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && !coluna.acoes && coluna.titulo);
-  const acoes = colunas.filter((coluna) => coluna.acoes);
   const consultaRef = useRef<HTMLDivElement>(null);
-  const [modoCartao, setModoCartao] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
-  const exibirCartoes = visualizacao === "cartoes" || (visualizacao === "automatica" && modoCartao);
   const tabelaRef = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
   const [temRolagem, setTemRolagem] = useState(false);
@@ -270,7 +262,6 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     const tabela = tabelaRef.current;
     if (!consulta || !tabela) return;
     const atualizar = () => {
-      if (consulta.clientWidth > 0) setModoCartao(consulta.clientWidth < Math.max(larguraMinimaParaTabela, larguraMinima));
       setTemRolagem(tabela.scrollWidth > tabela.clientWidth + 1);
       setLarguraRolagem(tabela.scrollWidth);
     };
@@ -283,7 +274,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     observador.observe(consulta);
     observador.observe(tabela);
     return () => observador.disconnect();
-  }, [barraRolagemSuperior, larguraMinima, larguraMinimaParaTabela, itens.length, modoCartao]);
+  }, [barraRolagemSuperior, larguraMinima, itens.length]);
 
   const sincronizarRolagem = (origem: "tabela" | "barra") => {
     const tabela = tabelaRef.current;
@@ -297,14 +288,14 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     if (e.key === "ArrowRight") { e.currentTarget.scrollLeft += 96; e.preventDefault(); }
     else if (e.key === "ArrowLeft") { e.currentTarget.scrollLeft -= 96; e.preventDefault(); }
   };
-  const tabelaRolavel = visualizacao === "tabela" && temRolagem;
+  const tabelaRolavel = temRolagem;
 
-  return <div ref={consultaRef} className="fin-consulta-responsiva" data-fin-visualizacao={exibirCartoes ? "cartoes" : "tabela"}>
+  return <div ref={consultaRef} className="fin-consulta-responsiva">
     {/* A largura disponível determina se todas as colunas cabem. */}
-    {barraRolagemSuperior && temRolagem && !exibirCartoes && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
+    {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
-    <div ref={tabelaRef} role={tabelaRolavel ? "region" : undefined} aria-label={tabelaRolavel ? `Rolagem horizontal: ${rotulo}` : undefined} tabIndex={tabelaRolavel ? 0 : undefined} onKeyDown={tabelaRolavel ? roladaPorTeclado : undefined} className={`fin-tabela-desktop overflow-x-auto border-t border-border focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 ${barraRolagemSuperior && temRolagem && visualizacao !== "tabela" ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
+    <div ref={tabelaRef} role={tabelaRolavel ? "region" : undefined} aria-label={tabelaRolavel ? `Rolagem horizontal: ${rotulo}` : undefined} tabIndex={tabelaRolavel ? 0 : undefined} onKeyDown={tabelaRolavel ? roladaPorTeclado : undefined} className={`fin-tabela-desktop overflow-x-auto border-t border-border focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2`} onScroll={() => sincronizarRolagem("tabela")}>
       <Table semContainer data-fin-compacta={compacta || undefined} className="fin-tabela w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <TableCaption className="sr-only">{rotulo}</TableCaption>
         <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={{ "--fin-coluna-largura": coluna === (flexivel ?? principal) ? undefined : `${coluna.larguraMinima ?? 120}px`, "--fin-coluna-proporcao": flexivel ? undefined : `${(coluna.larguraMinima ?? 120) / larguraMinima * 100}%` } as CSSProperties} />)}</colgroup>
@@ -323,31 +314,5 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
         {rodape && <TableFooter className="fin-tabela-rodape"><TableRow>{colunas.map(coluna => <TableCell key={coluna.chave} className={alinhaCelula(coluna.alinhamento)}>{rodape[coluna.chave] ?? null}</TableCell>)}</TableRow></TableFooter>}
       </Table>
     </div>
-
-    {/* Cartões conservam os mesmos dados, links, seleção e comandos. */}
-    <ul className="fin-tabela-cartoes divide-y divide-border border-t border-border" aria-label={rotulo}>
-      {itens.map((item) => {
-        const corpo = <>
-          <div id={`${idCartao}-${chaveDe(item)}`} className="min-w-0 break-words text-left"><ComIconeItem item={item} icone={icone} iconeDe={iconeDe}>{principal.celula(item)}</ComIconeItem></div>
-          <dl className={compacta ? "mt-2 grid grid-cols-2 gap-x-4 gap-y-2" : "mt-3 space-y-2"}>
-            {secundarias.map((coluna) => <div key={coluna.chave} className={compacta ? "min-w-0" : "flex items-start justify-between gap-3"}>
-              <dt className="shrink-0 pt-0.5 text-[11px] font-semibold uppercase tracking-[.08em] text-ink-3">{coluna.titulo}</dt>
-              <dd className={`min-w-0 flex-1 break-words text-sm ${compacta ? "text-left" : "text-right"}`}>{coluna.celula(item)}</dd>
-            </div>)}
-          </dl>
-        </>;
-        const comandos = acoes.map(coluna => ({ chave: coluna.chave, conteudo: coluna.celula(item) })).filter(comando => comando.conteudo != null && comando.conteudo !== false);
-        return <li key={chaveDe(item)} data-ancora={ancoraDe?.(item)} className={classeLinha?.(item) ?? ""}>
-          {onAbrir
-            ? cartaoComLinks ? <div className="relative">
-              <ShadcnButton variant="ghost" type="button" aria-labelledby={`${idCartao}-${chaveDe(item)}`} onClick={() => onAbrir(item)} className="absolute inset-0 h-full w-full rounded-none" />
-              <div className="pointer-events-none relative p-3 [&_a]:pointer-events-auto [&_a]:relative [&_a]:z-10 [&_button]:pointer-events-auto [&_button]:relative [&_button]:z-10">{corpo}</div>
-            </div> : <ShadcnButton variant="ghost" type="button" onClick={() => onAbrir(item)} className="block h-auto w-full whitespace-normal p-3 text-left">{corpo}</ShadcnButton>
-            : <div className="p-4">{corpo}</div>}
-          {comandos.length > 0 && <div className="fin-cartao-acoes flex justify-end gap-2 px-4 pb-4">{comandos.map(comando => <div key={comando.chave}>{comando.conteudo}</div>)}</div>}
-        </li>;
-      })}
-      {rodape && <li className="fin-cartao-rodape"><div className="p-4"><strong>{rodape[principal.chave] ?? "Total"}</strong><dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">{colunas.filter(coluna => coluna !== principal && rodape[coluna.chave] != null).map(coluna => <div key={coluna.chave}><dt className="text-xs text-ink-3">{coluna.titulo}</dt><dd className="font-semibold">{rodape[coluna.chave]}</dd></div>)}</dl></div></li>}
-    </ul>
   </div>;
 }

@@ -36,19 +36,16 @@
 .relatorios-pecuaria .repro-desempenho-cabecalho h2{font-size:15px}
 .relatorios-pecuaria .repro-desempenho-cabecalho p{display:none}
 .relatorios-pecuaria .repro-periodos-visuais{padding:0;gap:12px}
-.relatorios-pecuaria .repro-periodo-visual{padding:15px;border-radius:9px;box-shadow:none;background:var(--card)}
-.relatorios-pecuaria .repro-periodo-visual>header{margin-bottom:16px}
-.relatorios-pecuaria .repro-periodo-visual>header h3{font-size:14px}
+
 .relatorios-pecuaria .repro-periodo-servico strong{font-size:23px}
-.relatorios-pecuaria .repro-periodo-visual>button{height:32px;min-height:32px;font-size:14px}
+
 /* Catálogo e complementares conservam a escolha de fonte ao lado da consulta. */
 .relatorios-pecuaria .rel-complementar-resultado{border:0;overflow:visible;background:transparent}
 .relatorios-pecuaria .rel-complementar-resultado>.rel-resultado-topo{background:var(--card);border:1px solid var(--border);border-bottom:0;border-radius:10px 10px 0 0}
 .relatorios-pecuaria .rel-complementar-resumo,.relatorios-pecuaria .rel-catalogo-contagem{background:var(--card);padding:14px 20px 20px;border:1px solid var(--border);border-top:0;border-radius:0 0 10px 10px;margin-bottom:18px;gap:24px}
 .relatorios-pecuaria .rel-complementar-resumo dd{font-size:28px;font-weight:650;line-height:1.3}
 .relatorios-pecuaria .rel-complementar-resultado>.rel-leitura{padding:0 0 16px;border:0}
-.relatorios-pecuaria .rel-complementar-cartoes{padding:0;gap:12px}
-.relatorios-pecuaria .rel-complementar-cartoes article{padding:16px;background:var(--card);border-radius:9px}
+
 .relatorios-pecuaria .rel-complementar-resultado .rel-rodape{margin-top:16px;padding:12px 0;border-top:0}
 .relatorios-pecuaria .rel-catalogo-posicao{padding:0 20px 14px;margin:0;background:var(--card);justify-content:flex-start;border-inline:1px solid var(--border)}
 .relatorios-pecuaria .rel-complementar-resultado>.rel-consulta-toolbar{min-height:48px}

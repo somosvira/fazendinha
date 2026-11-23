@@ -89,24 +89,6 @@ describe("TabelaFinanceira", () => {
     });
   });
 
-  it("adapta cartões e tabela à largura disponível da consulta", () => {
-    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
-    try {
-      Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable:true, get:()=>500 });
-      const estreita = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={l=>l.id}/>);
-      expect(estreita.container.querySelector("[data-fin-visualizacao]")?.getAttribute("data-fin-visualizacao")).toBe("cartoes");
-      expect(estreita.container.querySelector("ul")?.textContent).toContain(LINHAS[0].nome);
-      expect(estreita.container.querySelector("ul")?.textContent).toContain(LINHAS[0].valor);
-      estreita.unmount();
-      Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable:true, get:()=>1600 });
-      const larga = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={l=>l.id}/>);
-      expect(larga.container.querySelector("[data-fin-visualizacao]")?.getAttribute("data-fin-visualizacao")).toBe("tabela");
-      expect(larga.container.querySelectorAll("thead th")).toHaveLength(COLUNAS.length);
-    } finally {
-      if(original) Object.defineProperty(HTMLElement.prototype,"clientWidth",original);
-      else delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth;
-    }
-  });
 
   it("mantém a linha acionável pelo teclado quando ela abre um detalhe", () => {
     const abrir = vi.fn();
@@ -115,7 +97,7 @@ describe("TabelaFinanceira", () => {
     expect(linha.getAttribute("tabindex")).toBe("0");
     // não vira role="button": isso tiraria a linha da semântica de tabela
     expect(linha.getAttribute("role")).toBeNull();
-    expect(container.querySelector("ul button")).toBeTruthy(); // no cartão, um botão de verdade
+    expect(container.querySelector("ul")).toBeNull(); // sem versão em cartões
   });
 
   it("só mostra a barra de rolagem superior quando o conteúdo excede o contêiner, e sincroniza o scroll", () => {
@@ -245,11 +227,5 @@ describe("telas financeiras — envelope e carregamento", () => {
 });
 
 
-it("mantém links de origem fora do botão que abre o cartão", () => {
-  const { container } = render(<TabelaFinanceira cartaoComLinks rotulo="Origens" itens={[{ id: 1 }]} chaveDe={l => l.id} onAbrir={vi.fn()} colunas={[{ chave: "nome", titulo: "Nome", principal: true, celula: () => <a href="/financeiro/operacoes/1">Origem</a> }]} />);
-  expect(container.querySelector("ul button")).toBeTruthy();
-  expect(container.querySelector("ul button a")).toBeNull();
-  expect(container.querySelector("ul a")?.getAttribute("href")).toBe("/financeiro/operacoes/1");
-});
 
 beforeEach(preferirTabelas);

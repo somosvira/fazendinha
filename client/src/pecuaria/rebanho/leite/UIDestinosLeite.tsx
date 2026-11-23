@@ -26,6 +26,7 @@ import {
 } from "./destinos-types";
 import "./operacoes.css";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 interface HistoricoDestinos {
   itens: DestinoLeiteDTO[];
   total: number;
@@ -169,9 +170,9 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
       {ocupado && <p role="status">Consultando os destinos…</p>}
       {historico && (
         <>
-          <ListaConsultaLeite tituloDe={d => nomeNaturezaDestino(d.natureza)} detalheDe={d => dataPt(d.data)} layout="grade" destaque="litros" preferencia="destinosLeiteVisualizacao" compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
+          <ListaConsultaLeite icone={ICONES_TABELA.parceiro} compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
             { chave: "data", titulo: "Data", principal: true, celula: d => dataPt(d.data) },
-            { chave: "natureza", titulo: "Natureza", ocultarNoCartao: true, celula: d => nomeNaturezaDestino(d.natureza) },
+            { chave: "natureza", titulo: "Natureza", celula: d => nomeNaturezaDestino(d.natureza) },
             { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },
             { chave: "animais", titulo: "Animais", alinhamento: "direita", celula: d => d.parcelas.length },
             { chave: "situacao", titulo: "Situação", celula: d => d.status === "ESTORNADO" ? "Estornado" : "Confirmado" },
@@ -693,7 +694,7 @@ function FormularioDestino({
         {erroCandidatos && <p role="alert">{erroCandidatos}</p>}
         {candidatos && (
           <>
-            <TabelaFinanceira compacta rotulo="Destinatários disponíveis" itens={candidatos.itens} chaveDe={a => a.animalId} colunas={[
+            <TabelaFinanceira icone={ICONES_TABELA.parceiro} compacta rotulo="Destinatários disponíveis" itens={candidatos.itens} chaveDe={a => a.animalId} colunas={[
               { chave: "nome", titulo: "Animal", principal: true, celula: a => a.nome || a.brinco },
               { chave: "brinco", titulo: "Brinco", celula: a => a.brinco },
               { chave: "selecao", titulo: "Seleção", celula: a => (                        <Button variant="outline" type="button"
@@ -725,7 +726,7 @@ function FormularioDestino({
             divisão automática.
           </p>
         ) : (
-          <TabelaFinanceira compacta rotulo="Parcelas por destinatário" itens={rascunho.parcelas} chaveDe={p => p.animalId} colunas={[
+          <TabelaFinanceira icone={ICONES_TABELA.parceiro} compacta rotulo="Parcelas por destinatário" itens={rascunho.parcelas} chaveDe={p => p.animalId} colunas={[
             { chave: "animal", titulo: "Animal", principal: true, celula: p => p.nome || p.brinco },
             { chave: "litros", titulo: "Litros servidos", celula: p => (                      <input
                         aria-label={`Litros servidos a ${p.nome || p.brinco}`}

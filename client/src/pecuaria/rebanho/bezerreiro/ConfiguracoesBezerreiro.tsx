@@ -8,6 +8,7 @@ import { EstadoConsulta, useComando, useConsultaBezerreiro } from './ui';
 import { numero, ofertasConfiguracao, validarOfertas } from './modelo';
 import type { Configuracao, ContextoBezerreiro, OfertaProgramada } from './types';
 import './bezerreiro.css';
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 type FaseEditavel = {identidadeId: string; nome: string; coleiraId?: string | null; coleiraNome: string; cor: string; litrosDia: string; publicada: boolean; idadeDias: string; pesoKg: string; combinacao: 'E' | 'OU'};
 export function ConfiguracoesBezerreiro({podeLancar}: {podeLancar: boolean}) {
   const sitio = getPropriedadeAtiva(), [revisao, setRevisao] = useState(0);
@@ -33,7 +34,7 @@ function EditorConfiguracao({sitio,config,contexto,podeLancar,aoSalvar}: {sitio:
   return <div className="bez-conteudo"><SubTabs aparencia="segmentado" variant="financeiro" ariaLabel="Configurações do bezerreiro" active={aba} onSelect={setAba} tabs={[{id:'aleitamento',label:'Aleitamento e coleiras'},{id:'brix',label:'Avaliação Brix'},{id:'colostro',label:'Fornecimento de colostro'}]}/>
     <form onSubmit={e=>{e.preventDefault();void salvar();}}><fieldset disabled={!podeLancar||comando.ocupado}>
     {aba==='aleitamento'&&<><div className="bez-sectionhead"><h3>Coleiras e fases</h3>{podeLancar&&<div className="bez-acoes">{!fases.length&&<Button variant="outline" type="button" onClick={iniciais}>Carregar rotina inicial</Button>}<Button variant="outline" type="button" onClick={()=>setFases([...fases,{identidadeId:crypto.randomUUID(),nome:'',coleiraNome:'',cor:'#006f68',litrosDia:'0',publicada:true,idadeDias:'',pesoKg:'',combinacao:'E'}])}>Adicionar fase</Button></div>}</div>
-    {!fases.length?<p className="bez-estado">Nenhuma fase configurada. Carregue a rotina inicial ou adicione uma fase.</p>:<TabelaFinanceira rotulo="Coleiras e fases" itens={fases} chaveDe={f=>f.identidadeId} colunas={[
+    {!fases.length?<p className="bez-estado">Nenhuma fase configurada. Carregue a rotina inicial ou adicione uma fase.</p>:<TabelaFinanceira icone={ICONES_TABELA.coleira} rotulo="Coleiras e fases" itens={fases} chaveDe={f=>f.identidadeId} colunas={[
       {chave:'coleira',titulo:'Coleira',principal:true,celula:f=><input aria-label={`Nome da coleira ${f.nome}`} required value={f.coleiraNome} onChange={e=>mudarFase(f.identidadeId,{coleiraNome:e.target.value})}/>},
       {chave:'cor',titulo:'Cor',celula:f=><input type="color" aria-label={`Cor da coleira ${f.nome}`} value={f.cor} onChange={e=>mudarFase(f.identidadeId,{cor:e.target.value})}/>},
       {chave:'fase',titulo:'Fase',celula:f=><input required aria-label={`Fase ${f.coleiraNome}`} value={f.nome} onChange={e=>mudarFase(f.identidadeId,{nome:e.target.value})}/>},
@@ -41,7 +42,7 @@ function EditorConfiguracao({sitio,config,contexto,podeLancar,aoSalvar}: {sitio:
       {chave:'ativa',titulo:'Publicada',celula:f=><input type="checkbox" aria-label={`Publicar fase ${f.nome}`} checked={f.publicada} onChange={e=>mudarFase(f.identidadeId,{publicada:e.target.checked})}/>},
     ]}/>}
     <section className="bez-secao"><div className="bez-sectionhead"><h3>Ofertas de leite</h3>{podeLancar&&<Button type="button" variant="outline" onClick={()=>setOfertas([...ofertas,{identidadeId:crypto.randomUUID(),ordem:ofertas.length,percentual:'0',horarioPrevisto:null}])}>Adicionar oferta</Button>}</div>
-    <TabelaFinanceira rotulo="Programação das ofertas" itens={ofertas} chaveDe={o=>o.identidadeId} colunas={[
+    <TabelaFinanceira icone={ICONES_TABELA.programacao} rotulo="Programação das ofertas" itens={ofertas} chaveDe={o=>o.identidadeId} colunas={[
       {chave:'oferta',titulo:'Oferta',principal:true,celula:o=>`Oferta ${ofertas.indexOf(o)+1}`},
       {chave:'hora',titulo:'Horário de referência (opcional)',celula:o=><input type="time" aria-label={`Horário da oferta ${ofertas.indexOf(o)+1}`} value={o.horarioPrevisto??''} onChange={e=>setOfertas(ofertas.map(x=>x.identidadeId===o.identidadeId?{...x,horarioPrevisto:e.target.value||null}:x))}/>},
       {chave:'percentual',titulo:'Parcela do dia (%)',celula:o=><input type="number" min="0" max="100" step="0.0001" required aria-label={`Percentual da oferta ${ofertas.indexOf(o)+1}`} value={o.percentual} onChange={e=>setOfertas(ofertas.map(x=>x.identidadeId===o.identidadeId?{...x,percentual:e.target.value}:x))}/>},
@@ -53,6 +54,6 @@ function EditorConfiguracao({sitio,config,contexto,podeLancar,aoSalvar}: {sitio:
     {comando.erro&&<p className="bez-erro" role="alert">{comando.erro}</p>}{aviso&&<p className="bez-aviso" role="status">{aviso}</p>}
     {podeLancar&&<div className="bez-form-acoes">{aba==='aleitamento'&&<><Button variant="outline" type="button" onClick={carregarRascunho}>Carregar rascunho</Button><Button variant="outline" type="button" onClick={salvarRascunho}>Salvar rascunho da programação</Button></>}<Button type="submit" disabled={comando.ocupado}>{comando.ocupado?'Salvando…':'Salvar rotina e referências'}</Button></div>}
     </fieldset></form>
-    <section className="bez-secao"><h3>Lotes do bezerreiro</h3><TabelaFinanceira rotulo="Lotes com perfil de bezerreiro" itens={config.perfis} chaveDe={p=>p.id} colunas={[{chave:'lote',titulo:'Lote',principal:true,celula:p=>p.lote.nome},{chave:'ativo',titulo:'Situação',celula:p=>p.ativo?'Ativo':'Inativo'}]}/>{podeLancar&&<form className="bez-form-acoes" onSubmit={e=>{e.preventDefault();void comando.salvar('/perfis',{loteId});}}><label>Lote<SelectCampo required value={loteId} onValueChange={setLoteId}><option value="">Selecione um lote</option>{contexto?.lotes.filter(l=>!config.perfis.some(p=>p.loteId===l.id)).map(l=><option key={l.id} value={l.id}>{l.nome}</option>)}</SelectCampo></label><Button type="submit" disabled={!loteId||comando.ocupado}>Usar como bezerreiro</Button></form>}</section>
+    <section className="bez-secao"><h3>Lotes do bezerreiro</h3><TabelaFinanceira icone={ICONES_TABELA.lote} rotulo="Lotes com perfil de bezerreiro" itens={config.perfis} chaveDe={p=>p.id} colunas={[{chave:'lote',titulo:'Lote',principal:true,celula:p=>p.lote.nome},{chave:'ativo',titulo:'Situação',celula:p=>p.ativo?'Ativo':'Inativo'}]}/>{podeLancar&&<form className="bez-form-acoes" onSubmit={e=>{e.preventDefault();void comando.salvar('/perfis',{loteId});}}><label>Lote<SelectCampo required value={loteId} onValueChange={setLoteId}><option value="">Selecione um lote</option>{contexto?.lotes.filter(l=>!config.perfis.some(p=>p.loteId===l.id)).map(l=><option key={l.id} value={l.id}>{l.nome}</option>)}</SelectCampo></label><Button type="submit" disabled={!loteId||comando.ocupado}>Usar como bezerreiro</Button></form>}</section>
   </div>;
 }

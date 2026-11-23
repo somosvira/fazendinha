@@ -50,6 +50,7 @@ import { Iatf } from "./Iatf";
 import { DetalheFato } from "./DetalheFato";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 function acaoDaUrl(): AcaoReprodutiva | null {
   const acao = new URLSearchParams(window.location.search).get("acao");
   return ["avaliacao", "tentativa", "parto", "situacao", "restricao"].includes(acao ?? "") ? acao as AcaoReprodutiva : null;
@@ -395,7 +396,7 @@ function ConteudoReproducao({
           </p>
         )}
         {!carregando && painel && (
-          <ConsultaOperacional filtrosColunas={filtrosDasColunas(camposConsulta,edicaoConsulta)}
+          <ConsultaOperacional icone={ICONES_TABELA.animal} filtrosColunas={filtrosDasColunas(camposConsulta,edicaoConsulta)}
             rotulo="Animais e ciclos reprodutivos"
             itens={animais}
             chaveDe={(a) => a.animalId}
@@ -465,7 +466,7 @@ function ConteudoReproducao({
       {painel && (
         <Panel>
           <CabecalhoTabela titulo="Histórico reprodutivo" />
-          <ConsultaOperacional
+          <ConsultaOperacional icone={ICONES_TABELA.reproducao}
             rotulo="Histórico reprodutivo"
             onAbrir={(f) => setFatoAberto(f)}
             itens={fatos.filter((f) => !animalId || f.animalId === animalId)}

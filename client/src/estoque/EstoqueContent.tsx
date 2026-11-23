@@ -2,8 +2,6 @@ import { CatalogoProdutos, SeletorCatalogoProduto } from "./CatalogosProdutos";
 // Abas antigas dos cadastros auxiliares (fabricantes, classificações, princípios ativos) abrem o Catálogo.
 const ABAS_CATALOGO = new Set(["catalogo", "fabricantes", "classificacoes-tecnicas", "principios-ativos"]);
 import { getUsuario } from "../lib/auth";
-import { CartoesProdutos } from "./CartoesProdutos";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { usePropriedades } from "@/api/propriedades";
 import { useOrdenacaoTabela } from "@/financeiro/OrdenarConsulta";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -29,11 +27,12 @@ import { MovimentoEstoqueModal } from "./MovimentoEstoqueModal";
 import { FormProduto } from "../financeiro/FormProduto";
 import { PeriodoFinanceiroControl } from "../financeiro/PeriodoFinanceiroControl";
 import { useSaldos, listarProdutos, listarMovimentos, listarCentrosCusto, type FiltroMovimentos, type MovimentoDTO, type OrigemMovimento, type SaldoDTO, type RefDTO } from "./api";
-import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEstoque } from "./navegacao";
+import { abrirAjusteEstoque, destinoDoMovimento, podeAjustarEstoque } from "./navegacao";
 import { SEM_VINCULO } from "../lib/ids";
 import { ROTULO_ORIGEM } from "./rotulos";
 import { getPropriedadeAtiva } from "../propriedadeScope";
 import { EsqueletoLinhas, EsqueletoTabela } from "../components/Esqueleto";
+import { ICONES_TABELA } from "@/components/iconesTabela";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const CAMPO = "h-10 w-full min-w-0 rounded-lg border border-border bg-card px-3 py-2 text-sm";
@@ -78,7 +77,6 @@ function useMovimentos(f: FiltroMovimentos) {
 }
 
 export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: string | null; titulo?: string; avisoFiltro?: string } = {}) {
-  const visual = useVisualizacaoConsulta("visualEstoque");
   const { data: propriedades } = usePropriedades();
   const verValores = podeVerValoresFinanceiros();
   const [produtoCriado, setProdutoCriado] = useState<string | null>(null);
@@ -304,7 +302,6 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     </Panel>
     <Tabs className="estoque-consulta-abas" value={aba} onValueChange={mudarAba}>
       <TabsList aria-label="Consultas de estoque"><TabsTrigger value="produtos"><Package aria-hidden="true" />Produtos{saldos.data.length > 0 ? ` (${saldos.data.length})` : ""}</TabsTrigger><TabsTrigger value="movimentacoes"><History aria-hidden="true" />Movimentações</TabsTrigger><TabsTrigger value="catalogo"><BookOpen aria-hidden="true" />Catálogo</TabsTrigger></TabsList>
-      <AlternarVisualizacaoConsulta rotulo="Visualização do estoque" {...visual} />
       {catalogo && <TabsContent value="catalogo"><CatalogoProdutos /></TabsContent>}
       <TabsContent value="produtos" forceMount hidden={aba !== "produtos"}>
 
@@ -328,7 +325,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
           : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque.</Empty>
           : saldosVisiveis.length === 0 ? <Empty>{filtrosAtivos ? "Nenhum produto bate com a busca." : "Nenhum produto para exibir."}</Empty>
           : <>
-              {visual.modo === "visual" ? <CartoesProdutos itens={saldosDaPagina} propriedadeId={sitioEfetivo} verValores={verValores} acoes={s=><>{s.materialGeneticoId&&<LinkInterno href={hrefMaterialGenetico(s.materialGeneticoId)} area="pecuaria">Identidade genética</LinkInterno>}{colunasSaldos.find(c=>c.chave==="acoes")?.celula(s)}</>}/> : <TabelaFinanceira icone={Package} visualizacao="tabela" ordenacao={ordenacaoSaldos.controle} compacta filtrosColunas={filtrosDasColunas(camposSaldos, edicaoCompletaSaldos, consultaSaldos.erro)} rotulo="Saldos de estoque" itens={saldosDaPagina} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} classeLinha={s => s.saldo < 0 ? "bg-[color:var(--fin-danger-bg)]/40" : s.abaixoMinimo ? "bg-amber-50/40" : ""} />}
+              {<TabelaFinanceira icone={Package} ordenacao={ordenacaoSaldos.controle} compacta filtrosColunas={filtrosDasColunas(camposSaldos, edicaoCompletaSaldos, consultaSaldos.erro)} rotulo="Saldos de estoque" itens={saldosDaPagina} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} classeLinha={s => s.saldo < 0 ? "bg-[color:var(--fin-danger-bg)]/40" : s.abaixoMinimo ? "bg-amber-50/40" : ""} />}
               <Paginacao pagina={paginaSaldosAtual} totalPaginas={totalPaginasSaldos} total={saldosVisiveis.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de saldos" substantivo={saldosVisiveis.length === 1 ? "produto" : "produtos"} idSelect="pagina-saldos" onPagina={setPaginaSaldos} />
             </>}
       </div>
@@ -353,29 +350,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
           : movimentos.erro ? <Empty>Não foi possível consultar os movimentos: {movimentos.erro} <button type="button" className="underline" onClick={movimentos.recarregar}>Tentar novamente</button></Empty>
           : movimentos.data.length === 0 ? <Empty>{movimentoId ? "Movimento não encontrado neste sítio ou indisponível para seu acesso." : filtrosMovAtivos ? "Nenhum movimento bate com os filtros." : "Nenhum movimento registrado ainda."}</Empty>
           : <>
-              {visual.modo === "visual" ? (
-                <ul className="estoque-movimentos-cartoes" aria-label="Histórico de movimentos">
-                  {movimentos.data.map(m => {
-                    const sitio = propriedades.find(p => p.id === m.propriedadeId);
-                    return <li key={m.id} className={`estoque-movimento-cartao ${classeMovimento(m)}`}>
-                      <button type="button" className="estoque-movimento-abrir"
-                        aria-label={rotuloMovimento(m)} onClick={() => abrirMovimento(m)} />
-                      <header>
-                        <div>
-                          <h3><LinkInterno area="estoque" href={`/estoque/produtos/${m.produtoId}`}>{m.produto}</LinkInterno></h3>
-                          <p>{dataBR(m.data)}{sitio && ` · ${sitio.nome}`}</p>
-                        </div>
-                        {tipoMovimento(m)}
-                      </header>
-                      <dl>
-                        <div><dt>Quantidade</dt><dd>{quantidadeMovimento(m)}</dd></div>
-                        {verValores && <div><dt>Valor</dt><dd>{m.valorTotal == null ? "—" : brl(m.valorTotal)}</dd></div>}
-                        <div><dt>Origem / vínculo</dt><dd>{origemMovimento(m)}</dd></div>
-                      </dl>
-                    </li>;
-                  })}
-                </ul>
-              ) : <TabelaFinanceira visualizacao="tabela" compacta filtrosColunas={filtrosDasColunas(camposHistorico, edicaoHistorico)} rotulo="Histórico de movimentos" itens={movimentos.data} colunas={colunasMovimentos} chaveDe={m => m.id} classeLinha={classeMovimento} />}
+              {<TabelaFinanceira iconeDe={m => m.tipo === "ENTRADA" ? ICONES_TABELA.movimentoEntrada : m.tipo === "SAIDA" ? ICONES_TABELA.movimentoSaida : ICONES_TABELA.movimentoTroca} compacta filtrosColunas={filtrosDasColunas(camposHistorico, edicaoHistorico)} rotulo="Histórico de movimentos" itens={movimentos.data} colunas={colunasMovimentos} chaveDe={m => m.id} classeLinha={classeMovimento} />}
               <Paginacao pagina={paginaMovAtual} totalPaginas={totalPaginasMov} total={movimentos.total} porPagina={ITENS_POR_PAGINA} rotulo="Paginação do histórico" substantivo={movimentos.total === 1 ? "movimento" : "movimentos"} idSelect="pagina-movimentos" onPagina={setPaginaMov} />
             </>}
       </div>

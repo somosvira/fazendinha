@@ -1,4 +1,3 @@
-import { AjudaCampo } from "@/components/Dica";
 import { ReferenciaLeite } from "./ReferenciaLeite";
 import { DistribuicaoCustoFechamento } from "./DistribuicaoCustoFechamento";
 import { TabelaConsultaLocal } from "@/financeiro/TabelaConsultaLocal";
@@ -9,6 +8,7 @@ import { custoTexto, LinkNutricional, rotaNutricao, SituacaoFechamento } from ".
 
 import { quantidadeNutricional, un } from "./quantidades";
 import { LIMITE_DIVERGENCIA } from "./AlertasNutricao";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 type Item = Fechamento["itens"][number];
 const custoDoItem = (i: Item) => Number(i.quantidadeConfirmada) === 0 ? "0" : i.leite?.custoProducao ?? i.movimentoEstoque?.valorTotal ?? null;
@@ -86,15 +86,15 @@ export function DetalhesFechamento({ fechamento: f, podeLancar = false, metadado
       {f.status === "ESTORNADO" && <p className="nutricao-aviso">Estornado · excluído dos custos atuais do lote.{f.motivoEstorno && <> Motivo: {f.motivoEstorno}</>}</p>}
     </section>
     <Panel className="nutricao-consumo-estoque"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo e estoque </h2></div></div>
-      <div className="nutricao-consumo-composicao"><div className="min-w-0">{f.itens.length > 8 ? <TabelaConsultaLocal camposOrdenaveis={[{chave:"previsto",rotulo:"Previsto (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadePrevista},{chave:"conferido",rotulo:"Conferido (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadeConfirmada}]} buscarPor={i=>i.produto.nome} definicoes={[
+      <div className="nutricao-consumo-composicao"><div className="min-w-0">{f.itens.length > 8 ? <TabelaConsultaLocal icone={ICONES_TABELA.ingrediente} camposOrdenaveis={[{chave:"previsto",rotulo:"Previsto (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadePrevista},{chave:"conferido",rotulo:"Conferido (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadeConfirmada}]} buscarPor={i=>i.produto.nome} definicoes={[
         {chave:"ingrediente",rotulo:"Ingrediente",tipo:"texto",obter:i=>i.produto.nome},
         ...(f.verValores?[{chave:"custo",rotulo:"Custo conhecido",tipo:"valor" as const,obter:(i: Fechamento["itens"][number])=>Number(i.quantidadeConfirmada)===0?"0":i.leite?.custoProducao??i.movimentoEstoque?.valorTotal??null,limiteSugerido:Math.max(1,...f.itens.map(i=>Number(i.leite?.custoProducao??i.movimentoEstoque?.valorTotal??0)))}]:[]),
-      ]} rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={colunasItens} /> : <TabelaFinanceira rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={colunasItens} />}
+      ]} rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={colunasItens} /> : <TabelaFinanceira icone={ICONES_TABELA.ingrediente} rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={colunasItens} />}
     </div><DistribuicaoCustoFechamento fechamento={f} /></div></Panel>
     {f.itens.filter(i => i.leite).map(i => <Panel key={i.produtoId}><div className="nutricao-card-cabecalho"><h2 className="h3">Leite fornecido · {i.produto.nome}</h2></div><div className="nutricao-card-corpo"><ReferenciaLeite leite={i.leite!} propriedadeId={f.propriedadeId} verValores={f.verValores} verReferenciasComerciais={f.verReferenciasComerciais ?? false} animais={f.participacoes.map(p => ({ animalId: p.animalId, brinco: p.animal.brinco }))} podeLancar={podeLancar && f.status === "CONFIRMADO"} onRecarregar={onRecarregar} /></div></Panel>)}
     <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Atribuição aos animais </h2></div><Pill>{f.participacoes.length} animais</Pill></div>
       {f.verValores && !custoAnimais && <p className="nutricao-nota px-5 pb-2">O custo de cada animal aparece quando o custo do fechamento for apurado.</p>}
-      <TabelaConsultaLocal camposOrdenaveis={[{chave:"dias",rotulo:"Dias no lote",tipo:"numero",obter:p=>p.dias},...(custoAnimais?[{chave:"medio",rotulo:"Custo por animal-dia",tipo:"numero" as const,obter:(p:Fechamento["participacoes"][number])=>p.custoConhecidoPorDia}]:[])]} buscarPor={p=>p.animal.brinco} definicoes={[
+      <TabelaConsultaLocal icone={ICONES_TABELA.animal} camposOrdenaveis={[{chave:"dias",rotulo:"Dias no lote",tipo:"numero",obter:p=>p.dias},...(custoAnimais?[{chave:"medio",rotulo:"Custo por animal-dia",tipo:"numero" as const,obter:(p:Fechamento["participacoes"][number])=>p.custoConhecidoPorDia}]:[])]} buscarPor={p=>p.animal.brinco} definicoes={[
         {chave:"animal",rotulo:"Animal",tipo:"texto",obter:p=>p.animal.brinco},
         ...(custoAnimais?[{chave:"custo",rotulo:"Custo conhecido",tipo:"valor" as const,obter:(p: Fechamento["participacoes"][number])=>p.custoConhecido,limiteSugerido:Math.max(1,...f.participacoes.map(p=>Number(p.custoConhecido??0)))}]:[]),
       ]} rotulo="Atribuição do consumo aos animais" itens={f.participacoes} chaveDe={(p) => p.animalId} colunas={[

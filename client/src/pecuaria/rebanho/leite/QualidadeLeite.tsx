@@ -7,8 +7,6 @@ import { valorResultadoQualidade } from './resultado-qualidade';
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { formatarDataBR } from "../lib/rotulos";
-import { CartaoAmostraVisual } from "./VisuaisConsultaLeite";
-import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { SubTabs } from "../../../components/SubTabs";
@@ -19,7 +17,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Paginacao } from "../../../financeiro/financeiro-ui";
 import "./consultas-leite.css";
 import { Button } from "@/components/ui/button";
-import { SecaoDetalhesLeite as SecaoHistoricoLeite } from "./SecaoDetalhesLeite";
 import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
 import { useEffect, useId, useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -198,7 +195,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
               resultado ainda não chegou.
             </p>
           )}
-          <ListaConsultaLeite icone={FlaskConical} layout="grade" renderizarVisual={a => <CartaoAmostraVisual amostra={a} abrir={() => { setSelecionada(a); setNova(false); }}/>} preferencia="qualidadeLeiteVisualizacao" compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
+          <ListaConsultaLeite icone={FlaskConical} compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
             { chave: "data", titulo: "Coleta", principal: true, celula: a => a.data.slice(0, 10).split("-").reverse().join("/") },
             { chave: "tipo", titulo: "Tipo", celula: a => a.sujeito.tipo === "ANIMAL" ? "Individual" : "Coletiva" },
             { chave: "origem", titulo: "Origem", celula: a => a.sujeito.tipo === "ANIMAL" ? a.animal?.brinco ?? "Sem brinco" : a.sujeito.origem },

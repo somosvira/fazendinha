@@ -1,6 +1,5 @@
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { Ellipsis, FileText, Plus, Wallet } from "lucide-react";
-import { CartaoVendaVisual } from "./VisuaisConsultaLeite";
 import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { useEffect, useRef, useState } from "react";
@@ -78,7 +77,7 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
       </Empty>
     ) : <>
       <dl className="leite-consulta-resumo"><div><dt>Operações no recorte</dt><dd>{dados.resumo.vendas}</dd></div><div><dt>Volume do recorte<AjudaCampo rotulo="Sobre o volume comercial do recorte" texto="Volume retirado nas operações abertas e avulsas mais o volume reconhecido nos fechamentos, pelo período inteiro de cada acordo. Não é a produção dos dias filtrados."/></dt><dd>{formatarLitros(Number(dados.resumo.totalLitros))}</dd></div><div><dt>Preço pendente</dt><dd>{dados.resumo.precoPendente}</dd></div><div><dt>Total comercial conhecido</dt><dd>{!podeFinanceiro ? "Restrito" : dados.resumo.valorTotal === null ? "Sem valor" : Number(dados.resumo.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</dd></div></dl>
-      <ListaConsultaLeite icone={Wallet} layout="grade" renderizarVisual={v => <CartaoVendaVisual item={v} podeVerValores={podeFinanceiro} acao={<Button variant="outline" onClick={() => abrir(v)}>Abrir operação</Button>}/>} preferencia="vendasLeiteVisualizacao" rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
+      <ListaConsultaLeite icone={Wallet} rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
         { chave: "referencia", titulo: "Operação", principal: true, larguraMinima: 160, celula: v => <strong>{v.referencia}</strong> },
         { chave: "comprador", titulo: "Comprador", larguraMinima: 150, celula: v => v.parceiroNome ?? "Não informado" },
         { chave: "periodo", titulo: "Período", larguraMinima: 185, celula: v => v.modalidade === "AVULSA" ? dataPt(v.data) : `${dataPt(v.inicio)} a ${dataPt(v.fim)}` },

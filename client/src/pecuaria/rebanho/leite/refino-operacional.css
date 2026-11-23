@@ -72,15 +72,12 @@
 .leite-importacao .leite-etapas-importacao b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 
 /* As consultas com muitos fatos precisam crescer com o conteúdo e com o zoom. */
-.leite-superficie .leite-card-visual header { align-items: flex-start; flex-wrap: wrap; gap: 10px; }
-.leite-superficie .leite-card-visual h3 { font-size: 17px; line-height: 1.4; }
-.leite-superficie .leite-venda-visual > h3 { font-size: 19px; }
+
 .leite-superficie .leite-naturezas-legenda { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 14px; }
 .leite-superficie .leite-naturezas-legenda dt { align-items: flex-start; line-height: 1.45; }
 .leite-superficie .leite-naturezas-legenda i { margin-top: 6px; }
 .leite-superficie .leite-estado-visual { max-width: none; line-height: 1.5; }
-.leite-superficie .leite-coleta-visual time { min-width: 70px; padding: 10px 12px; }
-.leite-superficie .leite-coleta-visual time span { line-height: 1.4; }
+
 .leite-superficie .leite-consulta-resumo { background: transparent; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: 12px 0 20px; gap: 20px 28px; }
 .leite-superficie .leite-consulta-resumo dt { line-height: 1.5; }
 .leite-superficie .leite-consulta-resumo dd { font-size: 24px; }
@@ -88,7 +85,7 @@
 .leite-configuracoes-consulta > .grid > .leite-configuracao-fatos > div { display: block; padding: 12px 0 18px; }
 .leite-superficie .leite-equipamento dl { margin: 18px 0; }
 .leite-superficie .leite-equipamento dd { line-height: 1.5; }
-.leite-superficie .leite-previsoes-grade { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+
 .leite-superficie .leite-sumario-emissao { gap: 10px; }
 .leite-superficie .leite-sumario-emissao a { font-size: 14px; min-height: 40px; display: inline-flex; align-items: center; }
 
@@ -103,10 +100,9 @@
 @media(max-width:700px) {
   .leite-superficie .leite-configuracao-fatos { gap: 0 !important; }
   .leite-superficie .leite-consulta-resumo { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
-  .leite-superficie .leite-card-visual header .leite-estado-visual { margin-left: 0; }
+  
   .leite-contexto-data { justify-content: flex-start; }
 }
-
 
 @media (max-width: 700px) {
   .leite-resumo-destinos > .consumo-distribuicao { grid-template-columns: minmax(0, 1fr); }

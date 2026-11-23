@@ -5,13 +5,7 @@
 .carencias-prazos-eixo>div{position:relative;padding-top:16px}.carencias-prazos-eixo>div>strong{position:absolute;top:0;transform:translateX(-100%)}
 
 /* A consulta de exames aproxima a coleta do resultado; o laudo completo abre no detalhe. */
-.san-exames-cartoes { align-items:start; gap:14px; }
-:root [data-design-operacional] .sanidade-pagina .san-exame-cartao { padding:16px; }
-.san-exame-cartao > header { gap:10px; flex-wrap:wrap; }
-:root [data-design-operacional] .san-exames-cartoes .consulta-entidade-icone { width:36px; height:36px; border-radius:8px; }
-.san-exame-cartao .consulta-entidade-identidade { flex:1 1 170px; }
-.san-exame-cartao .consulta-entidade-status { margin-left:auto; }
-.san-exame-cartao .consulta-entidade-conteudo { margin-top:12px; }
+
 .san-exame-fatos { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; padding-top:12px; }
 .san-exame-fatos > .consulta-fato:first-child { display:flex; align-items:baseline; gap:8px; }
 .san-exame-fatos > .consulta-fato:first-child > span { margin:0; }
@@ -21,30 +15,6 @@
 .san-exame-resumo dd { font-size:16px; font-weight:600; overflow-wrap:anywhere; }
 .san-exame-abrir { min-height:44px; margin-top:8px; text-align:left; font-size:14px; color:var(--primary); text-decoration:underline; text-underline-offset:3px; }
 .san-exame-abrir:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
-:root [data-design-operacional] .san-exame-cartao footer { margin-top:12px; padding-top:10px; }
-.san-exame-fatos .consulta-escala { margin-top:0; }
-@media(max-width:600px) { .san-exames-cartoes { padding:12px 0; }.san-exame-cartao .consulta-entidade-identidade { flex-basis:170px; }.san-exame-cartao .consulta-entidade-status { max-width:none; }.san-exame-cartao .consulta-entidade-seta { display:none; } }
 
-.sanidade-pagina :is(.san-exames-cartoes,.san-aplicacoes-cartoes,.san-carencias-cartoes) {
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  align-items:start;
-  gap:12px;
-  padding:12px 16px;
-  background:transparent;
-}
-:root [data-design-operacional] .sanidade-pagina :is(.san-exames-cartoes,.san-aplicacoes-cartoes,.san-carencias-cartoes) .consulta-entidade {
-  padding:12px;
-  border-radius:8px;
-}
-.sanidade-pagina :is(.san-exames-cartoes,.san-aplicacoes-cartoes,.san-carencias-cartoes) .consulta-entidade-conteudo {
-  margin-top:6px;
-}
-.sanidade-pagina :is(.san-exames-cartoes,.san-aplicacoes-cartoes,.san-carencias-cartoes) .consulta-fatos {
-  gap:6px 12px;
-  padding-top:6px;
-}
-@media(max-width:900px) {
-  .sanidade-pagina :is(.san-exames-cartoes,.san-aplicacoes-cartoes,.san-carencias-cartoes) {
-    grid-template-columns:minmax(0,1fr);
-  }
-}
+.san-exame-fatos .consulta-escala { margin-top:0; }
+

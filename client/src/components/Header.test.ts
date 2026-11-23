@@ -3,7 +3,6 @@ import { afterEach, describe, it, expect, vi } from "vitest";
 import { createElement as h, useState } from "react";
 import { cleanup, render, screen, fireEvent, within } from "@testing-library/react";
 import { Header } from "./Header";
-import { AlternarVisualizacaoConsulta, VisualizacaoNoCabecalho } from "./VisualizacaoConsulta";
 import type { User } from "../data/acessos";
 
 afterEach(() => {
@@ -108,61 +107,12 @@ describe("Header", () => {
   });
 });
 
-describe("Seletor do cabeçalho", () => {
-  it("altera as consultas montadas, preserva os modos específicos e permanece registrado durante um diálogo", () => {
-    const lotes = vi.fn();
-    const consumo = vi.fn();
-    const oculto = vi.fn();
-    const calendario = vi.fn();
-    const props = baseProps();
-    const pagina = (modalAberto: boolean) => h(VisualizacaoNoCabecalho, null,
-      h(Header, props),
-      h("main", { "aria-hidden": modalAberto || undefined },
-        h(AlternarVisualizacaoConsulta, { modo: "tabela", mudar: lotes, rotulo: "Lotes" }),
-        h(AlternarVisualizacaoConsulta, { modo: "visual", mudar: consumo, rotulo: "Consumo" }),
-        h("div", { hidden: true }, h(AlternarVisualizacaoConsulta, { modo: "tabela", mudar: oculto, rotulo: "Consulta oculta" })),
-        h(AlternarVisualizacaoConsulta, { modo: "tabela", mudar: calendario, rotulo: "Fechamentos", visual: "Calendário" }),
-      ),
-    );
-    const { rerender } = render(pagina(false));
-    expect(screen.queryByRole("group", { name: "Lotes" })).toBeNull();
-    expect(screen.queryByRole("group", { name: "Consumo" })).toBeNull();
-    expect(screen.getByRole("group", { name: "Fechamentos" })).toBeTruthy();
-
-    rerender(pagina(true));
-    rerender(pagina(false));
-    const alternador = screen.getByRole("group", { name: "Visualização da tela" });
-    fireEvent.click(within(alternador).getByLabelText("Cartões"));
-    expect(lotes).toHaveBeenCalledWith("visual");
-    expect(consumo).not.toHaveBeenCalled();
-    expect(oculto).toHaveBeenCalledWith("visual");
-    expect(calendario).not.toHaveBeenCalled();
+describe("Cabeçalho sem alternador de visualização", () => {
+  it("não oferece Cartões/Tabela no cabeçalho", () => {
+    render(h(Header, baseProps()));
+    expect(screen.queryByRole("group", { name: "Visualização da tela" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cartões" })).toBeNull();
   });
 });
 
 
-it("mantém Tabela ao abrir outra aba e ao recarregar o cabeçalho", () => {
-  function Consulta({ nome }: { nome: string }) {
-    const [modo, mudar] = useState<"visual" | "tabela">("visual");
-    return h("section", null,
-      h(AlternarVisualizacaoConsulta, { modo, mudar, rotulo: nome }),
-      h("output", null, `${nome}: ${modo}`),
-    );
-  }
-
-  const pagina = (nome: string, usuarioId = "u1") => h(VisualizacaoNoCabecalho, { key: usuarioId, usuarioId, children: [
-    h(Header, { ...baseProps(), key: "header" }),
-    h(Consulta, { key: nome, nome }),
-  ] });
-  const { rerender, unmount } = render(pagina("Fechamentos"));
-  fireEvent.click(screen.getByLabelText("Tabela"));
-  expect(screen.getByText("Fechamentos: tabela")).toBeTruthy();
-  rerender(pagina("Alertas"));
-  expect(screen.getByText("Alertas: tabela")).toBeTruthy();
-  unmount();
-
-  const recarregada = render(pagina("Receitas"));
-  expect(screen.getByText("Receitas: tabela")).toBeTruthy();
-  recarregada.rerender(pagina("Receitas", "outro-usuario"));
-  expect(screen.getByText("Receitas: visual")).toBeTruthy();
-});

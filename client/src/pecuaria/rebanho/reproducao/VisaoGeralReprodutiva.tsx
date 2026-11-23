@@ -36,6 +36,7 @@ import {
   organizarHoje,
 } from "./visao-geral-api";
 import "./visao-geral-reprodutiva.css";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 function somarDias(data: string, dias: number) {
   const d = new Date(`${data}T12:00:00Z`);
@@ -450,8 +451,7 @@ export function VisaoGeralReprodutiva({
           ) : !etapasHoje || !gruposHoje ? (
             <p role="status">Consultando cuidados de hoje…</p>
           ) : totalHoje ? (
-            <ConsultaOperacional
-              visualizacao="tabela"
+            <ConsultaOperacional icone={ICONES_TABELA.etapaProtocolo}
               colunas={colunasCuidados}
               itens={linhasHoje}
               chaveDe={(r) => r.id}
@@ -497,8 +497,7 @@ export function VisaoGeralReprodutiva({
           ) : !proximosFiltrados ? (
             <p role="status">Consultando próximos cuidados…</p>
           ) : proximosFiltrados.length ? (
-            <ConsultaOperacional
-              visualizacao="tabela"
+            <ConsultaOperacional icone={ICONES_TABELA.agenda}
               colunas={colunasCuidados.filter(
                 (c) => !["atendidos", "pendentes"].includes(c.chave),
               )}
@@ -539,8 +538,7 @@ export function VisaoGeralReprodutiva({
               protocolos.
             </p>
           ) : organizados.emAndamento.length ? (
-            <ConsultaOperacional
-              visualizacao="tabela"
+            <ConsultaOperacional icone={ICONES_TABELA.protocolo}
               colunas={colunasExecucoes}
               itens={organizados.emAndamento}
               chaveDe={(p) => `${p.modo}:${p.id}`}
@@ -580,8 +578,7 @@ export function VisaoGeralReprodutiva({
                     {alertas.totaisFiltrados.cuidados} cuidados ·{" "}
                     {alertas.totaisFiltrados.animais} animais
                   </p>
-                  <ConsultaOperacional
-                    visualizacao="tabela"
+                  <ConsultaOperacional icone={ICONES_TABELA.alerta}
                     colunas={colunasAlertas}
                     itens={alertas.itens}
                     chaveDe={(g) => g.chave}

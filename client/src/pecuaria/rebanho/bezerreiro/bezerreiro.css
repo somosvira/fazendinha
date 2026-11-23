@@ -9,34 +9,6 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
 .bezerreiro fieldset.bez-criterios{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:20px}.bez-criterios legend{font-size:15px;font-weight:700;margin-bottom:12px;padding:0}@media(max-width:600px){.bezerreiro fieldset.bez-criterios{grid-template-columns:1fr}}
 @media(min-width:900px){.bezerreiro td .bez-acoes{flex-wrap:nowrap;gap:8px;justify-content:flex-end}}
 
-.bez-animais-cartoes, .bez-alimentacao-cartoes, .bez-lista-cartoes, .bez-sanidade-cartoes {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.bez-animal-cartao, .bez-alimentacao-cartao, .bez-lista-cartao, .bez-sanidade-cartao {
-  min-width: 0;
-  padding: 12px 14px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow-wrap: break-word;
-}
-
-.bez-animal-cartao-topo,
-.bez-animal-cartao-corpo {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 8px 12px;
-  flex-wrap: wrap;
-}
-
-.bez-animal-cartao-topo strong { color: var(--primary); }
 .bez-animal-brinco {
   display: inline-block;
   margin-inline-start: 8px;
@@ -49,108 +21,6 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
 }
 .bez-regularizacao fieldset { margin: 0; }
 .bez-regularizacao .bez-ajuda:first-child { margin: 0; }
-.bez-animal-cartao dt { color: var(--muted-foreground); font-size: 12px; }
-.bez-animal-cartao dd { margin: 0; }
-.bez-animal-cartao-corpo { margin-top: 8px; align-items: end; }
-.bez-animal-cartao-corpo dl {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(min-content, 1fr));
-  flex: 1 1 220px;
-  gap: 8px;
-  margin: 0;
-  font-size: 13px;
-}
-
-.bez-animal-cartao-corpo button { color: var(--primary); margin-left: auto; }
-
-@media (max-width: 900px) {
-  .bez-animais-cartoes, .bez-alimentacao-cartoes, .bez-lista-cartoes, .bez-sanidade-cartoes { grid-template-columns: minmax(0, 1fr); }
-}
-
-.bez-animal-cartao-topo .bez-coleira { white-space: normal; }
-.bez-animal-cartao-topo .bez-coleira i { flex: none; }
-
-.bez-alimentacao-cartoes { margin-top: 0; }
-.bez-alimentacao-cartao-topo,
-.bez-alimentacao-cartao-corpo {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-}
-
-.bez-alimentacao-cartao-topo .bez-coleira { white-space: normal; }
-.bez-alimentacao-cartao-topo .bez-coleira i { flex: none; }
-.bez-alimentacao-cartao-topo .bez-selo { padding: 2px 8px; font-size: 12px; }
-.bez-alimentacao-cartao-topo [data-confirmado="true"] { background: var(--fin-status-positive-bg); color: var(--lucro); }
-.bez-alimentacao-cartao-corpo { margin-top: 6px; }
-.bez-alimentacao-cartao-corpo dl {
-  flex: 1 1 220px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 72px), 1fr));
-  gap: 6px 10px;
-  margin: 0;
-  font-size: 13px;
-}
-
-.bez-alimentacao-cartao-corpo dt { color: var(--muted-foreground); font-size: 12px; }
-.bez-alimentacao-cartao-corpo dd { margin: 0; font-weight: 600; }
-.bez-alimentacao-cartao-corpo button { margin-left: auto; }
-
-.bez-lista-cartoes { margin-top: 0; }
-.bez-lista-cartao { display: flex; flex-direction: column; gap: 8px; }
-.bez-lista-cartao-topo {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: start;
-  gap: 4px 10px;
-}
-
-.bez-lista-cartao-titulo { font-weight: 700; }
-.bez-lista-cartao-topo .bez-selo { padding: 2px 8px; font-size: 12px; }
-.bez-lista-cartao dl {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 92px), 1fr));
-  gap: 6px 10px;
-  margin: 0;
-}
-.bez-lista-cartao dt { color: var(--muted-foreground); font-size: 12px; }
-.bez-lista-cartao dd { margin: 0; font-size: 13px; font-weight: 600; }
-.bez-lista-cartao .bez-subtexto { margin-top: 2px; font-weight: 400; }
-.bez-lista-cartao-acoes { margin-top: auto; }
-.bez-lista-cartao-acoes .bez-acoes { gap: 6px; }
-.bez-lista-cartao-acoes button {
-  max-width: 100%;
-  height: auto;
-  min-height: 32px;
-  padding: 4px 8px;
-  white-space: normal;
-  font-size: 12px;
-}
-
-.bez-sanidade-cartoes { margin-top: 0; }
-.bez-sanidade-cartao-topo,
-.bez-sanidade-cartao-corpo {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-}
-.bez-sanidade-cartao-topo .bez-selo { padding: 2px 8px; font-size: 12px; }
-.bez-sanidade-cartao-corpo { margin-top: 6px; align-items: end; }
-.bez-sanidade-cartao-corpo dl {
-  flex: 1 1 180px;
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 8px;
-  margin: 0;
-}
-.bez-sanidade-cartao-corpo dt { color: var(--muted-foreground); font-size: 12px; }
-.bez-sanidade-cartao-corpo dd { margin: 0; font-size: 13px; font-weight: 600; }
-.bez-sanidade-cartao-corpo button { margin-left: auto; min-height: 32px; height: auto; padding: 4px 10px; font-size: 12px; }
 
 .bez-custos-cobertura[data-cobertura="PARCIAL"] { background: var(--fin-warning-bg); color: var(--warn); }
 
@@ -187,7 +57,7 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
 .bez-painel-operacional > .bez-lacunas { margin-block: 0; }
 .bez-painel-alimentacao { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
 .bez-painel-alimentacao > section { min-width: 0; }
-.bez-painel-alimentacao .bez-alimentacao-cartoes:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+
 .bez-disponibilidade { border-inline-start: 1px solid var(--border); padding-inline-start: 16px; }
 .bez-disponibilidade dl { margin: 0; }
 .bez-disponibilidade dl > div {

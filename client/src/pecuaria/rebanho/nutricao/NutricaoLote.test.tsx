@@ -36,7 +36,7 @@ describe("nutrição do lote", () => {
     expect(dieta.compareDocumentPosition(consumo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText(/379,50/)).toBeTruthy();
     expect(screen.getByText(/6,90/)).toBeTruthy();
-    expect(screen.getByText(/55 animal-dias/)).toBeTruthy();
+    expect(screen.getByText("animal-dias").closest("li")?.textContent).toBe("55animal-dias");
     expect(screen.getByRole("link", { name: /Ver lote e animais/ }).getAttribute("href")).toBe("/pecuaria/rebanho/lotes/lote");
     expect(screen.queryByLabelText("Versão publicada")).toBeNull();
     expect(screen.getByRole("link", { name: "Trocar dieta" }).getAttribute("href")).toContain("acao=atribuir");

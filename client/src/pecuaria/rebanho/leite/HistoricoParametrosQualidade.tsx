@@ -11,6 +11,7 @@ import { consultarLeite } from "./operacoes-api";
 import { DatasQualidade } from "./DatasQualidade";
 import type { FormatoQualidade } from "./qualidade-types";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 interface Linha {
   tipo?: string;
   amostraId: string; dataAmostra: string; registradoEm: string; dataResultadoLaboratorial: string | null; dataRecebimentoLaudo: string | null;
@@ -75,7 +76,7 @@ export function HistoricoParametrosQualidade({ sitio, formatos, data, revisao }:
       </figure>}
 
       <p>{dados.total} resultado(s). </p>
-      {!dados.itens.length ? <Empty>Nenhum resultado informado para este parâmetro no período.</Empty> : <ConsultaOperacional compacta rotulo="Resultados pela data da amostra" itens={dados.itens} chaveDe={r => `${r.amostraId}:${r.serie ?? campo}`} colunas={[
+      {!dados.itens.length ? <Empty>Nenhum resultado informado para este parâmetro no período.</Empty> : <ConsultaOperacional icone={ICONES_TABELA.qualidade} compacta rotulo="Resultados pela data da amostra" itens={dados.itens} chaveDe={r => `${r.amostraId}:${r.serie ?? campo}`} colunas={[
         { chave: "data", titulo: "Amostra", principal: true, celula: r => r.dataAmostra.split("-").reverse().join("/") },
         { chave: "origem", titulo: "Origem", celula: r => r.sujeito.tipo === "COLETIVO" ? r.sujeito.origem : r.animal?.brinco ?? "Sem brinco" },
         { chave: "resultado", titulo: "Resultado", celula: r => <>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor} {r.unidade ?? "(unidade não informada)"}</> },

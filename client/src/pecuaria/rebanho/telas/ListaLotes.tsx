@@ -1,12 +1,9 @@
-import { CartoesLotes } from "./CartoesLotes";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { useOrdenacaoTabela } from "@/financeiro/OrdenarConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { CampoFiltro } from "@/financeiro/PainelFiltros";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-import { DatePicker } from "@/components/DatePicker";
 import { Checkbox } from "@/components/ui/checkbox";
 // Lista de lotes — duas seções empilhadas (Lotes · Histórico de movimentações),
 // no padrão das seções de DetalheLote.tsx (Panel com cabeçalho <h2 className=
@@ -18,7 +15,6 @@ import { ArrowRightLeft, Layers, Plus } from "lucide-react";
 import { MultiSelect } from "../../../components/MultiSelect";
 import { dataValida } from "../reproducao/periodo-consulta";
 import { DateRangePicker, dateFromIso, isoDate } from "../../../components/DateRangePicker";
-import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { usePropriedades } from "../../../api/propriedades";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -34,6 +30,7 @@ import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 import { BuscaLista } from "../../../components/BuscaLista";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 type Painel = { modo: "novo" } | { modo: "editar"; id: string } | null;
 const LOTES_POR_PAGINA = 15;
@@ -54,7 +51,6 @@ export function mensagemDesativar(lote: Lote): string {
 }
 
 export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: boolean; onAbrirLote: (id: string) => void }) {
-  const visual = useVisualizacaoConsulta("visualLotes");
   const sitioGlobal = getPropriedadeAtiva();
   const [mostrarInativos, setMostrarInativos] = useState(() => new URLSearchParams(window.location.search).get("lotesInativos") === "true");
   const [filtroSitio, setFiltroSitio] = useState(() => sitioGlobal == null ? new URLSearchParams(window.location.search).get("sitioLote") ?? "" : "");
@@ -192,11 +188,11 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
     </div> : undefined}>
         <BuscaLista rotulo="Buscar lote" placeholder="Buscar lote ou sítio" valor={busca} onChange={valor => { setBusca(valor); setPaginaLotes(1); }} />
       </BarraConsulta>
-      <div className="consulta-visual-barra"><span>{lotesFiltrados.length} lotes no recorte</span><AlternarVisualizacaoConsulta rotulo="Visualização dos lotes" {...visual}/></div>
+      <div className="consulta-visual-barra"><span>{lotesFiltrados.length} lotes no recorte</span></div>
       <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
         {lotes === null
           ? <EsqueletoTabela label="Carregando lotes" className="p-6" />
-          : visual.modo === "visual" ? <CartoesLotes lotes={lotesDaPagina} todos={lotesFiltrados} onAbrir={onAbrirLote} acoes={l=>podeLancar?<AcoesLinha nome={l.nome} ativo={l.ativo} onEditar={()=>editar(l)} onAlternar={()=>alternar(l)}/>:null}/> : <TabelaFinanceira visualizacao="tabela" ordenacao={ordemLotes.controle} filtrosColunas={filtrosDasColunas(camposLotes,edicaoLotes)} rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar).filter(c=>podeLancar||!c.acoes)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
+          : <TabelaFinanceira icone={ICONES_TABELA.lote} ordenacao={ordemLotes.controle} filtrosColunas={filtrosDasColunas(camposLotes,edicaoLotes)} rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar).filter(c=>podeLancar||!c.acoes)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
       </fieldset>
       {lotes !== null && <Paginacao paginaAtual={paginaLotesAtual} totalPaginas={totalPaginasLotes} totalItens={lotesFiltrados.length} itensPorPagina={LOTES_POR_PAGINA} onPaginaChange={setPaginaLotes} rotulo="lotes" idSelect="pagina-lista-lotes" />}
     </Panel>

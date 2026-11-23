@@ -2,15 +2,13 @@ import { DatePicker } from "../../../components/DatePicker";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { ClipboardCheck, Milk } from "lucide-react";
-import { ProdutoEstoqueVisual, ResumoEstoqueVisual } from "./VisuaisConsultaLeite";
-import { AjudaCampo } from "@/components/Dica";
+import { ResumoEstoqueVisual } from "./VisuaisConsultaLeite";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { BuscaLista } from "../../../components/BuscaLista";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
 import { Paginacao } from "../../../financeiro/financeiro-ui";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import "./consultas-leite.css";
@@ -509,7 +507,7 @@ export function EstoqueLeite({ podeLancar, podeFinanceiro }: { podeLancar: boole
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando estoque…</p> : <>
       <ResumoEstoqueVisual resumo={dados.resumo}/>
       {dados.resumo.produtosSemLastro > 0 && <p role="status">Há produtos com saldo sem lastro conciliado.</p>}
-      <ListaConsultaLeite icone={Milk} layout="grade" renderizarVisual={i => <ProdutoEstoqueVisual item={i} abrir={() => setSelecionado(i)}/>} preferencia="estoqueLeiteVisualizacao" destaque="saldo" rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
+      <ListaConsultaLeite icone={Milk} rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
         { chave: "produto", titulo: "Produto", principal: true, celula: i => i.nome },
         { chave: "saldo", titulo: "Saldo físico", alinhamento: "direita", celula: i => litrosResumo(i.quantidadeLitros) },
         { chave: "comercial", titulo: "Comercial", alinhamento: "direita", celula: i => litrosResumo(i.comercial.quantidadeLitros) },

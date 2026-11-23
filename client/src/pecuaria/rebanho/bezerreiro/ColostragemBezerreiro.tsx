@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { AjudaCampo } from '@/components/Dica';
 import { DatePicker } from '@/components/DatePicker';
 import { SelectCampo } from '@/financeiro/SelectCampo';
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from '@/components/VisualizacaoConsulta';
+import { useVisualizacaoConsulta } from '@/components/VisualizacaoConsulta';
 import { ListaColostro, VisualizacaoColostro } from './ListaColostro';
 import { CamposResultadoExame, type ObservacaoExame } from '../sanidade/CamposExame';
 import { formatarDataBR } from '../lib/rotulos';
@@ -29,9 +29,9 @@ export function ColostragemBezerreiro({sitio,podeLancar,revisao,aoSalvar,config,
   const visual = useVisualizacaoConsulta('visualColostragemBezerreiro', 'bezerreiro', 'visual');
   const detalhe = (['origens','destinacoes','enriquecimentos'] as const).map(tipo=>({tipo,id:params.get(tipo==='origens'?'origemId':tipo==='destinacoes'?'destinacaoId':'enriquecimentoId')})).find(d=>d.id);
   return <VisualizacaoColostro.Provider value={visual.modo}>
-    <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização da colostragem" />
+    
     {detalhe?.id ? <DetalheColostro key={`${sitio}:${detalhe.tipo}:${detalhe.id}`} sitio={sitio} tipo={detalhe.tipo as RecursoColostro} id={detalhe.id} revisao={revisao} podeLancar={podeLancar} mudar={mudar} aoSalvar={aoSalvar}/> : <><div className="bez-sectionhead"><h2>Colostragem</h2>{podeLancar&&<Button onClick={()=>setRetirada(true)}>Registrar retirada de colostro</Button>}</div>
-    <EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&<><ListaColostro destaque="tipo" rotulo={secao==='preparos'?'Origens enriquecidas':'Origens de colostro'} itens={consulta.dados.itens} chaveDe={o=>o.id} colunas={[
+    <EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&<><ListaColostro rotulo={secao==='preparos'?'Origens enriquecidas':'Origens de colostro'} itens={consulta.dados.itens} chaveDe={o=>o.id} colunas={[
       {chave:'origem',titulo:'Origem biológica',principal:true,celula:o=><><strong>{o.matrizId?contexto.dados?.partos.find(p=>p.id===o.partoId)?.matriz.brinco??'Matriz registrada':'Preparo enriquecido'}</strong><span className="bez-subtexto">{formatarDataBR(o.data)}</span></>},
       {chave:'tipo',titulo:'Tipo',celula:o=>o.tipo==='ENRIQUECIDO'?'Enriquecido':'Não enriquecido'},{chave:'brix',titulo:'Brix',celula:o=><>{o.brix.resultado==null?'Não aferido':`${numero(o.brix.resultado)}%`}<span className="bez-subtexto">{o.brix.situacao==='ADEQUADO'?'Referência atendida':o.brix.situacao==='PENDENTE'?'Pendente':'Avaliação registrada'}</span></>},
       {chave:'fisica',titulo:'Armazenamento físico',celula:o=>textoFisico(o.origemFisica)},{chave:'livre',titulo:'Volume livre',alinhamento:'direita',celula:o=>litros(o.livreLitros)},
@@ -40,7 +40,7 @@ export function ColostragemBezerreiro({sitio,podeLancar,revisao,aoSalvar,config,
     <section className="bez-secao scroll-mt-6" id="banco-colostro"><h3>Banco de colostro</h3><BancoColostro sitio={sitio} pagina={Math.max(1,Number(params.get('paginaBanco'))||1)} paginaRetiradas={Math.max(1,Number(params.get('paginaRetiradas'))||1)} revisao={revisao} podeLancar={podeLancar} mudar={mudar} aoAcao={setAcao}/></section>
     <section className="bez-secao scroll-mt-6" id="retiradas-colostro">
       <h3>Retiradas de colostro</h3>
-      <EstadoConsulta {...retiradas} carregando={!retiradas.dados}>{retiradas.dados&&<><ListaColostro destaque="status" rotulo="Retiradas de colostro" itens={retiradas.dados.itens} chaveDe={r=>r.id} colunas={[
+      <EstadoConsulta {...retiradas} carregando={!retiradas.dados}>{retiradas.dados&&<><ListaColostro rotulo="Retiradas de colostro" itens={retiradas.dados.itens} chaveDe={r=>r.id} colunas={[
       {chave:'data',titulo:'Data',principal:true,celula:r=>formatarDataBR(r.data)},{chave:'matriz',titulo:'Matriz',celula:r=>contexto.dados?.partos.find(p=>p.id===r.partoId)?.matriz.brinco??'Matriz registrada'},
       {chave:'tipo',titulo:'Retirada',celula:r=>r.primeiraRetirada?'Primeira retirada':'Retirada seguinte'},{chave:'volume',titulo:'Volume',celula:r=>litros(r.quantidadeLitros)},{chave:'fisica',titulo:'Armazenamento',celula:r=>textoFisico(r.origemFisica)},
       {chave:'status',titulo:'Situação',celula:r=>['RASCUNHO','PENDENTE'].includes(r.status)?'Entrada pendente':r.status==='CONFIRMADO'?'Confirmado':r.status},
@@ -142,7 +142,7 @@ function TabelaUnidadesColostro({sitio,pagina,revisao,podeLancar,situacao,mudar,
   type Unidade = UnidadeColostro & {origemId:string;tipo:string;brix?:{resultado:string|null; situacao:string}};
   const consulta=useConsultaBezerreiro<Pagina<Unidade>>(`/colostro/unidades?pagina=${pagina}&situacao=${situacao}`,sitio,revisao),[ocupado,setOcupado]=useState(''),[erro,setErro]=useState('');
   async function abrir(unidade:Unidade,tipo:AcaoOrigem['tipo']) {if(ocupado)return;setOcupado(unidade.id);setErro('');try{const origem=await consultarBezerreiro<OrigemColostro>(`/colostro/origens/${unidade.origemId}`,sitio);const atual=origem.unidades.find(u=>u.id===unidade.id);if(!atual||saldoUnidadeColostro(atual)<=0)throw new Error('Esta embalagem não tem mais saldo disponível. Atualize a consulta.');aoAcao({tipo,origem,unidade:atual});}catch(e){setErro(e instanceof Error?e.message:'Não foi possível consultar a origem.');}finally{setOcupado('');}}
-  return <EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&<><ListaColostro destaque="status" subtitulo="origem" rotulo={situacao==='CONGELADA'?'Banco de colostro':'Embalagens retiradas'} itens={consulta.dados.itens} chaveDe={u=>u.id} colunas={[
+  return <EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&<><ListaColostro rotulo={situacao==='CONGELADA'?'Banco de colostro':'Embalagens retiradas'} itens={consulta.dados.itens} chaveDe={u=>u.id} colunas={[
     {chave:'codigo',titulo:'Unidade',principal:true,celula:u=>u.codigo},{chave:'origem',titulo:'Tipo',celula:u=>u.tipo==='ENRIQUECIDO'?'Enriquecido':'Não enriquecido'},
     {chave:'volume',titulo:'Volume inicial',celula:u=>litros(u.volumeLitros)},{chave:'saldo',titulo:'Saldo restante',celula:u=>litros(u.saldoRestanteLitros)},{chave:'brix',titulo:'Brix',celula:u=>u.brix?u.brix.resultado==null?'Não aferido':`${numero(u.brix.resultado)}%`:'Consultar origem'},
     {chave:'data',titulo:'Congelamento',celula:u=>formatarDataBR(u.dataCongelamento)},{chave:'status',titulo:'Situação',celula:()=> situacao==='CONGELADA'?'No banco':'Retirada · fora do banco'},

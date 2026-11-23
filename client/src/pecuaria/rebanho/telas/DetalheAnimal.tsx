@@ -446,7 +446,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
         </>}
       </section>{podeLancar && ativo && <div className="flex flex-wrap gap-2"><Button onClick={() => {setCategoriaDetalhe(false);setAlterandoCategoria(true);}}>Alterar categoria</Button>{animal.categoriaOrigem === "MANUAL" && <Button secondary onClick={() => {setCategoriaDetalhe(false);setVoltandoAutomatico(true);}}>Voltar ao automático</Button>}</div>}</DialogContent></Dialog>
 <Dialog open={historicosDetalhe} onOpenChange={setHistoricosDetalhe}><DialogContent className="ficha-dialogo max-w-5xl" aria-describedby={undefined}><DialogHeader><DialogTitle>Histórico de movimentações</DialogTitle></DialogHeader>
-  <HistoricoMovimentacoes visualizacao="tabela" carregar={carregarMovimentacoes} mostrarDirecao podeLancar={podeLancar} recarregarToken={refreshToken} onAbrir={mov => setMovimentacaoAbertaId(mov.id)} onMudou={() => { void carregar(); }}/>
+  <HistoricoMovimentacoes carregar={carregarMovimentacoes} mostrarDirecao podeLancar={podeLancar} recarregarToken={refreshToken} onAbrir={mov => setMovimentacaoAbertaId(mov.id)} onMudou={() => { void carregar(); }}/>
 </DialogContent></Dialog>
 <Dialog open={baixasDetalhe} onOpenChange={setBaixasDetalhe}><DialogContent className="ficha-dialogo max-w-5xl" aria-describedby={undefined}><DialogHeader><DialogTitle>Baixa e autoria</DialogTitle></DialogHeader>
   <HistoricoBaixas historicoBaixas={animal.historicoBaixas} onRevisar={podeLancar ? baixa => { setBaixasDetalhe(false); setBaixaHistorica({ baixa }); } : undefined}/>

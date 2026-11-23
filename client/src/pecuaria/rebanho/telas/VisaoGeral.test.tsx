@@ -116,7 +116,7 @@ describe("VisaoGeral do rebanho", () => {
     expect(document.querySelector(".pec-indicadores")).toBeNull();
     expect(screen.getByRole("tab", { name: "Lotes" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Consultar lotes" })).toBeNull();
-    expect(screen.getByText("6 baixas · últimos 30 dias")).toBeTruthy();
+    expect(screen.getByText("baixas nos últimos 30 dias").closest("li")?.textContent).toBe("6baixas nos últimos 30 dias");
   });
 
   it("reúne baixas por tipo e motivos em detalhes, sem duplicar mortes", async () => {
@@ -163,7 +163,7 @@ describe("VisaoGeral do rebanho", () => {
     vi.mocked(obterPainelRebanho).mockResolvedValueOnce(painelMock).mockResolvedValueOnce({ ...painelMock, periodoDias: 365, baixasPorTipo: [{ tipo: "VENDA", qtd: 20 }] });
     await montar();
     fireEvent.click(screen.getByRole("button", { name: "12 meses" }));
-    await screen.findByText("20 baixas · últimos 365 dias");
+    expect((await screen.findByText("baixas nos últimos 365 dias")).closest("li")?.textContent).toBe("20baixas nos últimos 365 dias");
     fireEvent.click(screen.getByRole("button", { name: "Ver animais baixados" }));
     const { pathname, params } = paramsDe(vi.mocked(navegarPara).mock.calls[0][0]);
     expect(pathname).toBe("/pecuaria/rebanho/animais");
@@ -243,7 +243,7 @@ describe("VisaoGeral do rebanho", () => {
     expect(screen.getByRole("button", { name: "Venda: 4 baixas" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Ver animais baixados" })).toHaveProperty("disabled", true);
     liberar({ ...painelMock, periodoDias: 365 });
-    await screen.findByText("6 baixas · últimos 365 dias");
+    expect((await screen.findByText("baixas nos últimos 365 dias")).closest("li")?.textContent).toBe("6baixas nos últimos 365 dias");
     expect(screen.getByRole("button", { name: "Ver animais baixados" })).toHaveProperty("disabled", false);
   });
 });

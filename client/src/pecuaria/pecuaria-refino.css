@@ -135,10 +135,7 @@
 .pecuaria-content .nutricao-metricas [data-slot="financeiro-panel"] { padding: 20px; }
 .pecuaria-content .nutricao-filtros { background: var(--card); }
 .pecuaria-content .nutricao-receitas .nutricao-filtros { border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
-.pecuaria-content .nutricao-receita-card { border-top: 1px solid var(--border); }
-.pecuaria-content .nutricao-receita-card .nutricao-ingredientes li { padding: 10px 0; }
-.pecuaria-content .nutricao-receita-card .nutricao-ingredientes small { font-size: 11px; }
-.pecuaria-content .nutricao-receita-card .nutricao-receita-rodape { background: var(--card); justify-content: flex-start; font-size: 12px; }
+
 .pecuaria-content .nutricao-ajuda { border-top: 1px solid var(--border); }
 .pecuaria-content .nutricao-ajuda dl { background: var(--muted); border-radius: 10px; padding: 16px; }
 .pecuaria-content .nutricao-ingrediente-form { padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--muted); }

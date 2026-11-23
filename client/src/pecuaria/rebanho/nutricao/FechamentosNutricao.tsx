@@ -1,5 +1,4 @@
 import { periodoFechamento } from "./DetalhesFechamento";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { PeriodoFinanceiroControl } from "@/financeiro/PeriodoFinanceiroControl";
 import { DatePicker } from "@/components/DatePicker";
 import { CalendarioFechamentos, intervaloMesFechamento } from "./CalendarioFechamentos";
@@ -12,7 +11,6 @@ import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useCallback } from "react";
 import { Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { navegarPara } from "../../../router";
-import { classeInput } from "../../../financeiro/PainelCadastro";
 import { buscarLote, listarLotes } from "../api";
 import { formatarDataBR } from "../lib/rotulos";
 import { listarFechamentos, type Fechamento } from "./api";
@@ -21,9 +19,9 @@ import { custoTexto, EstadoConsulta, LinkNutricional, rotaNutricao, SituacaoFech
 import { rotaFechamento, useFiltrosNutricionais } from "./navegacao";
 import { PaginacaoNutricao } from "./PaginacaoNutricao";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 export function FechamentosNutricao({ loteId }: { loteId?: string }) {
-  const visual = useVisualizacaoConsulta("visualFechamentos", "consultas", "tabela");
   const { params, atualizar } = useFiltrosNutricionais();
   const de = params.get("fechamentosDe") ?? "";
   const ate = params.get("fechamentosAte") ?? "";
@@ -47,9 +45,9 @@ export function FechamentosNutricao({ loteId }: { loteId?: string }) {
   ];
   return <>
   <Panel className="nutricao-conteudo nutricao-fechamentos">
-    <BarraConsulta acao={<AlternarVisualizacaoConsulta rotulo="Visualização dos fechamentos" {...visual}/>} campos={campos} edicaoFiltros={edicao} erroFiltros={edicao.rascunho.de && edicao.rascunho.ate && edicao.rascunho.de>edicao.rascunho.ate ? "A data inicial deve ser igual ou anterior à final." : null} criterios={[...(de||ate?[{id:"datas",rotulo:`Período: ${de?formatarDataBR(de):"início"} a ${ate?formatarDataBR(ate):"hoje"}`,limpar:()=>atualizar({fechamentosDe:"",fechamentosAte:"",paginaFechamentos:""})}]:[]),...(filtroLote?[{id:"lote",rotulo:`Lote: ${lotes.dados?.find(l=>l.id===filtroLote)?.nome ?? "Selecionado"}`,limpar:()=>atualizar({filtroLoteId:"",paginaFechamentos:""})}]:[]),...(status?[{id:"status",rotulo:status==="CONFIRMADO"?"Confirmados":"Estornados",limpar:()=>atualizar({statusFechamento:"",paginaFechamentos:""})}]:[])]} resumo={<>{lista.dados && <span className="nutricao-fechamentos-contagem">{lista.dados.total} {lista.dados.total === 1 ? "fechamento" : "fechamentos"}</span>}{loteId && <span><LinkNutricional href={rotaNutricao({aba:"fechamentos",statusFechamento:status || undefined})}>Ver fechamentos de todos os lotes</LinkNutricional></span>}</>}><PeriodoFinanceiroControl allowAll inicio={de} fim={ate} label="Período dos fechamentos" onChange={v=>atualizar({fechamentosDe:v.inicio,fechamentosAte:v.fim,paginaFechamentos:""})}/></BarraConsulta>
+    <BarraConsulta campos={campos} edicaoFiltros={edicao} erroFiltros={edicao.rascunho.de && edicao.rascunho.ate && edicao.rascunho.de>edicao.rascunho.ate ? "A data inicial deve ser igual ou anterior à final." : null} criterios={[...(de||ate?[{id:"datas",rotulo:`Período: ${de?formatarDataBR(de):"início"} a ${ate?formatarDataBR(ate):"hoje"}`,limpar:()=>atualizar({fechamentosDe:"",fechamentosAte:"",paginaFechamentos:""})}]:[]),...(filtroLote?[{id:"lote",rotulo:`Lote: ${lotes.dados?.find(l=>l.id===filtroLote)?.nome ?? "Selecionado"}`,limpar:()=>atualizar({filtroLoteId:"",paginaFechamentos:""})}]:[]),...(status?[{id:"status",rotulo:status==="CONFIRMADO"?"Confirmados":"Estornados",limpar:()=>atualizar({statusFechamento:"",paginaFechamentos:""})}]:[])]} resumo={<>{lista.dados && <span className="nutricao-fechamentos-contagem">{lista.dados.total} {lista.dados.total === 1 ? "fechamento" : "fechamentos"}</span>}{loteId && <span><LinkNutricional href={rotaNutricao({aba:"fechamentos",statusFechamento:status || undefined})}>Ver fechamentos de todos os lotes</LinkNutricional></span>}</>}><PeriodoFinanceiroControl allowAll inicio={de} fim={ate} label="Período dos fechamentos" onChange={v=>atualizar({fechamentosDe:v.inicio,fechamentosAte:v.fim,paginaFechamentos:""})}/></BarraConsulta>
     <div className="px-5"><EstadoConsulta erro={lista.erro} carregando={lista.carregando} recarregar={lista.carregar} estrutura="lista" label="Carregando fechamentos nutricionais…" /></div>
-    {lista.dados && !lista.carregando && !lista.erro && <>{!lista.dados.itens.length ? <Empty>Nenhum fechamento encontrado neste contexto.</Empty> : <TabelaFinanceira visualizacao={visual.modo === "visual" ? "cartoes" : "tabela"} compacta filtrosColunas={filtrosDasColunas(campos,edicao)} cartaoComLinks onAbrir={f => navegarPara(rotaFechamento(f.id, loteId))} rotulo="Fechamentos de nutrição" itens={lista.dados.itens} chaveDe={(f) => f.id} colunas={[
+    {lista.dados && !lista.carregando && !lista.erro && <>{!lista.dados.itens.length ? <Empty>Nenhum fechamento encontrado neste contexto.</Empty> : <TabelaFinanceira icone={ICONES_TABELA.fechamento} compacta filtrosColunas={filtrosDasColunas(campos,edicao)} onAbrir={f => navegarPara(rotaFechamento(f.id, loteId))} rotulo="Fechamentos de nutrição" itens={lista.dados.itens} chaveDe={(f) => f.id} colunas={[
       { chave: "periodo", titulo: "Período / situação", principal: true, larguraMinima: 210, celula: (f) => <div className="nutricao-fechamento-periodo"><LinkNutricional href={rotaFechamento(f.id, loteId)}>{periodoFechamento(f)}</LinkNutricional><SituacaoFechamento status={f.status} /></div> },
       ...(!loteId ? [{ chave: "lote", titulo: "Lote / sítio", larguraMinima: 180, celula: (f: Fechamento) => <><LinkNutricional href={rotaNutricao({ loteId: f.lote.id })}>{f.lote.nome}</LinkNutricional><p className="nutricao-secundario">{f.propriedade.nome}</p></> }] : []),
       { chave: "dieta", titulo: "Receita", larguraMinima: 200, larguraFlexivel: true, celula: (f) => <>{f.vigencia.dieta.nome}<p className="nutricao-secundario">v{f.vigencia.dieta.versao} · {f.animalDias.toLocaleString("pt-BR")} animal-dias</p></> },

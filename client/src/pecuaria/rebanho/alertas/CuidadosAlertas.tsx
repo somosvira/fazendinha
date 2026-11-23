@@ -1,9 +1,10 @@
 import { Button, TabelaFinanceira, Pill, type ColunaTabela } from "@/financeiro/financeiro-ui";
 import type { GrupoAlerta } from "./api";
-import { situacoesDoGrupo, rotuloTipo } from "./consulta";
+import { situacoesDoGrupo } from "./consulta";
 import { formatBRDateISO } from "@/lib/hoje";
 import "./alertas.css";
-export function CuidadosAlertas({grupos,modo,onAbrir,individual=false}:{grupos:GrupoAlerta[];modo:"visual"|"tabela";onAbrir:(g:GrupoAlerta)=>void;individual?:boolean}){
+import { iconeDoCuidado } from "@/components/iconesTabela";
+export function CuidadosAlertas({grupos,onAbrir,individual=false}:{grupos:GrupoAlerta[];onAbrir:(g:GrupoAlerta)=>void;individual?:boolean}){
  const publico=(g:GrupoAlerta)=>individual?"Este animal":g.animais?`${g.animais} ${g.animais===1?"animal":"animais"}`:`${g.necessidades} cuidados`;
  const desde=(g:GrupoAlerta)=>[g.produtoNome,g.primeiraData?`desde ${formatBRDateISO(g.primeiraData.slice(0,10))}`:""].filter(Boolean).join(" · ");
  const colunas:ColunaTabela<GrupoAlerta>[]=[
@@ -14,5 +15,5 @@ export function CuidadosAlertas({grupos,modo,onAbrir,individual=false}:{grupos:G
   {chave:"situacao",titulo:"Situação",larguraMinima:150,celula:situacoesDoGrupo},
   {chave:"acoes",titulo:"Ações",larguraMinima:130,alinhamento:"direita",acoes:true,celula:g=><Button secondary onClick={()=>onAbrir(g)}>{individual?"Ver cuidado":"Ver animais"}</Button>},
  ];
- return modo==="tabela"?<TabelaFinanceira visualizacao="tabela" colunas={colunas} itens={grupos} chaveDe={g=>g.chave} rotulo="Cuidados agrupados"/>:<div className="consulta-cartoes cuidados-alertas-cartoes">{grupos.map(g=><article className="consulta-cartao" key={g.chave}><header><h2>{g.titulo}</h2><Pill>{g.produtor==="reproducao"?"Reprodução":"Sanidade"}</Pill></header><p className="consulta-cartao-meta">{[g.motivo,desde(g)].filter(Boolean).join(" · ")}</p><dl className="alertas-cartao-dados"><div><dt>Público</dt><dd>{publico(g)}</dd></div><div><dt>Situação</dt><dd>{situacoesDoGrupo(g)}</dd></div></dl><footer><Pill>{rotuloTipo(g.tipo,g.produtor)}</Pill><Button secondary onClick={()=>onAbrir(g)}>{individual?"Ver cuidado":"Ver animais"}</Button></footer></article>)}</div>;
+ return <TabelaFinanceira iconeDe={g=>iconeDoCuidado(g.produtor,g.tipo)} colunas={colunas} itens={grupos} chaveDe={g=>g.chave} rotulo="Cuidados agrupados"/>;
 }

@@ -5,6 +5,7 @@ import type { BlocoCompromisso } from "../components/relatorio-gerencial/types";
 import { brl, TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
 import type { SnapshotRelatorioFinanceiro } from "./novo-api";
 import { dataCurta } from "./lib/relatorios";
+import { ICONES_TABELA } from "../components/iconesTabela";
 
 type Grupo = "caixa" | "compras" | "compromissos" | "conferencia";
 type Informacao = (titulo: string, texto: string) => ReactNode;
@@ -19,7 +20,7 @@ function Quadro<T>({ titulo, id, children, base, acao, itens, colunas, chaveDe, 
   return <section className="analise-quadro" aria-labelledby={id}>
     <div className="analise-quadro-titulo"><h3 id={id}>{titulo}{children}</h3>{base && <span className="analise-base">{base}</span>}{acao}</div>
     {itens.length === 0 && <p className="analise-vazio">{vazio}</p>}
-    {(itens.length > 0 || rodape) && <TabelaFinanceira compacta larguraMinimaParaTabela={360} rotulo={titulo} itens={itens} colunas={colunas} chaveDe={chaveDe} rodape={rodape} />}
+    {(itens.length > 0 || rodape) && <TabelaFinanceira icone={ICONES_TABELA.analise} compacta rotulo={titulo} itens={itens} colunas={colunas} chaveDe={chaveDe} rodape={rodape} />}
   </section>;
 }
 
@@ -151,7 +152,7 @@ export function RelatorioFinanceiroAnalises({ snapshot, informacao, secaoDestino
     </section>
     {compromissos && <section className="analise-grupo" data-analise-grupo="compromissos" aria-labelledby="rg-sec-compromissos">
       <header className="analise-grupo-titulo"><h2 id="rg-sec-compromissos" tabIndex={-1}>Compromissos</h2><span className="analise-regime analise-regime-previsto">Previsto</span><span className="analise-posicao">Posição em {dataCurta(compromissos.hoje)}</span>{compromissos.aPagar.quantidade === 0 && compromissos.aReceber.quantidade === 0 && <span className="analise-posicao">Nenhum compromisso em aberto neste recorte.</span>}</header>
-      <TabelaFinanceira compacta rotulo="Síntese dos compromissos" itens={[{ tipo: "A pagar", bloco: compromissos.aPagar }, { tipo: "A receber", bloco: compromissos.aReceber }]} chaveDe={item => item.tipo} colunas={[
+      <TabelaFinanceira icone={ICONES_TABELA.compromisso} compacta rotulo="Síntese dos compromissos" itens={[{ tipo: "A pagar", bloco: compromissos.aPagar }, { tipo: "A receber", bloco: compromissos.aReceber }]} chaveDe={item => item.tipo} colunas={[
         { chave: "tipo", titulo: "Tipo", principal: true, larguraMinima: 160, celula: item => item.tipo },
         { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", larguraMinima: 100, celula: item => item.bloco.quantidade },
         { chave: "vencido", titulo: "Vencido", alinhamento: "direita", celula: item => <span className={item.bloco.vencido > 0 ? "analise-vencido" : undefined}>{brl(item.bloco.vencido)}</span> },

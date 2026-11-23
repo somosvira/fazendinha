@@ -1,6 +1,5 @@
 import { Search } from "lucide-react";
 import { VacaIcon } from "@/components/icons/VacaIcon";
-import { AlternadorDoCabecalho } from "./VisualizacaoConsulta";
 import "./app-header.css";
 import { cn } from "@/lib/utils";
 import {
@@ -156,7 +155,6 @@ export function Header({ user, mobileOpen, onMobileToggle, colapsada, onToggleCo
           <span>Buscar animal</span>
         </button>
       )}
-      <div className="app-header-visualizacao"><AlternadorDoCabecalho /></div>
       <div className="app-header-perfil">
         <UserPicker user={user} onPreferencias={onPreferencias} onAcessos={onAcessos} onSair={onSair} />
       </div>

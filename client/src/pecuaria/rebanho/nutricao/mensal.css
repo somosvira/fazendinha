@@ -153,5 +153,5 @@
 .nutricao-proximos-numeros dt { font-size: 12px; color: var(--muted-foreground); }
 .nutricao-proximos-numeros dd { margin: 0; font-size: 15px; font-weight: 650; color: var(--lucro); }
 .nutricao-proximos-numeros > div[data-pendente] dd { color: var(--campo-atencao, #775930); }
-.fechamento-cartoes { padding: 0; }
+
 @media (max-width: 600px) { .nutricao-proximos-numeros > div { flex: 1 1 0; } }

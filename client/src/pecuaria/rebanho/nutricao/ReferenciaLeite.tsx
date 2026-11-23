@@ -1,4 +1,3 @@
-import { AjudaCampo } from "@/components/Dica";
 import { formatarLitros } from "../leite/modelo";
 import { useState } from "react";
 import { Button, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
@@ -7,6 +6,7 @@ import { formatarDataBR } from "../lib/rotulos";
 import { custoTexto } from "./componentes";
 import { listarReferenciasLeite, revisarReferenciaLeite, type CandidatoReferenciaLeite, type FornecimentoLeiteNutricional } from "./api";
 import { SelectCampo } from "@/financeiro/SelectCampo";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 export function ReferenciaLeite({ leite, propriedadeId, verValores, verReferenciasComerciais, animais, podeLancar, onRecarregar }: { leite: FornecimentoLeiteNutricional; propriedadeId: number; verValores: boolean; verReferenciasComerciais: boolean; animais: { animalId: string; brinco: string }[]; podeLancar: boolean; onRecarregar?: () => Promise<void> }) {
   const [candidatos,setCandidatos] = useState<CandidatoReferenciaLeite[] | null>(null);
@@ -56,7 +56,7 @@ export function ReferenciaLeite({ leite, propriedadeId, verValores, verReferenci
     </>}
     {leite.parcelas.length > 0 && <section className="nutricao-referencia-parcelas">
       <h3>Litros atribuídos por animal</h3>
-      <TabelaFinanceira compacta rotulo="Litros atribuídos por animal" itens={leite.parcelas} chaveDe={p => p.animalId} colunas={[
+      <TabelaFinanceira icone={ICONES_TABELA.animal} compacta rotulo="Litros atribuídos por animal" itens={leite.parcelas} chaveDe={p => p.animalId} colunas={[
         { chave: "animal", titulo: "Animal", principal: true, celula: p => animais.find(a => a.animalId === p.animalId)?.brinco ?? p.animalId },
         { chave: "litros", titulo: "Volume atribuído", alinhamento: "direita", celula: p => formatarLitros(Number(p.quantidadeLitros)) },
         { chave: "dias", titulo: "Dias no lote", alinhamento: "direita", celula: p => p.dias },

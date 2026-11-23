@@ -33,6 +33,5 @@ it("limita a dez mesmo ao restaurar URL antiga com cinquenta registros por pági
  expect((screen.getByLabelText("Registros por página") as HTMLSelectElement).value).toBe("10");
  fireEvent.click(screen.getByRole("button",{name:"Tabela"}));
  expect(within(screen.getByRole("table",{name:"Histórico reprodutivo"})).getAllByRole("button",{name:"Ver parto"})).toHaveLength(10);
- expect(within(screen.getByRole("list",{name:"Histórico reprodutivo"})).getAllByRole("listitem")).toHaveLength(10);
  expect(screen.queryByRole("option",{name:"50"})).toBeNull();
 });

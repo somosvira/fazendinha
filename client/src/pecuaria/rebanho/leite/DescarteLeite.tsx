@@ -18,6 +18,7 @@ import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
 import { hojeOperacional, formatarLitros } from "./modelo";
 import type { OrigemDestinoLeite } from "./destinos-types";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 interface Descarte {
   destino?: "CASA" | "FUNCIONARIOS";
   responsavel?: string;
@@ -271,10 +272,10 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
       </div></PainelCadastro>}
       {lista && (
         <>
-          <ListaConsultaLeite tituloDe={d => interna ? d.destino === "CASA" ? "Casa" : "Funcionários" : d.produtoNome} detalheDe={d => d.data.split("-").reverse().join("/")} layout="grade" destaque="litros" preferencia={interna ? "retiradasInternasLeiteVisualizacao" : "descartesLeiteVisualizacao"} compacta rotulo={interna ? "Retiradas internas registradas" : "Descartes registrados"} itens={lista.itens} chaveDe={d => d.id} colunas={[
-          ...(interna ? [{ chave: "destino", titulo: "Destino", ocultarNoCartao: true, celula: (d: Descarte) => d.destino === "CASA" ? "Casa" : "Funcionários" }, { chave: "responsavel", titulo: "Responsável", celula: (d: Descarte) => d.responsavel ?? "Não informado" }] : []),
+          <ListaConsultaLeite icone={ICONES_TABELA.carencia} compacta rotulo={interna ? "Retiradas internas registradas" : "Descartes registrados"} itens={lista.itens} chaveDe={d => d.id} colunas={[
+          ...(interna ? [{ chave: "destino", titulo: "Destino", celula: (d: Descarte) => d.destino === "CASA" ? "Casa" : "Funcionários" }, { chave: "responsavel", titulo: "Responsável", celula: (d: Descarte) => d.responsavel ?? "Não informado" }] : []),
             { chave: "data", titulo: "Data", principal: true, celula: d => d.data.split("-").reverse().join("/") },
-            { chave: "produto", titulo: "Produto", ocultarNoCartao: true, celula: d => d.produtoNome },
+            { chave: "produto", titulo: "Produto", celula: d => d.produtoNome },
             { chave: "ordenha", titulo: "Ordenha", celula: d => d.nomeOrdenha },
             { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },
             { chave: "situacao", titulo: "Situação", celula: d => d.status === "CONFIRMADO" ? "Confirmado" : "Estornado" },

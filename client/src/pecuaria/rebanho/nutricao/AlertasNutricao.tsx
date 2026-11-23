@@ -1,5 +1,4 @@
 import { AjudaCampo } from "@/components/Dica";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { useCallback } from "react";
 import { Empty, Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
@@ -13,6 +12,7 @@ import { consultarSituacaoFechamentos, MODELOS, type SituacaoLote } from "./situ
 import { BotaoProcessarDias } from "./ProximosFechamentos";
 import { LinkInterno } from "@/components/LinkInterno";
 import { consultarCobertura, DIAS_ATENCAO, hrefProdutoEstoque, ingredientesEmFalta, textoCobertura, DIAS_ALERTA_VALIDADE } from "./coberturaEstoque";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 type Falta = ReturnType<typeof ingredientesEmFalta>[number];
 
@@ -43,27 +43,24 @@ export async function carregarAlertasNutricao() {
 }
 
 export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
-  const visual = useVisualizacaoConsulta("visualAlertasNutricao", "nutricao", "visual");
-  const visualizacao = visual.modo === "visual" ? "cartoes" : "tabela";
   const consulta = useConsulta(useCallback(carregarAlertasNutricao, []));
   if (consulta.carregando) return <EsqueletoTabela label="Carregando alertas da nutrição" colunas={3} linhas={4} />;
   if (consulta.erro) return <p role="alert" className="nutricao-aviso">{consulta.erro}</p>;
   const d = consulta.dados!;
   const nada = !d.estoqueIndisponivel && !d.aFechar.length && !d.aProcessar.length && !d.semDieta.length && !d.revisar.length && !d.estoque.length;
-  return <div className="nutricao-alertas" data-modo={visual.modo}>
+  return <div className="nutricao-alertas">
     <div className="nutricao-alertas-controles">
-      <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos alertas de nutrição" />
     </div>
     {nada && <Panel className="nutricao-alertas-estado"><Empty>Nada precisa de atenção na nutrição agora.</Empty></Panel>}
     {d.aFechar.length > 0 && <Secao titulo="Consumo a fechar" total={d.aFechar.length} descricao={`${d.aFechar.length} ${d.aFechar.length === 1 ? "lote tem" : "lotes têm"} dias de consumo sem fechamento até ontem.`}>
-      <TabelaFinanceira visualizacao={visualizacao} compacta rotulo="Lotes com consumo a fechar" itens={d.aFechar} chaveDe={s => s.resumo.lote.id} colunas={[
+      <TabelaFinanceira icone={ICONES_TABELA.fechamento} compacta rotulo="Lotes com consumo a fechar" itens={d.aFechar} chaveDe={s => s.resumo.lote.id} colunas={[
         { chave: "lote", titulo: "Lote", principal: true, celula: (s: SituacaoLote) => <><LinkNutricional href={rotaNutricao({ aba: "lotes", loteId: s.resumo.lote.id })}>{s.resumo.lote.nome}</LinkNutricional><p className="nutricao-secundario">{s.resumo.lote.propriedade.nome}</p></> },
         { chave: "dias", titulo: "A fechar", celula: (s: SituacaoLote) => <><strong>{s.dias} {s.dias === 1 ? "dia" : "dias"}</strong><p className="nutricao-secundario">{formatarDataBR(s.inicio)} a {formatarDataBR(s.fim)}</p></> },
         ...(podeLancar ? [{ chave: "acao", titulo: "Ação", acoes: true, celula: (s: SituacaoLote) => <LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("consumo", s.resumo.lote.id)}>Fechar período</LinkNutricional> }] : []),
       ]} />
     </Secao>}
     {d.aProcessar.length > 0 && <Secao titulo="Dias a processar" total={d.aProcessar.length}>
-      <TabelaFinanceira visualizacao={visualizacao} compacta rotulo="Lotes com dias a processar" itens={d.aProcessar} chaveDe={s => s.resumo.lote.id} colunas={[
+      <TabelaFinanceira icone={ICONES_TABELA.programacao} compacta rotulo="Lotes com dias a processar" itens={d.aProcessar} chaveDe={s => s.resumo.lote.id} colunas={[
         { chave: "lote", titulo: "Lote", principal: true, celula: (s: SituacaoLote) => <><LinkNutricional href={rotaNutricao({ aba: "lotes", loteId: s.resumo.lote.id })}>{s.resumo.lote.nome}</LinkNutricional><p className="nutricao-secundario">{s.resumo.lote.propriedade.nome}</p></> },
         { chave: "tipo", titulo: "Tipo de fechamento", celula: (s: SituacaoLote) => s.mensal ? MODELOS[s.mensal.modelo].rotulo : "—" },
         { chave: "dias", titulo: "A processar", celula: (s: SituacaoLote) => <><strong>{s.diarios!.dias} {s.diarios!.dias === 1 ? "dia" : "dias"}</strong><p className="nutricao-secundario">{formatarDataBR(s.diarios!.inicio)} a {formatarDataBR(s.diarios!.fim)}</p></> },
@@ -71,7 +68,7 @@ export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
       ]} />
     </Secao>}
     {d.estoque.length > 0 && <Secao titulo="Estoque acabando ou vencendo" total={d.estoque.length} descricao={`Ingredientes das dietas vigentes que cobrem menos de ${DIAS_ATENCAO} dias com o efetivo de hoje, somando todos os lotes de animais do sítio, ou que têm lotes de estoque que vencem antes do uso nos próximos ${DIAS_ALERTA_VALIDADE} dias.`}>
-      <TabelaFinanceira visualizacao={visualizacao} compacta rotulo="Ingredientes com estoque acabando ou vencendo" itens={d.estoque} chaveDe={i => `${i.propriedadeId}:${i.produtoId}`} colunas={[
+      <TabelaFinanceira icone={ICONES_TABELA.ingrediente} compacta rotulo="Ingredientes com estoque acabando ou vencendo" itens={d.estoque} chaveDe={i => `${i.propriedadeId}:${i.produtoId}`} colunas={[
         { chave: "produto", titulo: "Ingrediente", principal: true, celula: (i: Falta) => <LinkInterno area="estoque" href={hrefProdutoEstoque(i.produtoId)}>{i.nome}</LinkInterno> },
         { chave: "cobre", titulo: "Cobre", celula: (i: Falta) => <><strong className={i.dias != null && i.dias < DIAS_ATENCAO ? "nutricao-alerta-texto" : undefined}>{textoCobertura(i.dias)}</strong>{i.vencendo > 0 && <p className="nutricao-secundario nutricao-alerta-texto">{quantidadeNutricional(String(Math.round(i.vencendo * 1000) / 1000))} {un(i.unidade)} vencem antes do uso</p>}</> },
         { chave: "saldo", titulo: "Saldo e consumo", celula: (i: Falta) => <>{quantidadeNutricional(String(i.saldo))} {un(i.unidade)}<p className="nutricao-secundario">{quantidadeNutricional(String(Math.round(i.consumoSitioDia * 1000) / 1000))} {un(i.unidade)}/dia</p></> },
@@ -81,7 +78,7 @@ export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
     </Secao>}
     {d.estoqueIndisponivel && <p className="nutricao-nota nutricao-alertas-estado" role="status">Não foi possível consultar o estoque das dietas agora.</p>}
     {d.semDieta.length > 0 && <Secao titulo="Lotes sem dieta vigente" total={d.semDieta.length}>
-      <TabelaFinanceira visualizacao={visualizacao} compacta rotulo="Lotes sem dieta vigente" itens={d.semDieta} chaveDe={r => r.lote.id} colunas={[
+      <TabelaFinanceira icone={ICONES_TABELA.lote} compacta rotulo="Lotes sem dieta vigente" itens={d.semDieta} chaveDe={r => r.lote.id} colunas={[
         { chave: "lote", titulo: "Lote", principal: true, celula: (r: ResumoNutricional) => <><LinkNutricional href={rotaNutricao({ aba: "lotes", loteId: r.lote.id })}>{r.lote.nome}</LinkNutricional><p className="nutricao-secundario">{r.lote.propriedade.nome}</p></> },
         { chave: "animais", titulo: "Animais", alinhamento: "direita", celula: (r: ResumoNutricional) => r.lote.animaisAtivos },
         { chave: "programada", titulo: "Dieta programada", celula: (r: ResumoNutricional) => r.programada ? `${r.programada.dieta.nome} em ${formatarDataBR(r.programada.desde)}` : <span className="nutricao-secundario">Nenhuma</span> },
@@ -89,7 +86,7 @@ export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
       ]} />
     </Secao>}
     {d.revisar.length > 0 && <Secao titulo="Fechamentos para revisar" total={d.revisar.length} descricao={`Entre os fechamentos confirmados mais recentes: consumo mais de ${Math.round(LIMITE_DIVERGENCIA * 100)}% diferente do previsto ou sem custo apurado.`}>
-      <TabelaFinanceira visualizacao={visualizacao} compacta rotulo="Fechamentos para revisar" itens={d.revisar} chaveDe={r => r.fechamento.id} colunas={[
+      <TabelaFinanceira icone={ICONES_TABELA.fechamento} compacta rotulo="Fechamentos para revisar" itens={d.revisar} chaveDe={r => r.fechamento.id} colunas={[
         { chave: "lote", titulo: "Lote e período", principal: true, larguraMinima: 200, celula: (r: Revisao) => <><LinkNutricional href={rotaFechamento(r.fechamento.id)}>{r.fechamento.lote.nome}</LinkNutricional><p className="nutricao-secundario">{r.fechamento.inicio.slice(0, 10) === r.fechamento.fim.slice(0, 10) ? formatarDataBR(r.fechamento.inicio) : `${formatarDataBR(r.fechamento.inicio)} a ${formatarDataBR(r.fechamento.fim)}`}</p></> },
         { chave: "motivo", titulo: "O que revisar", larguraFlexivel: true, celula: (r: Revisao) => <ul className="nutricao-motivos">{r.motivos.map(m => <li key={m}>{m}</li>)}</ul> },
         { chave: "acao", titulo: "Ação", acoes: true, celula: (r: Revisao) => <LinkNutricional className="nutricao-botao-secundario" href={rotaFechamento(r.fechamento.id)}>Ver fechamento</LinkNutricional> },

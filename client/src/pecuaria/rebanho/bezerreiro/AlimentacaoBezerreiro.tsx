@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/DatePicker';
 import { SelectCampo } from '@/financeiro/SelectCampo';
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from '@/components/VisualizacaoConsulta';
 import { TabelaFinanceira, type ColunaTabela } from '@/financeiro/financeiro-ui';
 import { navegarPara } from '../../../router';
 import { hojeOperacional } from '../leite/modelo';
@@ -10,32 +9,12 @@ import { consultaBezerreiro, consultarBezerreiro } from './api';
 import { dinheiro, horarioRealizado, litros, numero, idOfertaDaPrevisao, ofertaJaRealizada, ofertasDaPrevisao, ofertasConfiguracao, volumePrevisto } from './modelo';
 import { ColeiraBadge, EstadoConsulta, ModalBezerreiro, PaginacaoBezerreiro, useComando, useConsultaBezerreiro, RecuperacaoConflito, useRecuperacaoConflito } from './ui';
 import type { Configuracao, Oferta, Pagina, Previsao } from './types';
-function CartoesAlimentacao<T>({ rotulo, itens, chaveDe, titulo, campos, situacao, acao }: {
-  rotulo: string;
-  itens: T[];
-  chaveDe: (item: T) => string;
-  titulo: (item: T) => ReactNode;
-  campos: ColunaTabela<T>[];
-  situacao?: (item: T) => ReactNode;
-  acao?: (item: T) => ReactNode;
-}) {
-  return <ul className="bez-alimentacao-cartoes" aria-label={rotulo}>
-    {itens.map(item => <li key={chaveDe(item)} className="bez-alimentacao-cartao">
-      <div className="bez-alimentacao-cartao-topo"><strong>{titulo(item)}</strong>{situacao?.(item)}</div>
-      <div className="bez-alimentacao-cartao-corpo">
-        <dl>{campos.map(campo => <div key={campo.chave}><dt>{campo.titulo}</dt><dd>{campo.celula(item)}</dd></div>)}</dl>
-        {acao?.(item)}
-      </div>
-    </li>)}
-  </ul>;
-}
-
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 export function AlimentacaoBezerreiro({sitio,config,podeLancar,revisao,aoSalvar,params,mudar}: {sitio:number;config:Configuracao;podeLancar:boolean;revisao:number;aoSalvar:()=>void;params:URLSearchParams;mudar:(v:Record<string,string>)=>void}) {
   const data=params.get('data')??hojeOperacional(),perfil=params.get('perfil')??(config.perfis.filter(p=>p.ativo).length===1?config.perfis.find(p=>p.ativo)!.id:''),pagina=Math.max(1,Number(params.get('pagina'))||1);
   const [fornecer,setFornecer]=useState<{sitio:number;perfilId:string;data:string;previsao:Previsao}|null>(null),[estornar,setEstornar]=useState<Oferta|null>(null);
   const consulta=useConsultaBezerreiro<Previsao>(`/previsao${consultaBezerreiro({data,perfilId:perfil})}`,sitio,revisao);
   const ofertas=useConsultaBezerreiro<Pagina<Oferta>>(`/ofertas${consultaBezerreiro({de:data,ate:data,perfilId:perfil,animalId:params.get('animalId'),pagina})}`,sitio,revisao);
-  const visual = useVisualizacaoConsulta('visualAlimentacaoBezerreiro', 'bezerreiro', 'visual');
   type Grupo = Previsao['grupos'][number];
   const chaveColeira = (g: Grupo) => g.coleiraId ?? 'sem-coleira';
   const tituloColeira = (g: Grupo) => <ColeiraBadge nome={g.nome} cor={g.cor} />;
@@ -71,7 +50,6 @@ export function AlimentacaoBezerreiro({sitio,config,podeLancar,revisao,aoSalvar,
   return <div className="bez-painel-operacional">
     <header className="bez-painel-cabecalho">
       <h2>Alimentação</h2>
-      <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização da alimentação" />
       <div className="bez-contexto">
         <label>Data<DatePicker value={data} onChange={v => mudar({data:v,pagina:''})} /></label>
         <label>Bezerreiro<SelectCampo value={perfil} onValueChange={v => mudar({perfil:v,pagina:''})}>
@@ -103,10 +81,7 @@ export function AlimentacaoBezerreiro({sitio,config,podeLancar,revisao,aoSalvar,
         <div className="bez-painel-alimentacao">
           <section aria-label="Previsão diária por coleira">
             <h3>Previsão diária por coleira</h3>
-            {visual.modo === 'visual' ?
-              <CartoesAlimentacao rotulo="Previsão diária por coleira" itens={previsao.grupos}
-                chaveDe={chaveColeira} titulo={tituloColeira} campos={camposPrevisao} />
-              : <TabelaFinanceira visualizacao="tabela" rotulo="Previsão diária por coleira" itens={previsao.grupos}
+            {<TabelaFinanceira icone={ICONES_TABELA.coleira} rotulo="Previsão diária por coleira" itens={previsao.grupos}
                 chaveDe={chaveColeira} colunas={[{chave:'coleira',titulo:'Coleira',principal:true,celula:tituloColeira}, ...camposPrevisao]} />}
           </section>
           <section className="bez-disponibilidade">
@@ -119,12 +94,7 @@ export function AlimentacaoBezerreiro({sitio,config,podeLancar,revisao,aoSalvar,
         </div>
       </>}
     </EstadoConsulta>
-    <section className="bez-painel-secao"><div className="bez-sectionhead"><h3>Fornecimentos do dia</h3><Button variant="outline" onClick={()=>mudar({aba:'custos'})}>Consultar custos</Button></div><EstadoConsulta {...ofertas} carregando={!ofertas.dados}>{ofertas.dados&&(ofertas.dados.itens.length?<>{visual.modo === 'visual' ?
-      <CartoesAlimentacao rotulo="Fornecimentos do dia" itens={ofertas.dados.itens} chaveDe={chaveOferta}
-        titulo={tituloOferta} campos={camposOferta}
-        situacao={o => <span className="bez-selo" data-confirmado={o.status === 'CONFIRMADO'}>{situacaoOferta(o)}</span>}
-        acao={acaoEstorno} />
-      : <TabelaFinanceira visualizacao="tabela" rotulo="Fornecimentos do dia" itens={ofertas.dados.itens} chaveDe={chaveOferta}
+    <section className="bez-painel-secao"><div className="bez-sectionhead"><h3>Fornecimentos do dia</h3><Button variant="outline" onClick={()=>mudar({aba:'custos'})}>Consultar custos</Button></div><EstadoConsulta {...ofertas} carregando={!ofertas.dados}>{ofertas.dados&&(ofertas.dados.itens.length?<>{<TabelaFinanceira icone={ICONES_TABELA.leite} rotulo="Fornecimentos do dia" itens={ofertas.dados.itens} chaveDe={chaveOferta}
         colunas={[{chave:'oferta',titulo:'Oferta',principal:true,celula:tituloOferta}, ...camposOferta,
           {chave:'status',titulo:'Situação',celula:situacaoOferta},
           {chave:'acao',titulo:'Ação',acoes:true,celula:o=>acaoEstorno(o)??'—'}]} />}<PaginacaoBezerreiro pagina={pagina} total={ofertas.dados.total} mudar={v=>mudar({pagina:String(v)})}/></>:<p className="bez-estado">Nenhum fornecimento registrado nesta data.</p>)}</EstadoConsulta></section>
@@ -164,7 +134,7 @@ function FormFornecimento({sitio,perfilId,data,previsao:previsaoInicial,contexto
     }}>
       <fieldset disabled={comando.ocupado}>
         <div className="bez-campos"><label>Data<input readOnly value={data}/></label><label>Oferta prevista<SelectCampo value={oferta} onValueChange={trocar}><option value="">Sem oferta prevista · avulsa</option>{programadas.map((o,i)=><option key={o.identidadeId} value={o.identidadeId}>Oferta {i+1} · {numero(o.percentual)}%{o.horarioPrevisto?` · referência ${o.horarioPrevisto}`:''}</option>)}</SelectCampo></label><label>Horário realizado (opcional)<input type="time" value={horario} onChange={e=>setHorario(e.target.value)}/></label><label>Responsável<input required maxLength={160} value={responsavel} onChange={e=>setResponsavel(e.target.value)}/></label></div>
-        <section className="bez-secao"><h3>Fornecimento por coleira</h3><TabelaFinanceira rotulo="Quantidade coletiva por coleira" itens={grupos} chaveDe={g=>g.chave} colunas={[
+        <section className="bez-secao"><h3>Fornecimento por coleira</h3><TabelaFinanceira icone={ICONES_TABELA.coleira} rotulo="Quantidade coletiva por coleira" itens={grupos} chaveDe={g=>g.chave} colunas={[
           {chave:'coleira',titulo:'Coleira',principal:true,celula:g=><ColeiraBadge nome={g.nome} cor={g.cor}/>},{chave:'animais',titulo:'Animais',celula:g=>g.participantes.length},{chave:'previsto',titulo:'Previsto (L)',celula:g=>numero(volumePrevisto(g,oferta))},{chave:'realizado',titulo:'Fornecido (L)',celula:g=><input required type="number" min="0" step="0.001" aria-label={`Litros coletivos ${g.nome}`} value={quantidades[g.chave]??''} onChange={e=>setQuantidades({...quantidades,[g.chave]:e.target.value})}/>} ]}/>
           {previsaoInicial.grupos.filter(g=>!grupos.some(atual=>atual.coleiraId===g.coleiraId)).map(g=><p key={g.coleiraId??''}>Rascunho preservado — {g.nome}: {litros(quantidades[g.coleiraId??''])}. Sem participantes atuais; esse volume não será enviado.</p>)}
         </section>

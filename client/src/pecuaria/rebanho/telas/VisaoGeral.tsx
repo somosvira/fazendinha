@@ -15,6 +15,7 @@ import { linkFichaAnimal, linkNovoAnimal } from "../lib/navegacao";
 import { CORES_REBANHO, percentualRebanho } from "../components/GraficosRebanho";
 import "./visao-geral.css";
 import { EsqueletoPainel } from "../../../components/Esqueleto";
+import { Destaques } from "@/financeiro/financeiro-ui";
 
 const URL_ANIMAIS = "/pecuaria/rebanho/animais";
 
@@ -130,7 +131,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
 
       <Panel className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
-          <div><h2 className="font-sans text-xl">Baixas no período</h2><p className="mt-1 text-sm text-ink-3">{totalBaixas} {totalBaixas === 1 ? "baixa" : "baixas"} · últimos {painel.periodoDias} dias{carregandoBaixas ? " · atualizando…" : ""}</p></div>
+          <div><h2 className="font-sans text-xl">Baixas no período</h2><Destaques itens={[{ valor: totalBaixas, rotulo: `${totalBaixas === 1 ? "baixa" : "baixas"} nos últimos ${painel.periodoDias} dias${carregandoBaixas ? " · atualizando…" : ""}` }]} /></div>
           <div role="group" aria-label="Período das baixas" className="inline-flex overflow-hidden rounded-lg border border-border bg-card p-0.5">
             {PERIODOS_BAIXAS.map(({ valor, rotulo }) => <button
               key={valor}

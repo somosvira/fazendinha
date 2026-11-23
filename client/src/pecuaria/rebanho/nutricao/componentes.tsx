@@ -1,7 +1,7 @@
 import { AjudaCampo } from "@/components/Dica";
 import { Esqueleto, EsqueletoCartoesCorpo, EsqueletoFichaCorpo, EsqueletoMetricasCorpo, EsqueletoTabelaCorpo } from "@/components/Esqueleto";
 import type { ReactNode } from "react";
-import { Button, ErrorBox, Panel, Pill } from "../../../financeiro/financeiro-ui";
+import { Button, Destaques, ErrorBox, Panel, Pill } from "../../../financeiro/financeiro-ui";
 import { fmtMoneyExact } from "../../../components/charts";
 import { navegarPara } from "../../../router";
 import type { ResumoNutricional } from "./api";
@@ -31,7 +31,7 @@ export function SituacaoFechamento({ status }: { status: "CONFIRMADO" | "ESTORNA
   return <Pill tone={status === "CONFIRMADO" ? "green" : "neutral"}>{status === "CONFIRMADO" ? "Confirmado" : "Estornado"}</Pill>;
 }
 export function CustosLote({ resumo: r }: { resumo: ResumoNutricional }) {
-  return <Panel className={`nutricao-consumo-resumo${r.custos.fechamentos === 0 ? " nutricao-consumo-vazio" : ""}`}><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo confirmado</h2><p>{r.custos.animalDias.toLocaleString("pt-BR")} animal-dias · {r.custos.fechamentos} {r.custos.fechamentos === 1 ? "fechamento" : "fechamentos"}</p></div></div>
+  return <Panel className={`nutricao-consumo-resumo${r.custos.fechamentos === 0 ? " nutricao-consumo-vazio" : ""}`}><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo confirmado</h2><Destaques itens={[{ valor: r.custos.animalDias.toLocaleString("pt-BR"), rotulo: "animal-dias" }, { valor: r.custos.fechamentos, rotulo: r.custos.fechamentos === 1 ? "fechamento" : "fechamentos" }]} /></div></div>
     {r.verValores && <><dl className="nutricao-fatos">
       <div><dt>Custo conhecido da nutrição</dt><dd>{custoTexto(r.custos.custoConhecido)}</dd>{(r.custos.custoConhecido == null || !r.custos.coberturaCustoCompleta) &&
         <p>{r.custos.fechamentos === 0 ? "Nenhum consumo registrado" : r.custos.custoConhecido == null ? "Sem custo conhecido nos fechamentos confirmados" : "Valor parcial · há consumo sem custo apurado"}</p>}</div>

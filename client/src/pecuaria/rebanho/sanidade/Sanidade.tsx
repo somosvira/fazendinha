@@ -5,7 +5,7 @@ import { AgendaCalendario } from "./AgendaCalendario";
 import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
 import { AlternarVisualizacaoSanitaria, useVisualizacaoSanitaria } from "./VisualizacaoSanitaria";
 import { AgendaPorDia, FaixaDias } from "./AgendaPorDia";
-import { CartoesOcorrencias, type ResumoOcorrencias } from "./CartoesOcorrencias";
+type ResumoOcorrencias = { abertas: number; encerradas: number; anuladas: number; porDoenca: { id: string; nome: string; quantidade: number }[] };
 import type { ColunaTabela } from "@/financeiro/financeiro-ui";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -14,7 +14,7 @@ import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { linkFichaAnimal } from "../lib/navegacao";
 import { LinkInterno } from "../../../components/LinkInterno";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-import { RegularizacaoTarefa, rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
+import { RegularizacaoTarefa } from "./RegularizacaoTarefa";
 import type { EventoRegularizacao } from "../reproducao/RegularizarOrigem";
 import { DestinoConsumo, administracaoMantida, type SituacaoAdministracao, type DestinoConsumoSanitario } from "./DestinoConsumo";
 import { Button as UiButton } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import { SubTabs } from "../../../components/SubTabs";
 import { navegarPara } from "../../../router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Check, Ban, ChevronDown, MoreHorizontal, Plus, Search, SlidersHorizontal, X, ShieldCheck,
+  Check, Ban, ChevronDown, MoreHorizontal, Plus, Search, ShieldCheck,
 } from "lucide-react";
 import {
   Button,
@@ -171,7 +171,6 @@ const estadoDaUrl = () => {
 import { DetalheSanitario } from "./DetalheSanitario";
 import { PainelDetalheSanitario } from "./PainelDetalheSanitario";
 import { dataAplicacaoSanitaria, dataSanitaria, nomeAnimalSanitario, resultadoExameSanitario } from "./rotulos";
-import { resumoCarencia } from "./CarenciasSanitarias";
 import { PrazoCarencia, EstadoSanitario, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
 import { AgendaRodadas } from "./AgendaRodadas";
 import { FormRodada } from "./FormRodada";
@@ -180,6 +179,7 @@ import type { TarefaRodada } from "./rodadas-api";
 import type { PaginaSanitaria } from "./rodadas-api";
 import { FormFatoSanitario, type TipoFatoSanitario } from "./FormFatoSanitario";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 export function Sanidade(props: { podeLancar: boolean }) {
   const [url,setUrl]=useState(() => window.location.pathname + window.location.search);
@@ -254,7 +254,6 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const [aplicacoes, setAplicacoes] = useState<AplicacaoSanitaria[]>([]);
   const visualTarefas = useVisualizacaoSanitaria("visualTarefas", "visual");
-  const visualOcorrencias = useVisualizacaoSanitaria("visualOcorrencias");
   const [doencaVisual, setDoencaVisual] = useState(() => new URLSearchParams(window.location.search).get("doencaId") ?? "");
   const [resumoOcorrencias, setResumoOcorrencias] = useState<ResumoOcorrencias | null>(null);
   const [totalOcorrencias, setTotalOcorrencias] = useState(0);
@@ -321,7 +320,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   useEffect(() => {
     const params = new URLSearchParams();
     const preferencias = new URLSearchParams(window.location.search);
-    for (const chave of ["visualCiclos", "visualTarefas", "visualOcorrencias", "semanaSanitaria", "agendaSanitaria"]) { const valor = preferencias.get(chave); if (valor) params.set(chave, valor); }
+    for (const chave of ["visualCiclos", "visualTarefas", "semanaSanitaria", "agendaSanitaria"]) { const valor = preferencias.get(chave); if (valor) params.set(chave, valor); }
     if (aba === "ocorrencias" && doencaVisual) params.set("doencaId", doencaVisual);
     if (aba === "agenda" && rodadaId) { const atual = new URLSearchParams(window.location.search); for (const chave of ["protocoloContexto", "protocoloBusca", "protocoloSituacao", "abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) { const v = atual.get(chave); if (v) params.set(chave, v); } }
     params.set("aba", aba);
@@ -937,7 +936,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
               <div className="san-visual-barra sanidade-agenda-visoes">
                 <AlternarVisualizacaoSanitaria rotulo="Visualização das tarefas" {...visualTarefas}/>
               </div>
-              {visualTarefas.modo === "visual" ? <AgendaPorDia<Tarefa> tarefas={tarefasVisiveis} hoje={hojeSanitario} podeLancar={podeLancar} rotuloSituacao={t => rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario)} onRegistrar={itens => { const t0 = itens[0]; if (t0) setAnimalDaAcao({ animalId: t0.execucao.animalId, propriedadeId: t0.propriedadeAtualId ?? t0.execucao.propriedadeId }); setExecutandoEtapa(itens.map(t => ({ ...t, parametros: { ...t.parametros, tipo: t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME" } }))); }} /> : <div className="san-tarefas-lista"><TabelaFinanceira compacta visualizacao="tabela" filtrosColunas={filtrosColunas} rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).sort((a, b) => Number(b.situacao === "PENDENTE") - Number(a.situacao === "PENDENTE") || a.previstaPara.localeCompare(b.previstaPara) || a.id.localeCompare(b.id))} chaveDe={t => t.id} colunas={colunasTarefas} /></div>}
+              {visualTarefas.modo === "visual" ? <AgendaPorDia<Tarefa> tarefas={tarefasVisiveis} hoje={hojeSanitario} podeLancar={podeLancar} rotuloSituacao={t => rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario)} onRegistrar={itens => { const t0 = itens[0]; if (t0) setAnimalDaAcao({ animalId: t0.execucao.animalId, propriedadeId: t0.propriedadeAtualId ?? t0.execucao.propriedadeId }); setExecutandoEtapa(itens.map(t => ({ ...t, parametros: { ...t.parametros, tipo: t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME" } }))); }} /> : <div className="san-tarefas-lista"><TabelaFinanceira iconeDe={t => t.parametros.tipo === "APLICACAO" ? ICONES_TABELA.aplicacao : ICONES_TABELA.exame} compacta filtrosColunas={filtrosColunas} rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).sort((a, b) => Number(b.situacao === "PENDENTE") - Number(a.situacao === "PENDENTE") || a.previstaPara.localeCompare(b.previstaPara) || a.id.localeCompare(b.id))} chaveDe={t => t.id} colunas={colunasTarefas} /></div>}
               {!carregandoAba && !erroAba && !tarefas.length && (
                 <p className="p-4">
                   Nenhuma tarefa planejada.
@@ -949,9 +948,9 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           )}
           {aba === "ocorrencias" && (
             <>
-              <div className="consulta-visual-barra sanidade-agenda-visoes">{abasOcorrencias}<AlternarVisualizacaoSanitaria rotulo="Visualização das ocorrências" {...visualOcorrencias}/></div>
-              {visualOcorrencias.modo === "visual" ? carregandoAba || erroAba ? null : <CartoesOcorrencias itens={ocorrenciasVisiveis} resumo={resumoOcorrencias} nomeAnimal={nomeAnimal} acoes={o=>colunasOcorrencias.find(c=>c.chave==="acoes")!.celula(o)} onAbrir={o=>abrirDetalhe("ocorrencia",o.id,o.propriedadeId)} doencaId={doencaVisual} onDoenca={id=>{setDoencaVisual(id);setPagina(1);}}/> : <>
-              <TabelaFinanceira visualizacao="tabela" filtrosColunas={filtrosColunas} rotulo="Ocorrências sanitárias" itens={ocorrenciasVisiveis} chaveDe={(o) => o.id} onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={colunasOcorrencias} /></>}
+              <div className="consulta-visual-barra sanidade-agenda-visoes">{abasOcorrencias}</div>
+              {<>
+              <TabelaFinanceira icone={ICONES_TABELA.ocorrencia} filtrosColunas={filtrosColunas} rotulo="Ocorrências sanitárias" itens={ocorrenciasVisiveis} chaveDe={(o) => o.id} onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={colunasOcorrencias} /></>}
               {ocorrenciasPaginadas && totalOcorrencias > 0 && <Paginacao paginaAtual={pagina} totalPaginas={Math.max(1,Math.ceil(totalOcorrencias/50))} totalItens={totalOcorrencias} itensPorPagina={50} onPaginaChange={setPagina} rotulo="ocorrências" idSelect="pagina-ocorrencias"/>}
               {!carregandoAba && !erroAba && !ocorrencias.length && (
                 <Empty>Nenhuma ocorrência encontrada para os filtros atuais.</Empty>
@@ -987,7 +986,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           {carenciasIndividuais && <div className="sanidade-carencias-consulta"><SanidadeAnimal key={animalId} somenteCarencias animalId={animalId} propriedadeId={animal?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} onMudou={atualizarAplicacao} /></div>}
           {aba === "carencias" && !animalId && (
             <div className="sanidade-carencias-tabela">
-              <ConsultaCarencias filtrosColunas={filtrosColunas} cartaoComLinks rotulo="Carências sanitárias" itens={carencias.filter(c => !situacao || (situacao === "CARÊNCIA_VIGENTE" ? [c.leite, c.carne].some(p => p.estado === "CONHECIDO" && !p.prazoZero && new Date(p.ate).getTime() > agoraCarencias) : [c.leite, c.carne].some(p => p.estado === "NAO_INFORMADO")))} chaveDe={c => c.animal.id} onAbrir={c => navegarPara(`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`)} colunas={[
+              <ConsultaCarencias filtrosColunas={filtrosColunas} rotulo="Carências sanitárias" itens={carencias.filter(c => !situacao || (situacao === "CARÊNCIA_VIGENTE" ? [c.leite, c.carne].some(p => p.estado === "CONHECIDO" && !p.prazoZero && new Date(p.ate).getTime() > agoraCarencias) : [c.leite, c.carne].some(p => p.estado === "NAO_INFORMADO")))} chaveDe={c => c.animal.id} onAbrir={c => navegarPara(`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`)} colunas={[
                 { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 180, celula: c => <LinkInterno area="pecuaria" href={`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`}>{nomeAnimalSanitario(c.animal)}</LinkInterno> },
                 { chave: "leite", titulo: "Leite", larguraMinima: 240, larguraFlexivel: true, celula: c => <PrazoCarencia estado={c.leite} agora={agoraCarencias} revisao={c.revisaoLeitePendente} /> },
                 { chave: "carne", titulo: "Abate / carne", larguraMinima: 240, larguraFlexivel: true, celula: c => <PrazoCarencia estado={c.carne} agora={agoraCarencias} /> },

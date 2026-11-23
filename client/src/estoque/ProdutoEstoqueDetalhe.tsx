@@ -1,7 +1,6 @@
 import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { MovimentoEstoqueModal } from "./MovimentoEstoqueModal";
 import { UsoProdutoDietas } from "../pecuaria/rebanho/nutricao/UsoProdutoDietas";
-import { AjudaCampo } from "@/components/Dica";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Button as BotaoMenu } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -25,6 +24,7 @@ import { destinoDoMovimento, podeAcessarArea, podeAjustarEstoque, abrirAjusteEst
 import { ROTULO_ORIGEM } from "./rotulos";
 import { obterProdutoEstoque, editarProduto, listarProdutos, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, renomearLoteProduto, type LoteProdutoDTO, type MovimentoDTO, type OrigemProdutoDTO, type ProdutoDTO, type ProdutoEstoqueDTO, type PaginaLotesProduto, type PaginaMovimentos, type PaginaOrigensProduto } from "./api";
 import { EsqueletoFicha } from "../components/Esqueleto";
+import { ICONES_TABELA } from "../components/iconesTabela";
 
 type Aba = "resumo" | "lotes" | "movimentos" | "origens";
 export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produtoId: string; onSelecionarSitio?: (id: number) => void }) {
@@ -139,9 +139,9 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
       {aba !== "resumo" && <Panel className="mt-5 overflow-hidden">
 
         {vazio ? <Empty><p>Nenhum {aba === "lotes" ? "lote" : aba === "origens" ? "recebimento" : "movimento"} neste escopo.</p><div className="mt-3 flex flex-wrap justify-center gap-3">{podeAjustarEstoque() && <a href="/financeiro/operacoes/nova?tipo=COMPRA_ESTOQUE" className="font-medium text-primary underline underline-offset-4 hover:decoration-2">Registrar primeira entrada</a>}<a href="/estoque" className="font-medium text-primary underline underline-offset-4 hover:decoration-2">Consultar Estoque</a></div></Empty>
-          : aba === "lotes" && lotes ? <ConsultaOperacional rotulo="Lotes do produto" itens={lotes.itens} colunas={colunasLotes} chaveDe={l => l.id} />
-          : aba === "movimentos" && movimentos ? <ConsultaOperacional rotulo="Movimentos do produto" itens={movimentos.itens} colunas={colunasMovimentos} chaveDe={m => m.id} onAbrir={m => setMovimentoAberto(m.id)} cartaoComLinks />
-          : aba === "origens" && origens ? <ConsultaOperacional rotulo="Origens das entradas" itens={origens.itens} colunas={colunasOrigens} chaveDe={o => o.id} /> : null}
+          : aba === "lotes" && lotes ? <ConsultaOperacional icone={ICONES_TABELA.estoque} rotulo="Lotes do produto" itens={lotes.itens} colunas={colunasLotes} chaveDe={l => l.id} />
+          : aba === "movimentos" && movimentos ? <ConsultaOperacional iconeDe={m => m.tipo === "ENTRADA" ? ICONES_TABELA.movimentoEntrada : m.tipo === "SAIDA" ? ICONES_TABELA.movimentoSaida : ICONES_TABELA.movimentoTroca} rotulo="Movimentos do produto" itens={movimentos.itens} colunas={colunasMovimentos} chaveDe={m => m.id} onAbrir={m => setMovimentoAberto(m.id)} />
+          : aba === "origens" && origens ? <ConsultaOperacional icone={ICONES_TABELA.movimentoEntrada} rotulo="Origens das entradas" itens={origens.itens} colunas={colunasOrigens} chaveDe={o => o.id} /> : null}
         {total > 0 && <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(total / 15))} total={total} porPagina={15} rotulo="Paginação da ficha" substantivo="itens" idSelect="pagina-ficha-produto" onPagina={setPagina} />}
       </Panel>}
     </>}
