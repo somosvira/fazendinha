@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/DatePicker';
+import { BuscaLista } from '@/components/BuscaLista';
 import { BarraConsulta } from '@/financeiro/BarraConsulta';
 import { PeriodoFinanceiroControl } from '@/financeiro/PeriodoFinanceiroControl';
 import { SelectCampo } from '@/financeiro/SelectCampo';
@@ -83,7 +84,10 @@ export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number;par
   </div>;
 }
 export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar,aoSalvar}: {sitio:number;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number;podeLancar:boolean;aoSalvar:()=>void}) {
-  const pagina=Math.max(1,Number(params.get('pagina'))||1),consulta=useConsultaBezerreiro<Pagina<FatoSanidade>>(`/sanidade${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),pagina,animalId:params.get('animalId')})}`,sitio,revisao);
+  const pagina=Math.max(1,Number(params.get('pagina'))||1),consulta=useConsultaBezerreiro<Pagina<FatoSanidade>>(`/sanidade${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),pagina,animalId:params.get('animalId'),busca:params.get('busca')})}`,sitio,revisao);
+  const [busca,setBusca]=useState(params.get('busca')??'');
+  // Busca enquanto digita, como as demais listas; a espera evita uma consulta por tecla.
+  useEffect(()=>{if(busca===(params.get('busca')??''))return;const t=setTimeout(()=>mudar({busca,pagina:''}),300);return()=>clearTimeout(t);},[busca]); // eslint-disable-line react-hooks/exhaustive-deps
   const [selecionar,setSelecionar]=useState(false),[animalId,setAnimalId]=useState(''),[tipo,setTipo]=useState<TipoFatoSanitario|'aplicacao'>('exame'),[form,setForm]=useState(false);
   const participantes=useConsultaBezerreiro<Pagina<Participacao>>(selecionar?'/participantes?porPagina=100':null,sitio,revisao);
   function salvo(){setForm(false);aoSalvar();}
@@ -98,11 +102,8 @@ export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar,aoSalv
   </Button>;
 
   return <>
-    <div className="bez-sectionhead">
-      <h2>{rotulo}</h2>
-      {podeLancar && <Button onClick={() => setSelecionar(true)}>Registrar ação sanitária</Button>}
-    </div>
-    <BarraConsulta>
+    <BarraConsulta acao={podeLancar ? <Button onClick={() => setSelecionar(true)}>Registrar ação sanitária</Button> : undefined}>
+      <BuscaLista rotulo="Buscar animal ou ação sanitária" placeholder="Buscar animal ou ação sanitária" valor={busca} onChange={setBusca} />
       <PeriodoFinanceiroControl inicio={params.get('de') ?? ''} fim={params.get('ate') ?? ''}
         allowAll showIcon label="Período" onChange={({ inicio, fim }) => mudar({ de: inicio, ate: fim, pagina: '' })} />
     </BarraConsulta>

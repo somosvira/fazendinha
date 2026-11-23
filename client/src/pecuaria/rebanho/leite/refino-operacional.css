@@ -112,3 +112,14 @@
   .leite-resumo-destinos .consumo-retiradas > div > div { flex-wrap: wrap; }
   .leite-historicos-destinos { min-width: 0; }
 }
+
+.leite-resumo-destinos>header{align-items:center}
+.leite-resumo-data{width:200px;max-width:100%}
+
+/* Avisos da ordenha: mesma faixa compacta, uma linha cada, sem blocos altos. */
+.leite-page .leite-aviso-aplicacoes,
+.leite-page .leite-impedimentos-faixa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--muted); color: var(--foreground); font-size: 14px; font-weight: 500; }
+.leite-page .leite-aviso-aplicacoes a { margin-left: auto; font-weight: 600; }
+.leite-page .leite-impedimentos-faixa > div { display: flex; flex: 1; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; min-width: 0; }
+.leite-page .leite-impedimentos-faixa span { display: inline; margin: 0; }
+.leite-page .leite-impedimentos-faixa > button { min-height: 32px; padding-block: 0; margin-left: auto; }

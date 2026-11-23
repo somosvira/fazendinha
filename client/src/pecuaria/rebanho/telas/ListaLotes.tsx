@@ -105,16 +105,21 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const [movimentacaoAbertaId, setMovimentacaoAbertaId] = useState<string | null>(null);
 
   const edicaoHistorico = useRascunhoConsulta({ sitios: sitiosHistorico, lotes: lotesHistorico, desfeitas: mostrarDesfeitas }, { sitios: [] as string[], lotes: [] as string[], desfeitas: false }, v => { setSitiosHistorico(v.sitios); setLotesHistorico(v.lotes); setMostrarDesfeitas(v.desfeitas); setPaginaHistorico(1); });
+  const [buscaHistorico, setBuscaHistorico] = useState("");
+  const [buscaHistoricoAplicada, setBuscaHistoricoAplicada] = useState("");
+  // Busca enquanto digita; a espera evita uma consulta por tecla.
+  useEffect(() => { const t = setTimeout(() => { setBuscaHistoricoAplicada(buscaHistorico.trim()); setPaginaHistorico(1); }, 300); return () => clearTimeout(t); }, [buscaHistorico]);
   const carregarHistorico = useCallback((pagina: number) => (dataDeHistorico && !dataValida(dataDeHistorico)) || (dataAteHistorico && !dataValida(dataAteHistorico)) ? Promise.reject(new Error("Informe datas válidas para o histórico de movimentações.")) : dataDeHistorico && dataAteHistorico && dataDeHistorico > dataAteHistorico ? Promise.reject(new Error("A data final não pode anteceder a inicial.")) : listarMovimentacoes({
     propriedadeIds: sitiosHistorico.length ? sitiosHistorico.map(Number) : undefined, loteIds: lotesHistorico.length ? lotesHistorico : undefined,
     dataDe: dataDeHistorico || undefined,
     dataAte: dataAteHistorico || undefined,
+    busca: buscaHistoricoAplicada || undefined,
     incluirDesfeitas: mostrarDesfeitas,
     page: pagina,
     pageSize: 20,
-  }), [dataDeHistorico, dataAteHistorico, mostrarDesfeitas, sitiosHistorico, lotesHistorico]);
+  }), [dataDeHistorico, dataAteHistorico, buscaHistoricoAplicada, mostrarDesfeitas, sitiosHistorico, lotesHistorico]);
 
-  const recarregarTokenHistorico = `${dataDeHistorico}|${dataAteHistorico}|${mostrarDesfeitas}|${historicoRefresh}|${sitiosHistorico.join(",")}|${lotesHistorico.join(",")}`;
+  const recarregarTokenHistorico = `${dataDeHistorico}|${dataAteHistorico}|${buscaHistoricoAplicada}|${mostrarDesfeitas}|${historicoRefresh}|${sitiosHistorico.join(",")}|${lotesHistorico.join(",")}`;
 
   const lotesDoSitioHistorico = useMemo(
     () => (catalogos?.lotes ?? []).filter((lote) => edicaoHistorico.rascunho.sitios.length ? edicaoHistorico.rascunho.sitios.includes(String(lote.propriedadeId)) : true),
@@ -201,7 +206,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
 
     <Panel className="mt-5 overflow-hidden">
       <div className="border-b border-border p-5"><h2 className="font-sans text-xl">Histórico de movimentações</h2></div>
-      <BarraConsulta campos={camposHistorico} edicaoFiltros={edicaoHistorico}><DateRangePicker value={{start:dataValida(dataDeHistorico)?dateFromIso(dataDeHistorico):null,end:dataValida(dataAteHistorico)?dateFromIso(dataAteHistorico):null}} onChange={r=>{setPaginaHistorico(1);setDataDeHistorico(r.start?isoDate(r.start):"");setDataAteHistorico(r.end?isoDate(r.end):"");}} triggerAriaLabel="Período das movimentações" triggerLabel={!dataDeHistorico&&!dataAteHistorico?"Todo o histórico":undefined}/></BarraConsulta>
+      <BarraConsulta campos={camposHistorico} edicaoFiltros={edicaoHistorico}><BuscaLista rotulo="Buscar movimentação" placeholder="Buscar animal, lote ou motivo" valor={buscaHistorico} onChange={setBuscaHistorico}/><DateRangePicker value={{start:dataValida(dataDeHistorico)?dateFromIso(dataDeHistorico):null,end:dataValida(dataAteHistorico)?dateFromIso(dataAteHistorico):null}} onChange={r=>{setPaginaHistorico(1);setDataDeHistorico(r.start?isoDate(r.start):"");setDataAteHistorico(r.end?isoDate(r.end):"");}} triggerAriaLabel="Período das movimentações" triggerLabel={!dataDeHistorico&&!dataAteHistorico?"Todo o histórico":undefined}/></BarraConsulta>
       {(sitiosHistorico.length>0||lotesHistorico.length>0)&&<div className="flex flex-wrap gap-2 p-4 border-b border-border">{sitiosHistorico.map(id=><Button secondary key={id} onClick={()=>{setPaginaHistorico(1);setSitiosHistorico(v=>v.filter(x=>x!==id));setLotesHistorico([]);}}>Sítio: {sitiosAtivos.find(s=>String(s.id)===id)?.nome??"Selecionado"} ×</Button>)}{lotesHistorico.map(id=><Button secondary key={id} onClick={()=>{setPaginaHistorico(1);setLotesHistorico(v=>v.filter(x=>x!==id));}}>Lote: {catalogos?.lotes.find(l=>l.id===id)?.nome??"Selecionado"} ×</Button>)}</div>}
 
       <HistoricoMovimentacoes filtrosColunas={filtrosDasColunas(camposHistorico,edicaoHistorico)}

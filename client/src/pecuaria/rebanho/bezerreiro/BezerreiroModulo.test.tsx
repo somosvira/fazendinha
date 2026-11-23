@@ -15,7 +15,7 @@ describe('Bezerreiro: consultas e acessos',()=>{
     vi.mocked(consultarBezerreiro).mockImplementation(async(path)=>path==='/configuracoes'?config:{itens:[],total:0,pagina:1,porPagina:20});
     render(<BezerreiroModulo podeLancar={false}/>);
     await screen.findByText('Nenhum animal corresponde aos filtros. Ajuste ou limpe os critérios.');
-    expect(screen.getByRole('heading',{name:'Histórico de saídas'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Remover filtro: Histórico de saídas'})).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Regularizar participação'})).toBeNull();
     expect(vi.mocked(consultarBezerreiro).mock.calls.some(([path,sitio])=>path.includes('historico=true')&&path.includes('coleiraId=coleira-a')&&path.includes('faseVersaoId=fase-v1')&&sitio===1)).toBe(true);
   });
@@ -27,7 +27,7 @@ describe('Bezerreiro: consultas e acessos',()=>{
   });
   it('troca de rotina mantém as cinco abas e o caminho canônico',async()=>{
     vi.mocked(consultarBezerreiro).mockImplementation(async(path)=>path==='/configuracoes'?config:{itens:[],total:0,pagina:1});
-    render(<BezerreiroModulo podeLancar={false}/>);await screen.findByRole('heading',{name:'Histórico de saídas'});
+    render(<BezerreiroModulo podeLancar={false}/>);await screen.findByRole('button',{name:'Remover filtro: Histórico de saídas'});
     expect(screen.getAllByRole('tab')).toHaveLength(5);
     fireEvent.click(screen.getByRole('tab',{name:'Sanidade'}));
     await waitFor(()=>expect(location.search).toBe('?aba=sanidade'));

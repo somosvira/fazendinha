@@ -71,9 +71,9 @@ export function FaixaDias<T extends TarefaAgenda>({ hoje, tarefas, diaSelecionad
       {dias.map(dia => {
         const n = porDia.get(dia) ?? 0;
         const atrasado = dia < hoje && n > 0;
-        return <button type="button" key={dia} className="agenda-faixa-dia" data-hoje={dia === hoje || undefined} aria-pressed={diaSelecionado === dia} aria-label={`${capital(semana(dia))}, ${curto(dia)}: ${n} ${n === 1 ? "etapa" : "etapas"}`} onClick={() => onSelecionar(diaSelecionado === dia ? null : dia)}>
+        return <button type="button" key={dia} className="agenda-faixa-dia" data-hoje={dia === hoje || undefined} data-fim-semana={[0, 6].includes(doIso(dia).getDay()) || undefined} data-semana-nova={dia !== dias[0] && doIso(dia).getDay() === 1 || undefined} aria-pressed={diaSelecionado === dia} aria-label={`${capital(semana(dia))}, ${curto(dia)}: ${n} ${n === 1 ? "etapa" : "etapas"}`} onClick={() => onSelecionar(diaSelecionado === dia ? null : dia)}>
           <span>{semanaCurta(dia)}</span><strong>{Number(dia.slice(8))}</strong>
-          <i className="agenda-faixa-pontos" aria-hidden>{Array.from({ length: Math.min(n, 3) }, (_, k) => <b key={k} data-atrasada={atrasado || undefined} />)}</i>
+          <em className="agenda-faixa-contagem" aria-hidden data-atrasada={atrasado || undefined} data-vazio={n === 0 || undefined}>{n || "·"}</em>
         </button>;
       })}
     </div>

@@ -94,17 +94,23 @@
 }
 
 /* Agenda por dia: faixa de 14 dias + seções Atrasadas / Hoje / Amanhã / ... */
-.agenda-faixa { display: grid; grid-template-columns: repeat(14, minmax(44px, 1fr)); gap: 4px; overflow-x: auto; padding-bottom: 2px; }
-.agenda-faixa-dia { display: grid; justify-items: center; gap: 2px; padding: 6px 4px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted-foreground); font-size: 11px; cursor: pointer; }
-.agenda-faixa-dia strong { font-size: 16px; color: var(--foreground); }
-.agenda-faixa-dia:hover { background: var(--muted); }
-.agenda-faixa-dia[data-hoje] { border-color: var(--border); }
-.agenda-faixa-dia[aria-pressed="true"] { background: color-mix(in srgb, var(--pos) 10%, var(--card)); border-color: var(--pos); }
-.agenda-faixa-dia:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
-.agenda-faixa-pontos { display: flex; gap: 3px; min-height: 6px; }
-.agenda-faixa-pontos b, .agenda-faixa-legenda b { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--pos); }
-.agenda-faixa-pontos b[data-atrasada], .agenda-faixa-legenda b[data-atrasada] { background: var(--destructive); }
-.agenda-faixa-legenda { display: flex; gap: 1rem; margin-top: 6px; font-size: 12px; color: var(--muted-foreground); }
+.agenda-faixa { display: grid; grid-template-columns: repeat(14, minmax(44px, 1fr)); gap: 6px; overflow-x: auto; padding: 2px 0 4px; }
+.agenda-faixa-dia { display: grid; justify-items: center; gap: 3px; padding: 8px 4px 6px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--muted-foreground); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; transition: background .12s, border-color .12s; }
+.agenda-faixa-dia strong { font-size: 18px; line-height: 1.1; letter-spacing: 0; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.agenda-faixa-dia[data-fim-semana] { background: var(--muted); }
+.agenda-faixa-dia:hover { border-color: var(--primary); }
+.agenda-faixa-dia[data-hoje] { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.agenda-faixa-dia[data-hoje] span { color: var(--primary); }
+.agenda-faixa-dia[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.agenda-faixa-dia[aria-pressed="true"] strong, .agenda-faixa-dia[aria-pressed="true"] span { color: var(--primary-foreground); }
+.agenda-faixa-dia:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.agenda-faixa-contagem { min-width: 22px; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 14%, var(--card)); color: var(--primary); font-style: normal; font-size: 12px; font-weight: 700; letter-spacing: 0; text-align: center; font-variant-numeric: tabular-nums; }
+.agenda-faixa-contagem[data-atrasada] { background: var(--fin-danger-bg, #fde8e8); color: var(--destructive); }
+.agenda-faixa-contagem[data-vazio] { background: transparent; color: var(--muted-foreground); font-weight: 400; }
+.agenda-faixa-dia[aria-pressed="true"] .agenda-faixa-contagem { background: color-mix(in srgb, var(--primary-foreground) 22%, transparent); color: var(--primary-foreground); }
+.agenda-faixa-legenda { display: flex; gap: 1rem; margin-top: 8px; font-size: 12px; color: var(--muted-foreground); }
+.agenda-faixa-legenda b { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.agenda-faixa-legenda b[data-atrasada] { background: var(--destructive); }
 .agenda-faixa-legenda span { display: inline-flex; align-items: center; gap: 6px; }
 .agenda-dias { display: grid; gap: 1.25rem; margin-top: 1rem; }
 .agenda-dia-cabecalho { display: flex; align-items: baseline; gap: .75rem; padding-bottom: 6px; border-bottom: 1px solid var(--border); }

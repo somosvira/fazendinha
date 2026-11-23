@@ -1,3 +1,4 @@
+import { BuscaLista } from "@/components/BuscaLista";
 import { DatePicker } from "../../../components/DatePicker";
 import { Plus } from "lucide-react";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
@@ -72,13 +73,16 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
   const [motivo, setMotivo] = useState("");
   const [estornando, setEstornando] = useState(false);
   const geracao = useRef(0);
+  const [busca, setBusca] = useState(""), [buscaAplicada, setBuscaAplicada] = useState("");
+  // Busca enquanto digita; a espera evita uma consulta por tecla.
+  useEffect(() => { const t = setTimeout(() => { setBuscaAplicada(busca.trim()); setPagina(1); }, 300); return () => clearTimeout(t); }, [busca]);
   useEffect(() => {
     const atual = ++geracao.current;
     setOcupado(true);
     setErro("");
-    setHistorico(null);
     const params = new URLSearchParams({
       pagina: String(pagina),
+      ...(buscaAplicada ? { busca: buscaAplicada } : {}),
       ...(de ? { de } : {}),
       ...(ate ? { ate } : {}),
     });
@@ -100,7 +104,7 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
     return () => {
       geracao.current++;
     };
-  }, [sitio, de, ate, pagina, revisao]);
+  }, [sitio, de, ate, pagina, revisao, buscaAplicada]);
   async function confirmarEstorno() {
     if (!estorno || estornando || !podeLancar) return;
     if (motivo.trim().length < 5) {
@@ -165,7 +169,7 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
         </p>
       ) : null}
       {aviso && <p role="status">{aviso}</p>}
-      <BarraConsulta edicaoFiltros={filtros} adicionais={<><CampoFiltro rotulo="Desde"><DatePicker value={filtros.rascunho.de} onChange={(valor) => filtros.editar("de", valor)} /></CampoFiltro><CampoFiltro rotulo="Até"><DatePicker value={filtros.rascunho.ate} min={filtros.rascunho.de || undefined} onChange={(valor) => filtros.editar("ate", valor)} /></CampoFiltro></>} />
+      <BarraConsulta edicaoFiltros={filtros} adicionais={<><CampoFiltro rotulo="Desde"><DatePicker value={filtros.rascunho.de} onChange={(valor) => filtros.editar("de", valor)} /></CampoFiltro><CampoFiltro rotulo="Até"><DatePicker value={filtros.rascunho.ate} min={filtros.rascunho.de || undefined} onChange={(valor) => filtros.editar("ate", valor)} /></CampoFiltro></>}><BuscaLista rotulo="Buscar registro" placeholder="Buscar responsável, animal ou observação" valor={busca} onChange={setBusca} /></BarraConsulta>
       {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {ocupado && <p role="status">Consultando os destinos…</p>}
       {historico && (

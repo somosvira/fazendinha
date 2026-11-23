@@ -111,7 +111,7 @@ describe("busca e atualização da Sanidade", () => {
     expect(estado.closest("td")?.textContent).toContain("01/01/2020");
     expect(tabela.getByText("Ciclo de vacinação · Vacina")).toBeTruthy();
     expect(tabela.queryByRole("columnheader", { name: "Tipo" })).toBeNull();
-    expect(tabela.getByRole("button", { name: "Executar tarefa" }).closest("td")?.getAttribute("data-fin-coluna")).toBe("acoes");
+    expect(tabela.getByRole("button", { name: "Registrar execução" }).closest("td")?.getAttribute("data-fin-coluna")).toBe("acoes");
     expect(tabela.getByRole("button", { name: "Mais ações da tarefa de DEV-001 · Aurora" })).toBeTruthy();
   });
 
@@ -136,7 +136,7 @@ describe("busca e atualização da Sanidade", () => {
     render(<Sanidade podeLancar={false} />);
     const tabela = within(await screen.findByRole("table", { name: "Tarefas de protocolos" }));
     await tabela.findByText("Atrasada");
-    expect(tabela.queryByRole("button", { name: "Executar tarefa" })).toBeNull();
+    expect(tabela.queryByRole("button", { name: "Registrar execução" })).toBeNull();
     expect(tabela.queryByRole("button", { name: /Mais ações/ })).toBeNull();
   });
 

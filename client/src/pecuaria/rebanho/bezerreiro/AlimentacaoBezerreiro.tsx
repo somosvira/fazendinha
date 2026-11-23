@@ -48,20 +48,18 @@ export function AlimentacaoBezerreiro({sitio,config,podeLancar,revisao,aoSalvar,
     : null;
 
   return <div className="bez-painel-operacional">
-    <header className="bez-painel-cabecalho">
-      <h2>Alimentação</h2>
-      <div className="bez-contexto">
-        <label>Data<DatePicker value={data} onChange={v => mudar({data:v,pagina:''})} /></label>
-        <label>Bezerreiro<SelectCampo value={perfil} onValueChange={v => mudar({perfil:v,pagina:''})}>
+    <div className="bez-barra-contexto">
+      <div className="bez-barra-contexto-filtros">
+        <DatePicker value={data} aria-label="Data da alimentação" onChange={v => mudar({data:v,pagina:''})} />
+        <SelectCampo aria-label="Bezerreiro" value={perfil} onValueChange={v => mudar({perfil:v,pagina:''})}>
           <option value="">Todos os bezerreiros</option>
           {config.perfis.map(p => <option key={p.id} value={p.id}>{p.lote.nome}</option>)}
-        </SelectCampo></label>
-        <Button variant="outline" onClick={() => navegarPara('/configuracoes/pecuaria/producao/bezerreiro')}>Configurar rotina</Button>
-        {podeLancar && <Button disabled={!previsao || !perfil} onClick={() => previsao && setFornecer({sitio,perfilId:perfil,data,previsao})}>
-          Registrar fornecimento
-        </Button>}
+        </SelectCampo>
       </div>
-    </header>
+      {podeLancar && <Button disabled={!previsao || !perfil} onClick={() => previsao && setFornecer({sitio,perfilId:perfil,data,previsao})}>
+        Registrar fornecimento
+      </Button>}
+    </div>
     <EstadoConsulta {...consulta} carregando={!previsao}>
       {previsao && <>
         <dl className="bez-indicadores">

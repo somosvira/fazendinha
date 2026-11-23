@@ -50,7 +50,8 @@ it("conserva deep links e detalhes, filtra período e mantém rascunho ao atuali
  fireEvent.change(criterio, { target: { value: "alterado" } });
  expect((screen.getByLabelText("Critérios completos") as HTMLInputElement).value).toBe("alterado");
  expect(screen.getByText("Não aferido")).toBeTruthy();
- fireEvent.click(within(secao("Tentativas reprodutivas")).getByRole("button", {name:"Período do histórico reprodutivo"}));
+ await abrirFiltrosConsulta(secao("Tentativas reprodutivas"));
+ fireEvent.click(screen.getByRole("button", {name:"Período do histórico reprodutivo"}));
  fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2020-09-10" } });
  fireEvent.click(screen.getByRole("button", {name:"Aplicar período"}));
  expect(screen.getByText("1–3 de 3 registros")).toBeTruthy();

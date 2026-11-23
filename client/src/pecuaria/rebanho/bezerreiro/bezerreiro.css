@@ -122,3 +122,7 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
   gap: 8px;
   padding-top: 12px;
 }
+
+.bez-barra-contexto{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.bez-barra-contexto-filtros{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.bez-barra-contexto-filtros>*{min-width:200px}

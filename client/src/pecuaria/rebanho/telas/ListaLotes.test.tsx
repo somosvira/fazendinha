@@ -304,7 +304,7 @@ it("data inválida na URL de movimentações mostra erro sem consultar nem quebr
  await montar();
  expect(await screen.findByText("Informe datas válidas para o histórico de movimentações.")).toBeTruthy();
  expect(listarMovimentacoes).not.toHaveBeenCalled();
- expect(screen.getByRole("button",{name:/^Período das movimentações/})).toBeTruthy();
+ expect(screen.getAllByRole("button",{name:/^Filtros/}).length).toBeGreaterThan(0);
 });
 
 it("restaura os filtros principais sem apagar o recorte do histórico e acompanha voltar/avançar", async () => {
