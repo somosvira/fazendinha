@@ -249,8 +249,7 @@ describe("Lotes do rebanho", () => {
     await waitFor(() => expect(listarLotes).toHaveBeenCalledWith({ incluirInativos: true }));
 
     await abrirFiltrosConsulta();
-    const filtroSitio = within(screen.getByRole("dialog",{name:"Filtros"})).getByRole("combobox",{name:"Filtrar por sítio"}) as HTMLSelectElement;
-    expect(filtroSitio.disabled).toBe(false);
+    expect(within(screen.getByRole("dialog",{name:"Filtros"})).queryByRole("combobox",{name:"Filtrar por sítio"})).toBeNull();
 
     // os controles de escrita (edição/ativação de lote) ficam num fieldset desabilitado à parte dos filtros
     const fieldsetEscrita = container.querySelector("fieldset");
@@ -264,32 +263,6 @@ describe("Lotes do rebanho", () => {
 });
 
 describe("Lotes — histórico de movimentações (sempre visível)", () => {
-  it("consulta o histórico usando sítios e lotes múltiplos", async () => {
-    await montar();
-    await waitFor(()=>expect(listarMovimentacoes).toHaveBeenCalledWith(expect.objectContaining({page:1,pageSize:20})));
-    fireEvent.click(screen.getAllByRole("button",{name:"Filtros"}).at(-1)!);
-    fireEvent.click(screen.getByRole("button",{name:"Sítios da movimentação"}));
-    fireEvent.click(screen.getByRole("option",{name:"Sede"}));
-    fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
-    expect(vi.mocked(listarMovimentacoes).mock.calls.at(-1)?.[0]?.propriedadeIds).toBeUndefined();
-    fireEvent.click(screen.getByRole("button",{name:"Lotes da movimentação"}));
-    fireEvent.click(screen.getByRole("option",{name:"Lote 1"}));
-    fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
-    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
-    await waitFor(()=>expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({propriedadeIds:[1],loteIds:["l1"]})));
-  });
-  it("trocar sítios invalida os lotes anteriores",async()=>{
-    window.history.replaceState(null,"","/pecuaria/rebanho/lotes?visualLotes=tabela&movSitioIds=1&movLoteIds=l1");
-    await montar();
-    await waitFor(()=>expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({loteIds:["l1"]})));
-    fireEvent.click(screen.getAllByRole("button",{name:"Filtros"}).at(-1)!);
-    fireEvent.click(screen.getByRole("button",{name:"Sítios da movimentação"}));
-    fireEvent.click(screen.getByRole("option",{name:"Sede"}));
-    fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
-    expect(vi.mocked(listarMovimentacoes).mock.calls.at(-1)?.[0]?.loteIds).toEqual(["l1"]);
-    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
-    await waitFor(()=>expect(listarMovimentacoes).toHaveBeenLastCalledWith(expect.objectContaining({loteIds:undefined})));
-  });
 
   it("lotes e histórico ficam visíveis ao mesmo tempo, sem sub-abas", async () => {
     await montar();

@@ -166,10 +166,23 @@ export function ErrorBox({ erro }: { erro: string | null }) {
 }
 
 /** Lista, gráfico ou seção sem registros: mesmo desenho do EmptyState compacto. */
-export type DestaqueDado = { valor: React.ReactNode; rotulo: string; tom?: "alerta" | "ok" };
+export type DestaqueDado = {
+  valor: React.ReactNode; rotulo: React.ReactNode; tom?: "alerta" | "ok";
+  /** identifica o destaque quando o rótulo não é texto */
+  chave?: string;
+  /** frase curta sob o rótulo (regra, referência ou pendência do número) */
+  detalhe?: React.ReactNode; detalheId?: string;
+  /** com `onClick` o destaque vira um filtro: botão com estado pressionado */
+  onClick?: () => void; pressionado?: boolean; ariaLabel?: string;
+};
 /** Números-chave logo abaixo de um título: valor grande + rótulo curto, em vez de uma linha cinza de texto. */
 export function Destaques({ itens, className = "" }: { itens: DestaqueDado[]; className?: string }) {
-  return <ul className={`destaques ${className}`.trim()}>{itens.map(i => <li key={i.rotulo} className="destaque" data-tom={i.tom}><strong>{i.valor}</strong><span>{i.rotulo}</span></li>)}</ul>;
+  return <ul className={`destaques ${className}`.trim()}>{itens.map(i => {
+    const corpo = <><strong>{i.valor}</strong><span>{i.rotulo}</span>{i.detalhe != null && <small id={i.detalheId}>{i.detalhe}</small>}</>;
+    return <li key={i.chave ?? String(i.rotulo)} className="destaque" data-tom={i.tom} data-acao={i.onClick ? "" : undefined}>
+      {i.onClick ? <button type="button" className="destaque-acao" aria-pressed={i.pressionado} aria-label={i.ariaLabel} aria-describedby={i.detalheId} onClick={i.onClick}>{corpo}</button> : corpo}
+    </li>;
+  })}</ul>;
 }
 export function Empty({ children, icone: Icone = Inbox, acao }: { children: React.ReactNode; icone?: LucideIcon; acao?: React.ReactNode }) {
   return <div className="fin-vazio" role="note"><span aria-hidden className="fin-vazio-icone"><Icone size={20} strokeWidth={1.5} /></span><div className="fin-vazio-texto">{children}</div>{acao && <div className="fin-vazio-acao">{acao}</div>}</div>;

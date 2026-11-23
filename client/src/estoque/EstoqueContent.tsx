@@ -21,7 +21,7 @@ import { AjudaCampo } from "@/components/Dica";
 import { LinkInterno } from "../components/LinkInterno";
 import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
 import { fmtMoneyExact } from "@/components/charts";
-import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, SelectFiltro, TabelaFinanceira } from "../financeiro/financeiro-ui";
+import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, SelectFiltro, TabelaFinanceira, Destaques } from "../financeiro/financeiro-ui";
 import { TransferirEstoque } from "./TransferirEstoque";
 import { MovimentoEstoqueModal } from "./MovimentoEstoqueModal";
 import { FormProduto } from "../financeiro/FormProduto";
@@ -294,12 +294,24 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     {produtoCriado && <p role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-muted px-4 py-3 text-sm"><span><strong>{produtoCriado}</strong> cadastrado. Ele aparece com saldo depois da primeira entrada.</span><LinkInterno area="financeiro" href="/financeiro/operacoes/nova?tipo=COMPRA_ESTOQUE">Registrar a primeira entrada</LinkInterno><button type="button" className="ml-auto text-ink-3 hover:text-ink" onClick={() => setProdutoCriado(null)}>Fechar</button></p>}
     <ErrorBox erro={erroCentros ? `Erro ao carregar centros de custo: ${erroCentros}` : null} />
 
-    <Panel className="estoque-resumo-consulta mt-5">
-      <div className="estoque-resumo-produtos"><Package size={24} aria-hidden="true" /><strong>{saldos.loading ? "Consultando saldos…" : `${nEmEstoque} ${nEmEstoque === 1 ? "produto" : "produtos"} em estoque`}</strong></div>
-      {nAbaixoMin > 0 && <button type="button" className="estoque-resumo-alerta" aria-label={`${nAbaixoMin} abaixo do mínimo`} aria-describedby="estoque-prioridade-reposicao" aria-pressed={soAbaixoMin} onClick={() => { setSoAbaixoMin(!soAbaixoMin); setSoNegativos(false); mudarAba("produtos"); }}><IconeAbaixoMinimo /><span><strong>{nAbaixoMin} abaixo do mínimo</strong><span id="estoque-prioridade-reposicao" className="estoque-resumo-prioridade">{prioridadeReposicao ? <>{prioridadeReposicao.nome}{prioridadeReposicao.minimoEstoque != null ? ` · faltam ${qtd(Math.max(0, prioridadeReposicao.minimoEstoque - prioridadeReposicao.saldo))} ${rotuloUnidade(prioridadeReposicao.unidade)}` : ` · saldo ${qtd(prioridadeReposicao.saldo)} ${rotuloUnidade(prioridadeReposicao.unidade)}`}</> : "Ver produtos para reposição"}</span></span></button>}
-      {nNegativos > 0 && <button type="button" className="estoque-resumo-alerta estoque-resumo-negativo" aria-pressed={soNegativos} onClick={() => { setSoNegativos(!soNegativos); setSoAbaixoMin(false); mudarAba("produtos"); }}>{nNegativos} com saldo negativo</button>}
-      <div className="estoque-resumo-valor"><span>{valoresPendentes > 0 && valoresConhecidos > 0 ? "Valor conhecido em estoque (parcial)" : "Valor em estoque"}<AjudaCampo rotulo="Como o valor é calculado" texto="O valor corresponde ao saldo monetário remanescente. Grupos rastreados usam média do saldo; produtos sem rastreio usam aquisições mais antigas. Valores desconhecidos ficam separados." /></span><strong>{saldos.loading ? "—" : saldos.erro ? "Indisponível" : valoresPendentes > 0 && valoresConhecidos === 0 ? "Indisponível" : brl(valorTotal)}</strong>{valoresPendentes > 0 && valoresConhecidos > 0 && <span role="status">{valoresPendentes} produto(s) sem valor disponível. O total conhecido é parcial.</span>}</div>
-    </Panel>
+    <Destaques className="estoque-destaques" itens={[
+      { chave: "produtos", valor: saldos.loading ? "…" : nEmEstoque, rotulo: nEmEstoque === 1 ? "produto em estoque" : "produtos em estoque" },
+      ...(nAbaixoMin > 0 ? [{
+        chave: "abaixo", valor: nAbaixoMin, rotulo: "abaixo do mínimo", tom: "alerta" as const, ariaLabel: `${nAbaixoMin} abaixo do mínimo`,
+        detalheId: "estoque-prioridade-reposicao", pressionado: soAbaixoMin,
+        onClick: () => { setSoAbaixoMin(!soAbaixoMin); setSoNegativos(false); mudarAba("produtos"); },
+        detalhe: prioridadeReposicao ? <>{prioridadeReposicao.nome}{prioridadeReposicao.minimoEstoque != null ? ` · faltam ${qtd(Math.max(0, prioridadeReposicao.minimoEstoque - prioridadeReposicao.saldo))} ${rotuloUnidade(prioridadeReposicao.unidade)}` : ` · saldo ${qtd(prioridadeReposicao.saldo)} ${rotuloUnidade(prioridadeReposicao.unidade)}`}</> : "Ver produtos para reposição",
+      }] : []),
+      ...(nNegativos > 0 ? [{
+        chave: "negativos", valor: nNegativos, rotulo: "com saldo negativo", tom: "alerta" as const, pressionado: soNegativos,
+        onClick: () => { setSoNegativos(!soNegativos); setSoAbaixoMin(false); mudarAba("produtos"); },
+      }] : []),
+      {
+        chave: "valor", valor: saldos.loading ? "—" : saldos.erro ? "Indisponível" : valoresPendentes > 0 && valoresConhecidos === 0 ? "Indisponível" : brl(valorTotal),
+        rotulo: <>{valoresPendentes > 0 && valoresConhecidos > 0 ? "valor conhecido (parcial)" : "valor em estoque"}<AjudaCampo rotulo="Como o valor é calculado" texto={`O valor corresponde ao saldo monetário remanescente. Grupos rastreados usam média do saldo; produtos sem rastreio usam aquisições mais antigas. Valores desconhecidos ficam separados.${valoresPendentes > 0 && valoresConhecidos > 0 ? ` Hoje ${valoresPendentes} produto(s) estão sem valor disponível, então o total conhecido é parcial.` : ""}`} /></>,
+        detalhe: valoresPendentes > 0 && valoresConhecidos > 0 ? `${valoresPendentes} sem valor disponível` : undefined,
+      },
+    ]} />
     <Tabs className="estoque-consulta-abas" value={aba} onValueChange={mudarAba}>
       <TabsList aria-label="Consultas de estoque"><TabsTrigger value="produtos"><Package aria-hidden="true" />Produtos{saldos.data.length > 0 ? ` (${saldos.data.length})` : ""}</TabsTrigger><TabsTrigger value="movimentacoes"><History aria-hidden="true" />Movimentações</TabsTrigger><TabsTrigger value="catalogo"><BookOpen aria-hidden="true" />Catálogo</TabsTrigger></TabsList>
       {catalogo && <TabsContent value="catalogo"><CatalogoProdutos /></TabsContent>}
@@ -318,7 +330,6 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
 
       </BarraConsulta>
-      <div className="consulta-visual-barra"><span>{saldosVisiveis.length} produtos no recorte</span></div>
       <div className="min-w-0">
         {erroCatalogo ? <Empty>Não foi possível filtrar os produtos: {erroCatalogo} <Button secondary onClick={() => setRevisaoFiltro(r => r + 1)}>Tentar novamente</Button></Empty> : saldos.loading || cargaCatalogo ? <EsqueletoTabela label="Carregando estoque" className="p-6" />
           : saldos.erro ? <Empty>Não foi possível consultar os saldos: {saldos.erro} <Button secondary onClick={saldos.recarregar}>Tentar novamente</Button></Empty>

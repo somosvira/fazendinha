@@ -182,7 +182,6 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
 
         <UiButton type="button" variant="outline" className="consulta-mais-filtros operacoes-todos-filtros" aria-haspopup="dialog" aria-expanded={modalFiltros} onClick={() => { edicaoFiltros.iniciar(); setModalFiltros(true); }}><Settings2 size={17} aria-hidden />Filtros{criterios.length > 0 && <span className="operacoes-filtros-contagem">{criterios.length}</span>}</UiButton>
       </BarraConsulta>
-      <div className="consulta-visual-barra"><span>{filtradas.length} operações na consulta</span></div>
       <div aria-busy={loading} {...(loading ? { inert: "" } : {})}>{erro ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <>{<TabelaFinanceira iconeDe={op => op.tipo === "VENDA" ? ArrowUpRight : op.tipo === "SERVICO" ? Wrench : ShoppingCart} ordenacao={ordem.controle} rotulo="Operações do período" itens={operacoesDaPagina} colunas={colunas} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} compacta barraRolagemSuperior />}
         <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={filtradas.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de operações" substantivo="operações" idSelect="pagina-operacoes" onPagina={setPagina} /></> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
     </div></Panel>

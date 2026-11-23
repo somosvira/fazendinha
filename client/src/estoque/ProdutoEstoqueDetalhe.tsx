@@ -28,7 +28,8 @@ import { ICONES_TABELA } from "../components/iconesTabela";
 
 type Aba = "resumo" | "lotes" | "movimentos" | "origens";
 export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produtoId: string; onSelecionarSitio?: (id: number) => void }) {
-  const [sitioId, setSitioId] = useState<number | undefined>(() => getPropriedadeAtiva() ?? undefined);
+  // O sítio vem da barra lateral: trocar lá remonta a ficha.
+  const [sitioId] = useState<number | undefined>(() => getPropriedadeAtiva() ?? undefined);
   const [sitios, setSitios] = useState<PropriedadeDTO[]>([]);
   const [dados, setDados] = useState<ProdutoEstoqueDTO | null>(null);
   const [aba, setAba] = useState<Aba>(() => new URLSearchParams(location.search).has("partidaId") ? "movimentos" : "resumo");
@@ -113,7 +114,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
   return <PaginaFinanceira><div className="produto-ficha estoque-content">
     <nav className="fin-breadcrumb" aria-label="Navegação estrutural"><a href="/estoque" onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/estoque"); } }}>Estoque</a><span aria-hidden="true">/</span><span aria-current="page">{produto?.nome ?? "Ficha do produto"}</span></nav>
     <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><Package/></span>{produto?.nome ?? "Ficha do produto"}</span>} acao={produto ? <Button secondary disabled={salvando} onClick={() => { void abrirEdicao(); }}><Pencil size={16} />{podeEditar ? "Editar produto" : "Consultar cadastro"}</Button> : undefined} />
-    <div className="estoque-filtro-ficha"><div className="grid min-w-0 w-full gap-1 text-sm sm:w-[280px]"><div className="flex items-center"><label htmlFor="sitio-ficha-produto">Sítio</label></div><SelectCampo id="sitio-ficha-produto" aria-label="Sítio da ficha" className={classeInput} value={sitioId ?? ""} onValueChange={(valorSelecionado) => { setSitioId(Number(valorSelecionado) || undefined); setPagina(1); setPartidaId(""); }}><option value="">Consolidado</option>{sitios.map(s => <option key={s.id} value={s.id}>{s.nome}{s.ativo ? "" : " (inativo)"}</option>)}</SelectCampo></div>{partidaId && <p className="text-sm text-ink-3">Consulta filtrada por lote. <Button secondary onClick={() => { setPartidaId(""); setPagina(1); }}>Ver todos</Button></p>}</div>
+    {partidaId && <div className="estoque-filtro-ficha"><p className="text-sm text-ink-3">Consulta filtrada por lote. <Button secondary onClick={() => { setPartidaId(""); setPagina(1); }}>Ver todos</Button></p></div>}
     <SubTabs variant="financeiro" ariaLabel="Ficha do produto" tabs={[{ id: "resumo", label: "Resumo" }, { id: "lotes", label: "Lotes" }, { id: "movimentos", label: "Movimentos" }, { id: "origens", label: "Origens das entradas" }]} active={aba} onSelect={abrirAba} className="mt-5" />
 
     <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button>}

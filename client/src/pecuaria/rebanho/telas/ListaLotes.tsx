@@ -167,7 +167,6 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const edicaoLotes = useRascunhoConsulta({busca,sitio:filtroSitio,inativos:mostrarInativos},{busca:"",sitio:"",inativos:false},v=>{setBusca(v.busca);setFiltroSitio(v.sitio);setMostrarInativos(v.inativos);setPaginaLotes(1);});
   const camposLotes: CampoConsulta[] = [
     {chave:"lote", naBarra: true,ativo:!!busca,limpar:()=>edicaoLotes.editar("busca",""),conteudo:<CampoFiltro rotulo="Lote ou sítio"><input aria-label="Buscar lote no filtro" className="w-full rounded-lg border border-border px-3" value={edicaoLotes.rascunho.busca} onChange={e=>edicaoLotes.editar("busca",e.target.value)}/></CampoFiltro>},
-    ...(sitioGlobal == null ? [{chave:"sitio",ativo:!!filtroSitio,limpar:()=>edicaoLotes.editar("sitio",""),conteudo:<CampoFiltro rotulo="Sítio"><SelectCampo aria-label="Filtrar por sítio" value={edicaoLotes.rascunho.sitio} onValueChange={v=>edicaoLotes.editar("sitio",v)}><option value="">Todos os sítios</option>{sitiosAtivos.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</SelectCampo></CampoFiltro>}] : []),
     {chave:"situacao",ativo:mostrarInativos,limpar:()=>edicaoLotes.editar("inativos",false),conteudo:<label className="flex items-center gap-2 text-sm"><Checkbox checked={edicaoLotes.rascunho.inativos} onCheckedChange={v=>edicaoLotes.editar("inativos",v===true)}/>Mostrar inativos</label>},
   ];
   const ordemLotes = useOrdenacaoTabela<Lote>([{chave:"nome",rotulo:"Lote",tipo:"texto",obter:l=>l.nome},{chave:"animais",rotulo:"Animais ativos",tipo:"numero",obter:l=>l.animaisAtivos}], "ordemLotes", ()=>setPaginaLotes(1));
@@ -178,7 +177,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const lotesDaPagina = lotesFiltrados.slice((paginaLotesAtual - 1) * LOTES_POR_PAGINA, paginaLotesAtual * LOTES_POR_PAGINA);
   useEffect(() => { if (lotes !== null) setPaginaLotes((pagina) => Math.min(pagina, totalPaginasLotes)); }, [totalPaginasLotes, lotes]);
   /* pré-seleciona o sítio ativo no seletor global (comPropriedade), quando houver, na criação de lote */
-  const camposHistorico: CampoConsulta[] = [{chave:"origem",colunas:["origem","destino","situacao"],ativo:!!sitiosHistorico.length||!!lotesHistorico.length||mostrarDesfeitas,limpar:edicaoHistorico.limpar,conteudo: <div className="filtros-modal-grade"><MultiSelect compacto label="Sítios da movimentação" contentClassName="z-[1300]" options={sitiosAtivos.map(s=>({value:String(s.id),label:s.nome}))} value={edicaoHistorico.rascunho.sitios} onValueChange={v=>{edicaoHistorico.editar("sitios",v);edicaoHistorico.editar("lotes",[]);}}/><MultiSelect compacto label="Lotes da movimentação" contentClassName="z-[1300]" options={lotesDoSitioHistorico.map(l=>({value:l.id,label:l.nome}))} value={edicaoHistorico.rascunho.lotes} onValueChange={v=>edicaoHistorico.editar("lotes",v)}/><label className="flex items-center gap-2"><input type="checkbox" checked={edicaoHistorico.rascunho.desfeitas} onChange={e=>edicaoHistorico.editar("desfeitas",e.target.checked)}/>Incluir desfeitas</label></div>}];
+  const camposHistorico: CampoConsulta[] = [{chave:"origem",colunas:["origem","destino","situacao"],ativo:!!sitiosHistorico.length||!!lotesHistorico.length||mostrarDesfeitas,limpar:edicaoHistorico.limpar,conteudo: <div className="filtros-modal-grade"><MultiSelect compacto label="Lotes da movimentação" contentClassName="z-[1300]" options={lotesDoSitioHistorico.map(l=>({value:l.id,label:l.nome}))} value={edicaoHistorico.rascunho.lotes} onValueChange={v=>edicaoHistorico.editar("lotes",v)}/><label className="flex items-center gap-2"><input type="checkbox" checked={edicaoHistorico.rascunho.desfeitas} onChange={e=>edicaoHistorico.editar("desfeitas",e.target.checked)}/>Incluir desfeitas</label></div>}];
   const propriedadeInicial = getPropriedadeAtiva() ?? sitiosAtivos[0]?.id ?? null;
 
   return <PaginaFinanceira>
@@ -188,12 +187,11 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
 
     <Panel className="mt-5 overflow-hidden">
       {/* filtros ficam fora do fieldset de escrita — quem só pode ver continua podendo filtrar (K7) */}
-      <BarraConsulta ordenacao={ordemLotes.controle} campos={camposLotes} edicaoFiltros={edicaoLotes} criterios={[...(filtroSitio?[{id:"sitio",rotulo:`Sítio: ${sitiosAtivos.find(s=>String(s.id)===filtroSitio)?.nome ?? "Selecionado"}`,limpar:()=>{setFiltroSitio("");setPaginaLotes(1);}}]:[]),...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>{setMostrarInativos(false);setPaginaLotes(1);}}]:[])]} acao={podeLancar ? <div className="flex flex-wrap gap-2">
+      <BarraConsulta ordenacao={ordemLotes.controle} campos={camposLotes} edicaoFiltros={edicaoLotes} criterios={[...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>{setMostrarInativos(false);setPaginaLotes(1);}}]:[])]} acao={podeLancar ? <div className="flex flex-wrap gap-2">
       <Button secondary onClick={() => setSelecionandoAnimais(true)}><ArrowRightLeft size={16} /> Movimentar animais</Button>
     </div> : undefined}>
         <BuscaLista rotulo="Buscar lote" placeholder="Buscar lote ou sítio" valor={busca} onChange={valor => { setBusca(valor); setPaginaLotes(1); }} />
       </BarraConsulta>
-      <div className="consulta-visual-barra"><span>{lotesFiltrados.length} lotes no recorte</span></div>
       <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
         {lotes === null
           ? <EsqueletoTabela label="Carregando lotes" className="p-6" />

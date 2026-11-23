@@ -90,3 +90,11 @@
 .destaque[data-tom="alerta"] strong { color: var(--destructive); }
 
 .consulta-criterio-info{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border:1px solid var(--border);border-radius:999px;background:var(--muted);font-size:13px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+
+.destaque small{display:block;max-width:240px;font-size:12px;line-height:1.35;color:var(--muted-foreground)}
+.destaque[data-tom="alerta"] small{color:inherit;opacity:.85}
+.destaque[data-acao]{padding:0}
+.destaque-acao{display:grid;gap:2px;width:100%;padding:8px 14px;border:0;border-radius:inherit;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.destaque-acao:hover{filter:brightness(.97)}
+.destaque-acao[aria-pressed="true"]{outline:2px solid var(--primary);outline-offset:-2px}
+.destaque-acao:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
