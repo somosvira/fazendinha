@@ -62,12 +62,23 @@ INSERT INTO pecuaria."Raca" (id,nome,sigla,base,"atualizadoEm") VALUES
  ('fixture-si','Sindi','SI',true,'2020-01-01'),
  ('fixture-custom','Raça particular','XX',true,'2020-01-01'),
  ('fixture-gi','Grauvieh','GI',true,'2020-01-01');
+-- Genitor e animal reais no ensaio, com relação de filiação e composições
+-- apontando às identidades raciais existentes antes da reconciliação.
+INSERT INTO pecuaria."GenitorExterno" (id,sexo,nome,"atualizadoEm") VALUES
+ ('fixture-genitor','M','Genitor de teste','2020-01-01');
+INSERT INTO pecuaria."ComposicaoGenitorExterno" (id,"genitorId","racaId",fracao64) VALUES
+ ('fixture-composicao-genitor','fixture-genitor','fixture-ho',64);
+INSERT INTO pecuaria."Animal" (id,brinco,sexo,"dataNascimento",origem,"dataEntrada","paiExternoId","atualizadoEm") VALUES
+ ('fixture-animal','CI-381','F','2020-01-01','NASCIDO','2020-01-01','fixture-genitor','2020-01-01');
+INSERT INTO pecuaria."ComposicaoRacial" (id,"animalId","racaId",fracao64,origem,"atualizadoEm") VALUES
+ ('fixture-composicao-animal','fixture-animal','fixture-ho',64,'INFORMADA','2020-01-01');
 SQL
 snapshot_protegido() {
-  psql "$url_antiga" -XAt -v ON_ERROR_STOP=1 -c "SELECT row_to_json(t) FROM (SELECT * FROM public.\"Produto\" WHERE id LIKE 'fixture-produto%' ORDER BY id) t UNION ALL SELECT row_to_json(t) FROM (SELECT id,nome,ativo,ordem FROM public.\"Categoria\" WHERE nome='Sanidade') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"Raca\" WHERE id LIKE 'fixture-%' ORDER BY id) t;"
+  psql "$url_antiga" -XAt -v ON_ERROR_STOP=1 -c "SELECT row_to_json(t) FROM (SELECT * FROM public.\"Produto\" WHERE id LIKE 'fixture-produto%' ORDER BY id) t UNION ALL SELECT row_to_json(t) FROM (SELECT id,nome,ativo,ordem FROM public.\"Categoria\" WHERE nome='Sanidade') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"Raca\" WHERE id LIKE 'fixture-%' ORDER BY id) t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"GenitorExterno\" WHERE id='fixture-genitor') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"ComposicaoGenitorExterno\" WHERE id='fixture-composicao-genitor') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"Animal\" WHERE id='fixture-animal') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"ComposicaoRacial\" WHERE id='fixture-composicao-animal') t;"
 }
 test "$(psql "$url_antiga" -XAt -c "SELECT count(*) FROM public.\"Produto\" WHERE id LIKE 'fixture-produto%'")" = 36
 test "$(psql "$url_antiga" -XAt -c "SELECT count(*) FROM pecuaria.\"Raca\" WHERE id LIKE 'fixture-%'")" = 5
+test "$(psql "$url_antiga" -XAt -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pecuaria.\"Animal\" a JOIN pecuaria.\"GenitorExterno\" g ON g.id=a.\"paiExternoId\" JOIN pecuaria.\"ComposicaoGenitorExterno\" cg ON cg.\"genitorId\"=g.id JOIN pecuaria.\"ComposicaoRacial\" ca ON ca.\"animalId\"=a.id WHERE a.id='fixture-animal' AND cg.\"racaId\"='fixture-ho' AND ca.\"racaId\"='fixture-ho'")" = 1
 snapshot_protegido > "$base/protegido-antes"
 DATABASE_URL="$url_antiga" DIRECT_URL="$url_antiga" pnpm --filter rionovo-server exec prisma migrate resolve --applied 20261124170000_base_unificada --schema "$base/nova/server/prisma/schema.prisma"
 DATABASE_URL="$url_antiga" DIRECT_URL="$url_antiga" pnpm --filter rionovo-server exec prisma migrate deploy --schema "$base/nova/server/prisma/schema.prisma"
