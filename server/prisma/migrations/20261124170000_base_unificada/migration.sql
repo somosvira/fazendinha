@@ -8683,7 +8683,7 @@ CREATE TABLE public."ClassificacaoTecnicaProduto" (
     "nomeNormalizado" text NOT NULL,
     ativo boolean DEFAULT true NOT NULL,
     "codigoOrigem" text NOT NULL,
-    CONSTRAINT "ClassificacaoTecnicaProduto_nome_check" CHECK ((((char_length(btrim((nome)::text)) >= 2) AND (char_length(btrim((nome)::text)) <= 160)) AND ("nomeNormalizado" = public.normalizar_nome_produto_v1((nome)::text))))
+    CONSTRAINT "ClassificacaoTecnicaProduto_nome_check" CHECK (char_length(btrim(nome)) BETWEEN 2 AND 160 AND "nomeNormalizado" = public.normalizar_nome_produto_v1(nome))
 );
 
 
@@ -8882,7 +8882,7 @@ CREATE TABLE public."FabricanteProduto" (
     "nomeNormalizado" text NOT NULL,
     ativo boolean DEFAULT true NOT NULL,
     "codigoOrigem" text NOT NULL,
-    CONSTRAINT "FabricanteProduto_nome_check" CHECK ((((char_length(btrim((nome)::text)) >= 2) AND (char_length(btrim((nome)::text)) <= 160)) AND ("nomeNormalizado" = public.normalizar_nome_produto_v1((nome)::text))))
+    CONSTRAINT "FabricanteProduto_nome_check" CHECK (char_length(btrim(nome)) BETWEEN 2 AND 160 AND "nomeNormalizado" = public.normalizar_nome_produto_v1(nome))
 );
 
 
@@ -9207,7 +9207,7 @@ CREATE TABLE public."PrincipioAtivo" (
     "nomeNormalizado" text NOT NULL,
     ativo boolean DEFAULT true NOT NULL,
     "codigoOrigem" text NOT NULL,
-    CONSTRAINT "PrincipioAtivo_nome_check" CHECK ((((char_length(btrim((nome)::text)) >= 2) AND (char_length(btrim((nome)::text)) <= 100)) AND ("nomeNormalizado" = public.normalizar_nome_produto_v1((nome)::text))))
+    CONSTRAINT "PrincipioAtivo_nome_check" CHECK (char_length(btrim(nome)) BETWEEN 2 AND 100 AND "nomeNormalizado" = public.normalizar_nome_produto_v1(nome))
 );
 
 
@@ -9265,7 +9265,7 @@ CREATE TABLE public."ProdutoCatalogo" (
     "conferenciaBula" jsonb,
     CONSTRAINT "ProdutoCatalogo_conferencia_bula_objeto" CHECK ((("conferenciaBula" IS NULL) OR (jsonb_typeof("conferenciaBula") = 'object'::text))),
     CONSTRAINT "ProdutoCatalogo_conteudo_positivo" CHECK ((("conteudoEmbalagem" IS NULL) OR ("conteudoEmbalagem" > (0)::numeric))),
-    CONSTRAINT "ProdutoCatalogo_nome_check" CHECK ((((char_length(btrim((nome)::text)) >= 2) AND (char_length(btrim((nome)::text)) <= 200)) AND ("nomeNormalizado" = public.normalizar_nome_produto_v1((nome)::text)) AND ("versaoCatalogo" > 0)))
+    CONSTRAINT "ProdutoCatalogo_nome_check" CHECK (char_length(btrim(nome)) BETWEEN 2 AND 200 AND "nomeNormalizado" = public.normalizar_nome_produto_v1(nome) AND "versaoCatalogo" > 0)
 );
 
 

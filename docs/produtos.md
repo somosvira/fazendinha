@@ -43,7 +43,7 @@ Item inativo no catálogo continua legível pelos produtos que o adotaram, mas d
 ## Herança
 
 - **Valor efetivo** de `apresentacao`, `fabricante` e `classificacaoTecnica`: valor do `Produto` se não nulo, senão o do item do catálogo. Calculado no serviço (DTO), nunca gravado como cópia.
-- **Nome**: por causa da unicidade atual de `Produto.nome`, a adoção grava no `Produto` o nome completo do item, `"<nome> (<apresentação>)"` quando houver apresentação. Na fonte, 703 nomes se repetem com apresentações diferentes (ex.: "Biomox 20% PS" em sachês de tamanhos distintos), então o nome sozinho colidiria. A flag `nomeAlterado` (default false) indica se o usuário mudou o nome; enquanto false, uma atualização do catálogo também atualiza o nome do produto, se não houver colisão. Colisão mantém o nome atual.
+- **Nome**: por causa da unicidade atual de `Produto.nome`, a adoção grava no `Produto` o nome completo do item, `"<nome> (<apresentação>)"` quando houver apresentação. Na fonte, 703 nomes se repetem com apresentações diferentes (ex.: "Biomox 20% PS" em sachês de tamanhos distintos), então o nome sozinho colidiria. A flag `nomeAlterado` (default false) indica se o usuário mudou o nome; a carga de cadastros padrão preserva o nome e os demais dados já existentes no produto da fazenda.
 - **Princípios ativos**: sempre do catálogo, sem edição pela fazenda nesta entrega. Produto manual não tem princípios ativos.
 - **Restaurar** um campo grava null (ou `nomeAlterado = false` e o nome do catálogo) e volta a herdar.
 - A ficha marca cada campo herdável como "do catálogo" ou "alterado pela fazenda".

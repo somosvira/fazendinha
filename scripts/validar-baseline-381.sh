@@ -15,6 +15,20 @@ url_antiga='postgresql://ci:ci@127.0.0.1:5432/baseline381_antiga'
 url_nova='postgresql://ci:ci@127.0.0.1:5432/baseline381_nova'
 DATABASE_URL="$url_antiga" DIRECT_URL="$url_antiga" pnpm --filter rionovo-server exec prisma migrate deploy --schema "$base/antiga/server/prisma/schema.prisma"
 DATABASE_URL="$url_nova" DIRECT_URL="$url_nova" pnpm --filter rionovo-server exec prisma migrate deploy --schema "$base/nova/server/prisma/schema.prisma"
+# A instalação vazia deve receber exatamente os cadastros padrão previstos.
+psql "$url_nova" -v ON_ERROR_STOP=1 <<'SQL'
+DO $$ BEGIN
+ IF (SELECT count(*) FROM public."GrupoCategoria") <> 7
+ OR (SELECT count(*) FROM public."Categoria") <> 26
+ OR (SELECT count(*) FROM public."Categoria" WHERE "grupoId" IS NOT NULL) <> 26
+ OR (SELECT count(*) FROM public."CentroCusto") <> 5
+ OR (SELECT count(*) FROM pecuaria."Raca" WHERE ativo) <> 10
+ OR (SELECT string_agg(sigla || ':' || base::text, ',' ORDER BY sigla) FROM pecuaria."Raca" WHERE ativo) <> 'AN:true,CR:true,GL:false,GO:true,GU:true,HO:true,JE:true,NE:true,PS:true,SD:true'
+ OR (SELECT count(*) FROM public."ProdutoCatalogo" WHERE fonte='IDEAGRI_DADOS000') <> 2576
+ OR (SELECT count(*) FROM public."ProdutoCatalogo" WHERE fonte='IDEAGRI_DADOS777') <> 7
+ THEN RAISE EXCEPTION 'Cadastros padrão incompletos ou divergentes'; END IF;
+END $$;
+SQL
 # O ledger fica preservado, mas não participa da comparação estrutural.
 dump_schema() {
   pg_dump --schema-only --no-owner --no-privileges --schema=public --schema=pecuaria --exclude-table=public._prisma_migrations "$1" | sed '/^\\restrict /d; /^\\unrestrict /d'
@@ -25,6 +39,19 @@ dump_dados() {
 dump_schema "$url_antiga" > "$base/antiga.sql"
 dump_schema "$url_nova" > "$base/nova.sql"
 diff -u "$base/antiga.sql" "$base/nova.sql"
+# Compara os cinco catálogos históricos, ignorando apenas o relógio da carga
+# entre instalações independentes. Na reconciliação, conserva também timestamps.
+snapshot_catalogo() {
+  local url="$1" expressao="$2" tabela
+  for tabela in FabricanteProduto ClassificacaoTecnicaProduto PrincipioAtivo ProdutoCatalogo ProdutoCatalogoPrincipioAtivo; do
+    echo "$tabela"
+    psql "$url" -XAt -v ON_ERROR_STOP=1 -c "SELECT $expressao FROM public.\"$tabela\" t ORDER BY 1"
+  done
+}
+snapshot_catalogo "$url_antiga" "(to_jsonb(t) - 'atualizadoEm')::text" > "$base/catalogo-historico"
+snapshot_catalogo "$url_nova" "(to_jsonb(t) - 'atualizadoEm')::text" > "$base/catalogo-novo"
+diff -u "$base/catalogo-historico" "$base/catalogo-novo"
+snapshot_catalogo "$url_antiga" 'to_jsonb(t)::text' > "$base/catalogo-antes-upgrade"
 # Fixtures representam referências e cadastros que já pertencem à fazenda.
 psql "$url_antiga" -v ON_ERROR_STOP=1 <<'SQL'
 INSERT INTO public."Produto" (id,nome,"categoriaId","updatedAt") SELECT 'fixture-produto','Produto preservado',id,'2020-01-01' FROM public."Categoria" WHERE nome='Sanidade';
@@ -46,6 +73,8 @@ DATABASE_URL="$url_antiga" DIRECT_URL="$url_antiga" pnpm --filter rionovo-server
 DATABASE_URL="$url_antiga" DIRECT_URL="$url_antiga" pnpm --filter rionovo-server exec prisma migrate deploy --schema "$base/nova/server/prisma/schema.prisma"
 snapshot_protegido > "$base/protegido-depois"
 diff -u "$base/protegido-antes" "$base/protegido-depois"
+snapshot_catalogo "$url_antiga" 'to_jsonb(t)::text' > "$base/catalogo-depois-upgrade"
+diff -u "$base/catalogo-antes-upgrade" "$base/catalogo-depois-upgrade"
 test "$(psql "$url_antiga" -XAt -c "SELECT count(*) FROM public.\"Categoria\" c JOIN public.\"GrupoCategoria\" g ON g.id=c.\"grupoId\" WHERE c.nome='Sanidade' AND c.\"usoSanitario\" AND g.nome='Saúde do rebanho'")" = 1
 dump_dados "$url_antiga" > "$base/antes-repeticao.sql"
 psql "$url_antiga" -v ON_ERROR_STOP=1 -f server/prisma/migrations/20261124170100_cadastros_padrao/migration.sql > /dev/null
