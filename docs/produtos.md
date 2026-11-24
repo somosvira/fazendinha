@@ -19,7 +19,7 @@ O catálogo não tem saldo, custo, categoria financeira, centro de custo, estoqu
 
 ## Modelo de dados
 
-Tabelas do catálogo em `public`. A aplicação só as lê: não há rota nem serviço de escrita; a escrita vem apenas das migrations de dados. (O projeto não separa papéis de banco hoje, então não há `GRANT` específico.) IDs UUID determinísticos (v5 de fonte + código), estáveis entre ambientes e versões do catálogo.
+Tabelas do catálogo em `public`. A aplicação só as lê: não há rota nem serviço de escrita; a escrita vem apenas das migrations de dados. (O projeto não separa papéis de banco hoje, então não há `GRANT` específico.) Novos itens usam UUIDs determinísticos da fonte; correspondências já instaladas conservam seus IDs e vínculos, que podem diferir entre ambientes.
 
 | Entidade | Campos |
 |---|---|
@@ -71,11 +71,9 @@ A linha da operação mostra a categoria antes de salvar:
 
 ## Carga e atualização do catálogo
 
-O deploy de STG e produção executa apenas migrations (ver [DEPLOY.md](../DEPLOY.md)). Por isso o catálogo é carregado por **migration de dados**:
+A migration `20261124170100_cadastros_padrao` provisiona em transação as 2.583 referências finais e seus fabricantes, classificações, princípios e curadorias documentais. As fontes versionadas permanecem em `scripts/catalogo-produtos/` e no histórico do repositório; o arquivo FDB não integra o repositório. A carga reutiliza identidades existentes sem alterar seus campos, status, IDs ou vínculos e não cria produtos operacionais. Conflitos de identidade interrompem a transação. Uma nova execução direta não deve alterar registros já instalados; testes de CI verificam a reaplicação e os conflitos.
 
-- Uma migration por versão do catálogo, gerada por script a partir da extração curada (`scripts/catalogo-produtos/`). O SQL gerado é revisado e versionado no repositório; a fonte FDB não entra no repositório.
-- Inserção e atualização por `(fonte, codigoOrigem)` com `ON CONFLICT DO UPDATE`. Itens que saem da fonte ficam `ativo = false`; nunca são apagados.
-- Atualizar o catálogo nunca altera campos preenchidos pela fazenda; afeta apenas valores herdados e o nome não alterado.
+Evoluções futuras do catálogo exigem migration própria, revisão das referências e preservação dos produtos adotados e fatos históricos. A aplicação só consulta o catálogo; adoção operacional continua pelo fluxo da fazenda.
 
 ## Interface
 
@@ -170,7 +168,7 @@ prova oficial de sucessão do fabricante, `documentosComplementares` guarda
 também URL, SHA-256, seção e página desses documentos. A referência por campo
 aponta ao documento que sustenta o valor, sem preencher lacunas por analogia.
 O lote `referencias-lote-ampliado.json` segue essa regra e é aplicado por
-migration própria. Uma referência publicada pode continuar com campos
+carga de cadastros padrão. Uma referência publicada pode continuar com campos
 explicitamente não informados; publicação da fonte não significa ficha clínica
 completa nem confirmação das demais apresentações do mesmo nome.
 
@@ -189,19 +187,19 @@ fontes, doses e carências. O conteúdo documental não altera os perfis técnic
 da fazenda ou o histórico sanitário, nem preenche automaticamente aplicações.
 A cobertura é parcial e depende da confirmação individual das fontes.
 
-O complemento conferido fica em `scripts/catalogo-produtos/bulas/referencias-complementares.json`, aplicado por migration própria. `pendencias.json` registra os motivos das divergências examinadas; `cobertura-pendente.json` conserva o levantamento inicial, sem representar a cobertura atual após novas rodadas. Esses arquivos não representam ausência comprovada de bula no mercado. A situação operacional vigente vem do catálogo no banco.
+O complemento conferido fica em `scripts/catalogo-produtos/bulas/referencias-complementares.json`, incluído na carga de cadastros padrão. `pendencias.json` registra os motivos das divergências examinadas; `cobertura-pendente.json` conserva o levantamento inicial, sem representar a cobertura atual após novas rodadas. Esses arquivos não representam ausência comprovada de bula no mercado. A situação operacional vigente vem do catálogo no banco.
 
 A rodada `referencias-prioridade-estoque.json` prioriza nomes encontrados no saldo local. Itens sintéticos/demonstrativos e produtos sem fabricante/apresentação/vínculo não recebem referência por aproximação e não são vinculados automaticamente. A identidade entre fabricante histórico e grupo atual exige evidência oficial guardada na curadoria, além da conferência de nome, princípio ativo e apresentação. Tabelas oficiais publicadas como imagem mantêm URL e SHA-256 adicionais; doses em UI ou por indicação não viram relações por kg. A leitura de saldo considera apenas movimentos confirmados: entradas e ajustes com seu sinal, saídas com sinal invertido.
 
 ### Referências históricas do DADOS777
 
-Cadastros próprios da fazenda que não existem no catálogo comercial podem ser incorporados sob a fonte distinta `IDEAGRI_DADOS777`, conservando o código original e a evidência da extração. A migration `20261118143000_medicamentos_historicos_ideagri` inclui Banamine (11268), Catosal B12 (11269) e Kinetomax (11357), a partir do arquivo de SHA-256 `65eada38680c2c71e8ff72f1676924eeda4c5d88c3552ec311e99a0877ded56a`. A unidade mL vem das anotações explícitas de aplicação; o frasco de Kinetomax de 100 mL vem do nome cadastrado na origem. Banamine e Catosal permanecem sem apresentação ou fator de embalagem. Esses cadastros não conferem fabricante, formulação, via, dose, bula ou carência; desconhecimento não é zero. Compra por embalagem exige identificar seu conteúdo antes da conversão. A incorporação cria apenas referências, sem adotar Produto, gerar saldo ou custo.
+Cadastros próprios da fazenda que não existem no catálogo comercial podem ser incorporados sob a fonte distinta `IDEAGRI_DADOS777`, conservando o código original e a evidência da extração. A carga de cadastros padrão inclui Banamine (11268), Catosal B12 (11269) e Kinetomax (11357), a partir do arquivo de SHA-256 `65eada38680c2c71e8ff72f1676924eeda4c5d88c3552ec311e99a0877ded56a`. A unidade mL vem das anotações explícitas de aplicação; o frasco de Kinetomax de 100 mL vem do nome cadastrado na origem. Banamine e Catosal permanecem sem apresentação ou fator de embalagem. Esses cadastros não conferem fabricante, formulação, via, dose, bula ou carência; desconhecimento não é zero. Compra por embalagem exige identificar seu conteúdo antes da conversão. A incorporação cria apenas referências, sem adotar Produto, gerar saldo ou custo.
 
 Templates do tablet podem reutilizar composições documentadas, com autoria e auditoria contendo a origem, SHA-256, identificadores dos fatos e critério de seleção. São pré-seleções editáveis. Quantidades padrão por vaca podem ser explicitamente configuradas por medicamento, com unidade congelada, autoria e auditoria; não são inferidas do histórico nem calculadas por peso. A unidade divergente impede salvar e uma mudança posterior de unidade retira o preenchimento automático até revisão. Valores já digitados pelo operador são preservados ao reaplicar o template. Templates anteriores continuam sem quantidade configurada. Intervalos e carências não são preenchidos automaticamente; variações históricas não são unidas num tratamento único. Tamanho de embalagem escolhido entre referências comerciais existentes não comprova o tamanho utilizado no fato histórico. A conferência local e as alternativas pendentes ficam em `.backups/ideagri-tratamentos-20261118/`, fora do versionamento de dados privados.
 
 A conferência das doenças efetivamente registradas no DADOS777 usa `DOENCAANIMAL` e, para mamites, `MAMITE`/`TRATAMENTOBASE`; nomes do catálogo sem ocorrências não comprovam uso. Os nomes resumidos são preservados inclusive para categorias como Grumo, CCS e Mancando, sem convertê-las em diagnósticos. Cada template histórico representa uma composição identificável de um atendimento, não a união dos medicamentos de todos os animais. Observações abreviadas ou formulações ambíguas permanecem pendentes; Outros não recebe composição automática porque agrega problemas distintos. Um item isolado nas observações não comprova tratamento completo. Templates já configurados são preservados.
 
-A migration `20261118220000_catalogo_historico_templates` acrescenta as referências próprias ECP (11179), Flumax (11199), Pencivet Plus (11203) e Excede (11294). Pencivet Plus não é associado por suposição às variantes PPU, Forte ou Superforte. Somente Excede tem embalagem identificada pelo nome de origem (100 mL); os demais permanecem sem fator. O vínculo das composições com os fatos e as pendências fica na auditoria e na conferência privada local, sem importar novas aplicações, movimentar estoque ou atribuir custos. A disponibilidade no tablet é verificada pela consulta operacional de opções; isso não equivale à homologação pela interface. A busca global continua encontrando os cadastros de doenças; templates mantêm a busca interna por doença/medicamento, conforme seu contrato.
+A carga de cadastros padrão inclui as referências próprias ECP (11179), Flumax (11199), Pencivet Plus (11203) e Excede (11294). Pencivet Plus não é associado por suposição às variantes PPU, Forte ou Superforte. Somente Excede tem embalagem identificada pelo nome de origem (100 mL); os demais permanecem sem fator. O vínculo das composições com os fatos e as pendências fica na auditoria e na conferência privada local, sem importar novas aplicações, movimentar estoque ou atribuir custos. A disponibilidade no tablet é verificada pela consulta operacional de opções; isso não equivale à homologação pela interface. A busca global continua encontrando os cadastros de doenças; templates mantêm a busca interna por doença/medicamento, conforme seu contrato.
 
 ### Conferência parcial por campo
 
@@ -209,7 +207,7 @@ A referência pode conservar dados oficiais confirmados mesmo quando outros camp
 
 Itens sem referência validada guardam `conferenciaBula`, com estado de pesquisa, conferência ou identidade pendente, motivos por campo e links que ainda precisam de conferência. Esses links não validam os dados clínicos. O tablet e o catálogo mostram os mesmos dados confirmados e a lista de pendências; campos pendentes não ocultam os demais. Cadastros demonstrativos e produtos sem vínculo recebem explicação específica. O Banamine histórico, sem apresentação ou forma farmacêutica, não herda automaticamente dados do Banamine Injetável, pois existe também a versão transdérmica.
 
-A migration `20261118170000_conferencia_parcial_bulas` acrescenta a conferência ao catálogo sanitário vigente, incorpora cinco referências do arquivo `referencias-parciais.json` e aproveita os motivos já documentados em `pendencias.json`. Doses dos templates, perfis da fazenda, aplicações e carências operacionais não são preenchidos a partir desse conteúdo de consulta. O vínculo com a referência oficial e sua versão não renomeia produtos históricos nem gera estoque, custo ou aplicação. O catálogo é a fonte de consulta; a confirmação administrativa conserva as guardas do fluxo sanitário.
+A carga de cadastros padrão inclui a conferência ao catálogo sanitário vigente, incorpora cinco referências do arquivo `referencias-parciais.json` e aproveita os motivos já documentados em `pendencias.json`. Doses dos templates, perfis da fazenda, aplicações e carências operacionais não são preenchidos a partir desse conteúdo de consulta. O vínculo com a referência oficial e sua versão não renomeia produtos históricos nem gera estoque, custo ou aplicação. O catálogo é a fonte de consulta; a confirmação administrativa conserva as guardas do fluxo sanitário.
 
 Lotes posteriores usam `gerar-migration-incremental.ts`: cada atualização exige identidade exata e referência ainda vazia, sem reinicializar pendências ou sobrescrever referências anteriores. `referencias-continuacao-msd.json` conserva também as tabelas oficiais de dosagem como documentos complementares. Condições dependentes do parto permanecem descritas por extenso e sem horas fixas após aplicação; redação oficial contraditória mantém o campo pendente. Nenhum desses dados preenche automaticamente os perfis operacionais ou as quantidades dos templates.
 

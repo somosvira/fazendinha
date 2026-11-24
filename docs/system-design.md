@@ -108,7 +108,7 @@ Parto/crias, tentativa/consumo e confirmação de conjunto leiteiro mantêm atom
 
 ## Persistência e SQL
 
-`public` contém Financeiro, Estoque, Auth e Sítios; `pecuaria` contém fatos e vínculos animais/leiteiros. A estrutura instalada pelo repositório parte de `server/prisma/migrations/20261025000000_base_unificada/migration.sql`. A cadeia anterior foi consolidada no merge V5 e permanece no Git. Evoluções posteriores são migrations incrementais; não se reescreve a baseline aplicada.
+`public` contém Financeiro, Estoque, Auth e Sítios; `pecuaria` contém fatos e vínculos animais/leiteiros. A estrutura instalada pelo repositório parte de `server/prisma/migrations/20261124170000_base_unificada/migration.sql`. A cadeia anterior foi consolidada no merge V5 e permanece no Git. Evoluções posteriores são migrations incrementais; não se reescreve a baseline aplicada.
 
 SQL complementa Prisma com CHECKs, FKs restritas, índices únicos parciais e triggers. Exemplos conferidos na baseline: proteção da identidade da sessão de leite; imutabilidade da entrada/emissão; validação da finalidade na origem; conservação de alocações e valor; proteção de versão de protocolo e snapshot de tarefa; vínculo imutável de qualidade no fechamento.
 

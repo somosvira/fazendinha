@@ -1,11 +1,10 @@
-import { contemSql, funcaoSql, tabelaSql } from "../../../test/sql-baseline.js";
-import { readFileSync } from "node:fs";
+import { baselineSql, contemSql, funcaoSql, tabelaSql } from "../../../test/sql-baseline.js";
 import { describe, expect, it } from "vitest";
-const sql = readFileSync(new URL("../../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
+const sql = baselineSql;
 describe("garantias declaradas na migration de qualidade (sem execução em banco)", () => {
   it("coletivo tem origem explícita sem animal e individual referencia exame real", () => {
     expect(contemSql(sql, "(sujeito = 'ANIMAL'::text) AND (\"exameAnimalId\" IS NOT NULL)")).toBe(true);
-    expect(contemSql(sql, "(sujeito = 'COLETIVO'::text) AND (\"exameAnimalId\" IS NULL) AND (\"origemColetiva\" IS NOT NULL)")).toBe(true);
+    expect(contemSql(sql, "(sujeito = 'COLETIVO'::text) AND (\"exameAnimalId\" IS NULL) AND (length(btrim(\"origemColetiva\")) > 0)")).toBe(true);
     expect(contemSql(sql, 'e."propriedadeId" IS DISTINCT FROM NEW."propriedadeId"')).toBe(true);
     expect(contemSql(sql, 'e.data<>NEW.data')).toBe(true);
   });

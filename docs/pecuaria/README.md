@@ -4,6 +4,8 @@ O [manual por eixos](../guia/README.md) explica o uso; o [modelo de estados](est
 
 O domínio atual usa o schema PostgreSQL `pecuaria` e as rotas `/api/pecuaria/rebanho/*`. A interface está em `client/src/pecuaria/rebanho/`; serviços em `server/src/services/pecuaria/`. A cadeia de migrations entrega Rebanho V1, Genética V2 e Sanidade/Peso/Nutrição V3, incluindo ciclos e desvios sanitários, e Reprodução V4, integradas à Produção V5 na baseline única. O [contrato de reprodução e visitas](reproducao.md) detalha as novas regras.
 
+A carga de cadastros padrão provisiona as raças Angus, Caracu, Gir Leiteiro, Guzerá, Holandês, Jersey, Nelore, Pardo Suíço e Sindi como base e Girolando como composta. Reutiliza identidades existentes sem editar histórico; Sindi SI e SD são equivalentes somente com nome compatível. Conflitos de nome, sigla ou tipo base interrompem a transação. Outras raças existentes são preservadas.
+
 ## Disponibilidade e limites
 
 | Eixo | Implementação atual |

@@ -29,6 +29,8 @@ As demais consultas financeiras compartilham os filtros de coluna e o modal cent
 
 ## Grupos de categorias
 
+A migration de cadastros padrão provisiona sete grupos, 26 categorias e cinco centros de custo em instalação nova. Reaproveita registros por nome sem alterar seus IDs, estado ou vínculos; nas categorias originais de fábrica Nutrição e Sanidade, completa o grupo ausente e o uso correspondente quando intacto. A carga é idempotente e não cria operações, produtos da fazenda ou movimentos. As categorias e centros existentes continuam editáveis pelos fluxos normais.
+
 `GrupoCategoria` organiza o cadastro financeiro em dois níveis: grupo → categoria. Os grupos e as categorias são compartilhados entre sítios; cada categoria pertence a um único grupo.
 
 O vínculo é definido exclusivamente em Configurações financeiras, no cadastro da categoria. Operações e itens continuam recebendo somente a categoria; não aceitam uma escolha independente de grupo. O grupo é uma dimensão gerencial derivada da categoria, distinta de centro de custo. Consultas futuras podem usar essa relação; os templates e a importação histórica ainda não fazem parte desta entrega.

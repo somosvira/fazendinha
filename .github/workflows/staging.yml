@@ -133,6 +133,36 @@ jobs:
       - name: Bateria de invariantes do financeiro (banco real)
         run: pnpm --filter rionovo-server run test:financeiro:integration
 
+  equivalencia-baseline:
+    name: equivalência da baseline e upgrade
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter rionovo-server exec prisma generate
+      - run: scripts/validar-baseline-381.sh
+
   seed-unificada:
     name: baseline + seed unificada (retomada e idempotência)
     runs-on: ubuntu-latest
@@ -198,7 +228,7 @@ jobs:
 
   deploy:
     name: deploy (${{ github.ref_name == 'main' && 'producao' || 'staging' }})
-    needs: [ci, financeiro-integration, seed-unificada]
+    needs: [ci, financeiro-integration, seed-unificada, equivalencia-baseline]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 20
