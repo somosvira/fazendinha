@@ -2,7 +2,7 @@ import { validarEscalaEscore, TIPO_EXAME_ESCORE_CORPORAL } from "./escore-corpor
 export { validarEscalaEscore } from "./escore-corporal.calc.js";
 import { Prisma } from "@prisma/client";
 import { auditar, RebanhoError } from "../rebanho/regras.js";
-import { registrarExameTx } from "../sanidade/exames.js";
+import { registrarExameTx, registrarEscoreValorPartoTx } from "../sanidade/exames.js";
 import type { CorrecaoPartoAmpliadaInput } from "./partos.schemas.js";
 export const TIPO_EXAME_ESCORE_PARTO = TIPO_EXAME_ESCORE_CORPORAL;
 type AcaoEscore = NonNullable<CorrecaoPartoAmpliadaInput["escoreMatriz"]>;
@@ -10,11 +10,20 @@ function erro(mensagem: string): never { throw new RebanhoError("VALIDACAO", men
 export async function aplicarEscorePartoTx(tx: Prisma.TransactionClient, parto: Prisma.PartoAnimalGetPayload<Record<string, never>>, acao: AcaoEscore | undefined, usuarioId: number | null) {
   if (!acao) return;
   if (acao.acao !== "ANULAR") {
-    validarEscalaEscore(acao.valor, acao.escalaMin, acao.escalaMax);
-    if (new Date(acao.data) < parto.data) erro("Escore pós-parto não pode anteceder o parto");
+    if (acao.escalaMin !== undefined && acao.escalaMax !== undefined) validarEscalaEscore(acao.valor, acao.escalaMin, acao.escalaMax);
+    if (new Date(acao.data ?? parto.data) < parto.data) erro("Escore pós-parto não pode anteceder o parto");
   }
   const anteriores = await tx.exameAnimal.findMany({ where: { partoPosPartoId: parto.id, status: "VALIDO", finalidadePrincipal: "ESCORE_CORPORAL" }, include: { resultados: { where: { vigente: true } } } });
   if (acao.acao === "REGISTRAR" && anteriores.length) erro("Já há escore vigente; use substituição explícita com motivo");
+  if (acao.acao === "SUBSTITUIR" && acao.escalaMin === undefined) {
+    const anterior = anteriores.find(e => e.id === acao.exameId);
+    const valorCampo = (campo: string) => anterior?.resultados.find(r => r.campo === campo)?.valor;
+    const minimo = valorCampo("ESCALA_MIN"), maximo = valorCampo("ESCALA_MAX");
+    if (minimo != null && maximo != null) {
+      const min = Number(minimo), max = Number(maximo); validarEscalaEscore(acao.valor, min, max);
+      acao = { ...acao, escalaMin: min, escalaMax: max, escalaDescricao: String(valorCampo("ESCALA_DESCRICAO") ?? "") || null, responsavel: acao.responsavel ?? anterior?.responsavel };
+    }
+  }
   if (acao.acao !== "REGISTRAR") {
     const anterior = anteriores.find(e => e.id === acao.exameId);
     if (!anterior) erro("Escore vigente não encontrado neste parto");
@@ -23,11 +32,12 @@ export async function aplicarEscorePartoTx(tx: Prisma.TransactionClient, parto: 
   }
   if (acao.acao === "ANULAR") return;
   const resultados: { campo: string; valor: string | number }[] = [
-    { campo: "ESCORE", valor: acao.valor }, { campo: "ESCALA_MIN", valor: acao.escalaMin }, { campo: "ESCALA_MAX", valor: acao.escalaMax },
+    { campo: "ESCORE", valor: acao.valor }, ...(acao.escalaMin !== undefined && acao.escalaMax !== undefined ? [{ campo: "ESCALA_MIN", valor: acao.escalaMin }, { campo: "ESCALA_MAX", valor: acao.escalaMax }] : []),
     ...(acao.escalaDescricao ? [{ campo: "ESCALA_DESCRICAO", valor: acao.escalaDescricao }] : []),
   ];
-  const exame = await registrarExameTx(tx, { animalId: parto.animalId, propriedadeId: parto.propriedadeId!, data: acao.data, tipoExameId: TIPO_EXAME_ESCORE_PARTO, resultados, responsavel: acao.responsavel }, usuarioId);
+  const dados = { animalId: parto.animalId, propriedadeId: parto.propriedadeId!, data: acao.data ?? parto.data.toISOString().slice(0, 10), tipoExameId: TIPO_EXAME_ESCORE_PARTO, resultados, responsavel: acao.responsavel };
+  const exame = await (acao.escalaMin === undefined ? registrarEscoreValorPartoTx : registrarExameTx)(tx, dados, usuarioId);
   const snapshot = exame.formatoSnapshot as Prisma.JsonObject;
-  const salvo = await tx.exameAnimal.update({ where: { id: exame.id }, data: { partoPosPartoId: parto.id, finalidades: ["ESCORE_CORPORAL"], finalidadePrincipal: "ESCORE_CORPORAL", formatoSnapshot: { ...snapshot, escala: { minimo: acao.escalaMin, maximo: acao.escalaMax, descricao: acao.escalaDescricao ?? null } } as Prisma.InputJsonValue } });
+  const salvo = await tx.exameAnimal.update({ where: { id: exame.id }, data: { partoPosPartoId: parto.id, finalidades: ["ESCORE_CORPORAL"], finalidadePrincipal: "ESCORE_CORPORAL", formatoSnapshot: { ...snapshot, ...(acao.escalaMin !== undefined ? { escala: { minimo: acao.escalaMin, maximo: acao.escalaMax!, descricao: acao.escalaDescricao ?? null } } : {}) } as Prisma.InputJsonValue } });
   await auditar(tx, { entidade: "ExameAnimal", entidadeId: salvo.id, animalId: parto.animalId, propriedadeId: parto.propriedadeId, acao: "VINCULO_ESCORE_PARTO", usuarioId, antes: exame, depois: salvo });
 }

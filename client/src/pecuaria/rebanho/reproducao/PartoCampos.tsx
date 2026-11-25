@@ -1,3 +1,4 @@
+import { ConfirmacaoCiencia } from "../../../components/ConfirmacaoCiencia";
 import type { ConfirmacaoImpacto } from "../sanidade/impactos-api";
 import { AjudaDestinoBezerreiro, useSugestaoBezerreiro } from "../bezerreiro/useSugestaoBezerreiro";
 import { Button } from "../../../components/ui/button";
@@ -29,7 +30,7 @@ export function camposPartoPayload(v: DadosParto, data: string, impacto?: Confir
     observacao: v.observacao || null, retencaoPlacenta: triEstado(v.retencaoPlacenta), grauRetencaoPlacenta: v.retencaoPlacenta === "SIM" && v.grauRetencaoPlacenta ? Number(v.grauRetencaoPlacenta) : null,
     ocorridoEm: v.hora ? dataHoraISO(`${data}T${v.hora}`) : null,
     horarioEstimado: !!v.hora && v.horarioEstimado,
-    ...(v.escoreAtivo ? { escoreMatriz: { acao: "REGISTRAR" as const, data: v.escoreData, valor: Number(v.escoreValor), escalaMin: Number(v.escalaMin), escalaMax: Number(v.escalaMax), escalaDescricao: v.escalaDescricao || null } } : {}),
+    ...(v.escoreAtivo ? { escoreMatriz: { acao: "REGISTRAR" as const, valor: Number(v.escoreValor.replace(",", ".")) } } : {}),
     ...(v.retencaoPlacenta === "SIM" && v.retencaoAcao === "CRIAR" ? { ocorrenciaRetencao: { acao: "CRIAR" as const, doencaId: v.doencaId, inicio: v.retencaoData, ...(impacto ? { impacto } : {}) } } : v.retencaoPlacenta === "SIM" && v.retencaoAcao === "VINCULAR" ? { ocorrenciaRetencao: { acao: "VINCULAR" as const, ocorrenciaId: v.ocorrenciaId } } : {}),
     ...(v.pesoAcao === "REGISTRAR" ? { pesoMatriz: { acao: "REGISTRAR" as const, data: v.pesoData, pesoKg: Number(v.pesoKg) } } : v.pesoAcao === "VINCULAR" ? { pesoMatriz: { acao: "VINCULAR" as const, pesagemId: v.pesagemId } } : {}),
   };
@@ -37,7 +38,7 @@ export function camposPartoPayload(v: DadosParto, data: string, impacto?: Confir
 export function CamposTriEstado({ rotulo, valor, onChange }: { rotulo: string; valor: string; onChange: (v: string) => void }) {
   return <label className="grid gap-1 text-sm">{rotulo}<SelectCampo className={classeInput} value={valor} onValueChange={novoValor => onChange(novoValor)}><option value="">Não informado</option><option value="SIM">Sim</option><option value="NAO">Não</option></SelectCampo></label>;
 }
-export function PostParto({ valor, onChange, animalId, propriedadeId }: { valor: DadosParto; onChange: (v: DadosParto) => void; animalId: string; propriedadeId?: number }) {
+export function PostParto({ valor, onChange, animalId, propriedadeId, escoreRef, erroEscore = false, revisaoEscore = false, escalaLegada = false, mostrarEscore = true }: { mostrarEscore?: boolean; escalaLegada?: boolean; revisaoEscore?: boolean; valor: DadosParto; onChange: (v: DadosParto) => void; animalId: string; propriedadeId?: number; escoreRef?: React.Ref<HTMLInputElement>; erroEscore?: boolean }) {
   const [doencas, setDoencas] = useState<Array<{ id: string; nome: string }>>([]);
   const [ocorrencias, setOcorrencias] = useState<Array<{ id: string; inicio: string; doenca: { nome: string } }>>([]);
   const [erroRp, setErroRp] = useState<string | null>(null);
@@ -66,13 +67,20 @@ export function PostParto({ valor, onChange, animalId, propriedadeId }: { valor:
     <label className="grid gap-1 text-sm">Peso da matriz<SelectCampo className={classeInput} value={valor.pesoAcao} onValueChange={novoValor => onChange({ ...valor, pesoAcao: novoValor, pesagemId: "" })}><option value="">Não informar agora</option><option value="REGISTRAR">Registrar pesagem</option><option value="VINCULAR">Reutilizar pesagem existente</option></SelectCampo></label>
     {valor.pesoAcao === "REGISTRAR" && <div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-sm"><span>Data real da pesagem <span aria-hidden="true">*</span></span><DatePicker aria-required="true" className={classeInput}  value={valor.pesoData} onChange={valor => mudar("pesoData", valor)} /></label><label className="grid gap-1 text-sm"><span>Peso da matriz (kg) <span aria-hidden="true">*</span></span><Input aria-required="true" className={classeInput} type="number" min="0.001" max="99999" step="any" value={valor.pesoKg} onChange={e => mudar("pesoKg", e.target.value)} /></label></div>}
     {valor.pesoAcao === "VINCULAR" && <><ErrorBox erro={erro} /><label className="grid gap-1 text-sm"><span>Pesagem existente <span aria-hidden="true">*</span></span><SelectCampo aria-required="true" className={classeInput} disabled={carregando} value={valor.pesagemId} onValueChange={novoValor => mudar("pesagemId", novoValor)}><option value="">{carregando ? "Carregando pesagens…" : "Selecione a pesagem"}</option>{pesagens.map(p => <option key={p.id} value={p.id}>{p.data.slice(0, 10)} · {p.pesoKg} kg</option>)}</SelectCampo></label>{!carregando && !erro && !pesagens.length && <p className="text-sm">Nenhuma pesagem disponível para esta matriz.</p>}</>}
-    <label className="text-sm"><input type="checkbox" checked={valor.escoreAtivo} onChange={e => onChange({ ...valor, escoreAtivo: e.target.checked })} /> Registrar Escore de condição corporal (ECC) da matriz</label>
-    {valor.escoreAtivo && <fieldset className="grid gap-3 rounded-lg border border-border p-3"><legend>Escore de condição corporal (ECC) com escala informada</legend>{([["escoreData", "Data real da avaliação *", "date"], ["escoreValor", "Valor do escore *", "number"], ["escalaMin", "Mínimo da escala *", "number"], ["escalaMax", "Máximo da escala *", "number"], ["escalaDescricao", "Descrição da escala (opcional)", "text"]] as const).map(([k, r, t]) => <label key={k} className="grid gap-1 text-sm">{r.endsWith(" *") ? <span>{r.slice(0, -2)} <span aria-hidden="true">*</span></span> : r}{t === "date" ? <DatePicker aria-required="true" value={valor[k]} onChange={novaData => mudar(k, novaData)} /> : <Input aria-required={k !== "escalaDescricao"} className={classeInput} type={t} step={t === "number" ? "any" : undefined} maxLength={300} value={valor[k]} onChange={e => mudar(k, e.target.value)} />}</label>)}</fieldset>}
+    {mostrarEscore && <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-3 gap-y-1">
+      {valor.escoreAtivo && <label htmlFor="valor-ecc-parto" className="col-start-2 row-start-1 text-sm">Valor do escore <span aria-hidden="true">*</span></label>}
+      <ConfirmacaoCiencia className="col-start-1 row-start-2 self-center [&>label]:items-center" id="registrar-ecc-matriz" checked={valor.escoreAtivo} onChange={ativo => onChange({ ...valor, escoreAtivo: ativo })}>Registrar ECC da matriz</ConfirmacaoCiencia>
+      {valor.escoreAtivo && <Input id="valor-ecc-parto" ref={escoreRef} aria-required="true" aria-invalid={erroEscore || undefined} aria-describedby={erroEscore ? "erro-ecc-parto" : undefined} inputMode="decimal" className={`${classeInput} col-start-2 row-start-2 min-w-0`} value={valor.escoreValor} onChange={e => mudar("escoreValor", e.target.value)} />}
+      {valor.escoreAtivo && erroEscore && <span id="erro-ecc-parto" className="col-start-2 row-start-3 text-sm text-destructive">Informe um valor numérico.</span>}
+    </div>}
+    {revisaoEscore && valor.escoreAtivo && <div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-sm">Data real da avaliação<DatePicker value={valor.escoreData} onChange={v => mudar("escoreData", v)} /></label>{escalaLegada && <>{([ ["escalaMin", "Mínimo da escala"], ["escalaMax", "Máximo da escala"], ["escalaDescricao", "Descrição da escala"] ] as const).map(([campo, rotulo]) => <label key={campo} className="grid gap-1 text-sm">{rotulo}<Input className={classeInput} value={valor[campo]} onChange={e => mudar(campo, e.target.value)} /></label>)}</>}</div>}
   </section>;
 }
-export function PartoCampos({ valor, onChange, crias, setCrias, lotes, lactacao, setLactacao, animalId, propriedadeId, lotesCarregando = false, onDestinoPendente, revelarExplicacao = 0 }: { revelarExplicacao?: number; lotesCarregando?: boolean; onDestinoPendente?: (pendente: boolean) => void; valor: DadosParto; onChange: (v: DadosParto) => void; crias: CriaInput[]; setCrias: (v: CriaInput[]) => void; lotes: Lote[]; lactacao: boolean; setLactacao: (v: boolean) => void; animalId: string; propriedadeId?: number }) {
+export function PartoCampos({ valor, onChange, crias, setCrias, lotes, lactacao, setLactacao, animalId, propriedadeId, lotesCarregando = false, onDestinoPendente, revelarExplicacao = 0, revelarEscore = 0 }: { revelarEscore?: number; revelarExplicacao?: number; lotesCarregando?: boolean; onDestinoPendente?: (pendente: boolean) => void; valor: DadosParto; onChange: (v: DadosParto) => void; crias: CriaInput[]; setCrias: (v: CriaInput[]) => void; lotes: Lote[]; lactacao: boolean; setLactacao: (v: boolean) => void; animalId: string; propriedadeId?: number }) {
   const [aba, setAba] = useState("parto");
   const explicacaoRef = useRef<HTMLTextAreaElement>(null);
+  const escoreRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (revelarEscore) { setAba("pos"); requestAnimationFrame(() => escoreRef.current?.focus()); } }, [revelarEscore]);
   useEffect(() => { if (revelarExplicacao) { setAba("parto"); requestAnimationFrame(() => explicacaoRef.current?.focus()); } }, [revelarExplicacao]);
   const escolhasManuais = useRef(new Set<number>());
   const automaticos = useRef(new Map<number, string>());
@@ -109,14 +117,15 @@ export function PartoCampos({ valor, onChange, crias, setCrias, lotes, lactacao,
       <label className="text-sm"><input type="checkbox" checked={lactacao} onChange={e => setLactacao(e.target.checked)} /> Registrar início de lactação</label>
       {valor.desfecho==="ABORTO"?<label className="grid gap-1 text-sm"><span>Explicação do aborto <span aria-hidden="true">*</span></span><textarea ref={explicacaoRef} aria-describedby="explicacao-aborto-ajuda" onInvalid={e => { if (aba !== "parto") { e.preventDefault(); const campo = e.currentTarget; setAba("parto"); requestAnimationFrame(() => campo.focus()); } }} className={classeInput} required minLength={5} maxLength={1000} value={valor.observacao} onChange={e=>mudar("observacao",e.target.value)}/><span id="explicacao-aborto-ajuda">Descreva a observação e o contexto; a causa clínica pode ser desconhecida.</span></label>:<label className="grid gap-1 text-sm">Observações do parto<textarea className={classeInput} maxLength={1000} value={valor.observacao} onChange={e => mudar("observacao", e.target.value)} /></label>}
     </section>
-    <div hidden={aba !== "pos"}><PostParto valor={valor} onChange={onChange} animalId={animalId} propriedadeId={propriedadeId} /></div>
+    <div hidden={aba !== "pos"}><PostParto valor={valor} onChange={onChange} animalId={animalId} propriedadeId={propriedadeId} escoreRef={escoreRef} erroEscore={revelarEscore > 0 && valor.escoreAtivo && !escoreNumericoValido(valor.escoreValor)} /></div>
   </>;
 }
 
+export const escoreNumericoValido = (valor: string) => !!valor.trim() && /^[+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+)$/.test(valor.trim()) && Number.isFinite(Number(valor.replace(",", ".")));
 export function validarDadosParto(v: DadosParto, anterior?: Pick<DadosParto, "desfecho" | "observacao">): string | null {
   const exigeExplicacao = !anterior || anterior.desfecho !== "ABORTO" || v.observacao !== anterior.observacao;
   if (v.desfecho === "ABORTO" && exigeExplicacao && v.observacao.trim().length < 5) return "Informe a explicação do aborto com pelo menos 5 caracteres.";
-  if (v.escoreAtivo && (!v.escoreData || v.escoreValor === "" || v.escalaMin === "" || v.escalaMax === "" || !(Number(v.escalaMin) < Number(v.escalaMax)) || Number(v.escoreValor) < Number(v.escalaMin) || Number(v.escoreValor) > Number(v.escalaMax))) return "Informe a data, o escore e os limites válidos da escala na aba Pós-parto.";
+  if (v.escoreAtivo && !escoreNumericoValido(v.escoreValor)) return "Informe um valor numérico para o escore na aba Pós-parto.";
   if (v.retencaoPlacenta === "SIM" && v.retencaoAcao === "CRIAR" && (!v.doencaId || !v.retencaoData)) return "Informe a doença e a data real da ocorrência na aba Pós-parto.";
   if (v.retencaoPlacenta === "SIM" && v.retencaoAcao === "VINCULAR" && !v.ocorrenciaId) return "Selecione a ocorrência de retenção na aba Pós-parto.";
   if (v.pesoAcao === "REGISTRAR" && (!v.pesoData || !(Number(v.pesoKg) > 0))) return "Informe a data real e o peso da matriz na aba Pós-parto.";

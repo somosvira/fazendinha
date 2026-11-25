@@ -71,10 +71,10 @@ export type OcorrenciaRetencaoInput =
   | { acao: "VINCULAR"; ocorrenciaId: string }
   | { acao: "CRIAR"; doencaId: string; inicio: string; observacao?: string | null; impacto?: ConfirmacaoImpacto }
   | { acao: "DESVINCULAR"; ocorrenciaId: string; motivo: string };
-export type DadosEscoreParto = { data: string; valor: number; escalaMin: number; escalaMax: number; escalaDescricao?: string | null; responsavel?: string | null };
+export type DadosEscoreParto = { data?: string; valor: number; escalaMin?: number; escalaMax?: number; escalaDescricao?: string | null; responsavel?: string | null };
 export type EscorePartoInput =
   | ({ acao: "REGISTRAR" } & DadosEscoreParto)
-  | ({ acao: "SUBSTITUIR"; exameId: string; motivo: string } & DadosEscoreParto)
+  | ({ acao: "SUBSTITUIR"; exameId: string; motivo: string; data: string } & DadosEscoreParto)
   | { acao: "ANULAR"; exameId: string; motivo: string };
 export type CamposParto = {
   desfecho?: "NASCIMENTO" | "ABORTO" | null;

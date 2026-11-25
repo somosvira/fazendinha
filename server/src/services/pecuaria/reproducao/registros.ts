@@ -946,7 +946,7 @@ export async function criarPartoTx(
   }
   await aplicarRetencaoPartoTx(tx, parto, input, usuarioId);
   await aplicarPesoPartoTx(tx, parto, input.pesoMatriz, usuarioId);
-  await aplicarEscorePartoTx(tx, parto, input.escoreMatriz, usuarioId);
+  await aplicarEscorePartoTx(tx, parto, input.escoreMatriz?.acao === "REGISTRAR" && input.escoreMatriz.escalaMin === undefined ? { ...input.escoreMatriz, data: parto.data.toISOString().slice(0, 10) } : input.escoreMatriz, usuarioId);
   await reconciliarDemandasAnimalTx(tx, input.animalId, usuarioId);
   await auditar(tx, {
     entidade: "PartoAnimal",
@@ -1732,6 +1732,23 @@ export async function corrigirVinculoGestacao(
     return salva;
   });
 }
+export async function adicionarEscorePartoTx(tx: Prisma.TransactionClient, id: string, input: { propriedadeId: number; chave: string; data: string; valor: number }, usuarioId: number | null) {
+    const referencia = await tx.partoAnimal.findFirst({ where: { id, propriedadeId: input.propriedadeId, status: "VALIDO" } });
+    if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Parto não encontrado neste sítio");
+    await travarAnimais(tx, [referencia.animalId]);
+    return operacaoIdempotenteTx(tx, { ...input, id }, usuarioId, "ADICAO_ESCORE_PARTO", async () => {
+      const antes = await tx.partoAnimal.findFirst({ where: { id, propriedadeId: input.propriedadeId, status: "VALIDO" } });
+      if (!antes) throw new RebanhoError("NAO_ENCONTRADO", "Parto não encontrado neste sítio");
+      await aplicarEscorePartoTx(tx, antes, { acao: "REGISTRAR", data: input.data, valor: input.valor }, usuarioId);
+      const depois = await tx.partoAnimal.update({ where: { id }, data: { versao: { increment: 1 } } });
+      await auditar(tx, { entidade: "PartoAnimal", entidadeId: id, animalId: antes.animalId, propriedadeId: input.propriedadeId, acao: "ADICAO_ESCORE", usuarioId, antes, depois });
+      return lerPartoTx(tx, id);
+    });
+}
+export async function adicionarEscoreParto(id: string, input: { propriedadeId: number; chave: string; data: string; valor: number }, usuarioId: number | null) {
+  return transacaoPecuaria(tx => adicionarEscorePartoTx(tx, id, input, usuarioId));
+}
+
 export async function corrigirPartoTx(
   tx: Prisma.TransactionClient,
   id: string,
