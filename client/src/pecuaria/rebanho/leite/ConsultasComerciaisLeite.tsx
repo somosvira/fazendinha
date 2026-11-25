@@ -49,7 +49,7 @@ export function ConsultasComerciaisLeite({ tipo, podeLancar = false }: { tipo: "
     return () => { ativa = false; };
   }, [registrar, sitio, de, ate, paginaOperacoes]);
   return <section className="leite-operacoes leite-comercial-consulta" aria-label={tipo === "coletas" ? "Consulta de coletas" : "Consulta de vendas"}>
-    <CabecalhoRotinaLeite titulo={tipo === "coletas" ? "Coletas físicas" : "Vendas de leite"} ajuda={tipo === "coletas" ? "Retiradas pela data real, inclusive com preço pendente." : "Acordos por comprador e período comercial."} rotuloAjuda="Sobre as consultas comerciais" acao={tipo === "coletas" && podeLancar && sitio != null ? <Button onClick={() => { setOperacao(""); setPaginaOperacoes(1); setRegistrar(true); }}><Truck size={17} aria-hidden />Registrar retirada</Button> : undefined} />
+    <CabecalhoRotinaLeite titulo={tipo === "coletas" ? "Coletas físicas" : "Vendas de leite"} ajuda={tipo === "coletas" ? "Retiradas pela data real, inclusive com preço pendente." : "Acordos por comprador e período comercial."} rotuloAjuda="Sobre as consultas comerciais" acao={tipo === "coletas" && podeLancar && dados?.consolidado !== true ? <Button onClick={() => { setOperacao(""); setPaginaOperacoes(1); setRegistrar(true); }}><Truck size={17} aria-hidden />Registrar retirada</Button> : undefined} />
     <BarraComercialLeite filtros={filtros} parceiros={parceiros} onChange={f => { setFiltros(f); setPagina(1); }} />
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando {tipo}…</p> : <>
       {!dados.itens.length && !dados.total && <Empty>Nenhum registro neste recorte.</Empty>}
@@ -69,7 +69,7 @@ export function ConsultasComerciaisLeite({ tipo, podeLancar = false }: { tipo: "
       <Paginacao pagina={paginaOperacoes} totalPaginas={Math.max(1, Math.ceil(totalOperacoes / 20))} total={totalOperacoes} porPagina={20} rotulo="Paginação de operações abertas" substantivo="operações abertas" idSelect="pagina-operacoes-coleta" onPagina={p => { setOperacao(""); setPaginaOperacoes(p); }} />
       {!operacoes.length && <Empty>Nenhuma operação aberta encontrada no recorte. Amplie o período ou abra uma operação em Vendas.</Empty>}
       <Button variant="outline" asChild><a href={`/pecuaria/leite?leiteSecao=vendas&novaOperacaoLeite=1&operacoesDe=${de}&operacoesAte=${ate}`}>Nova operação por período</a></Button>
-      {operacao && <OperacoesComerciaisLeite key={operacao} integrado operacaoId={operacao} podeLancar={podeLancar && sitio != null} podeFinanceiro={false} />}
+      {operacao && <OperacoesComerciaisLeite key={operacao} integrado operacaoId={operacao} podeLancar={podeLancar && dados?.consolidado !== true} podeFinanceiro={false} />}
     </DialogComercialLeite>
   </section>;
 }

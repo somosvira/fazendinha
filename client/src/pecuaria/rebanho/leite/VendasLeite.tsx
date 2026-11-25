@@ -55,7 +55,7 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
   function fecharDetalhe() { setSelecionada(null); setNova(false); const url = new URL(location.href); url.searchParams.delete("operacaoLeiteId"); url.searchParams.delete("novaOperacaoLeite"); history.replaceState(null, "", url); }
   function abrir(v: VendaUnificada) { if (v.comercialId) { setSelecionada(v.comercialId); const url = new URL(location.href); url.searchParams.set("operacaoLeiteId", v.comercialId); history.replaceState(null,"",url); } else setHistorico(v); }
   return <section className="leite-operacoes leite-comercial-consulta" aria-label="Vendas do leite">
-    <CabecalhoRotinaLeite titulo="Vendas de leite" acao={sitio == null ? undefined : <div className="leite-vendas-acoes">
+    <CabecalhoRotinaLeite titulo="Vendas de leite" acao={dados?.consolidado ? undefined : <div className="leite-vendas-acoes">
       {podeLancar && (podeFinanceiro
         ? <Button onClick={() => setAvulsa(true)}><Plus aria-hidden />Venda avulsa</Button>
         : <Button onClick={() => setNova(true)}><Plus aria-hidden />Nova operação por período</Button>)}
@@ -90,7 +90,7 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
       ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de vendas" substantivo="vendas" idSelect="pagina-vendas-leite" onPagina={setPagina} />} />
     </>}
     <DialogComercialLeite titulo={nova ? "Nova operação por período" : "Detalhe da operação"} aberto={!!selecionada || nova} onFechar={fecharDetalhe}>
-      <OperacoesComerciaisLeite key={nova ? "nova" : selecionada!} integrado operacaoId={selecionada} iniciarNova={nova} podeLancar={podeLancar && sitio != null} podeFinanceiro={podeFinanceiro} onMudou={id => { setRevisao(r => r + 1); setSelecionada(id); setNova(false); const url = new URL(location.href); url.searchParams.delete("novaOperacaoLeite"); if (id) url.searchParams.set("operacaoLeiteId", id); history.replaceState(null,"",url); }} />
+      <OperacoesComerciaisLeite key={nova ? "nova" : selecionada!} integrado operacaoId={selecionada} iniciarNova={nova} podeLancar={podeLancar && dados?.consolidado !== true} podeFinanceiro={podeFinanceiro} onMudou={id => { setRevisao(r => r + 1); setSelecionada(id); setNova(false); const url = new URL(location.href); url.searchParams.delete("novaOperacaoLeite"); if (id) url.searchParams.set("operacaoLeiteId", id); history.replaceState(null,"",url); }} />
     </DialogComercialLeite>
     {avulsa && podeFinanceiro && podeLancar && (config
       ? <NovaVendaAvulsaLeite sitio={dados?.propriedadeId ?? sitio} config={config} produtos={cadastros.produtos} onCancelar={() => setAvulsa(false)} onSalvar={() => { setAvulsa(false); setRevisao(r => r + 1); setAviso("Retirada e venda registradas. Acompanhe o recebimento no Financeiro."); }} />
