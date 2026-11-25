@@ -215,8 +215,6 @@ export function ReviewLine({ children, tone = "green" }: { children: React.React
 
 export type ColunaTabela<T> = {
   chave: string;
-  /** @deprecated transição do split: ignorado; sai quando as consultas migram. */
-  ocultarNoCartao?: boolean;
   titulo: string;
   /** Controle opcional no cabeçalho; o título textual continua nos cartões. */
   cabecalho?: React.ReactNode;
@@ -242,9 +240,6 @@ function ComIconeItem<T>({ item, icone, iconeDe, children }: { item: T; icone?: 
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
 export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, filtrosColunas, rodape, ordenacao, icone, iconeDe }: {
-  /** @deprecated transição do split: ignorados; saem quando as consultas migram. */
-  visualizacao?: string;
-  cartaoComLinks?: boolean;
   /** Mesmo ícone do cartão do item, exibido antes da coluna principal. */
   icone?: IconeItem;
   iconeDe?: (item: T) => IconeItem | undefined;
