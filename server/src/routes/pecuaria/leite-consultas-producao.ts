@@ -18,9 +18,8 @@ export const leiteConsultasProducaoRouter = new Hono().use("*", exigeArea("pecua
     const filtro = consultaResumoOperacionalProducaoSchema.safeParse(c.req.query());
     if (!filtro.success) return c.json({ error: filtro.error.issues[0].message, code: "VALIDACAO" }, 422);
     try {
-      const sitio = await resolverEscopoLeitura(c);
-      if (sitio === null) throw new RebanhoError("VALIDACAO", "Selecione um sítio para consultar a produção");
-      return c.json(await consultarResumoOperacionalProducaoLeite(sitio, filtro.data));
+      // null = Consolidado: soma consumo, descarte e vendas dos sítios ativos.
+      return c.json(await consultarResumoOperacionalProducaoLeite(await resolverEscopoLeitura(c), filtro.data));
     } catch (erro) { return falhaV4(c, erro); }
   })
   .get("/", c => consultar(c))

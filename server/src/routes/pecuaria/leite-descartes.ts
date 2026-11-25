@@ -1,3 +1,5 @@
+import { prisma } from "../../db.js";
+import { sitioDoRegistro } from "./escopo-registro.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
@@ -20,8 +22,8 @@ function falha(c: Context, erro: unknown) {
 }
 const autor = (c: Context) => { const id = getUsuario(c)?.id; return id != null && id > 0 ? id : null; };
 export const leiteDescartesRouter = new Hono().use("*", exigeArea("pecuaria"))
-  .get("/descartes", async c => { try { return c.json(await descartes.listarDescartesLeite(await sitio(c), consultaDescartesLeiteSchema.parse(c.req.query()))); } catch (e) { return falha(c, e); } })
-  .get("/descartes/:id", async c => { try { return c.json(await descartes.obterDescarteLeite(z.string().uuid().parse(c.req.param("id")), await sitio(c))); } catch (e) { return falha(c, e); } })
+  .get("/descartes", async c => { try { return c.json(await descartes.listarDescartesLeite(await resolverEscopoLeitura(c), consultaDescartesLeiteSchema.parse(c.req.query()))); } catch (e) { return falha(c, e); } })
+  .get("/descartes/:id", async c => { try { return c.json(await descartes.obterDescarteLeite(z.string().uuid().parse(c.req.param("id")), await sitioDoRegistro(c, () => prisma.descarteLeite.findUnique({ where: { id: z.string().uuid().parse(c.req.param("id")) }, select: { propriedadeId: true } }), "Descarte"))); } catch (e) { return falha(c, e); } })
   .post("/descartes", exigePermissao("lancar"), validar(descarteLeiteSchema), async c => {
     try { const input = c.req.valid("json"), propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId); return c.json(await descartes.registrarDescarteLeite({ ...input, propriedadeId }, autor(c)), 201); } catch (e) { return falha(c, e); }
   })

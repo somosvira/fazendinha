@@ -27,7 +27,7 @@ it("valida datas, sessão e área e consulta o Consolidado com escopo nulo", asy
   expect(m.consultar).toHaveBeenCalledWith(null, expect.objectContaining({ inicio: "2026-10-01" }), false);
 });
 
-it("resumo operacional exige sessão, Pecuária, sítio e período válido sem exigir valores", async () => {
+it("resumo operacional exige sessão, Pecuária e período válido e aceita Consolidado", async () => {
   m.resumo.mockResolvedValue({ dias: [] });
   expect((await app().request(`/resumo-operacional${query}`)).status).toBe(200);
   expect(m.resumo).toHaveBeenCalledWith(2, { inicio: "2026-10-01", fim: "2026-10-31" });
@@ -36,6 +36,6 @@ it("resumo operacional exige sessão, Pecuária, sítio e período válido sem e
   expect((await app().request("/resumo-operacional?inicio=2026-02-30&fim=2026-03-01")).status).toBe(422);
   expect((await app().request("/resumo-operacional?inicio=2025-01-01&fim=2026-01-02")).status).toBe(422);
   m.sitio.mockResolvedValue(null);
-  expect((await app().request(`/resumo-operacional${query}`)).status).toBe(422);
-  expect(m.resumo).toHaveBeenCalledTimes(1);
+  expect((await app().request(`/resumo-operacional${query}`)).status).toBe(200);
+  expect(m.resumo).toHaveBeenLastCalledWith(null, { inicio: "2026-10-01", fim: "2026-10-31" });
 });

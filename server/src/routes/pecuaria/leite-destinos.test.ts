@@ -32,7 +32,7 @@ describe("rotas de destino interno", () => {
     expect((await app(true).request("/destinos", post({ ...payload, parcelas: [{ animalId: uid(3), quantidadeLitros: 11 }] }))).status).toBe(422);
     expect(mocks.registrar).not.toHaveBeenCalled();
   });
-  it("consulta origens e histórico apenas no sítio, recusando consolidado", async () => {
+  it("origens e destinatários exigem sítio; histórico aceita Consolidado", async () => {
     mocks.candidatos.mockResolvedValue({ itens: [{ animalId: uid(3), sexo: "M", criaId: null }], total: 1 });
     expect((await app().request("/destinos/candidatos?data=2026-10-01&busca=Bezerro&pagina=2")).status).toBe(200);
     expect(mocks.candidatos).toHaveBeenCalledWith(2, "2026-10-01", "Bezerro", 2);
@@ -44,7 +44,10 @@ describe("rotas de destino interno", () => {
     expect((await app().request("/destinos?pagina=2")).status).toBe(200);
     expect(mocks.listar).toHaveBeenCalledWith(2, { pagina: 2 });
     mocks.leitura.mockResolvedValue(null);
-    expect((await app().request("/destinos")).status).toBe(422);
+    mocks.listar.mockResolvedValue({ consolidado: true, itens: [], total: 0 });
+    expect((await app().request("/destinos")).status).toBe(200);
+    expect(mocks.listar).toHaveBeenLastCalledWith(null, expect.anything());
+    expect((await app().request(`/destinos/origens?produtoId=${uid(5)}&data=2026-10-01`)).status).toBe(422);
   });
   it("traduz período fechado em conflito e exige versão/motivo no estorno", async () => {
     mocks.registrar.mockRejectedValue(new FinanceiroError("PERIODO_FECHADO", "Período fechado"));
