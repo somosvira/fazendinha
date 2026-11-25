@@ -44,5 +44,6 @@ it("vendas unificadas permitem metadados na Pecuária e mascaram valores no serv
   expect((await app([], ["financeiro"]).request("/comercial/vendas-unificadas")).status).toBe(403);
   expect((await app().request("/comercial/vendas-unificadas?porPagina=101")).status).toBe(422);
   mocks.escopo.mockResolvedValue(null);
-  expect((await app().request("/comercial/vendas-unificadas")).status).toBe(422);
+  expect((await app().request("/comercial/vendas-unificadas")).status).toBe(200);
+  expect(mocks.vendas).toHaveBeenLastCalledWith(null, expect.anything(), false);
 });

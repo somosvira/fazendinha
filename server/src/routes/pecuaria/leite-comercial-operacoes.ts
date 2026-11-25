@@ -23,6 +23,7 @@ import {
   confirmarLaudoQualidadeSchema,
 } from "../../services/pecuaria/leite/qualidade.schemas.js";
 import { falhaV4 } from "./reproducao.js";
+import { prisma } from "../../db.js";
 const json = <T extends z.ZodTypeAny>(s: T) =>
   zValidator("json", s, (r, c) =>
     !r.success
@@ -45,6 +46,17 @@ async function contexto(c: Context, escrita = false) {
       "Selecione um sítio para consultar operações de leite",
     );
   return { propriedadeId, usuarioId: autor(c) };
+}
+/**
+ * Leitura de uma operação existente: em Consolidado usa o sítio do próprio registro,
+ * para que a consulta consolidada consiga abrir o detalhe sem escolher o sítio antes.
+ */
+async function contextoDaOperacao(c: Context, id: string) {
+  const escopo = await resolverEscopoLeitura(c);
+  if (escopo !== null) return { propriedadeId: escopo, usuarioId: autor(c) };
+  const registro = await prisma.operacaoComercialLeite.findUnique({ where: { id }, select: { propriedadeId: true } });
+  if (!registro) throw new RebanhoError("NAO_ENCONTRADO", "Operação de leite não encontrada");
+  return { propriedadeId: registro.propriedadeId, usuarioId: autor(c) };
 }
 function falha(c: Context, e: unknown) {
   if (e instanceof ValorizacaoError || e instanceof FinanceiroError)
@@ -89,7 +101,7 @@ export const leiteComercialOperacoesRouter = new Hono()
   )
   .get("/cadastros", async (c) => {
     try {
-      await contexto(c);
+      // Compradores e cadastros são da fazenda: a consulta vale também em Consolidado.
       return c.json(await servico.consultarCadastrosOperacaoLeite());
     } catch (e) {
       return falha(c, e);
@@ -100,7 +112,7 @@ export const leiteComercialOperacoesRouter = new Hono()
       return c.json(
         await servico.consultarOperacaoLeite(
           uuid(c),
-          await contexto(c),
+          await contextoDaOperacao(c, uuid(c)),
           podeVerValoresFinanceiros(getUsuario(c)),
         ),
       );

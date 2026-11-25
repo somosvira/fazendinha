@@ -22,7 +22,7 @@ export const leiteConsultasV5Router = new Hono().use("*", exigeArea("pecuaria"))
   .get("/comercial/vendas-unificadas", async c => {
     const filtro = consultaVendasUnificadasLeiteSchema.safeParse(c.req.query());
     if (!filtro.success) return c.json({ code: "VALIDACAO", error: filtro.error.issues[0].message }, 422);
-    try { return c.json(await consultarVendasUnificadasLeite(await sitio(c), filtro.data, podeVerValoresFinanceiros(getUsuario(c)))); } catch (e) { return falhaV4(c, e); }
+    try { return c.json(await consultarVendasUnificadasLeite(await resolverEscopoLeitura(c), filtro.data, podeVerValoresFinanceiros(getUsuario(c)))); } catch (e) { return falhaV4(c, e); }
   })
   .get("/estoque/resumo", async c => {
     const filtro = consultaResumoEstoqueLeiteSchema.safeParse(c.req.query());
