@@ -182,15 +182,13 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const propriedadeInicial = getPropriedadeAtiva() ?? sitiosAtivos[0]?.id ?? null;
 
   return <PaginaFinanceira>
-    <PageHeader titulo={<span className="rotina-titulo"><span><Layers aria-hidden/></span>Lotes</span>} acao={podeLancar ? <Button onClick={abrirNovo}><Plus size={16} /> Novo lote</Button> : undefined} />
+    <PageHeader titulo={<span className="rotina-titulo"><span><Layers aria-hidden/></span>Lotes</span>} acao={podeLancar ? <div className="flex flex-wrap gap-2"><Button secondary onClick={() => setSelecionandoAnimais(true)}><ArrowRightLeft size={16} /> Movimentar animais</Button><Button onClick={abrirNovo}><Plus size={16} /> Novo lote</Button></div> : undefined} />
     <NavRebanho ativa="lotes" contagens={{ lotes: lotes?.filter(l => l.ativo !== false).length }} />
     <ErrorBox erro={erro} />
 
     <Panel className="mt-5 overflow-hidden">
       {/* filtros ficam fora do fieldset de escrita — quem só pode ver continua podendo filtrar (K7) */}
-      <BarraConsulta ordenacao={ordemLotes.controle} campos={camposLotes} edicaoFiltros={edicaoLotes} criterios={[...(filtroSitio?[{id:"sitio",rotulo:`Sítio: ${sitiosAtivos.find(s=>String(s.id)===filtroSitio)?.nome ?? "Selecionado"}`,limpar:()=>{setFiltroSitio("");setPaginaLotes(1);}}]:[]),...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>{setMostrarInativos(false);setPaginaLotes(1);}}]:[])]} acao={podeLancar ? <div className="flex flex-wrap gap-2">
-      <Button secondary onClick={() => setSelecionandoAnimais(true)}><ArrowRightLeft size={16} /> Movimentar animais</Button>
-    </div> : undefined}>
+      <BarraConsulta ordenacao={ordemLotes.controle} campos={camposLotes} edicaoFiltros={edicaoLotes} criterios={[...(filtroSitio?[{id:"sitio",rotulo:`Sítio: ${sitiosAtivos.find(s=>String(s.id)===filtroSitio)?.nome ?? "Selecionado"}`,limpar:()=>{setFiltroSitio("");setPaginaLotes(1);}}]:[]),...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>{setMostrarInativos(false);setPaginaLotes(1);}}]:[])]}>
         <BuscaLista rotulo="Buscar lote" placeholder="Buscar lote ou sítio" valor={busca} onChange={valor => { setBusca(valor); setPaginaLotes(1); }} />
       </BarraConsulta>
       <div className="consulta-visual-barra"><span>{lotesFiltrados.length} lotes no recorte</span></div>

@@ -3,7 +3,8 @@ import { SelecionarSitioLeite } from "./SelecionarSitioLeite";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { ResumoDestinosLeite } from "./ResumoDestinosLeite";
 import { useEffect, useState } from "react";
-import { Box, ChartNoAxesCombined, FlaskConical, Milk, Truck, Wallet, Droplets, Settings2, FileText, FileSearch } from "lucide-react";
+import { Box, ChartNoAxesCombined, FlaskConical, Milk, Truck, Wallet, Droplets, Settings2, FileText, FileSearch, Wrench, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "../../../financeiro/financeiro-ui";
 import { SubTabs } from "../../../components/SubTabs";
 import { Button } from "../../../components/ui/button";
@@ -77,7 +78,7 @@ export function LeiteModulo({ podeLancar, podeFinanceiro, podeExportar = false, 
   const rotina = consultas.find(c => c.id === secao);
   const IconeRotina = rotina?.Icon ?? Milk;
   return <div className="leite-modulo leite-rotina-reformulada">
-    <PageHeader titulo={<><span className="leite-identidade-rotina"><IconeRotina aria-hidden /></span>{secao === "configuracoes" ? "Configurações de produção" : secao === "relatorios" ? "Relatórios do leite" : secao === "historico" ? "Conferir importação" : rotina?.nome ?? "Leite"} </>} acao={<div className="leite-cabecalho-acoes" data-rotina={secao}><div ref={setAcoesContainer} className="leite-modulo-acoes" /><Button className="leite-configuracoes-acao" variant="outline" onClick={() => selecionar("configuracoes")} aria-label="Configurações de produção" title="Configurações de produção"><Settings2 size={16} aria-hidden /><span>Configurações</span></Button></div>} />
+    <PageHeader titulo={<><span className="leite-identidade-rotina"><IconeRotina aria-hidden /></span>{secao === "configuracoes" ? "Configurações de produção" : secao === "relatorios" ? "Relatórios do leite" : secao === "historico" ? "Conferir importação" : rotina?.nome ?? "Leite"} </>} acao={<div className="leite-cabecalho-acoes" data-rotina={secao}><div ref={setAcoesContainer} className="leite-modulo-acoes" />{operacional && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" aria-label="Ferramentas do leite"><Wrench size={16} aria-hidden /><span>Ferramentas</span><ChevronDown size={14} aria-hidden /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => selecionar("relatorios")}><FileText size={16} aria-hidden />Relatórios</DropdownMenuItem><DropdownMenuItem onSelect={() => selecionar("historico")}><FileSearch size={16} aria-hidden />Conferir importação</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}<Button className="leite-configuracoes-acao" variant="outline" onClick={() => selecionar("configuracoes")} aria-label="Configurações de produção" title="Configurações de produção"><Settings2 size={16} aria-hidden /><span>Configurações</span></Button></div>} />
     <nav aria-label="Produção de leite" className="leite-navegacao leite-sete-rotinas">
       <SubTabs variant="financeiro" ariaLabel="Rotinas do leite" tabs={consultas.map(({ id, nome, Icon }) => ({ id, label: nome, icon: Icon }))} active={secao} onSelect={id => selecionar(id)} />
     </nav>
@@ -102,6 +103,5 @@ export function LeiteModulo({ podeLancar, podeFinanceiro, podeExportar = false, 
         </>}
     </div>
     </AcoesRotinaLeite.Provider>
-    {operacional && <nav className="leite-ferramentas" aria-label="Ferramentas do leite"><Button variant="outline" onClick={() => selecionar("relatorios")}><FileText size={16} aria-hidden />Relatórios</Button><Button variant="outline" onClick={() => selecionar("historico")}><FileSearch size={16} aria-hidden />Conferir importação</Button></nav>}
   </div>;
 }
