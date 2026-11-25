@@ -72,8 +72,8 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
     </div>
     {semBaseConjunta ? <div role="status">
       <Empty>
-        <h3>Pesagens insuficientes para a curva e o GMD do período</h3>
-        <p>São necessárias pelo menos duas pesagens compatíveis em datas diferentes.</p>
+        <h3>Pesagens insuficientes</h3>
+        <p>O período precisa ter pelo menos 2 pesagens compatíveis em datas diferentes.</p>
         {historicoPesagens.filter(p => p.data.slice(0, 10) <= limite).length >= 2 && <p>Escolha um período maior para consultar outras pesagens.</p>}
       </Empty>
     </div> : <>
