@@ -97,7 +97,13 @@ function fixture() {
     tarefaIatf: { findUnique: vi.fn(async () => tarefa), findUniqueOrThrow: vi.fn(async () => ({...tarefa,avaliacaoId:exames.find(e=>e.tarefaId===tarefa.id)?.interpretacao.id??null})), findMany: vi.fn().mockResolvedValue([]) },
     participacaoProtocolo: { findFirst: vi.fn().mockResolvedValue(participacaoComum), findUniqueOrThrow: vi.fn().mockResolvedValue(participacaoComum) },
     participanteIatf: { findUniqueOrThrow: vi.fn().mockResolvedValue(participacao) }, programacaoIatf: { findFirst: vi.fn().mockResolvedValue(programa) },
-    tarefaProtocolo: { findFirst: vi.fn(async ({ where }) => ({ id: where.OR[0].id })),findMany:vi.fn(async()=>[tarefaComum()]),
+    tarefaProtocolo: { findFirst: vi.fn(async ({ where }) => ({ id: where.OR[0].id })),
+      findMany: vi.fn(async ({ where }: Prisma.TarefaProtocoloFindManyArgs) => {
+        const etapa = where?.etapa;
+        const configuracao = etapa && "configuracao" in etapa ? etapa.configuracao : undefined;
+        if (configuracao?.path?.[0] === "referenciaPrazoDiagnostico" && configuracao.equals === true) return [];
+        return [tarefaComum()];
+      }),
       findUniqueOrThrow: vi.fn(async () => tarefaComum()),
       update: vi.fn(async ({ data: atualizacao }) => { Object.assign(tarefa, atualizacao); return tarefa; }) },
     vinculoTarefaProtocolo: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn(), create: vi.fn(async ({ data: entrada }) => entrada) },
