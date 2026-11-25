@@ -263,6 +263,7 @@ export function FormReproducao({
   const [previsao, setPrevisao] = useState("");
   useEffect(() => setCienciaSanitaria(false), [animalId, data, tipo, conduta]);
   const [dadosParto, setDadosParto] = useState(dadosPartoVazios);
+  const [revelarExplicacao, setRevelarExplicacao] = useState(0);
   const [destinoCriaPendente, setDestinoCriaPendente] = useState(false);
   const [crias, setCrias] = useState<CriaInput[]>([
     { viva: true, sexo: "F", aptidao: "LEITE" },
@@ -404,7 +405,7 @@ export function FormReproducao({
     if (acao === "avaliacao" && resultado !== "NAO_AVALIADO" && ["SEXAGEM", "RECONFIRMACAO"].includes(finalidade ?? "") && !demandaInicial?.gestacaoId && !gestacaoDoFato) { setErro("Vincule uma gestação conhecida para reconfirmação ou sexagem."); return; }
     if (acao === "tentativa" && tipo !== "COBERTURA" && quantidade && Number(quantidade) !== 1 && motivoQuantidadeExcepcional.trim().length < 5) { setErro("Informe o motivo da quantidade excepcional (mínimo de 5 caracteres)."); return; }
     if (acao === "parto" && destinoCriaPendente) { setErro("Confira a sugestão de Bezerreiro e escolha o lote de cada cria ou Sem lote."); return; }
-    if (acao === "parto") { const erroParto = validarDadosParto(dadosParto); if (erroParto) { setErro(erroParto); return; } }
+    if (acao === "parto") { const erroParto = validarDadosParto(dadosParto); if (erroParto) { setErro(erroParto); if (dadosParto.desfecho === "ABORTO" && dadosParto.observacao.trim().length < 5) setRevelarExplicacao(v => v + 1); return; } }
     if (ocupado) return;
     setOcupado(true);
     setErro(null);
@@ -881,7 +882,7 @@ export function FormReproducao({
           </ConfirmacaoCiencia>
           </>
         )}
-        {acao === "parto" && <PartoCampos lotesCarregando={catalogosCarregando} onDestinoPendente={setDestinoCriaPendente} valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
+        {acao === "parto" && <PartoCampos revelarExplicacao={revelarExplicacao} lotesCarregando={catalogosCarregando} onDestinoPendente={setDestinoCriaPendente} valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
         {acao === "situacao" &&
           seletor("situacao", "Situação inicial", situacao, valor => { if (valor === "VAZIA" || valor === "DESCONHECIDA") setSituacao(valor); }, [
             ["VAZIA", "Vazia"],

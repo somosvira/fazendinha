@@ -115,7 +115,7 @@ describe("registros reprodutivos", () => {
   it("envia finalidade Reprodução na cria", async () => {
     vi.mocked(registrarParto).mockResolvedValue({ id: "p", animalId: "a", data: "2026-10-13" });
     render(<FormReproducao acao="parto" painel={painel} animalInicial="a" onFechar={vi.fn()} onSalvo={vi.fn()} />);
-    await alterarControle(screen.getByLabelText("Finalidade"), { target: { value: "REPRODUCAO" } });
+    await alterarControle(screen.getByLabelText("Finalidade *"), { target: { value: "REPRODUCAO" } });
     fireEvent.submit(document.getElementById("form-reproducao")!);
     await waitFor(() => expect(registrarParto).toHaveBeenCalledTimes(1));
     expect(vi.mocked(registrarParto).mock.calls[0][0].crias).toEqual([{ viva: true, sexo: "F", aptidao: "REPRODUCAO" }]);
@@ -153,7 +153,7 @@ describe("registros reprodutivos", () => {
         onSalvo={vi.fn()}
       />,
     );
-    await alterarControle(screen.getByLabelText("Desfecho"), {
+    await alterarControle(screen.getByLabelText("Desfecho *"), {
       target: { value: "ABORTO" },
     });
     await alterarControle(screen.getByLabelText(/^Explicação do aborto/), {
@@ -170,7 +170,7 @@ describe("registros reprodutivos", () => {
 
 it.each(["", "abc", "     "])("novo aborto exige explicação mesmo no submit programático: '%s'", async observacao => {
   render(<FormReproducao acao="parto" painel={painel} animalInicial="a" onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  await alterarControle(screen.getByLabelText("Desfecho"), { target: { value: "ABORTO" } });
+  await alterarControle(screen.getByLabelText("Desfecho *"), { target: { value: "ABORTO" } });
   const explicacao = screen.getByLabelText(/^Explicação do aborto/);
   expect(explicacao).toHaveProperty("required", true);
   expect(explicacao).toHaveProperty("minLength", 5);
@@ -219,8 +219,8 @@ it("preserva desconhecidos e envia complementos reais com chave estável no reen
   fireEvent.click(screen.getByRole("button",{name:"Pós-parto"}));
   await alterarControle(screen.getByLabelText("Retenção de placenta"),{target:{value:"NAO"}});
   await alterarControle(screen.getByLabelText("Peso da matriz"),{target:{value:"REGISTRAR"}});
-  await alterarControle(screen.getByLabelText("Data real da pesagem"),{target:{value:"2026-10-15"}});
-  await alterarControle(screen.getByLabelText("Peso da matriz (kg)"),{target:{value:"520"}});
+  await alterarControle(screen.getByLabelText("Data real da pesagem *"),{target:{value:"2026-10-15"}});
+  await alterarControle(screen.getByLabelText("Peso da matriz (kg) *"),{target:{value:"520"}});
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await screen.findByText("Conferir registro");
   const primeiro=vi.mocked(registrarParto).mock.calls[0][0];
@@ -647,4 +647,21 @@ it("mudar somente a data pelo calendário protege a avaliação ao sair", async 
   fireEvent.click(screen.getByRole("button", {name:"Cancelar"}));
   await screen.findByRole("dialog", {name:"Descartar alterações?"});
   expect(fechar).not.toHaveBeenCalled();
+});
+
+it("apresenta observação e brinco opcionais e exige explicação para aborto", async () => {
+  vi.mocked(registrarParto).mockResolvedValue({id:"p",animalId:"a",data:"2026-10-13"});
+  render(<FormReproducao acao="parto" painel={painel} animalInicial="a" dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+  expect(screen.getByLabelText("Observações do parto")).toBeTruthy();
+  expect(screen.getByLabelText("Brinco")).toBeTruthy();
+  expect(screen.queryByText(/Pessoa que realizou o manejo/)).toBeNull();
+  await waitFor(() => expect(screen.queryByText("Consultando sugestão de Bezerreiro…")).toBeNull());
+  fireEvent.submit(document.getElementById("form-reproducao")!);
+  await waitFor(() => expect(registrarParto).toHaveBeenCalled());
+  expect(vi.mocked(registrarParto).mock.calls[0][0]).toMatchObject({ observacao: null, crias: [expect.not.objectContaining({ brinco: expect.any(String) })] });
+  await alterarControle(screen.getByLabelText("Desfecho *"), { target: { value: "ABORTO" } });
+  const explicacao = screen.getByLabelText(/^Explicação do aborto/);
+  fireEvent.click(screen.getByRole("button", { name: "Pós-parto" }));
+  fireEvent.invalid(explicacao);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Parto e crias" }).getAttribute("aria-pressed")).toBe("true"));
 });

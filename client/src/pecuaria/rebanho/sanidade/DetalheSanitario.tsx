@@ -1,3 +1,4 @@
+import { camposExameParaExibicao, nomeExame } from "./nomeExame";
 import { useEffect, useState } from "react";
 import { ClassificarCustoAplicacao } from "./ClassificarCustoAplicacao";
 import { CarenciasSanitarias } from "./CarenciasSanitarias";
@@ -97,7 +98,7 @@ export function DetalheSanitario({ tipo, valor, abrir, onAtualizado }: { tipo: s
       {!!propriedade.nome && <div><dt>Sítio do fato</dt><dd>{String(propriedade.nome)}</dd></div>}
       <div><dt>Animal</dt><dd>{animal.id ? <LinkInterno area="pecuaria" href={`/pecuaria/rebanho/animais/${encodeURIComponent(String(animal.id))}`}>{textoDetalhe(animal.brinco)}{animal.nome ? ` · ${String(animal.nome)}` : ""}</LinkInterno> : "Não informado"}</dd></div>
       {!!doenca.nome && <div><dt>Doença</dt><dd>{String(doenca.nome)}</dd></div>}
-      {!!tipoExame.nome && <div><dt>Tipo de exame</dt><dd>{String(tipoExame.nome)}</dd></div>}
+      {!!tipoExame.nome && <div><dt>Tipo de exame</dt><dd>{nomeExame(fato.tipoExameId ?? tipoExame.id, tipoExame.nome)}</dd></div>}
       {!!protocolo.nome && <div><dt>Protocolo</dt><dd>{String(protocolo.nome)} · versão {textoDetalhe(protocolo.versao)}</dd></div>}
 
     </dl>}
@@ -122,12 +123,12 @@ export function DetalheSanitario({ tipo, valor, abrir, onAtualizado }: { tipo: s
     {tipo === "exame" && !!fato.formatoSnapshot && <>
       <section className="sanitario-resultado" aria-label="Resultado do exame"><h3>Resultado</h3>
         {registro(fato.formatoSnapshot).tipoResultado === "MULTIPLO" && Array.isArray(fato.resultados) && fato.resultados.length > 0 ? <dl className="sanitario-dados">{(fato as unknown as ExameResultado).resultados!.map((item, indice) => {
-          const campo = (fato as unknown as ExameResultado).formatoSnapshot.campos?.find(c => c.codigo === item.campo) ?? { codigo: item.campo };
+          const campo = camposExameParaExibicao(fato.tipoExameId ?? tipoExame.id, (fato as unknown as ExameResultado).formatoSnapshot.campos ?? []).find(c => c.codigo === item.campo) ?? { codigo: item.campo };
           const resultado = typeof item.valor === "boolean" ? item.valor ? "Sim" : "Não" : typeof item.valor === "object" && item.valor !== null ? JSON.stringify(item.valor) : textoDetalhe(item.valor);
           return <div key={`${item.campo}-${indice}`}><dt>{nomeCampoExame(campo)}</dt><dd>{resultado}</dd></div>;
         })}</dl> : <p className="sanitario-resultado-valor">{resultadoExameSanitario(fato as unknown as ExameResultado)}</p>}
       </section>
-      <HistoricoExame key={String(fato.id)} exameId={String(fato.id)} propriedadeId={typeof fato.propriedadeId === "number" ? fato.propriedadeId : undefined} formato={(fato as unknown as ExameResultado).formatoSnapshot} />
+      <HistoricoExame key={String(fato.id)} exameId={String(fato.id)} tipoExameId={fato.tipoExameId ?? tipoExame.id} propriedadeId={typeof fato.propriedadeId === "number" ? fato.propriedadeId : undefined} formato={(fato as unknown as ExameResultado).formatoSnapshot} />
     </>}
     {(tipo === "aplicacao" || fato.observacao != null || fato.motivoAnulacao != null) && <section className="sanitario-observacoes"><h3>Observações</h3>{tipo === "aplicacao" && fato.observacao == null && <p>Sem observações.</p>}{fato.observacao != null && <p>{textoDetalhe(fato.observacao)}</p>}{fato.motivoAnulacao != null && <p><strong>Motivo da anulação:</strong> {textoDetalhe(fato.motivoAnulacao)}</p>}</section>}
     {fato.criadoEm != null && <dl className="sanitario-dados sanitario-autoria"><div><dt>Registrado em</dt><dd>{dataHoraSanitaria(String(fato.criadoEm))}</dd></div>{!!registro(fato.criadoPor).nome && <div><dt>Registrado por</dt><dd>{String(registro(fato.criadoPor).nome)}</dd></div>}</dl>}

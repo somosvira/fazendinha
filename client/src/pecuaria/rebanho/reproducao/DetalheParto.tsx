@@ -1,3 +1,4 @@
+import { nomeExame } from "../sanidade/nomeExame";
 import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { Button } from "../../../components/ui/button";
 import { IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
@@ -42,6 +43,7 @@ export type PartoOperacional = Omit<PartoRelatorio, "crias"> & {
     id: string;
     data: string;
     tipo: string;
+    tipoExameId?: string;
     realizacao: string;
     status: string;
   }>;
@@ -278,7 +280,7 @@ export function DetalheParto({
           ]}
         />
       </SecaoFicha>
-      <SecaoFicha titulo="Escore corporal da matriz">
+      <SecaoFicha titulo="Escore de condição corporal (ECC) da matriz">
         <Lista
           rotulo="Escores da matriz"
           itens={escores}
@@ -392,7 +394,7 @@ export function DetalheParto({
               chave: "tipo",
               titulo: "Avaliação",
               larguraFlexivel: true,
-              celula: (e) => e.tipo,
+              celula: (e) => nomeExame(e.tipoExameId, e.tipo),
             },
             {
               chave: "realizacao",

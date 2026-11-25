@@ -1,3 +1,4 @@
+import { nomeExame } from "./nomeExame";
 import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { useBuscaUrl } from "../../../lib/useBuscaUrl";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
@@ -37,6 +38,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
   const [aba, setAba] = useState<AbaCadastroSanitario>(() => cadastro ?? lerAba());
   const [itens, setItens] = useState<Item[]>([]);
   const [busca, setBusca] = useBuscaUrl("busca");
+  const [cadastroId, setCadastroId] = useBuscaUrl("cadastroId");
   const [versao, setVersao] = useState(0);
   const [painel, setPainel] = useState<{ tipo: Tipo; id?: string; versaoAnteriorId?: string } | null>(null);
   const [nome, setNome] = useState("");
@@ -110,7 +112,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
     {chave:"situacao",rotulo:"Situação",tipo:"opcoes",obter:i=>i.ativo?"ATIVO":"INATIVO",opcoes:[{valor:"ATIVO",texto:"Ativo"},{valor:"INATIVO",texto:"Inativo"}]},
     ...(aba==="exame"?[{chave:"formato",rotulo:"Formato do resultado",tipo:"texto" as const,obter:(i: Item)=>"tipoResultado" in i?formatos[i.tipoResultado]:null}]:[]),
   ]);
-  const itensExibidos = consulta.filtrar(itens).filter(item => normalizar(item.nome).includes(normalizar(busca.trim())));
+  const itensExibidos = consulta.filtrar(itens).filter(item => cadastroId && aba === "exame" ? item.id === cadastroId : normalizar(`${item.nome} ${aba === "exame" ? nomeExame(item.id, item.nome) : ""}`).includes(normalizar(busca.trim())));
   const paginacao = usePaginacaoLocal(itensExibidos, `${aba}|${busca}|${consulta.criterios.map(c=>c.rotulo).join("|")}`);
   const novo = aba === "aplicacao" ? "Novo tipo de aplicação" : aba === "doenca" ? "Nova doença" : "Novo tipo de exame";
   function salvar() {
@@ -128,7 +130,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
       {aba === "protocolos" ? <ProtocolosCadastro podeLancar={podeLancar} /> : <section className="pec-catalogo-sanitario rounded-xl border border-border bg-card">
 
         {aba === "exame" && <p className="px-4 pb-4 text-sm text-ink-3">Após a primeira coleta, o formato do resultado fica bloqueado, mesmo se a coleta estiver pendente ou anulada. Isso preserva a interpretação do histórico.</p>}
-        <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} acao={podeLancar && <Button disabled={ocupado || carregando} onClick={() => abrir(aba)}>{novo}</Button>}><BuscaLista rotulo={`Buscar ${titulo.toLocaleLowerCase("pt-BR")}`} placeholder="Buscar pelo nome" valor={busca} onChange={setBusca} /></BarraConsulta>
+        <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} acao={podeLancar && <Button disabled={ocupado || carregando} onClick={() => abrir(aba)}>{novo}</Button>}><BuscaLista rotulo={`Buscar ${titulo.toLocaleLowerCase("pt-BR")}`} placeholder="Buscar pelo nome" valor={busca} onChange={valor => { setCadastroId(""); setBusca(valor); }} /></BarraConsulta>
         {!carregando && !erro && itens.length > 0 && !itensExibidos.length && <p role="status" className="px-4 pb-4 text-sm text-ink-3">Nenhum cadastro corresponde à busca. Altere ou limpe o nome pesquisado.</p>}
         <div className="px-4"><ErrorBox erro={erro} />{aviso && <p role="status" className="py-3 text-sm">{aviso}</p>}
           {ocupado && <p role="status" className="py-3 text-sm">Atualizando cadastro…</p>}
@@ -137,7 +139,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
         {carregando ? <EsqueletoTabela label={`Carregando ${titulo.toLowerCase()}`} colunas={3} className="p-4" /> : !erro && !itens.length ? <p className="p-4 text-sm text-ink-3">Nenhum cadastro. {podeLancar ? "Use o botão acima para cadastrar." : ""}</p> : <ConsultaOperacional filtrosColunas={consulta.colunas}
           rotulo={titulo} itens={paginacao.itens} chaveDe={(item) => item.id}
           colunas={[
-            { chave: "nome", titulo: "Nome", principal: true, celula: (item) => item.nome },
+            { chave: "nome", titulo: "Nome", principal: true, celula: (item) => aba === "exame" ? nomeExame(item.id, item.nome) : item.nome },
             ...(aba === "exame" ? [{ chave: "formato", titulo: "Resultado", celula: (item: Item) => "tipoResultado" in item ? `${formatos[item.tipoResultado]}${item.unidade ? ` · ${item.unidade}` : ""}` : "—" }] : []),
             { chave: "situacao", titulo: "Situação", celula: (item) => <Pill tone={item.ativo ? "green" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</Pill> },
             ...(podeLancar ? [{ chave: "acoes", titulo: "Ações", acoes: true, celula: (item: Item) => <div className="flex justify-end gap-1">
