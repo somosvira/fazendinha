@@ -4,21 +4,23 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AnimalResumo, ListarResultado } from "../types";
 import { BuscaAnimais } from "./BuscaAnimais";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
-const { listar, catalogos, categorias } = vi.hoisted(() => ({ listar: vi.fn(), catalogos: vi.fn(), categorias: vi.fn() }));
-vi.mock("../api", () => ({ listarAnimais: listar, obterCatalogos: catalogos, listarCategorias: categorias }));
+const { listar, catalogos, categorias, ficha } = vi.hoisted(() => ({ listar: vi.fn(), catalogos: vi.fn(), categorias: vi.fn(), ficha: vi.fn() }));
+vi.mock("../api", () => ({ listarAnimais: listar, obterCatalogos: catalogos, listarCategorias: categorias, buscarFichaAnimal: ficha }));
 vi.mock("@/financeiro/SelectCampo", () => ({ SelectCampo: ({children,onValueChange,...props}: {children:React.ReactNode;onValueChange:(v:string)=>void;value:string}) => <select {...props} onChange={e=>onValueChange(e.target.value)}>{children}</select> }));
 const animal = { id:"a1", brinco:"DEV-019", nome:"Estrela", sexo:"F", situacao:"ATIVO", categoria:{id:"c1",nome:"Vaca"}, propriedade:{id:7,nome:"Sede"}, lote:null } as AnimalResumo;
 const resultado = (itens=[animal],total=itens.length) => ({itens,total,painel:{}} as ListarResultado);
 const props = () => ({aberto:true,onFechar:vi.fn(),onAbrir:vi.fn(),podeConsultar:true,escopo:"Consolidado"});
-beforeEach(()=>{vi.clearAllMocks();listar.mockResolvedValue(resultado());catalogos.mockResolvedValue({propriedades:[{id:7,nome:"Sede"}],lotes:[],racas:[],motivosBaixa:[]});categorias.mockResolvedValue({itens:[]});setPropriedadeAtiva(null); window.HTMLElement.prototype.scrollIntoView=vi.fn();});
+beforeEach(()=>{vi.clearAllMocks();ficha.mockResolvedValue({peso:{ultimo:null},historicoLocalizacoes:[],historicoPesagens:[],contextoProdutivo:{del:42,partosRealizados:2,situacaoProdutiva:"LACTANTE",idadeGestacionalDias:null}});listar.mockResolvedValue(resultado());catalogos.mockResolvedValue({propriedades:[{id:7,nome:"Sede"}],lotes:[],racas:[],motivosBaixa:[]});categorias.mockResolvedValue({itens:[]});setPropriedadeAtiva(null); window.HTMLElement.prototype.scrollIntoView=vi.fn();});
 afterEach(()=>{cleanup();vi.useRealTimers();setPropriedadeAtiva(null);});
 it("lista sem termo, com contexto e todos os animais, e Enter abre a ficha no sítio exato",async()=>{
  const p=props();render(<BuscaAnimais {...p}/>); await screen.findByRole("button",{name:/DEV-019/});
  expect(listar).toHaveBeenCalledWith(expect.objectContaining({situacao:"TODOS",page:1,pageSize:20,comContexto:true}),undefined,expect.any(AbortSignal));
  const input=screen.getByRole("searchbox",{name:"Buscar animal"});expect(document.activeElement).toBe(input);
- fireEvent.keyDown(input,{key:"Enter"}); expect(p.onAbrir).toHaveBeenCalledWith("a1",expect.stringContaining("/animais/a1?"));
- expect(p.onAbrir.mock.calls[0][1]).toContain("propriedadeId=7");expect(p.onAbrir.mock.calls[0][1]).toContain("sitio=7");
  expect(screen.getAllByText("Não informada").length).toBe(2);
+ fireEvent.keyDown(input,{key:"Enter"}); expect(p.onAbrir).not.toHaveBeenCalled();
+ expect(await screen.findByRole("region",{name:"Resumo de DEV-019"})).toBeTruthy();expect(await screen.findByText("dias em lactação (DEL)")).toBeTruthy();
+ fireEvent.click(screen.getByRole("button",{name:/Ver ficha completa/}));expect(p.onAbrir).toHaveBeenCalledWith("a1",expect.stringContaining("/animais/a1?"));
+ expect(p.onAbrir.mock.calls[0][1]).toContain("propriedadeId=7");expect(p.onAbrir.mock.calls[0][1]).toContain("sitio=7");
 });
 it("pagina no servidor e volta à primeira página ao filtrar",async()=>{
  listar.mockResolvedValue(resultado([animal],41));render(<BuscaAnimais {...props()}/>);await screen.findByRole("button",{name:/DEV-019/});
@@ -49,7 +51,7 @@ it("seta a partir do botão move também o foco para a ficha destacada",async()=
  listar.mockResolvedValue(resultado([animal,{...animal,id:"a2",brinco:"DEV-020",nome:"Lua"}]));const p=props();render(<BuscaAnimais {...p}/>);
  const primeiro=await screen.findByRole("button",{name:/DEV-019/});const segundo=screen.getByRole("button",{name:/DEV-020/});
  act(()=>primeiro.focus());fireEvent.keyDown(primeiro,{key:"ArrowDown"});expect(document.activeElement).toBe(segundo);
- fireEvent.click(document.activeElement!);expect(p.onAbrir).toHaveBeenCalledWith("a2",expect.any(String));
+ fireEvent.click(document.activeElement!);expect(await screen.findByRole("region",{name:"Resumo de DEV-020"})).toBeTruthy();fireEvent.click(screen.getByRole("button",{name:/Ver ficha completa/}));expect(p.onAbrir).toHaveBeenCalledWith("a2",expect.any(String));
 });
 it("anuncia o animal selecionado quando as setas são usadas no campo",async()=>{
  listar.mockResolvedValue(resultado([animal,{...animal,id:"a2",brinco:"DEV-020",nome:"Lua"}]));render(<BuscaAnimais {...props()}/>);await screen.findByRole("button",{name:/DEV-019/});
