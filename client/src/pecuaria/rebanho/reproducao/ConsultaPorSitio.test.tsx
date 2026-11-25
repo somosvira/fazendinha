@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ConsultaPorSitio } from "./ConsultaPorSitio";
 import { listarPropriedades } from "../../../api/propriedades";
@@ -40,4 +41,13 @@ it("usa sítio global diretamente sem consultar a lista", () => {
   setPropriedadeAtiva(7);
   render(<ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
   expect(screen.getByText("Dados 7")).toBeTruthy(); expect(listarPropriedades).not.toHaveBeenCalled();
+});
+it("trocar o sítio na sidebar descarta o estado da área do sítio anterior", () => {
+  function Rascunho({ id }: { id: number }) { const [texto, setTexto] = useState(""); return <label>Rascunho {id}<input value={texto} onChange={e => setTexto(e.target.value)} /></label>; }
+  setPropriedadeAtiva(7);
+  const { rerender } = render(<ConsultaPorSitio>{id => <Rascunho id={id} />}</ConsultaPorSitio>);
+  fireEvent.change(screen.getByLabelText("Rascunho 7"), { target: { value: "conferência do sítio 7" } });
+  setPropriedadeAtiva(8);
+  rerender(<ConsultaPorSitio>{id => <Rascunho id={id} />}</ConsultaPorSitio>);
+  expect((screen.getByLabelText("Rascunho 8") as HTMLInputElement).value).toBe("");
 });

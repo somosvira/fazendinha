@@ -1,5 +1,5 @@
 import "./escolher-sitio-sidebar.css";
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listarPropriedades, type PropriedadeDTO } from "../api/propriedades";
@@ -75,7 +75,8 @@ export function ExigeSitioDoShell({ onSelecionar }: { onSelecionar?: (id: number
 export function ConsultaDoSitio({ children, cabecalho }: { children: (sitioId: number) => ReactNode; cabecalho?: ReactNode }) {
   const global = getPropriedadeAtiva();
   const { sitios, erro, tentarNovamente } = useSitiosAtivos(global == null);
-  if (global != null) return <>{cabecalho}{children(global)}</>;
+  // Trocar o sítio na sidebar remonta a área: rascunhos e conferências do sítio anterior não sobrevivem.
+  if (global != null) return <>{cabecalho}<Fragment key={global}>{children(global)}</Fragment></>;
   const unico = sitios?.length === 1 ? sitios[0] : null;
   return <div className="consulta-por-sitio">
     {cabecalho}
