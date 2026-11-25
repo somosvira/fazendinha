@@ -80,13 +80,13 @@ function EstadoSitios({ erro, tentarNovamente }: { erro: string | null; tentarNo
  * Com um único sítio ativo não há escolha a fazer: o shell recebe esse sítio.
  * Com vários, a escolha fica na sidebar; nada é assumido.
  */
-export function ExigeSitioDoShell({ onSelecionar }: { onSelecionar?: (id: number) => void }) {
+export function ExigeSitioDoShell({ onSelecionar, consolidado }: { onSelecionar?: (id: number) => void; /** Com 2+ sítios ativos, mostra esta visão consolidada em vez do aviso. */ consolidado?: ReactNode }) {
   const { sitios, erro, tentarNovamente } = useSitiosAtivos(true);
   const unico = sitios?.length === 1 ? sitios[0] : null;
   useEffect(() => { if (unico) onSelecionar?.(unico.id); }, [unico, onSelecionar]);
   if (sitios === null || unico) return <EstadoSitios erro={erro} tentarNovamente={tentarNovamente} />;
   if (!sitios.length) return <Empty>Nenhum sítio ativo disponível para esta conta.</Empty>;
-  return <AvisoEscolherSitio />;
+  return consolidado ? <>{consolidado}</> : <AvisoEscolherSitio />;
 }
 
 /**

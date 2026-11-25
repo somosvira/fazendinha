@@ -31,8 +31,9 @@ export async function consultarContexto(propriedadeId:number,q:ConsultaBezerreir
  tx.tipoExame.findMany({where:{ativo:true},orderBy:{nome:'asc'},take:100})]);
  return{lotes,animais,partos:partos.map(p=>({id:p.id,data:textoDia(p.data),matrizId:p.animalId,matriz:p.animal,crias:p.CriaParto.map(c=>({id:c.id,animalId:c.animalId,animal:c.Animal}))})),tanques,posicoes:posicoes?.ordenhas.map(p=>({id:p.posicaoId,nome:p.nome}))??[],producoes:producoes.map(p=>({id:p.id,entradaId:p.entradasEstoque[0]?.id??null,partoId:p.lotesColostro[0]?.partoId??null,versao:p.versao,litros:p.litros.toFixed(3),data:textoDia(p.sessao.dia.dataOperacional),origemFisica:{tanqueId:p.tanqueId,recipiente:p.recipiente}})),produtos,formatosExame:formatosExame.map(f=>({...f,formatoExameHash:hashFormatoExame(f)})),limitePorLista:100,buscaAnimais:busca??null};
  });}
-function escopoParticipacao(propriedadeId:number,q:ConsultaBezerreiro):Prisma.ParticipacaoBezerreiroWhereInput{return{perfil:{propriedadeId,...(q.perfilId?{id:q.perfilId}:{})},...(q.animalId?{animalId:q.animalId}:{}),...(q.ate?{desde:{lte:dia(q.ate)}}:{}),...(q.de?{OR:[{ate:null},{ate:{gt:dia(q.de)}}]}:{})};}
-export async function consultarSanidade(propriedadeId:number,q:ConsultaBezerreiro){return prisma.$transaction(async tx=>{
+function escopoParticipacao(propriedadeId:number|{in:number[]},q:ConsultaBezerreiro):Prisma.ParticipacaoBezerreiroWhereInput{return{perfil:{propriedadeId,...(q.perfilId?{id:q.perfilId}:{})},...(q.animalId?{animalId:q.animalId}:{}),...(q.ate?{desde:{lte:dia(q.ate)}}:{}),...(q.de?{OR:[{ate:null},{ate:{gt:dia(q.de)}}]}:{})};}
+/** `propriedadeId` com `{ in }` = Consolidado: fatos sanitários dos bezerros de todos os sítios informados. */
+export async function consultarSanidade(propriedadeId:number|{in:number[]},q:ConsultaBezerreiro){return prisma.$transaction(async tx=>{
  const ps=await tx.participacaoBezerreiro.findMany({where:escopoParticipacao(propriedadeId,q),include:{animal:{select:{brinco:true,nome:true}}}}),ids=[...new Set(ps.map(p=>p.animalId))];const datas={...(q.de?{gte:dia(q.de)}:{}),...(q.ate?{lte:dia(q.ate)}:{})};
  const [exames,aplicacoes,ocorrencias]=await Promise.all([tx.exameAnimal.findMany({where:{propriedadeId,animalId:{in:ids},data:datas},select:{id:true,animalId:true,data:true,status:true,tipoExameId:true,tipoExame:{select:{nome:true}}}}),tx.aplicacaoProduto.findMany({where:{propriedadeId,animalId:{in:ids},data:datas},select:{id:true,animalId:true,data:true,status:true,produto:{select:{nome:true}}}}),tx.ocorrenciaSanitaria.findMany({where:{propriedadeId,animalId:{in:ids},inicio:datas},select:{id:true,animalId:true,inicio:true,status:true}})]);
  const linhas=[...exames.map(e=>({id:e.id,animalId:e.animalId,data:e.data,status:e.status,tipo:'EXAME',descricao:nomeExameApresentacao(e.tipoExameId,e.tipoExame.nome)})),...aplicacoes.map(a=>({id:a.id,animalId:a.animalId,data:a.data,status:a.status,tipo:'APLICACAO',descricao:a.produto?.nome??'Aplicação sanitária'})),...ocorrencias.map(o=>({id:o.id,animalId:o.animalId,data:o.inicio,status:o.status,tipo:'OCORRENCIA',descricao:'Ocorrência sanitária'}))].filter(f=>ps.some(p=>p.animalId===f.animalId&&p.desde<=f.data&&(!p.ate||p.ate>f.data))).filter(f=>{const termo=q.busca?.trim().toLocaleLowerCase('pt-BR');if(!termo)return true;const an=ps.find(p=>p.animalId===f.animalId)!.animal;return [an.brinco,an.nome,f.descricao].some(t=>t?.toLocaleLowerCase('pt-BR').includes(termo));}).sort((a,b)=>b.data.getTime()-a.data.getTime()||a.id.localeCompare(b.id));
@@ -87,4 +88,20 @@ export async function consultarPartosColostro(propriedadeId:number,input:{data:s
   const dto=(p:Prisma.PartoAnimalGetPayload<{include:typeof include}>)=>({id:p.id,data:textoDia(p.data),matrizId:p.propriedadeId===propriedadeId?p.animalId:null,matriz:p.propriedadeId===propriedadeId?p.animal:{brinco:'Origem registrada',nome:null},crias:p.CriaParto.map(c=>({id:c.id,animalId:c.animalId,animal:c.Animal}))});
   return{itens:itens.map(dto),total,pagina:input.pagina,porPagina:input.porPagina,selecionado:selecionado?dto(selecionado):null};
  });
+}
+
+type CustosBezerreiro=Awaited<ReturnType<typeof consultarCustosBezerreiro>>;
+/** Soma custos do bezerreiro apurados por sítio; valor desconhecido em qualquer sítio mantém o total desconhecido. */
+export function somarCustosBezerreiro(partes:CustosBezerreiro[],verValores:boolean){
+ const soma=(vs:(string|null)[],casas:number)=>vs.some(v=>v==null)?null:vs.reduce((n,v)=>n.plus(v!),D(0)).toFixed(casas);
+ return{alimentacao:{quantidadeLitros:soma(partes.map(p=>p.alimentacao.quantidadeLitros),3)??'0.000',custoConhecido:verValores?soma(partes.map(p=>p.alimentacao.custoConhecido),2):null,custoCompleto:null,pendencias:partes.reduce((n,p)=>n+p.alimentacao.pendencias,0),referenciaR07:verValores?soma(partes.map(p=>p.alimentacao.referenciaR07),2):null},
+  sanidade:{custoConhecido:verValores?soma(partes.map(p=>p.sanidade.custoConhecido),2):null,pendencias:partes.reduce((n,p)=>n+p.sanidade.pendencias,0)},
+  totalConhecido:verValores?soma(partes.map(p=>p.totalConhecido),2):null,custoCompleto:null,cobertura:verValores?'PARCIAL' as const:'OCULTO' as const,
+  lacunas:[...new Set(partes.flatMap(p=>p.lacunas))],porAnimal:partes.flatMap(p=>p.porAnimal)};
+}
+/** Consolidado: cada sítio ativo é apurado com as próprias regras e os resultados são somados. */
+export async function consultarCustosBezerreiroConsolidado(q:ConsultaBezerreiro,verValores:boolean){
+ const sitios=await prisma.propriedade.findMany({where:{ativo:true},select:{id:true}});
+ const partes:CustosBezerreiro[]=[];for(const s of sitios)partes.push(await consultarCustosBezerreiro(s.id,q,verValores));
+ return somarCustosBezerreiro(partes,verValores);
 }

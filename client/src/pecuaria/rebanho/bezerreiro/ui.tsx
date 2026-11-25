@@ -4,14 +4,14 @@ import { PainelCadastro } from '@/financeiro/PainelCadastro';
 import { consultarBezerreiro } from './api';
 import { RebanhoApiError } from '../api';
 import { EsqueletoFormulario, EsqueletoTabela } from "../../../components/Esqueleto";
-export function useConsultaBezerreiro<T>(path: string | null, sitio: number | null, revisao = 0) {
+export function useConsultaBezerreiro<T>(path: string | null, sitio: number | null, revisao = 0, consolidado = false) {
   const [dados, setDados] = useState<T | null>(null), [erro, setErro] = useState('');
   const [tentativa, setTentativa] = useState(0);
   useEffect(() => {
     let vivo = true; setDados(null); setErro('');
-    if (sitio != null && path != null) void consultarBezerreiro<T>(path, sitio).then(v => {if (vivo) setDados(v);}).catch((e: unknown) => {if (vivo) setErro(e instanceof Error ? e.message : 'Não foi possível carregar.');});
+    if ((sitio != null || consolidado) && path != null) void consultarBezerreiro<T>(path, sitio).then(v => {if (vivo) setDados(v);}).catch((e: unknown) => {if (vivo) setErro(e instanceof Error ? e.message : 'Não foi possível carregar.');});
     return () => {vivo = false;};
-  }, [path, sitio, revisao, tentativa]);
+  }, [path, sitio, revisao, tentativa, consolidado]);
   return {dados, erro, tentar: () => setTentativa(n => n+1)};
 }
 export function EstadoConsulta({erro, carregando, tentar, children}: {erro: string; carregando: boolean; tentar: () => void; children: ReactNode}) {

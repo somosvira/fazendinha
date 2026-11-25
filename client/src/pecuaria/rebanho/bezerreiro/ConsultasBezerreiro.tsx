@@ -17,8 +17,8 @@ import { EstadoConsulta, ModalBezerreiro, PaginacaoBezerreiro, useConsultaBezerr
 import type { CustoBezerreiro, FatoSanidade, Pagina, Participacao } from './types';
 import { ICONES_TABELA } from "../../../components/iconesTabela";
 export function PeriodoBezerreiro({params,mudar}: {params:URLSearchParams;mudar:(v:Record<string,string>)=>void}) {return <div className="bez-contexto"><label>De<DatePicker value={params.get('de')??''} onChange={v=>mudar({de:v,pagina:''})}/></label><label>Até<DatePicker value={params.get('ate')??''} onChange={v=>mudar({ate:v,pagina:''})}/></label></div>;}
-export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number}) {
-  const consulta=useConsultaBezerreiro<CustoBezerreiro>(`/custos${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),animalId:params.get('animalId'),perfilId:params.get('perfil')})}`,sitio,revisao);
+export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number|null;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number}) {
+  const consulta=useConsultaBezerreiro<CustoBezerreiro>(`/custos${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),animalId:params.get('animalId'),perfilId:params.get('perfil')})}`,sitio,revisao,sitio==null);
   const dados = consulta.dados;
   const oculto = dados?.cobertura === 'OCULTO';
   const valor = (custo: Parameters<typeof dinheiro>[0]) => oculto ? 'Oculto' : dinheiro(custo);
@@ -83,8 +83,10 @@ export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number;par
     </EstadoConsulta>
   </div>;
 }
-export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar,aoSalvar}: {sitio:number;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number;podeLancar:boolean;aoSalvar:()=>void}) {
-  const pagina=Math.max(1,Number(params.get('pagina'))||1),consulta=useConsultaBezerreiro<Pagina<FatoSanidade>>(`/sanidade${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),pagina,animalId:params.get('animalId'),busca:params.get('busca')})}`,sitio,revisao);
+export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar:podeLancarPerfil,aoSalvar}: {sitio:number|null;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number;podeLancar:boolean;aoSalvar:()=>void}) {
+  // Registrar exige um sítio: em Consolidado a sanidade é só consulta.
+  const podeLancar=podeLancarPerfil&&sitio!=null;
+  const pagina=Math.max(1,Number(params.get('pagina'))||1),consulta=useConsultaBezerreiro<Pagina<FatoSanidade>>(`/sanidade${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),pagina,animalId:params.get('animalId'),busca:params.get('busca')})}`,sitio,revisao,sitio==null);
   const [busca,setBusca]=useState(params.get('busca')??'');
   // Busca enquanto digita, como as demais listas; a espera evita uma consulta por tecla.
   useEffect(()=>{if(busca===(params.get('busca')??''))return;const t=setTimeout(()=>mudar({busca,pagina:''}),300);return()=>clearTimeout(t);},[busca]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -122,6 +124,6 @@ export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar,aoSalv
       </>}
     </EstadoConsulta>
     {selecionar&&<ModalBezerreiro titulo="Registrar ação sanitária" form="selecionar-acao" textoSalvar="Continuar" aoFechar={()=>setSelecionar(false)}><form id="selecionar-acao" onSubmit={e=>{e.preventDefault();setSelecionar(false);setForm(true);}}><div className="bez-campos"><label>Bezerro<SelectCampo required value={animalId} onValueChange={setAnimalId}><option value="">Selecione o animal</option>{participantes.dados?.itens.map(p=><option key={p.id} value={p.animalId}>{p.animal.brinco} · {p.animal.nome??'Sem nome'}</option>)}</SelectCampo></label><label>Ação<SelectCampo value={tipo} onValueChange={v=>setTipo(v as typeof tipo)}><option value="exame">Exame</option><option value="ocorrencia">Ocorrência sanitária</option><option value="protocolo">Protocolo sanitário</option><option value="aplicacao">Aplicação / vacinação</option></SelectCampo></label></div>{participantes.erro&&<p role="alert" className="bez-erro">{participantes.erro}</p>}</form></ModalBezerreiro>}
-    {form&&(tipo==='aplicacao'?<FormAplicacaoAnimal animalInicial={animalId} onFechar={()=>setForm(false)} onSalvo={salvo}/>:<FormFatoSanitario tipo={tipo} animalInicial={animalId} fixo propriedadeId={sitio} onFechar={()=>setForm(false)} onSalvo={salvo}/>)}
+    {form&&(tipo==='aplicacao'?<FormAplicacaoAnimal animalInicial={animalId} onFechar={()=>setForm(false)} onSalvo={salvo}/>:<FormFatoSanitario tipo={tipo} animalInicial={animalId} fixo propriedadeId={sitio ?? undefined} onFechar={()=>setForm(false)} onSalvo={salvo}/>)}
   </>;
 }

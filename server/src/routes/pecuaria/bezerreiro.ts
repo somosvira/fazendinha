@@ -1,3 +1,4 @@
+import { prisma } from '../../db.js';
 import { ValorizacaoError } from '../../services/estoque/valorizacao.calc.js';
 import { FinanceiroError } from '../../services/financeiro/regras.js';
 import { EstoqueError } from '../../services/estoque/estoque.js';
@@ -26,6 +27,8 @@ function falha(c:Context,e:unknown){
  if(e instanceof Prisma.PrismaClientKnownRequestError){if(['P2002','P2025','P2034','P2004'].includes(e.code))return c.json({error:'O registro mudou ou conflita com outro fato. Atualize a consulta.',code:'CONFLITO'},409);if(e.code==='P2021'||e.code==='P2022')return c.json({error:'A atualização do banco para o Bezerreiro ainda não foi aplicada neste ambiente.',code:'MIGRACAO_PENDENTE'},409);}
  console.error('[pecuaria/bezerreiro]',e);return c.json({error:'Não foi possível processar o bezerreiro. Tente novamente.'},500);
 }
+/** Leitura que aceita Consolidado: com a sidebar em Consolidado, filtra pelos sítios ativos. */
+function lerEscopo(fn:(c:Context,escopo:number|{in:number[]})=>Promise<unknown>){return async(c:Context)=>{try{const p=await resolverEscopoLeitura(c);const escopo=p!=null?p:{in:(await prisma.propriedade.findMany({where:{ativo:true},select:{id:true}})).map(s=>s.id)};return c.json(await fn(c,escopo))}catch(e){return falha(c,e)}};}
 function ler(fn:(c:Context,propriedadeId:number)=>Promise<unknown>){return async(c:Context)=>{try{return c.json(await fn(c,await sitio(c)))}catch(e){return falha(c,e)}};}
 function escrever<S extends z.ZodTypeAny>(schema:S,fn:(c:Context,input:z.output<S>&{propriedadeId:number},usuarioId:number|null)=>Promise<unknown>){return async(c:Context)=>{try{const dados=schema.parse(await c.req.json());return c.json(await fn(c,{...dados,propriedadeId:await resolverEscopoEscrita(c,dados.propriedadeId)},autor(c)),201)}catch(e){return falha(c,e)}};}
 const q=(c:Context)=>schemas.consultaSchema.parse(c.req.query());
@@ -39,7 +42,7 @@ export const bezerreiroRouter=new Hono().use('*',exigeArea('pecuaria'))
 .get('/configuracoes',ler((_c,p)=>gestao.consultarConfiguracao(p)))
 .post('/configuracoes',exigePermissao('lancar'),escrever(schemas.salvarConfiguracaoSchema,(_c,d,a)=>gestao.salvarConfiguracao(d,a)))
 .post('/perfis',exigePermissao('lancar'),escrever(schemas.perfilSchema,(_c,d,a)=>gestao.registrarPerfil(d,a)))
-.get('/participantes',ler((c,p)=>gestao.listarParticipantes(p,q(c))))
+.get('/participantes',lerEscopo((c,p)=>gestao.listarParticipantes(p,q(c))))
 .post('/participantes',exigePermissao('lancar'),escrever(schemas.participacaoSchema,(_c,d,a)=>gestao.registrarParticipacao(d,a)))
 .post('/participantes/:id/fase',exigePermissao('lancar'),escrever(schemas.mudarFaseSchema,(c,d,a)=>gestao.mudarFase(id(c),d,a)))
 .post('/participantes/:id/fases/:periodoId/cancelamento',exigePermissao('lancar'),escrever(schemas.cancelarFaseSchema,(c,d,a)=>gestao.cancelarFase(id(c),z.string().uuid().parse(c.req.param('periodoId')),d,a)))
@@ -48,8 +51,8 @@ export const bezerreiroRouter=new Hono().use('*',exigeArea('pecuaria'))
 .get('/ofertas',ler((c,p)=>aleitamento.consultarOfertas(p,q(c),valores(c))))
 .post('/ofertas',exigePermissao('lancar'),escrever(schemas.confirmarOfertaSchema,(_c,d,a)=>aleitamento.confirmarOferta(d,a)))
 .post('/ofertas/:id/estorno',exigePermissao('lancar'),escrever(schemas.estornoSchema,(c,d,a)=>aleitamento.estornarOferta(id(c),d,a)))
-.get('/custos',ler((c,p)=>consultas.consultarCustosBezerreiro(p,q(c),valores(c))))
-.get('/sanidade',ler((c,p)=>consultas.consultarSanidade(p,q(c))))
+.get('/custos',lerEscopo((c,p)=>typeof p==='number'?consultas.consultarCustosBezerreiro(p,q(c),valores(c)):consultas.consultarCustosBezerreiroConsolidado(q(c),valores(c))))
+.get('/sanidade',lerEscopo((c,p)=>consultas.consultarSanidade(p,q(c))))
 .get('/animais/:id/acompanhamento',ler((c,p)=>consultas.consultarAcompanhamento(id(c),p)))
 .post('/vinculos-exame',exigePermissao('lancar'),escrever(vinculoSchema,(_c,d,a)=>consultas.vincularExame(d,a)))
 .get('/colostro/partos',ler((c,p)=>consultas.consultarPartosColostro(p,consultaPartosColostroSchema.parse(c.req.query()))))
