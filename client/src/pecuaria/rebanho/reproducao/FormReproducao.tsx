@@ -1,3 +1,4 @@
+import { nomeExame, camposExameParaExibicao } from "../sanidade/nomeExame";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { registrarGuardaNavegacao } from "../../../navegacaoGuardada";
 import { useConferenciaImpactos } from "../sanidade/ConferenciaImpactos";
@@ -800,7 +801,7 @@ export function FormReproducao({
         )}
         {acao === "avaliacao" && (
           <>
-            {seletor("tipo-exame", "Tipo de exame", tipoExameId, v => { setTipoExameId(v); setResultados([]); setContextuais({}); }, tiposExame.filter(t => t.ativo || t.id === tipoExameId).map(t => [t.id, `${t.nome} · v${t.versaoFormato ?? 1}${t.ativo ? "" : " (inativo)"}`]))}
+            {seletor("tipo-exame", "Tipo de exame", tipoExameId, v => { setTipoExameId(v); setResultados([]); setContextuais({}); }, tiposExame.filter(t => t.ativo || t.id === tipoExameId).map(t => [t.id, `${nomeExame(t.id, t.nome)} · v${t.versaoFormato ?? 1}${t.ativo ? "" : " (inativo)"}`]))}
             {!tiposExame.length && <p role="status">Nenhum tipo de exame disponível. Confira os cadastros de Reprodução.</p>}
             {campo("responsavel-exame", "Responsável pelo exame", responsavel, setResponsavel, Boolean(resultadoAptidao))}
             {propriedadeId&&<AvaliacaoContextualCampos propriedadeId={propriedadeId} contexto={contextoAvaliacao({gestacaoId:demandaInicial?.gestacaoId??gestacaoDoFato?.id,tentativaId:tentativaId||animal?.ultimaTentativa?.id,partos:animal?.partos})} dados={{...contextuais,resultado,finalidade,sexoFetal,resultadoAptidao,retornoAptidaoEm,resultados}} campos={tipoExame?.campos??[]} necessidades={necessidadesContextuais.filter(n=>n.id===demandaInicial?.id||!!tentativaId&&n.tentativaId===tentativaId||!!gestacaoDoFato&&n.gestacaoId===gestacaoDoFato.id)} onTipoExame={id => { rascunhoAlterado.current = true; setTipoExameId(id); }} onChange={mudarContextuais} disabled={ocupado}/>}
@@ -815,7 +816,7 @@ export function FormReproducao({
               if (mudanca.conduta !== undefined) { setConduta(mudanca.conduta as AvaliacaoInput["conduta"]); if(decisaoIatf === "INDICAR") setDecisaoIatf(null); }
             }} />}
             {!contextuais.avaliacaoContextual&&resultado === "NEGATIVO" && <div className="grid gap-2">{seletor("decisao-iatf", "Indicação para nova IATF", decisaoIatf ?? "", valor => { const decisao = (valor || null) as AvaliacaoInput["decisaoIatf"]; setDecisaoIatf(decisao); if(decisao === "INDICAR") setConduta("IATF"); else if(conduta === "IATF") setConduta(null); }, [["INDICAR","Indicar para nova IATF"],["NAO_INDICAR","Não indicar neste atendimento"]], false)}<p className="text-sm text-ink-3">Sem seleção, a decisão fica pendente. Indicar não inicia outro protocolo; a inclusão exige preparação e confirmação próprias.</p></div>}
-            {!contextuais.avaliacaoContextual&&tipoExame?.campos?.some(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)) && resultado !== "NAO_AVALIADO" && (pagina ? <details className="border-t border-border pt-4"><summary className="cursor-pointer font-semibold">Detalhes do exame · {tipoExame.nome}</summary><div className="pt-4"><CamposResultadoExame campos={tipoExame.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={resultados} onChange={valores => { rascunhoAlterado.current = true; setResultados(valores); }} /></div></details> : <CamposResultadoExame campos={tipoExame.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={resultados} onChange={valores => { rascunhoAlterado.current = true; setResultados(valores); }} />)}
+            {!contextuais.avaliacaoContextual&&tipoExame?.campos?.some(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)) && resultado !== "NAO_AVALIADO" && (pagina ? <details className="border-t border-border pt-4"><summary className="cursor-pointer font-semibold">Detalhes do exame · {nomeExame(tipoExame.id, tipoExame.nome)}</summary><div className="pt-4"><CamposResultadoExame campos={camposExameParaExibicao(tipoExame.id, tipoExame.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)))} valores={resultados} onChange={valores => { rascunhoAlterado.current = true; setResultados(valores); }} /></div></details> : <CamposResultadoExame campos={camposExameParaExibicao(tipoExame.id, tipoExame.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)))} valores={resultados} onChange={valores => { rascunhoAlterado.current = true; setResultados(valores); }} />)}
             {seletor(
               "tentativa",
               "Tentativa relacionada",
@@ -952,7 +953,7 @@ function ConferenciaAvaliacao({ input, animal, tipoExame, expandirVinculos }: { 
   const itens: Array<[string, ReactNode]> = [
     ["Animal", animal], ["Data do atendimento", formatBRDateISO(input.data)],
     ["Responsável", input.responsavel || "Não informado"],
-    ["Tipo de exame", tipoExame?.nome ?? "Não informado"],
+    ["Tipo de exame", tipoExame ? nomeExame(tipoExame.id, tipoExame.nome) : "Não informado"],
     ["Finalidade", finalidade[input.finalidade ?? "DIAGNOSTICO"] ?? input.finalidade],
     ["Conclusão", rotulosResultadoAvaliacao[input.resultado] ?? input.resultado],
     ["Aptidão", input.resultadoAptidao ? aptidao[input.resultadoAptidao] ?? input.resultadoAptidao : "Não avaliada"],
@@ -961,7 +962,7 @@ function ConferenciaAvaliacao({ input, animal, tipoExame, expandirVinculos }: { 
     ["Retorno previsto", input.retornoEm ? formatBRDateISO(input.retornoEm) : "Não informado"],
   ];
   const vinculos = <dl className="grid gap-3 pt-4">
-      {input.resultados?.map(r => <div key={r.campo}><dt className="text-sm text-ink-3">{nomeCampoExame(tipoExame?.campos?.find(c => c.codigo === r.campo) ?? {codigo:r.campo})}</dt><dd>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : String(r.valor)}</dd></div>)}
+      {input.resultados?.map(r => <div key={r.campo}><dt className="text-sm text-ink-3">{nomeCampoExame(camposExameParaExibicao(tipoExame?.id, tipoExame?.campos ?? []).find(c => c.codigo === r.campo) ?? {codigo:r.campo})}</dt><dd>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : String(r.valor)}</dd></div>)}
       {([ ["Tentativa relacionada", input.tentativaId], ["Gestação relacionada", input.gestacaoId], ["Motivo do vínculo desconhecido", input.motivoVinculoDesconhecido], ["Anotação original", input.anotacaoOriginal], ["Motivo / observação", input.motivo], ["Previsão de parto informada", input.previsaoParto], ["Retorno de aptidão", input.retornoAptidaoEm] ] as const).map(([rotulo, valor]) => valor ? <div key={rotulo}><dt className="text-sm text-ink-3">{rotulo}</dt><dd>{valor}</dd></div> : null)}
     </dl>;
   return <section className="grid gap-4" aria-label="Conferência da avaliação">

@@ -1,4 +1,4 @@
-import { nomeExame } from "./nomeExame";
+import { camposExameParaExibicao, nomeExame } from "./nomeExame";
 import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { useBuscaUrl } from "../../../lib/useBuscaUrl";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
@@ -78,17 +78,17 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
   }
   function abrir(tipo: Tipo, item?: Item) {
     if (!podeLancar || trava.current) return;
-    setErro(null); setPainel({ tipo, id: item?.id }); setNome(item?.nome ?? "");
+    setErro(null); setPainel({ tipo, id: item?.id }); setNome(tipo === "exame" && item ? nomeExame(item.id, item.nome) : item?.nome ?? "");
     const exame = item && "tipoResultado" in item ? item : undefined;
     setFormatoBloqueado(exame?.formatoBloqueado ?? false);
-    setCampos(exame?.campos ?? (contextoExames === "REPRODUTIVO" ? [{ codigo: "CONCLUSAO_GESTACIONAL", rotulo: "Conclusão sobre a gestação", tipo: "OPCAO", obrigatorio: false, opcoes: ["POSITIVO", "NEGATIVO", "INCONCLUSIVO"] }, { codigo: "SEXO_FETAL", rotulo: "Sexo fetal", tipo: "OPCAO", obrigatorio: false, opcoes: ["M", "F"] }] : []));
+    setCampos(exame ? camposExameParaExibicao(exame.id, exame.campos ?? []) : (contextoExames === "REPRODUTIVO" ? [{ codigo: "CONCLUSAO_GESTACIONAL", rotulo: "Conclusão sobre a gestação", tipo: "OPCAO", obrigatorio: false, opcoes: ["POSITIVO", "NEGATIVO", "INCONCLUSIVO"] }, { codigo: "SEXO_FETAL", rotulo: "Sexo fetal", tipo: "OPCAO", obrigatorio: false, opcoes: ["M", "F"] }] : []));
     setFormato(exame?.tipoResultado ?? (contextoExames === "REPRODUTIVO" ? "MULTIPLO" : "TEXTO")); setUnidade(exame?.unidade ?? "");
     setOpcoes(exame?.opcoes?.join("\n") ?? "");
   }
   function novaVersao(item: Item) {
     abrir("exame", item);
     setPainel({ tipo: "exame", versaoAnteriorId: item.id }); setFormatoBloqueado(false);
-    setNome(`${item.nome.replace(/ · versão \d+$/, "")} · versão ${"versaoFormato" in item ? (item.versaoFormato ?? 1) + 1 : 2}`);
+    setNome(`${nomeExame(item.id, item.nome).replace(/ · versão \d+$/, "")} · versão ${"versaoFormato" in item ? (item.versaoFormato ?? 1) + 1 : 2}`);
   }
   async function executar(tipo: Tipo, id: string | undefined, body: object) {
     if (!podeLancar || trava.current) return;
@@ -117,8 +117,11 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
   const novo = aba === "aplicacao" ? "Novo tipo de aplicação" : aba === "doenca" ? "Nova doença" : "Novo tipo de exame";
   function salvar() {
     if (!painel) return;
+    const original = itens.find(item => item.id === painel.id);
+    const nomeSalvo = original && nome === nomeExame(original.id, original.nome) ? original.nome : nome;
+    const camposSalvos = original && "campos" in original ? campos.map(c => { const anterior = original.campos?.find(a => a.codigo === c.codigo); return anterior && c.rotulo === camposExameParaExibicao(original.id, [anterior])[0].rotulo ? { ...c, rotulo: anterior.rotulo } : c; }) : campos;
     void executar(painel.tipo, painel.id, painel.tipo === "exame"
-      ? formatoBloqueado ? { nome } : { nome, versaoAnteriorId: painel.versaoAnteriorId, tipoResultado: formato, ...(formato === "MULTIPLO" ? { campos } : {}), unidade: unidade || null, opcoes: formato === "OPCAO" ? opcoes.split("\n").map((s) => s.trim()).filter(Boolean) : null }
+      ? formatoBloqueado ? { nome: nomeSalvo } : { nome: nomeSalvo, versaoAnteriorId: painel.versaoAnteriorId, tipoResultado: formato, ...(formato === "MULTIPLO" ? { campos: camposSalvos } : {}), unidade: unidade || null, opcoes: formato === "OPCAO" ? opcoes.split("\n").map((s) => s.trim()).filter(Boolean) : null }
       : { nome });
   }
   return <section className="mt-5 grid min-w-0 gap-5">
@@ -144,8 +147,8 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
             { chave: "situacao", titulo: "Situação", celula: (item) => <Pill tone={item.ativo ? "green" : "neutral"}>{item.ativo ? "Ativo" : "Inativo"}</Pill> },
             ...(podeLancar ? [{ chave: "acoes", titulo: "Ações", acoes: true, celula: (item: Item) => <div className="flex justify-end gap-1">
               {aba === "exame" && <Button secondary disabled={ocupado} onClick={() => novaVersao(item)}>Nova versão</Button>}
-              <button type="button" aria-label={`Editar ${item.nome}`} disabled={ocupado} onClick={() => abrir(aba, item)} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><Pencil size={16} /></button>
-              <button type="button" aria-label={`${item.ativo ? "Inativar" : "Ativar"} ${item.nome}`} disabled={ocupado} onClick={() => void executar(aba, item.id, { ativo: !item.ativo })} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{item.ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
+              <button type="button" aria-label={`Editar ${aba === "exame" ? nomeExame(item.id, item.nome) : item.nome}`} disabled={ocupado} onClick={() => abrir(aba, item)} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45"><Pencil size={16} /></button>
+              <button type="button" aria-label={`${item.ativo ? "Inativar" : "Ativar"} ${aba === "exame" ? nomeExame(item.id, item.nome) : item.nome}`} disabled={ocupado} onClick={() => void executar(aba, item.id, { ativo: !item.ativo })} className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 disabled:opacity-45">{item.ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
             </div> }] : []),
           ]} />}
         {!carregando && !erro && <PaginacaoLocal controles={paginacao.controles} substantivo={titulo.toLocaleLowerCase("pt-BR")} id={`pagina-cadastro-${aba}`} />}

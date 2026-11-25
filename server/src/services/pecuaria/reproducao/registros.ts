@@ -1437,7 +1437,7 @@ export async function painelReproducao(
   });
   const evidencias = await prisma.interpretacaoReprodutiva.findMany({
     where: { id: { in: avaliacoes.map(a => a.id) } },
-    select: { id: true, decisaoIatf:true, resultadoAptidao:true, retornoAptidaoEm:true, exame: { select: { id:true, finalidades:true, finalidadePrincipal:true, realizacao:true, responsavel:true, formatoSnapshot:true, resultados:{ where:{vigente:true}, select:{campo:true,valor:true,unidade:true} } } } },
+    select: { id: true, decisaoIatf:true, resultadoAptidao:true, retornoAptidaoEm:true, exame: { select: { id:true, tipoExameId:true, finalidades:true, finalidadePrincipal:true, realizacao:true, responsavel:true, formatoSnapshot:true, resultados:{ where:{vigente:true}, select:{campo:true,valor:true,unidade:true} } } } },
   });
   const examesPorAvaliacao = new Map(evidencias.map(e => [e.id, e.exame]));
   const decisoesPorAvaliacao = new Map(evidencias.map(e => [e.id, e]));

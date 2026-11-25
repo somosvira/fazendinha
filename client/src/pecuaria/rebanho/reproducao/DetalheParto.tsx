@@ -379,7 +379,7 @@ export function DetalheParto({
           ]}
         />
       </SecaoFicha>
-      <SecaoFicha titulo="Avaliações pós-parto" acoes={podeEditar ? <Button variant="outline" onClick={()=>{setComplemento("escore");setAcao("corrigir");}}>Registrar avaliação de escore</Button> : undefined}>
+      <SecaoFicha titulo="Avaliações pós-parto" acoes={podeEditar ? <Button variant="outline" onClick={()=>{setComplemento("escore");setAcao("corrigir");}}>Registrar escore de condição corporal (ECC)</Button> : undefined}>
         <Lista
           rotulo="Avaliações vinculadas ao parto"
           itens={p.acompanhamentos ?? []}
