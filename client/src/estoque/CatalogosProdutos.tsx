@@ -2,7 +2,8 @@ import { navegarPara } from "../router";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ConteudoReferenciaMedicamento, PendenciasMedicamento } from "./ReferenciaMedicamento";
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Input } from '@/components/ui/input';
+import { BuscaLista } from '@/components/BuscaLista';
+import { BarraConsulta } from '../financeiro/BarraConsulta';
 import { Button, ErrorBox, Panel, Paginacao, TabelaFinanceira, Empty } from '../financeiro/financeiro-ui';
 import { SelectBuscavel } from '../components/SelectBuscavel';
 import { listarCatalogo, listarCatalogoProdutos, obterReferenciaCatalogo, type ItemCatalogo, type ItemCatalogoProduto, type PaginaCatalogoProdutos, type TipoCatalogo } from './catalogos-api';
@@ -72,11 +73,10 @@ export function CatalogoProdutos() {
     return () => { vivo = false; clearTimeout(timer); };
   }, [busca, pagina, revisao]);
   return <section className="mt-6 grid gap-4" aria-label="Catálogo de produtos">
-    <div><h2 className="text-lg font-semibold">Catálogo de produtos</h2></div>
     <Panel>
-      <div className="grid gap-3 p-4"><label className="text-sm">Buscar por produto ou fabricante<Input type="search" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} /></label></div>
+      <BarraConsulta><BuscaLista rotulo="Buscar por produto ou fabricante" placeholder="Buscar por produto ou fabricante" valor={busca} onChange={valor => { setBusca(valor); setPagina(1); }} /></BarraConsulta>
       <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button>}
-      {carregando ? <p role="status" className="p-4">Carregando catálogo…</p> : !erro && (dados?.itens.length
+      {carregando ? <p role="status" className="p-4 text-sm text-ink-3">Carregando catálogo…</p> : !erro && (dados?.itens.length
         ? <TabelaFinanceira icone={ICONES_TABELA.produto} itens={dados.itens} chaveDe={i => i.id} rotulo="Catálogo de produtos" colunas={[
             { chave: 'produto', titulo: 'Produto', principal: true, celula: i => i.orientacaoBula || i.conferenciaBula ? <button type="button" className="text-left text-primary underline underline-offset-2" onClick={() => abrirReferencia(i)} aria-label={`Consultar informações de ${i.nomeCompleto}`}>{i.nomeCompleto}</button> : i.nomeCompleto },
             { chave: 'fabricante', titulo: 'Fabricante', celula: i => i.fabricante?.nome ?? '—' },

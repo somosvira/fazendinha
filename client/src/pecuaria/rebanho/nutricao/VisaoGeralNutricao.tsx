@@ -9,7 +9,8 @@ import { SelectCampo } from "@/financeiro/SelectCampo";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 
 import { useCallback } from "react";
-import { Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Button, Empty, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { navegarPara } from "../../../router";
 
 import { formatarDataBR } from "../lib/rotulos";
 import { consultarVisaoNutricional } from "./api";
@@ -61,7 +62,7 @@ export function VisaoGeralNutricao({ podeLancar = false }: { podeLancar?: boolea
         <BuscaLista rotulo="Buscar lote, sítio ou dieta" valor={busca} placeholder="Buscar lote, sítio ou dieta" onChange={valor => atualizar({ buscaLote: valor })} />
 
       </BarraConsulta>
-      {!itens.length ? <div className="nutricao-vazio">{dados.lotes.length ? "Nenhum lote corresponde aos filtros." : <>Nenhum lote ativo neste contexto. <LinkNutricional href="/pecuaria/rebanho/lotes">Ver lotes do rebanho</LinkNutricional></>}</div> : <TabelaFinanceira icone={ICONES_TABELA.lote} ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(campos,edicao,consultaColunas.erro)} rotulo="Nutrição por lote" itens={paginacao.itens} chaveDe={(r) => r.lote.id} colunas={[
+      {!itens.length ? (dados.lotes.length ? <Empty>Nenhum lote corresponde aos filtros.</Empty> : <Empty acao={<Button secondary onClick={() => navegarPara("/pecuaria/rebanho/lotes")}>Ver lotes do rebanho</Button>}>Nenhum lote ativo neste contexto.</Empty>) : <TabelaFinanceira icone={ICONES_TABELA.lote} ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(campos,edicao,consultaColunas.erro)} rotulo="Nutrição por lote" itens={paginacao.itens} chaveDe={(r) => r.lote.id} colunas={[
         { chave: "lote", titulo: "Lote / sítio", principal: true, celula: (r) => <><LinkNutricional href={rotaNutricao({ loteId: r.lote.id })}>{r.lote.nome}</LinkNutricional><p className="nutricao-secundario">{r.lote.propriedade.nome}</p></> },
         { chave: "animais", titulo: "Animais", alinhamento: "direita", larguraMinima: 90, celula: (r) => r.lote.animaisAtivos },
         { chave: "dieta", titulo: "Dieta vigente", larguraMinima: 220, celula: (r) => r.vigente ? <><strong>{r.vigente.dieta.nome}</strong><p className="nutricao-secundario">desde {formatarDataBR(r.vigente.desde)}</p></> : <Pill tone="amber">Sem dieta vigente</Pill> },

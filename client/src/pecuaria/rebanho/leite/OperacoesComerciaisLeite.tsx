@@ -1,3 +1,4 @@
+import { Empty } from "@/financeiro/financeiro-ui";
 import { DatePicker } from "../../../components/DatePicker";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -270,10 +271,7 @@ export function OperacoesComerciaisLeite({
         </form>
       )}
       {!integrado && <>{dados && !dados.itens.length && (
-        <p>
-          Nenhuma operação neste período. Abra uma operação para registrar as
-          coletas com preço pendente.
-        </p>
+        <Empty><strong>Nenhuma operação neste período</strong><p>Abra uma operação para registrar as coletas com preço pendente.</p></Empty>
       )}
       <div
         className="leite-tabela-scroll"

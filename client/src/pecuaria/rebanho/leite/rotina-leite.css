@@ -35,7 +35,7 @@
 .leite-producao-registro .producao-registro-cabecalho{margin-top:0}
 .leite-rotina-reformulada :is(.leite-consulta-custos,.leite-historico-coletivo){margin-top:24px}
 .leite-rotina-reformulada .leite-estoque-visao{align-items:stretch;gap:20px}
-.leite-rotina-reformulada .leite-estoque-visao>section{padding:24px;border-radius:16px;background:var(--fin-positive-bg)}
+.leite-rotina-reformulada .leite-estoque-visao>section{padding:24px;border-radius:12px;border:1px solid var(--border);background:var(--card)}
 .leite-rotina-reformulada .leite-coberturas{padding:24px;background:var(--card);border:0;border-radius:16px}
 
 @media(max-width:650px){.leite-producao-evolucao,.leite-producao-registro{padding:16px}.leite-rotina-reformulada .leite-cabecalho-acoes{flex-wrap:wrap}.leite-rotina-reformulada .leite-modulo-acoes>button{flex:1}}

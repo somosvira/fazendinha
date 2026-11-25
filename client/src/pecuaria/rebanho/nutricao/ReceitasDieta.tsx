@@ -6,7 +6,7 @@ import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Button, Empty, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { quantidadeNutricional, un } from "./quantidades";
 import type { Dieta } from "./api";
 
@@ -61,7 +61,7 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
   return <div className="nutricao-receitas nutricao-conteudo"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} estrutura="cartoes" label="Carregando receitas de dieta…" />
     {url.form && !consulta.carregando && !consulta.erro && url.form !== "nova" && !dieta && <p role="alert">Receita não encontrada. <Button secondary onClick={() => abrir()}>Voltar às receitas</Button></p>}
     {consulta.dados && <><BarraConsulta criterios={situacao ? [{ id: "situacao", rotulo: situacao === "publicadas" ? "Publicadas" : "Rascunhos", limpar: () => atualizar({ situacaoReceita: "" }) }] : []} edicaoFiltros={edicaoSituacao} adicionais={<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação" value={edicaoSituacao.rascunho.situacao} onValueChange={v => edicaoSituacao.editar("situacao", v)}><option value="">Todas</option><option value="publicadas">Publicadas</option><option value="rascunhos">Rascunhos</option></SelectCampo></CampoFiltro>} acao={podeLancar ? <Button onClick={() => abrir("nova")}><Plus size={18} aria-hidden />Nova receita</Button> : undefined}><BuscaLista rotulo="Buscar receita" valor={busca} onChange={valor => atualizar({ buscaReceita: valor })} placeholder="Buscar receita pelo nome" /></BarraConsulta>
-      {!receitas.length ? <Panel className="nutricao-vazio">{consulta.dados.length ? "Nenhuma receita corresponde aos filtros." : "Nenhuma receita cadastrada."}</Panel> : <TabelaFinanceira icone={ICONES_TABELA.dieta} rotulo="Receitas de dieta" itens={receitas} chaveDe={(d) => d.id} colunas={[
+      {!receitas.length ? <Empty>{consulta.dados.length ? "Nenhuma receita corresponde aos filtros." : "Nenhuma receita cadastrada."}</Empty> : <TabelaFinanceira icone={ICONES_TABELA.dieta} rotulo="Receitas de dieta" itens={receitas} chaveDe={(d) => d.id} colunas={[
         { chave: "receita", titulo: "Receita", principal: true, larguraFlexivel: true, celula: (d) => nomeReceita(d) },
         { chave: "versao", titulo: "Versão", larguraMinima: 80, celula: (d) => `v${d.versao}` },
         { chave: "situacao", titulo: "Situação", celula: (d) => <Pill tone={d.publicadaEm ? "green" : "amber"}>{d.publicadaEm ? "Publicada" : "Rascunho"}</Pill> },

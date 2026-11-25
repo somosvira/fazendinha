@@ -189,12 +189,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
       {aba === "amostras" && amostras && (
         <>
           <div className="leite-qualidade-contexto"><span><CalendarDays size={17} aria-hidden />Amostras até <time dateTime={data}>{formatarDataBR(data)}</time></span></div>
-          {!amostras.itens.length && (
-            <p>
-              Nenhuma amostra neste período. Registre a coleta mesmo se o
-              resultado ainda não chegou.
-            </p>
-          )}
+          {!amostras.itens.length ? <Empty icone={FlaskConical}><strong>Nenhuma amostra até {formatarDataBR(data)}</strong><p>Registre a coleta mesmo se o resultado ainda não chegou.</p></Empty> : <>
           <ListaConsultaLeite icone={FlaskConical} compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
             { chave: "data", titulo: "Coleta", principal: true, celula: a => a.data.slice(0, 10).split("-").reverse().join("/") },
             { chave: "tipo", titulo: "Tipo", celula: a => a.sujeito.tipo === "ANIMAL" ? "Individual" : "Coletiva" },
@@ -203,7 +198,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
             { chave: "situacao", titulo: "Situação", celula: a => a.status === "ANULADO" ? "Anulada" : a.realizacao === "COLETA_REGISTRADA" ? "Aguardando resultado" : "Resultado informado" },
             { chave: "acoes", titulo: "Ações", acoes: true, celula: a => <Button variant="outline" onClick={() => { setSelecionada(a); setNova(false); }}>Abrir amostra</Button> },
           ]} />
-          <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(amostras.total / 20))} total={amostras.total} porPagina={20} rotulo="Paginação das amostras" substantivo="amostras" idSelect="pagina-amostras-leite" onPagina={setPagina} />
+          <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(amostras.total / 20))} total={amostras.total} porPagina={20} rotulo="Paginação das amostras" substantivo="amostras" idSelect="pagina-amostras-leite" onPagina={setPagina} /></>}
         </>
       )}
       {selecionada && (

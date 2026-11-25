@@ -13,6 +13,6 @@
 .controles-historicos-origem dl { display: grid; gap: 12px; margin: 12px 0; }
 .controles-historicos-origem dt { color: var(--muted-foreground); font-size:14px; }
 .controles-historicos-origem dd { margin: 3px 0 0; overflow-wrap: anywhere; }
-.controles-historicos-nota, .controles-historicos-vazio { color: var(--muted-foreground); font-size:14px; line-height: 1.6; max-width: 75ch; margin: 12px 0; }
+.controles-historicos-nota { color: var(--muted-foreground); font-size:14px; line-height: 1.6; max-width: 75ch; margin: 12px 0; }
 .controles-historicos-tabela:focus-visible, .controles-historicos-origem summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 @media (max-width: 640px) { .controles-historicos-origem summary { min-height: 44px; } }

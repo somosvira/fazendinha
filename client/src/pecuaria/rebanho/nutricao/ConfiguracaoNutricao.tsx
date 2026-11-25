@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Button, ErrorBox, hoje } from "@/financeiro/financeiro-ui";
+import { Button, Empty, ErrorBox, TabelaFinanceira, hoje } from "@/financeiro/financeiro-ui";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import type { PropriedadeDTO } from "@/api/propriedades";
@@ -46,7 +46,12 @@ export function ConfiguracaoNutricao({ podeLancar, escopo, sitios, lotes, config
     finally { enviando.current = false; setOcupado(false); }
   }
   return <div className="nutricao-configuracao">
-    <section><h2>Configurações em uso</h2>{configs.length ? <div className="nutricao-tabela-scroll"><table className="nutricao-tabela consulta-tabela"><thead><tr><th>Aplicação</th><th>Modelo</th><th>Conferência</th><th>Vigência</th></tr></thead><tbody>{configs.map(c => <tr key={c.id}><td>{sitios.find(s => s.id === c.propriedadeId)?.nome} · {c.loteId ? lotes.find(l => l.id === c.loteId)?.nome : "Padrão do sítio"}</td><td>{modelosNutricionais[c.modelo].nome}</td><td>Dia {c.diaConferencia}</td><td>Desde {formatarDataBR(c.desde)}</td></tr>)}</tbody></table></div> : <p>Nenhuma configuração registrada.</p>}</section>
+    <section><h2>Configurações em uso</h2>{configs.length ? <TabelaFinanceira rotulo="Configurações em uso" itens={configs} chaveDe={c => c.id} colunas={[
+      { chave: "aplicacao", titulo: "Aplicação", principal: true, celula: c => `${sitios.find(s => s.id === c.propriedadeId)?.nome ?? ""} · ${c.loteId ? lotes.find(l => l.id === c.loteId)?.nome ?? "" : "Padrão do sítio"}` },
+      { chave: "modelo", titulo: "Modelo", celula: c => modelosNutricionais[c.modelo].nome },
+      { chave: "conferencia", titulo: "Conferência", celula: c => `Dia ${c.diaConferencia}` },
+      { chave: "vigencia", titulo: "Vigência", celula: c => `Desde ${formatarDataBR(c.desde)}` },
+    ]} /> : <Empty>Nenhuma configuração registrada.</Empty>}</section>
     {podeLancar ? <form onSubmit={e => { e.preventDefault(); if (dataValida && prazo) { setErro(null); setRevisar(true); } }}><fieldset disabled={ocupado}>
       <section><h2>Onde aplicar</h2><p>Use um padrão para o sítio ou configure um lote que precisa de outra rotina.</p><div className="mensal-campos">
         <label>Sítio<SelectCampo required value={sitio} onValueChange={v => { setSitio(v); setLote(""); }}><option value="">Selecione</option>{sitios.filter(s => escopo === null || s.id === escopo).map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}</SelectCampo></label>
