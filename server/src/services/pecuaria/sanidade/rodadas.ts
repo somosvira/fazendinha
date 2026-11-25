@@ -152,7 +152,7 @@ export async function listarParticipantes(id:string,sitio:number|null,f:Consulta
 function filtrarTarefas(ts:Tarefa[],f:ConsultaSanitaria){return ts.filter(t=>{
   if(f.de&&iso(t.previstaPara)<f.de||f.ate&&iso(t.previstaPara)>f.ate)return false;
   if(!f.situacao)return true;
-  return f.situacao==="ATRASADA"?situacaoTarefa(t)==="PENDENTE"&&iso(t.previstaPara)<hojeFazenda():situacaoTarefa(t)===f.situacao;
+  return f.situacao==="ATRASADA"?situacaoTarefa(t)==="PENDENTE"&&iso(t.previstaPara)<hojeFazenda():f.situacao==="NO_PRAZO"?situacaoTarefa(t)==="PENDENTE"&&iso(t.previstaPara)>=hojeFazenda():situacaoTarefa(t)===f.situacao;
 });}
 export async function listarEtapas(id:string,sitio:number|null,f:ConsultaSanitaria){
   const r=await buscarRodada(prisma,id,sitio);

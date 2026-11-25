@@ -8,8 +8,6 @@
 .sanidade-ciclo-clicavel { cursor: pointer; }
 .sanidade-ciclo-clicavel:hover { background: var(--muted); }
 .sanidade-ciclo-clicavel:focus-visible { position: relative; z-index: 1; outline: 2px solid var(--ring); outline-offset: -2px; }
-.sanidade-ciclo-ativo { background: color-mix(in srgb, var(--pos) 6%, var(--surface)); border-left: 1px solid var(--pos); }
-.sanidade-ciclo-detalhe { margin: 0 1rem 1rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
 .sanidade-ciclo-ativo { background: color-mix(in srgb, var(--pos) 6%, var(--card)); border-left: 1px solid var(--pos); }
 .sanidade-ciclo-detalhe { margin: 0 1rem 1rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
 @media (max-width: 720px) { .sanidade-ciclo-linha { grid-template-columns: 1fr 1fr; } .sanidade-ciclo-cabecalho { display: none; } .sanidade-ciclo-detalhe { margin: 0 .5rem .5rem; padding: .75rem; } }
@@ -94,3 +92,38 @@
  .sanidade-pagina .sanidade-lista > .consulta-barra .consulta-controles { gap:8px; }
  .sanidade-pagina .sanidade-lista > .consulta-barra .consulta-acoes { flex-wrap:wrap; gap:8px; }
 }
+
+/* Agenda por dia: faixa de 14 dias + seções Atrasadas / Hoje / Amanhã / ... */
+.agenda-faixa { display: grid; grid-template-columns: repeat(14, minmax(44px, 1fr)); gap: 6px; overflow-x: auto; padding: 2px 0 4px; }
+.agenda-faixa-dia { display: grid; justify-items: center; gap: 3px; padding: 8px 4px 6px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--muted-foreground); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; transition: background .12s, border-color .12s; }
+.agenda-faixa-dia strong { font-size: 18px; line-height: 1.1; letter-spacing: 0; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.agenda-faixa-dia[data-fim-semana] { background: var(--muted); }
+.agenda-faixa-dia:hover { border-color: var(--primary); }
+.agenda-faixa-dia[data-hoje] { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.agenda-faixa-dia[data-hoje] span { color: var(--primary); }
+.agenda-faixa-dia[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.agenda-faixa-dia[aria-pressed="true"] strong, .agenda-faixa-dia[aria-pressed="true"] span { color: var(--primary-foreground); }
+.agenda-faixa-dia:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.agenda-faixa-contagem { min-width: 22px; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 14%, var(--card)); color: var(--primary); font-style: normal; font-size: 12px; font-weight: 700; letter-spacing: 0; text-align: center; font-variant-numeric: tabular-nums; }
+.agenda-faixa-contagem[data-atrasada] { background: var(--fin-danger-bg, #fde8e8); color: var(--destructive); }
+.agenda-faixa-contagem[data-vazio] { background: transparent; color: var(--muted-foreground); font-weight: 400; }
+.agenda-faixa-dia[aria-pressed="true"] .agenda-faixa-contagem { background: color-mix(in srgb, var(--primary-foreground) 22%, transparent); color: var(--primary-foreground); }
+.agenda-faixa-legenda { display: flex; gap: 1rem; margin-top: 8px; font-size: 12px; color: var(--muted-foreground); }
+.agenda-faixa-legenda b { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+.agenda-faixa-legenda b[data-atrasada] { background: var(--destructive); }
+.agenda-faixa-legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.agenda-dias { display: grid; gap: 1.25rem; margin-top: 1rem; }
+.agenda-dia-cabecalho { display: flex; align-items: baseline; gap: .75rem; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.agenda-dia-cabecalho h3 { font-size: 16px; font-weight: 600; margin: 0; }
+.agenda-dia-cabecalho small { color: var(--muted-foreground); font-size: 13px; }
+.agenda-dia-cabecalho[data-atrasada] h3 { color: var(--destructive); }
+.agenda-dia-recolher, .agenda-dia-mais { margin-left: auto; background: none; border: 0; padding: 4px 6px; font-size: 13px; color: var(--pos); cursor: pointer; }
+.agenda-dia-mais { margin: 6px 0 0; }
+.agenda-dia-recolher:hover, .agenda-dia-mais:hover { text-decoration: underline; }
+.agenda-etapas { list-style: none; margin: 0; padding: 0; }
+.agenda-etapa { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) auto; align-items: center; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
+.agenda-etapa:last-child { border-bottom: 0; }
+.agenda-etapa-sub { font-size: 13px; color: var(--muted-foreground); }
+.agenda-etapa-atraso { font-size: 13px; color: var(--destructive); }
+.agenda-etapa-acao { display: flex; justify-content: flex-end; }
+@media (max-width: 720px) { .agenda-etapa { grid-template-columns: 1fr auto; } .agenda-etapa-animais { grid-column: 1 / -1; grid-row: 2; } }
