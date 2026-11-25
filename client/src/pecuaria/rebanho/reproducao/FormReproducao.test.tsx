@@ -568,8 +568,8 @@ it("parto com ocorrência nova de RP confere os impactos e envia a confirmação
   fireEvent.click(screen.getByRole("button", { name: "Pós-parto" }));
   await alterarControle(screen.getByLabelText("Retenção de placenta"), { target: { value: "SIM" } });
   await alterarControle(screen.getByLabelText("Ocorrência sanitária de retenção"), { target: { value: "CRIAR" } }); await esperarOpcao("Retenção de placenta");
-  await alterarControle(screen.getByLabelText("Doença da ocorrência"), { target: { value: "rp" } });
-  await alterarControle(screen.getByLabelText("Início real da ocorrência"), { target: { value: "2026-10-14" } });
+  await alterarControle(screen.getByLabelText("Doença da ocorrência *"), { target: { value: "rp" } });
+  await alterarControle(screen.getByLabelText("Início real da ocorrência *"), { target: { value: "2026-10-14" } });
   fireEvent.submit(document.getElementById("form-reproducao")!); await screen.findByText("Preparo autorizado · v2"); expect(registrarParto).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText("Motivo da confirmação"), { target: { value: "Impacto da RP conferido" } }); fireEvent.click(screen.getByLabelText(/Conferi as participações/)); fireEvent.click(screen.getByRole("button", { name: "Confirmar dados e impactos" }));
   await waitFor(() => expect(registrarParto).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 7, ocorrenciaRetencao: { acao: "CRIAR", doencaId: "rp", inicio: "2026-10-14", impacto: { revisao: "a".repeat(64), motivo: "Impacto da RP conferido" } } })));
