@@ -6,6 +6,7 @@ import { transacaoPecuaria } from "../transacao.js";
 import { operacaoIdempotenteTx } from "../reproducao/operacoes.js";
 import { dataOuHorario } from "../reproducao/schemas.js";
 import { anteriorIatf, lerDataIatf } from "../reproducao/horarios.calc.js";
+import { referenciaDiagnosticoPendente } from "../reproducao/prazo-tarefa.calc.js";
 
 export const eventoTarefaSchema = z.object({
   chave: z.string().uuid(), propriedadeId: z.number().int().positive().max(2147483647),
@@ -49,6 +50,8 @@ export async function registrarEventoTarefaTx(tx: Prisma.TransactionClient, id: 
         throw new RebanhoError("CONFLITO", "A tarefa não está pendente para esta ação");
     }
     const nova = input.tipo === "ADIAMENTO" ? lerDataIatf(input.previstaPara!) : null;
+    if (nova && referenciaDiagnosticoPendente(tarefa.etapa.configuracao, tarefa.previsaoPendente))
+      throw new RebanhoError("CONFLITO", "O diagnóstico aguarda a tentativa vinculada antes de admitir adiamento", "previstaPara");
     if (nova && !anteriorIatf(tarefa.previstaPara, tarefa.precisaoTemporal, nova.instante, nova.precisao))
       throw new RebanhoError("VALIDACAO", "Escolha uma previsão posterior à atual", "previstaPara");
     // CURRENT_TIMESTAMP é o início da transação, podendo anteceder uma gravação que esperou a trava.

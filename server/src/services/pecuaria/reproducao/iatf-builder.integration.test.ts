@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
 import { normalizarNomeCatalogo } from "../../estoque/catalogos.js";
-import { criarProtocolo } from "./iatf.js";
+import { criarProtocolo, editarProtocolo } from "./iatf.js";
 import { protocoloSchema } from "./schemas.js";
 import { estimarModeloTx, estimativaModeloSchema } from "../custos/estimativa-modelo.js";
 const comBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
@@ -74,5 +74,20 @@ comBanco("Builder reprodutivo: adoção e versões no PostgreSQL", () => {
     expect(await prisma.produto.count({ where: { produtoCatalogoId: catalogo } })).toBe(1);
     expect(versao.etapas).toHaveLength(1);
     expect(await prisma.movimentoEstoque.count({ where: { produtoId: versao.etapas[0].produtoId! } })).toBe(0);
+  }, 30000);
+  it("conserva modalidades omitidas e permite limpá-las ao mudar um rascunho para preparo", async () => {
+    const retirada = { nome: "Retirada", tipo: "RETIRADA", intervalo: 7, unidade: "DIAS" } as const;
+    const tentativa = { nome: "Inseminação", tipo: "TENTATIVA", tentativaTipo: "IA", intervalo: 9, unidade: "DIAS" } as const;
+    const comum = { nome, versao: 3, etapas: [retirada, tentativa] };
+    const rascunho = await criarProtocolo(protocoloSchema.parse({ ...comum, finalidade: "IATF", modalidadeTentativa: "ETAPA", modalidadeDiagnostico: "EXTERNO" }), null);
+    expect(await editarProtocolo(rascunho.id, protocoloSchema.parse({ ...comum, descricao: "Conserva modalidades" }), null)).toMatchObject({ finalidade: "IATF", modalidadeTentativa: "ETAPA", modalidadeDiagnostico: "EXTERNO" });
+    const preparo = await editarProtocolo(rascunho.id, protocoloSchema.parse({
+      ...comum, finalidade: "PRE_SINCRONIZACAO", modalidadeTentativa: null, modalidadeDiagnostico: null,
+      etapas: [retirada], publicado: true,
+    }), null);
+    expect(preparo).toMatchObject({ versao: 3, publicado: true, finalidade: "PRE_SINCRONIZACAO", modalidadeTentativa: null, modalidadeDiagnostico: null });
+    expect(await prisma.protocolo.findUnique({ where: { id: rascunho.id }, include: { etapas: true } })).toMatchObject({
+      versao: 3, finalidade: "PRE_SINCRONIZACAO", modalidadeTentativa: null, modalidadeDiagnostico: null, etapas: [{ tipo: "RETIRADA" }],
+    });
   }, 30000);
 });

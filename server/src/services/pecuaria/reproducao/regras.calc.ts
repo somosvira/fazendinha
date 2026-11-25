@@ -1,14 +1,15 @@
 import { deslocarCalendario } from "../protocolos/calendario.calc.js";
 import type { EtapaIatf } from "./schemas.js";
 import { contarPartos } from "../rebanho/partos.calc.js";
+import { diaIatf } from "./horarios.calc.js";
 
 export function calendarioIatf(inicio: Date, etapas: EtapaIatf[], precisao: "DIA" | "HORA" = "HORA") {
   return etapas.map((etapa, indice) => {
-    const previsaoPendente = precisao === "DIA" && (etapa.unidade === "HORAS" || !Number.isInteger(etapa.intervalo));
+    const previsaoPendente = !!etapa.referenciaPrazoDiagnostico || precisao === "DIA" && (etapa.unidade === "HORAS" || !Number.isInteger(etapa.intervalo));
     // Sem hora de referência, conservar apenas a data do início como referência.
     // Não converter 12h/36h em um dia de vencimento arbitrário.
-    const previstaEm = previsaoPendente ? inicio : deslocarCalendario(inicio, etapa.intervalo, etapa.unidade, precisao);
-    return { ...etapa, etapa: indice, previstaEm, precisaoTemporal: precisao, previsaoPendente };
+    const previstaEm = etapa.referenciaPrazoDiagnostico ? new Date(`${diaIatf(inicio, precisao)}T00:00:00Z`) : previsaoPendente ? inicio : deslocarCalendario(inicio, etapa.intervalo, etapa.unidade, precisao);
+    return { ...etapa, etapa: indice, previstaEm, precisaoTemporal: etapa.referenciaPrazoDiagnostico ? "DIA" as const : precisao, previsaoPendente };
   });
 }
 

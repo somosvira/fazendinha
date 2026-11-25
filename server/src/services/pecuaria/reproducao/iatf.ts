@@ -3,6 +3,7 @@ import { demandaDispensada } from "./agenda-demanda.calc.js";
 import { tipoAplicacaoLegadaId } from "../sanidade/desvios.js";
 import { conferirImpactosTx, aplicarImpactosTx } from "./impactos.js";
 import { snapshotPrazosAdesaoTx } from "./prazos-protocolo.js";
+import { ocultarDataPendenteDiagnostico, referenciaDiagnosticoPendente } from "./prazo-tarefa.calc.js";
 import { quantidadePadraoTentativa, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
 import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../protocolos/automacao.schemas.js";
 import { AvisoAptidaoProgramacao, conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
@@ -256,7 +257,13 @@ export async function editarProtocolo(id: string, input: z.infer<typeof protocol
     const identidade = await resolverIdReprodutivoTx(tx, "protocolo", id);
     const antes = await carregarVersaoTx(tx, identidade, "REPRODUTIVO", true);
     if (!podeVerValores && antes.etapas.some(e => e.configuracao && typeof e.configuracao === "object" && !Array.isArray(e.configuracao) && "referenciasCusto" in e.configuracao)) throw new RebanhoError("CONFLITO", "Esta versão contém referências financeiras protegidas; solicite a edição a um usuário com acesso a valores", "etapas");
-    input = protocoloSchema.parse({ ...input, finalidade: input.finalidade ?? antes.finalidade, modalidadeTentativa: input.modalidadeTentativa ?? antes.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico ?? antes.modalidadeDiagnostico, configuracaoAcompanhamento: input.configuracaoAcompanhamento === undefined ? antes.configuracaoAcompanhamento : input.configuracaoAcompanhamento });
+    input = protocoloSchema.parse({
+      ...input,
+      finalidade: input.finalidade ?? antes.finalidade,
+      modalidadeTentativa: input.modalidadeTentativa === undefined ? antes.modalidadeTentativa : input.modalidadeTentativa,
+      modalidadeDiagnostico: input.modalidadeDiagnostico === undefined ? antes.modalidadeDiagnostico : input.modalidadeDiagnostico,
+      configuracaoAcompanhamento: input.configuracaoAcompanhamento === undefined ? antes.configuracaoAcompanhamento : input.configuracaoAcompanhamento,
+    });
     if (input.versao !== antes.versao) erro("A edição de um rascunho conserva o número da versão", "versao");
     if (input.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,input.configuracaoAcompanhamento);
     const congeladas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null, usuarioId);
@@ -1027,7 +1034,12 @@ export async function listarProgramacoes(
       .filter((a) => a.programacaoId === p.id)
       .map((a) => ({
         ...a,
-        tarefas: tarefas.filter((t) => t.participanteId === a.id),
+        tarefas: tarefas.filter(t => t.participanteId === a.id).map(t => {
+          const snapshot = t.planejadoSnapshot as SnapshotIatf | null;
+          return referenciaDiagnosticoPendente(snapshot?.etapa, t.previsaoPendente)
+            ? { ...t, previstaEm: null, previsaoOriginal: null, planejadoSnapshot: ocultarDataPendenteDiagnostico(t.planejadoSnapshot) }
+            : t;
+        }),
       })),
   }));
 }

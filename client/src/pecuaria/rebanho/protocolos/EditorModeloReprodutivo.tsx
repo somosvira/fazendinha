@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useId, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { SeletorProdutoCatalogo, type ProdutoEscolhido } from "../../../estoque/SeletorProdutoCatalogo";
 import { SelectBuscavel } from "../../../components/SelectBuscavel";
 import { opcoesProtocolo } from "./opcoesProtocolo";
@@ -9,19 +9,20 @@ import type { Categoria } from "../../../financeiro/novo-api";
 import { rotuloUnidade, type UnidadeMedida } from "../../../lib/unidades";
 import { getUsuario } from "../../../lib/auth";
 import { classeInput } from "../../../financeiro/PainelCadastro";
-import { BuilderEtapasProtocolo } from "./BuilderEtapasProtocolo";
+import { BuilderEtapasProtocolo, type CargaAcoesCadastro } from "./BuilderEtapasProtocolo";
 import { CamposReferenciasCusto } from "./CamposReferenciasCusto";
 import { momentoParaCadastro } from "./CamposMomentoAcao";
 import type { CadastroProtocoloMeta } from "./cadastros-api";
 import { etapaParaCadastro, PlanoEtapa, OrientacaoTemporalEtapa, type EtapaIatf } from "../reproducao/Iatf";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-export function EditorModeloReprodutivo({ origemCadastro, etapas, setEtapas, setAcoesCompletas, acoesCompletas, indiceErroCadastro, erroCampo, sitioEfetivo, contratoNovo = true }: {
-  origemCadastro: CadastroProtocoloMeta | null; etapas: EtapaIatf[]; setEtapas: Dispatch<SetStateAction<EtapaIatf[]>>;
-  setAcoesCompletas: (valor: boolean) => void; acoesCompletas: boolean; indiceErroCadastro: number | null; erroCampo: { indice: number; campo: string; mensagem: string } | null; sitioEfetivo?: number | null; contratoNovo?: boolean;
+export function EditorModeloReprodutivo({ origemCadastro, cargaPersistida, etapas, setEtapas, setAcoesCompletas, acoesCompletas, indiceErroCadastro, erroCampo, sitioEfetivo, contratoNovo = true, podeRemover, prazoDg, tituloQuadro, somenteLeitura }: {
+  origemCadastro: CadastroProtocoloMeta | null; cargaPersistida?: MutableRefObject<CargaAcoesCadastro | null>; etapas: EtapaIatf[]; setEtapas: Dispatch<SetStateAction<EtapaIatf[]>>;
+  setAcoesCompletas: (valor: boolean) => void; acoesCompletas: boolean; indiceErroCadastro: number | null; erroCampo: { indice: number; campo: string; mensagem: string } | null; sitioEfetivo?: number | null; contratoNovo?: boolean; podeRemover?: (indices: number[]) => boolean; prazoDg?: string; tituloQuadro?: string; somenteLeitura?: boolean;
 }) {
   const idCampos = useId();
   const usuario = getUsuario();
   const podeVerValores = !usuario || usuario.dono || (usuario.areas.includes("financeiro") && usuario.flags.includes("verValores"));
+  const [containerPopover, setContainerPopover] = useState<HTMLElement | null>(null);
   const [referencias, setReferencias] = useState<number | null>(null);
   const [catalogo, setCatalogo] = useState<number | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -66,6 +67,8 @@ export function EditorModeloReprodutivo({ origemCadastro, etapas, setEtapas, set
     return <>
       <div className={compacto ? "quadro-produto" : "quadro-produto quadro-produto-manutencao"}>
         <SelectBuscavel
+          containerPopover={containerPopover}
+          contentClassName={containerPopover ? "z-[1350]" : undefined}
           buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO", propriedadeId: sitioEfetivo ?? undefined })}
           rotulo="Produto planejado" valor={plano?.produtoId ?? ""} erroCampo={erroProduto}
           opcaoExterna={plano?.produtoCatalogoId ? { nome: plano.nomeProduto || "Produto do catálogo" } : undefined}
@@ -128,21 +131,38 @@ export function EditorModeloReprodutivo({ origemCadastro, etapas, setEtapas, set
     }));
     setCatalogo(null);
   }
-  return <><BuilderEtapasProtocolo<EtapaIatf> permitirAutomacao editorEmModal
-                  quadro={item => ({ procedimento: item.nome, produto: item.tipo === "APLICACAO" && item.planoAplicacao?.produtoId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO" })} rotulo="Produto planejado" valor={item.planoAplicacao.produtoId} onChange={() => {}} /> : item.planoAplicacao?.nomeProduto ?? (item.tipo === "EXAME" && item.planoExame?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO" })} rotulo="Modelo de exame" valor={item.planoExame.tipoExameId} onChange={() => {}} /> : item.tipo === "AVALIACAO" && item.planoAvaliacao?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO" })} rotulo="Modelo de exame" valor={item.planoAvaliacao.tipoExameId} onChange={() => {}} /> : item.tipo === "TENTATIVA" ? "Material genético" : item.tipo === "RETIRADA" ? "Definido no atendimento" : "Pendente"), quantidade: item.tipo === "RETIRADA" ? "Não se aplica" : item.tipo === "APLICACAO" && item.planoAplicacao?.dose ? `${item.planoAplicacao.dose} ${rotuloUnidade(item.planoAplicacao.unidadeDose)}` : "Pendente" })}
-                  resumoEtapa={itens => ({ referencia: itens.some(item => item.intervalo !== itens[0]?.intervalo || item.unidade !== itens[0]?.unidade) ? "Intervalos distintos" : `${itens[0]?.unidade === "HORAS" ? "H" : "D"}${new Intl.NumberFormat("pt-BR", { useGrouping: false, maximumFractionDigits: 20 }).format(itens[0]?.intervalo ?? 0)}`, procedimentos: itens.map(item => item.nome).join(" · ") })}
-                  origem={origemCadastro} itens={etapas} onChange={setEtapas} onCompletoChange={setAcoesCompletas}
+  return <><BuilderEtapasProtocolo<EtapaIatf> permitirAutomacao editorEmModal podeRemover={podeRemover} tituloQuadro={tituloQuadro} quadroSomenteLeitura={somenteLeitura}
+                  quadro={item => ({ procedimento: item.referenciaPrazoDiagnostico ? `${item.nome} · ${prazoDg || "Prazo pendente"}${prazoDg ? " dias após a tentativa" : ""}` : item.nome, produto: item.tipo === "APLICACAO" && item.planoAplicacao?.produtoId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO" })} rotulo="Produto planejado" valor={item.planoAplicacao.produtoId} onChange={() => {}} /> : item.planoAplicacao?.nomeProduto ?? (item.tipo === "EXAME" && item.planoExame?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO" })} rotulo="Modelo de exame" valor={item.planoExame.tipoExameId} onChange={() => {}} /> : item.tipo === "AVALIACAO" && item.planoAvaliacao?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO" })} rotulo="Modelo de exame" valor={item.planoAvaliacao.tipoExameId} onChange={() => {}} /> : item.tipo === "TENTATIVA" ? "Material genético" : item.tipo === "RETIRADA" ? "Definido no atendimento" : "Pendente"), quantidade: item.tipo === "RETIRADA" ? "Não se aplica" : item.tipo === "APLICACAO" && item.planoAplicacao?.dose ? `${item.planoAplicacao.dose} ${rotuloUnidade(item.planoAplicacao.unidadeDose)}` : "Pendente" })}
+                  resumoEtapa={itens => ({ referencia: itens.every(item => item.referenciaPrazoDiagnostico) ? `${prazoDg || "Prazo pendente"}${prazoDg ? " dias após a tentativa" : ""}` : itens.some(item => item.referenciaPrazoDiagnostico) ? "Intervalos distintos" : itens.some(item => item.intervaloPendente) ? "Dia pendente" : itens.some(item => item.intervalo !== itens[0]?.intervalo || item.unidade !== itens[0]?.unidade) ? "Intervalos distintos" : `${itens[0]?.unidade === "HORAS" ? "H" : "D"}${new Intl.NumberFormat("pt-BR", { useGrouping: false, maximumFractionDigits: 20 }).format(itens[0]?.intervalo ?? 0)}`, procedimentos: itens.map(item => item.nome).join(" · ") })}
+                  origem={origemCadastro} cargaPersistida={cargaPersistida} itens={etapas} onChange={setEtapas} onCompletoChange={setAcoesCompletas}
                   indiceErro={indiceErroCadastro}
                   criarAcao={(momento, referencia) => ({ chaveEdicao: crypto.randomUUID(), nome: "Aplicação de produto", tipo: "APLICACAO", intervalo: referencia?.intervalo ?? 0, unidade: referencia?.unidade ?? "DIAS", orientacaoTemporal: referencia?.orientacaoTemporal, momento: { ...momento } })}
                   converter={e => ({ ...etapaParaCadastro(e), chaveEdicao: crypto.randomUUID(), tentativaTipo: e.tentativaTipo, ordem: e.ordem, ...(e.momento ? { momento: etapas.find(atual => atual.momento?.ordem === e.momento?.ordem)?.momento ?? momentoParaCadastro(e.momento) } : {}) })}
                   renderizarCalendario={(t, indices) => <fieldset disabled={!acoesCompletas} className="grid gap-3 sm:grid-cols-2">
                     {indices.some(i => etapas[i].intervalo !== t.intervalo || etapas[i].unidade !== t.unidade) && <p role="status" className="text-sm sm:col-span-2">Esta etapa tem intervalos individuais diferentes. Alterar o calendário abaixo atualiza explicitamente todos os seus procedimentos.</p>}
-                    <label>Intervalo desde o início<input className={classeInput} required type="number" min={0} max={10000} step="any" value={t.intervalo} onChange={e => { const intervalo = Number(e.target.value); setEtapas(es => es.map((acao, i) => indices.includes(i) ? { ...acao, intervalo } : acao)); }} /></label>
+                    <label>Dia da etapa <span className="quadro-dia-campo"><span aria-hidden>{t.unidade === "HORAS" ? "H+" : "D+"}</span><input aria-label="Dia da etapa" className={classeInput} required type="number" min={0} max={10000} step="any" value={t.intervaloPendente ? "" : t.intervalo} onChange={e => { const valor = e.target.value; setEtapas(es => es.map((acao, i) => indices.includes(i) ? { ...acao, intervalo: valor === "" ? 0 : Number(valor), intervaloPendente: valor === "" } : acao)); }} /></span></label>
                     <label>Unidade do intervalo<SelectCampo className={classeInput} value={t.unidade} onValueChange={(valor) => { const unidade = valor as "DIAS" | "HORAS"; setEtapas(es => es.map((acao, i) => indices.includes(i) ? { ...acao, unidade } : acao)); }}><option value="DIAS">Dias</option><option value="HORAS">Horas</option></SelectCampo></label>
                     <div className="sm:col-span-2"><OrientacaoTemporalEtapa etapa={t} onChange={novo => setEtapas(es => es.map((acao, i) => indices.includes(i) ? { ...acao, orientacaoTemporal: novo.orientacaoTemporal } : acao))} /></div>
                   </fieldset>}
-                  renderizarDetalhes={(t, i) => <div className="grid gap-3"><label>Tipo de procedimento<SelectCampo className={classeInput} value={t.tipo === "APLICACAO" ? t.subtipo === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" : t.tipo === "TENTATIVA" ? t.tentativaTipo ?? t.planoTentativa?.tipo ?? "IA" : t.tipo === "AVALIACAO" ? "EXAME" : t.tipo} onValueChange={valor => { const tipo: EtapaIatf["tipo"] = valor === "INSERCAO_DISPOSITIVO" ? "APLICACAO" : valor === "IA" || valor === "TE" ? "TENTATIVA" : valor === "EXAME" ? "AVALIACAO" : valor as EtapaIatf["tipo"]; const nomes: Record<string,string> = { APLICACAO: "Aplicação de produto", INSERCAO_DISPOSITIVO: "Inserção de dispositivo", RETIRADA: "Retirada de dispositivo", IA: "Inseminação", TE: "Transferência de embrião", EXAME: "Exame / diagnóstico" }; setEtapas(es => es.map((acao,j) => j === i ? { chaveEdicao: acao.chaveEdicao, ordem: acao.ordem, momento: acao.momento, nome: nomes[valor] ?? acao.nome, intervalo: acao.intervalo, unidade: acao.unidade, orientacaoTemporal: acao.orientacaoTemporal, tipo, ...(valor === "IA" || valor === "TE" ? { tentativaTipo: valor } : {}), ...(tipo === "APLICACAO" ? { subtipo: valor === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" } : {}), referenciasCusto: acao.referenciasCusto ? { servico: acao.referenciasCusto.servico } : undefined } : acao)); }}><option value="APLICACAO">Aplicação de produto</option><option value="INSERCAO_DISPOSITIVO">Inserção de dispositivo</option><option value="RETIRADA">Retirada de dispositivo</option><option value="IA">Inseminação</option><option value="TE">Transferência de embrião</option><option value="EXAME">Exame / diagnóstico</option>{t.tipo === "MANEJO" && <option value="MANEJO">Manejo legado</option>}</SelectCampo></label>
-                    {t.tipo === "APLICACAO" ? camposAplicacao(t, i, true) : <PlanoEtapa propriedadeId={sitioEfetivo ?? undefined} etapa={t} contratoNovo={contratoNovo} tipoDefinido onChange={novo => setEtapas(es => es.map((acao,j) => j === i ? novo : acao))} />}</div>}
+                  renderizarDetalhes={(t, i) => <div ref={setContainerPopover} className="grid gap-3"><label>Tipo de procedimento<SelectCampo disabled={podeRemover?.([i]) === false} className={classeInput} value={t.tipo === "APLICACAO" ? t.subtipo === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" : t.tipo === "TENTATIVA" ? t.tentativaTipo ?? t.planoTentativa?.tipo ?? "IA" : t.tipo === "AVALIACAO" ? "EXAME" : t.tipo} onValueChange={valor => { const tipo: EtapaIatf["tipo"] = valor === "INSERCAO_DISPOSITIVO" ? "APLICACAO" : valor === "IA" || valor === "TE" ? "TENTATIVA" : valor === "EXAME" ? "AVALIACAO" : valor as EtapaIatf["tipo"]; const nomes: Record<string,string> = { APLICACAO: "Aplicação de produto", INSERCAO_DISPOSITIVO: "Inserção de dispositivo", RETIRADA: "Retirada de dispositivo", IA: "Inseminação", TE: "Transferência de embrião", EXAME: "Exame / diagnóstico" }; setEtapas(es => es.map((acao,j) => j === i ? { chaveEdicao: acao.chaveEdicao, ordem: acao.ordem, momento: acao.momento, nome: nomes[valor] ?? acao.nome, intervalo: acao.intervalo, unidade: acao.unidade, orientacaoTemporal: acao.orientacaoTemporal, tipo, ...(valor === "IA" || valor === "TE" ? { tentativaTipo: valor } : {}), ...(tipo === "APLICACAO" ? { subtipo: valor === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" } : {}), referenciasCusto: acao.referenciasCusto ? { servico: acao.referenciasCusto.servico } : undefined } : acao)); }}><option value="APLICACAO">Aplicação de produto</option><option value="INSERCAO_DISPOSITIVO">Inserção de dispositivo</option><option value="RETIRADA">Retirada de dispositivo</option><option value="IA">Inseminação</option><option value="TE">Transferência de embrião</option><option value="EXAME">Exame / diagnóstico</option>{t.tipo === "MANEJO" && <option value="MANEJO">Manejo legado</option>}</SelectCampo></label>
+                    {(t.tipo === "AVALIACAO" || t.tipo === "EXAME") && podeRemover?.([i]) !== false && <label>Contexto do modelo de exame<SelectCampo className={classeInput} value={t.tipo === "AVALIACAO" ? "REPRODUTIVO" : "SANITARIO"} onValueChange={valor => {
+                      const tipo = valor === "REPRODUTIVO" ? "AVALIACAO" : "EXAME";
+                      setEtapas(itens => itens.map((acao, j) => j === i && acao.tipo !== tipo ? { ...acao, tipo, planoAvaliacao: undefined, planoExame: undefined } : acao));
+                    }}><option value="REPRODUTIVO">Reprodutivo</option><option value="SANITARIO">Sanitário</option></SelectCampo></label>}
+                    {t.tipo === "APLICACAO" ? camposAplicacao(t, i, true) : <PlanoEtapa propriedadeId={sitioEfetivo ?? undefined} etapa={t} contratoNovo={contratoNovo} tipoDefinido bloquearTipoAvaliacao={podeRemover?.([i]) === false && t.tipo === "AVALIACAO"} containerPopover={containerPopover} onChange={novo => setEtapas(itens => itens.map((acao, j) => {
+                      if (j !== i) return acao;
+                      if (podeRemover?.([i]) !== false || acao.tipo !== "AVALIACAO") return novo;
+                      const mudouExame = novo.planoAvaliacao?.tipoExameId !== acao.planoAvaliacao?.tipoExameId;
+                      return { ...novo, planoAvaliacao: { ...novo.planoAvaliacao, tipo: "DIAGNOSTICO" }, exameDgAlterado: acao.referenciaPrazoDiagnostico && (acao.exameDgAlterado || mudouExame) };
+                    }))} />}
+                    <details><summary>Opções do procedimento</summary><div className="grid gap-3 pt-2">
+                      <label>Nome do procedimento<input className={classeInput} required maxLength={120} value={t.nome} onChange={e => {
+                        const nome = e.target.value;
+                        setEtapas(itens => itens.map((acao, j) => j === i ? { ...acao, nome } : acao));
+                      }} /></label>
+                      {podeVerValores && <Button secondary type="button" onClick={() => setReferencias(i)}>Editar referência de serviço</Button>}
+                    </div></details>
+                  </div>}
                   renderizarAcao={(t, i) => <div className="grid gap-3">
                     <label>Tipo de procedimento<SelectCampo className={classeInput} value={t.tipo === "APLICACAO" ? t.subtipo === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" : t.tipo === "TENTATIVA" ? t.tentativaTipo ?? t.planoTentativa?.tipo ?? "IA" : t.tipo === "AVALIACAO" ? "EXAME" : t.tipo} onValueChange={(escolha) => {
                       const valor = escolha;

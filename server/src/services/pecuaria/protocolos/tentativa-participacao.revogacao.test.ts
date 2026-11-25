@@ -12,6 +12,7 @@ const m = vi.hoisted(() => ({
   alertas: vi.fn(),
   criarDemandas: vi.fn(),
   reconciliarDemandas: vi.fn(),
+  reconciliarPrevisaoDiagnostico: vi.fn(),
   lerRequisicao: vi.fn(),
   guardarRequisicao: vi.fn(),
   atualizarDemanda: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock("../rebanho/regras.js", async (original) => ({
 vi.mock("../reproducao/acompanhamento.js", () => ({
   criarDemandasDoFatoTx: m.criarDemandas,
   reconciliarDemandasAnimalTx: m.reconciliarDemandas,
+  reconciliarPrevisoesDiagnosticoTx: m.reconciliarPrevisaoDiagnostico,
 }));
 vi.mock("../reproducao/alertas/produtor.js", () => ({
   reconciliarAlertasReprodutivosAnimalTx: m.alertas,
@@ -98,6 +100,10 @@ beforeEach(() => {
     // O produtor precisa enxergar a associação já revogada para reabrir PREPARO.
     expect(vinculo.revogadoEm).toBeInstanceOf(Date);
   });
+  m.reconciliarPrevisaoDiagnostico.mockImplementation(async () => {
+    eventos.push("previsao");
+    expect(vinculo.revogadoEm).toBeInstanceOf(Date);
+  });
   m.lerRequisicao.mockImplementation(async () => requisicao);
   m.guardarRequisicao.mockImplementation(
     async ({ data }: { data: RegistroRequisicao }) => {
@@ -108,18 +114,21 @@ beforeEach(() => {
   );
 });
 
-it("reconcilia apenas alertas do mesmo animal na transação já travada, sem tocar DG ou sua conclusão", async () => {
+it("reconcilia a previsão derivada e os alertas na transação já travada, sem reabrir demanda ou conclusão", async () => {
   const resposta = await revogarTentativaParticipacao("vinculo", input, 27);
   expect(eventos).toEqual([
     "trava",
     "leitura",
     "revogar",
     "auditar",
+    "previsao",
     "alertas",
     "guardar",
   ]);
   expect(m.trava).toHaveBeenCalledWith(tx, ["animal"]);
+  expect(m.reconciliarPrevisaoDiagnostico).toHaveBeenCalledWith(tx, "animal", 27);
   expect(m.alertas).toHaveBeenCalledTimes(1);
+  expect(m.reconciliarPrevisaoDiagnostico).toHaveBeenCalledTimes(1);
   expect(m.alertas).toHaveBeenCalledWith(tx, "animal", 27);
   expect(m.auditar).toHaveBeenCalledWith(
     tx,

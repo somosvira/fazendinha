@@ -1,3 +1,13 @@
+import type { Prisma } from "@prisma/client";
+
+export function referenciaDiagnosticoPendente(configuracao: unknown, previsaoPendente: boolean) {
+ return previsaoPendente && !!configuracao && typeof configuracao === "object" && "referenciaPrazoDiagnostico" in configuracao && configuracao.referenciaPrazoDiagnostico === true;
+}
+
+export function ocultarDataPendenteDiagnostico(snapshot: Prisma.JsonValue) {
+ return snapshot && typeof snapshot === "object" && !Array.isArray(snapshot) ? { ...snapshot, previstaEm: null, previsaoOriginal: null } : snapshot;
+}
+
 /** Só identifica prazo herdado quando o calendário e o histórico comprovam a origem. */
 export function tarefaComPrazoHerdado(t:{previstaPara:Date;previsaoOriginal:Date|null;precisaoTemporal:string;previsaoPendente:boolean;realizadaEm:Date|null;dispensadaEm:Date|null;regularizacaoPendente:boolean;parametros:unknown;historicoReprogramacao:unknown;eventos:unknown[];_count:{aplicacoes:number;exames:number;tentativas:number;manejos:number;vinculos:number}},previstaDemanda:Date|null):boolean {
  if(!previstaDemanda||t.precisaoTemporal!=="DIA"||t.previsaoPendente||t.realizadaEm||t.dispensadaEm||t.regularizacaoPendente||!t.previsaoOriginal||t.previstaPara.getTime()!==previstaDemanda.getTime()||t.eventos.length||Object.values(t._count).some(n=>n>0))return false;

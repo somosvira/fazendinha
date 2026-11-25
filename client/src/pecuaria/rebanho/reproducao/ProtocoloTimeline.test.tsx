@@ -22,3 +22,10 @@ it("preserva início e datas de cada participação sem data agregada", () => {
  expect(screen.getByText("01/03/2020")).toBeTruthy();
  expect(screen.getByText("03/03/2020")).toBeTruthy();
 });
+it("distingue tentativa pendente de horário de referência desconhecido", () => {
+ const pendente = {...tarefa, previsaoPendente:true, planejadoSnapshot:{ etapa:{ nome:"DG", tipo:"AVALIACAO" as const, intervalo:0, unidade:"DIAS" as const, referenciaPrazoDiagnostico:true }, previstaEm:"2020-01-02", previsaoOriginal:"2020-01-02", inicioReferencia:"2020-01-01" }};
+ const {rerender} = render(<ProtocoloTimeline participante={{...participante,tarefas:[pendente]}}/>);
+ expect(screen.getByText("Aguardando tentativa")).toBeTruthy();
+ rerender(<ProtocoloTimeline participante={{...participante,tarefas:[{...pendente,planejadoSnapshot:null}]}}/>);
+ expect(screen.getByText("Horário de referência desconhecido")).toBeTruthy();
+});

@@ -28,7 +28,7 @@ function ProcedimentosEtapa({ origem, etapa }: { origem: CadastroProtocoloMeta; 
     <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(v=>v+1)}>Tentar carregar procedimentos novamente</Button>}
     {carregando && <EsqueletoLista label="Carregando procedimentos" />}
     {!carregando && !erro && <ConsultaOperacional<ProcedimentoCadastro> rotulo={`Procedimentos de ${etapa.nome}`} itens={dados.itens} chaveDe={p=>p.id} colunas={[
-      {chave:"quando",titulo:"Quando",larguraMinima:85,celula:p=>intervaloProcedimento(p.intervalo,p.unidadeIntervalo)},
+      {chave:"quando",titulo:"Quando",larguraMinima:85,celula:p=>p.referenciaPrazoDiagnostico ? "Após a tentativa" : intervaloProcedimento(p.intervalo,p.unidadeIntervalo)},
       {chave:"procedimento",titulo:"Procedimento",larguraMinima:170,principal:true,celula:p=><><strong>{p.procedimento}</strong>{p.nome !== p.procedimento && <small>{p.nome}</small>}</>},
       {chave:"referencia",titulo:"Produto / modelo",larguraMinima:230,larguraFlexivel:true,celula:p=><>{p.definirMaterialNoAtendimento ? "Material genético definido no atendimento, por animal ou grupo" : p.referencia ?? (p.procedimento === "Retirada de dispositivo" ? "Sem produto vinculado" : "Referência não informada")}{p.via && <small>Via: {p.via}</small>}{p.orientacaoUso && <small>Orientação de uso: {p.orientacaoUso}</small>}</>},
       {chave:"quantidade",titulo:"Quantidade por animal",larguraMinima:150,celula:p=>p.quantidade ? `${p.quantidade} ${(Object.entries(UNIDADES).find(([chave])=>chave===p.unidadeQuantidade)?.[1].rotulo ?? p.unidadeQuantidade ?? "(unidade não informada)")}` : p.definirMaterialNoAtendimento ? "Definida no atendimento" : "—"},

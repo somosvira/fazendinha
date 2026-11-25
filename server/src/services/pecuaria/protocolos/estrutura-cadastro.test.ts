@@ -31,3 +31,10 @@ it("prioriza referências congeladas e não inventa via, modo ou material para I
   expect(apresentarProcedimentoCadastro({...acao,tipo:"TENTATIVA",configuracao:{tentativaTipo:"TE"},produto:null,dose:null,unidade:null})).toMatchObject({procedimento:"Transferência de embrião",referencia:null,definirMaterialNoAtendimento:true,quantidade:null});
   expect(apresentarProcedimentoCadastro({...acao,tipo:"TENTATIVA",configuracao:{planoTentativa:{tipo:"IA",materialId:"mat",quantidade:1},referencias:{material:{produtoNome:"Sêmen histórico",unidade:"DOSE"}}},material:{produto:{nome:"Nome atual",unidade:"UN"}}})).toMatchObject({procedimento:"Inseminação artificial",referencia:"Sêmen histórico",definirMaterialNoAtendimento:false,quantidade:"1",unidadeQuantidade:"DOSE"});
 });
+it("projeta o marcador do DG nos procedimentos paginados sem devolver a configuração",async()=>{
+  db.etapaProtocolo.findMany.mockResolvedValue([{...acao,tipo:"EXAME",configuracao:{referenciaPrazoDiagnostico:true,referenciasCusto:{servico:{valorUnitario:120}}}}]);
+  const pagina=await listarProcedimentosEtapaCadastro("p","m",{});
+  expect(pagina.itens[0]).toMatchObject({referenciaPrazoDiagnostico:true});
+  expect(pagina.itens[0]).not.toHaveProperty("configuracao");
+  expect(pagina.itens[0]).not.toHaveProperty("referenciasCusto");
+});

@@ -202,3 +202,83 @@
   .fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-produto { display: grid; }
   .fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-produto > button { justify-self: start; }
 }
+.cadastro-reprodutivo { display:block; }
+.cadastro-reprodutivo > .cadastro-protocolo-caminho { margin-bottom:8px; }
+.cadastro-reprodutivo > h1 { font-size:24px; line-height:1.25; font-weight:750; margin:0 0 18px; }
+.cadastro-reprodutivo-moldura { display:grid; grid-template-rows:auto minmax(0,1fr) auto; border:1px solid var(--border); border-radius:12px; background:var(--card); overflow:hidden; }
+.cadastro-passos,.quadro-passos { display:flex; align-items:center; gap:16px; padding:16px 22px; border-bottom:1px solid var(--border); }
+.cadastro-passos button,.quadro-passos button { flex:1; display:flex; align-items:center; gap:8px; min-width:0; min-height:34px; font-size:14px; font-weight:650; text-align:left; }
+.cadastro-passos button:last-child,.quadro-passos button:last-child { flex:0 1 auto; }
+.cadastro-passos button:not(:last-child)::after,.quadro-passos button:not(:last-child)::after { content:""; flex:1; min-width:10px; height:1px; margin-inline-start:8px; background:var(--border); }
+.cadastro-passos button:has(~ button[aria-current="step"])::after,.quadro-passos button:has(~ button[aria-current="step"])::after { background:var(--fin-control-border); }
+.cadastro-passos button span,.quadro-passos button span { display:grid; flex:none; place-items:center; width:30px; height:30px; border:1px solid var(--fin-control-border); border-radius:50%; font-variant-numeric:tabular-nums; }
+.cadastro-passos button:has(~ button[aria-current="step"]) span,.quadro-passos button:has(~ button[aria-current="step"]) span { border-color:var(--secondary); background:var(--secondary); color:var(--primary); }
+.cadastro-passos button[aria-current="step"] span,.quadro-passos button[aria-current="step"] span { color:var(--primary-foreground); background:var(--primary); border-color:var(--primary); }
+.cadastro-reprodutivo-corpo { display:grid; grid-template-columns:minmax(0,1fr) 302px; min-height:0; }
+.cadastro-reprodutivo .cadastro-protocolo-editor { border:0; border-radius:0; padding:22px; min-width:0; margin:0; }
+.cadastro-reprodutivo .cadastro-protocolo-revisao { position:static; border:0; border-left:1px solid var(--border); border-radius:0; background:var(--secondary); max-height:none; }
+.cadastro-reprodutivo .cadastro-protocolo-resumo { padding:22px 19px; }
+.cadastro-reprodutivo .cadastro-protocolo-resumo h2 { color:var(--primary); }
+.cadastro-reprodutivo .cadastro-protocolo-resumo h3 { margin-top:14px; }
+.cadastro-reprodutivo .cadastro-protocolo-resumo h3:not(:first-of-type) { border-top:1px solid var(--border); padding-top:14px; }
+.cadastro-reprodutivo-rodape { display:flex; justify-content:space-between; gap:12px; padding:14px 22px; border-top:1px solid var(--border); }
+.quadro-protocolo-cabecalho { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+.quadro-protocolo-cabecalho :is(h2,h3) { margin:0; }
+.cadastro-reprodutivo .cadastro-protocolo-editor .quadro-protocolo table { min-width:0; table-layout:fixed; }
+.cadastro-reprodutivo .quadro-protocolo-rolagem { position:relative; }
+.cadastro-reprodutivo .quadro-protocolo :is(th,td) { padding:9px; overflow-wrap:anywhere; }
+.cadastro-reprodutivo .quadro-protocolo thead th:first-child { width:20%; }
+.cadastro-reprodutivo .quadro-protocolo thead th:nth-child(4) { width:17%; }
+.cadastro-reprodutivo .quadro-protocolo-rolagem:not(.quadro-protocolo-leitura) thead th:last-child { width:66px; }
+.cadastro-conferencia-resumo:not(:has(> :nth-child(3))) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.cadastro-reprodutivo .quadro-protocolo td:last-child button { min-width:34px; padding-inline:8px; }
+.quadro-passos { padding:5px 3px 14px; margin-bottom:16px; }
+.quadro-dados-etapa { display:grid; gap:12px; }
+.quadro-dados-etapa > button { justify-self:start; }
+.quadro-dados-etapa label { display:grid; gap:6px; }
+.quadro-etapa-resumo dt { color:var(--muted-foreground); font-size:12px; }
+.quadro-etapa-resumo dd { margin:3px 8px 0 0; font-weight:650; overflow-wrap:anywhere; }
+.quadro-item-procedimento { display:flex; align-items:center; justify-content:space-between; border:1px solid transparent; border-radius:6px; min-width:0; }
+.quadro-item-procedimento:has(:checked) { background:var(--secondary); border-color:var(--fin-control-border); }
+.fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-item-procedimento label { border:0; padding:7px; flex:1; min-width:0; min-height:38px; background:transparent; overflow-wrap:anywhere; }
+.quadro-remover-procedimento { display:grid; flex:none; place-items:center; width:34px; height:34px; margin-inline-end:3px; border-radius:6px; color:var(--destructive); }
+.quadro-remover-procedimento:hover:not(:disabled) { background:var(--muted); }
+.quadro-remover-procedimento:disabled { opacity:.45; }
+.fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo [data-slot="dialog-footer"] { flex-direction:row; flex-wrap:wrap; justify-content:space-between; }
+.fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-quantidade { width:min(100%, 9rem); }
+.quadro-dia-campo { display:flex; align-items:stretch; border:1px solid var(--input); border-radius:8px; }
+.quadro-dia-campo > span { display:grid; place-items:center; padding-inline:9px; background:var(--secondary); border-inline-end:1px solid var(--border); border-radius:8px 0 0 8px; }
+.quadro-dia-campo input { margin:0; border:0; min-width:0; }
+.quadro-dia-campo:focus-within { outline:2px solid var(--ring); outline-offset:2px; }
+.quadro-dia-campo input:focus { outline:none; box-shadow:none; }
+.cadastro-origem-opcoes { display:flex; gap:12px; flex-wrap:wrap; border:0; padding:0; }
+.cadastro-origem-opcoes legend { font-weight:600; margin-bottom:8px; }
+.cadastro-origem-opcoes label { display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:8px; padding:12px; flex:1; min-width:180px; }
+.cadastro-origem-opcoes label:has(input:checked) { border-color:var(--primary); background:var(--secondary); }
+
+@media (min-width:861px) and (min-height:560px) {
+  .app-main:has(.cadastro-reprodutivo) { min-height:calc(100dvh - var(--header-h)); }
+  .shell-wide.pagina-financeira:has(.cadastro-reprodutivo) { padding-bottom:22px; }
+  .cadastro-reprodutivo-moldura { height:max(368px, calc(100dvh - var(--header-h) - 138px)); }
+  .cadastro-reprodutivo .cadastro-protocolo-editor,.cadastro-reprodutivo .cadastro-protocolo-resumo { min-height:0; overflow-y:auto; overscroll-behavior-y:contain; scrollbar-width:thin; }
+  .cadastro-reprodutivo .cadastro-protocolo-editor { scrollbar-gutter:stable; }
+}
+@media (min-width:861px) and (max-width:1110px) {
+  .cadastro-reprodutivo-corpo { grid-template-columns:minmax(0,1fr) 232px; }
+  .cadastro-reprodutivo .cadastro-protocolo-editor { padding:16px; }
+}
+@media (max-width:860px) {
+  .cadastro-reprodutivo-corpo { grid-template-columns:minmax(0,1fr); }
+  .cadastro-reprodutivo .cadastro-protocolo-revisao { border-left:0; border-top:1px solid var(--border); }
+  .cadastro-passos,.quadro-passos { gap:7px; }
+  .cadastro-passos { padding:12px 14px; }
+}
+@media (max-width:600px) {
+  .cadastro-passos button,.quadro-passos button { font-size:12px; gap:5px; }
+  .cadastro-passos button span,.quadro-passos button span { width:24px; height:24px; }
+  .cadastro-passos button:not(:last-child)::after,.quadro-passos button:not(:last-child)::after { margin-inline-start:0; min-width:3px; }
+  .cadastro-reprodutivo .cadastro-protocolo-editor,.cadastro-reprodutivo .cadastro-protocolo-resumo { padding:14px; }
+  .cadastro-reprodutivo .cadastro-protocolo-editor .quadro-protocolo table { min-width:530px; }
+  .cadastro-reprodutivo-rodape { padding-inline:14px; }
+  .quadro-remover-procedimento { width:38px; height:38px; }
+}

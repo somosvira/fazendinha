@@ -8,6 +8,7 @@ import { transacaoPecuaria } from "../transacao.js";
 import {
   criarDemandasDoFatoTx,
   reconciliarDemandasAnimalTx,
+  reconciliarPrevisoesDiagnosticoTx,
 } from "../reproducao/acompanhamento.js";
 import { hashDados, operacaoIdempotenteTx } from "../reproducao/operacoes.js";
 import { reconciliarAlertasReprodutivosAnimalTx } from "../reproducao/alertas/produtor.js";
@@ -316,6 +317,7 @@ export async function revogarTentativaParticipacao(
           antes: v,
           depois: salva,
         });
+        await reconciliarPrevisoesDiagnosticoTx(tx, v.participacao.animalId, usuarioId);
         await reconciliarAlertasReprodutivosAnimalTx(
           tx,
           v.participacao.animalId,

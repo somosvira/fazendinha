@@ -60,6 +60,9 @@ import { type UnidadeMedida } from "../../../lib/unidades";
 import { EsqueletoFicha, EsqueletoTabela } from "../../../components/Esqueleto";
 export type EtapaIatf = {
   chaveEdicao?: string;
+  intervaloPendente?: boolean;
+  referenciaPrazoDiagnostico?: boolean;
+  exameDgAlterado?: boolean;
   tentativaTipo?: "IA" | "TE";
   referenciasCusto?: ReferenciasCustoCadastro;
   ordem?: number;
@@ -93,6 +96,7 @@ export function etapaParaCadastro(e: EtapaIatf, contratoNovo = false): EtapaIatf
   return {
     referenciasCusto:e.referenciasCusto, nome: e.nome, tipo: e.tipo, intervalo: e.intervalo, unidade: e.unidade,
     ...(e.momento ? { momento: momentoParaCadastro(e.momento) } : {}),
+    ...(e.referenciaPrazoDiagnostico ? { referenciaPrazoDiagnostico: true } : {}),
     ...(e.tipo === "APLICACAO" && e.subtipo ? { subtipo: e.subtipo } : {}),
     ...(e.orientacaoTemporal ? {orientacaoTemporal:e.orientacaoTemporal} : {}),
     ...(e.tipo === "APLICACAO" && e.planoAplicacao ? { planoAplicacao: { ...(e.planoAplicacao.produtoId ? { produtoId: e.planoAplicacao.produtoId } : { produtoCatalogoId: e.planoAplicacao.produtoCatalogoId, categoriaId: e.planoAplicacao.categoriaId }), dose: e.planoAplicacao.dose, unidadeDose: e.planoAplicacao.unidadeDose, via: e.planoAplicacao.via, ...(e.planoAplicacao.tipoAplicacaoId ? { tipoAplicacaoId: e.planoAplicacao.tipoAplicacaoId } : {}) } } : {}),
@@ -881,15 +885,19 @@ export function PlanoEtapa({
   propriedadeId,
   contratoNovo,
   tipoDefinido,
+  bloquearTipoAvaliacao,
+  containerPopover,
   onChange,
 }: {
+  bloquearTipoAvaliacao?: boolean;
+  containerPopover?: HTMLElement | null;
   contratoNovo?: boolean;
   tipoDefinido?: boolean;
   etapa: EtapaIatf;
   propriedadeId?: number;
   onChange: (e: EtapaIatf) => void;
 }) {
-  if (etapa.tipo === "EXAME") return <SelectBuscavel buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO", propriedadeId })} rotulo="Exame sanitário planejado" valor={etapa.planoExame?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoExame: tipoExameId ? { tipoExameId } : undefined })}/>;
+  if (etapa.tipo === "EXAME") return <SelectBuscavel containerPopover={containerPopover} contentClassName={containerPopover ? "z-[1350]" : undefined} buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO", propriedadeId })} rotulo="Exame sanitário planejado" valor={etapa.planoExame?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoExame: tipoExameId ? { tipoExameId } : undefined })}/>;
   if (etapa.tipo === "APLICACAO") {
     const p = etapa.planoAplicacao;
     const alterar = (
@@ -912,7 +920,7 @@ export function PlanoEtapa({
           Informe os parâmetros definidos pelo responsável. Planejar não aplica
           nem consome estoque.
         </p>
-        <SelectBuscavel buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO", propriedadeId })} detalhe={detalheProdutoSanitario} rotulo="Produto planejado" valor={p?.produtoId ?? ""} onChange={(produtoId, produto) => produtoId ? alterar({ produtoId, dose: produtoId === p?.produtoId ? p.dose : "", unidadeDose: produtoId === p?.produtoId ? p.unidadeDose : (produto?.unidade ?? "ML") as UnidadeMedida, via: produtoId === p?.produtoId ? p.via : produto?.perfilSanitario?.viaPadrao ?? null, tipoAplicacaoId: produtoId === p?.produtoId ? p.tipoAplicacaoId : produto?.perfilSanitario?.tipoAplicacaoId ?? null }) : onChange({ ...etapa, planoAplicacao: undefined })}/>
+        <SelectBuscavel containerPopover={containerPopover} contentClassName={containerPopover ? "z-[1350]" : undefined} buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO", propriedadeId })} detalhe={detalheProdutoSanitario} rotulo="Produto planejado" valor={p?.produtoId ?? ""} onChange={(produtoId, produto) => produtoId ? alterar({ produtoId, dose: produtoId === p?.produtoId ? p.dose : "", unidadeDose: produtoId === p?.produtoId ? p.unidadeDose : (produto?.unidade ?? "ML") as UnidadeMedida, via: produtoId === p?.produtoId ? p.via : produto?.perfilSanitario?.viaPadrao ?? null, tipoAplicacaoId: produtoId === p?.produtoId ? p.tipoAplicacaoId : produto?.perfilSanitario?.tipoAplicacaoId ?? null }) : onChange({ ...etapa, planoAplicacao: undefined })}/>
         <label>
           Dose planejada
           <input
@@ -962,7 +970,7 @@ export function PlanoEtapa({
             <option value="TE">Transferência de embrião</option>
           </SelectCampo>
         </label>
-        <SelectBuscavel buscar={opcoesProtocolo({ opcao: "MATERIAL", origem: "REPRODUTIVO", tipoTentativa: p?.tipo ?? "IA", propriedadeId })} rotulo="Material planejado" valor={p?.materialId ?? ""} onChange={materialId => materialId ? alterar({ materialId }) : onChange({ ...etapa, planoTentativa: undefined })}/>
+        <SelectBuscavel containerPopover={containerPopover} contentClassName={containerPopover ? "z-[1350]" : undefined} buscar={opcoesProtocolo({ opcao: "MATERIAL", origem: "REPRODUTIVO", tipoTentativa: p?.tipo ?? "IA", propriedadeId })} rotulo="Material planejado" valor={p?.materialId ?? ""} onChange={materialId => materialId ? alterar({ materialId }) : onChange({ ...etapa, planoTentativa: undefined })}/>
         <label>
           Quantidade planejada
           <input
@@ -981,13 +989,14 @@ export function PlanoEtapa({
   if (etapa.tipo === "AVALIACAO")
     return (
       <div className="col-span-full grid gap-3">
-      <SelectBuscavel buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO", propriedadeId })} rotulo="Tipo de exame reprodutivo" valor={etapa.planoAvaliacao?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoAvaliacao: { tipo: etapa.planoAvaliacao?.tipo ?? "DIAGNOSTICO", tipoExameId: tipoExameId || undefined } })}/>
+      <SelectBuscavel containerPopover={containerPopover} contentClassName={containerPopover ? "z-[1350]" : undefined} buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO", propriedadeId })} rotulo="Tipo de exame reprodutivo" valor={etapa.planoAvaliacao?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoAvaliacao: { tipo: etapa.planoAvaliacao?.tipo ?? "DIAGNOSTICO", tipoExameId: tipoExameId || undefined } })}/>
       <p className="text-sm">Sem tipo definido, mantém a avaliação reprodutiva padrão de compatibilidade.</p>
       <label>
         Avaliação planejada
         <SelectCampo
           className={classeInput}
           value={etapa.planoAvaliacao?.tipo ?? ""}
+          disabled={bloquearTipoAvaliacao}
           onValueChange={(valor) =>
             onChange({
               ...etapa,

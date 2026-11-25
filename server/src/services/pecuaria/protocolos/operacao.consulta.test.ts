@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const banco=vi.hoisted(()=>({tx:{
-  tentativaReprodutiva:{findFirst:vi.fn()},interpretacaoReprodutiva:{findFirst:vi.fn()},exameAnimal:{findFirst:vi.fn()},aplicacaoProduto:{findFirst:vi.fn()},programacaoProtocolo:{findFirst:vi.fn(),findMany:vi.fn(),count:vi.fn()},participacaoProtocolo:{count:vi.fn(),findMany:vi.fn()},tarefaProtocolo:{findMany:vi.fn()},$queryRaw:vi.fn(),
+  protocolo:{findFirst:vi.fn()},animal:{findFirst:vi.fn()},etapaProtocolo:{count:vi.fn(),findMany:vi.fn()},tentativaReprodutiva:{findFirst:vi.fn()},interpretacaoReprodutiva:{findFirst:vi.fn()},exameAnimal:{findFirst:vi.fn()},aplicacaoProduto:{findFirst:vi.fn()},programacaoProtocolo:{findFirst:vi.fn(),findMany:vi.fn(),count:vi.fn()},participacaoProtocolo:{count:vi.fn(),findMany:vi.fn()},tarefaProtocolo:{findMany:vi.fn(),findFirst:vi.fn()},$queryRaw:vi.fn(),
 }}));
 vi.mock("../../../db.js",()=>({prisma:{$transaction:(executar:(tx:typeof banco.tx)=>unknown)=>executar(banco.tx)}}));
-import { listarProgramacoesOperacao, listarTarefasOperacao, listarParticipantesOperacao, obterCabecalhoOperacao, listarVinculosColetivosOperacao, listarOrigensFatoOperacao } from "./operacao.js";
+import { listarProgramacoesOperacao, listarTarefasOperacao, listarEtapasOperacao, listarParticipantesOperacao, obterCabecalhoOperacao, listarVinculosColetivosOperacao, listarOrigensFatoOperacao, preverParticipacaoIndividual } from "./operacao.js";
 import { listaOperacaoSchema, consultaOperacaoSchema, consultaVinculosColetivosOperacaoSchema, consultaOrigensFatoOperacaoSchema } from "./operacao.schemas.js";
 const id="00000000-0000-4000-8000-000000000001";
 const data=new Date("2026-10-01T00:00:00Z");
@@ -19,6 +19,36 @@ beforeEach(()=>{
   banco.tx.programacaoProtocolo.findFirst.mockResolvedValue({id,nome:"Grupo A",propriedadeId:1,inicioReferencia:data,precisaoTemporal:"DIA",status:"ABERTA",protocolo});
   banco.tx.$queryRaw.mockResolvedValueOnce([{total:1n}]).mockResolvedValueOnce([{id,situacao:"REGULARIZACAO_PENDENTE"}]).mockResolvedValueOnce([{situacao:"REGULARIZACAO_PENDENTE",total:1n,atrasadas:1n}]).mockResolvedValueOnce([{animaisPendentes:1n,acompanhamentosPendentes:0n}]);
   banco.tx.tarefaProtocolo.findMany.mockResolvedValueOnce([tarefa]).mockResolvedValueOnce([{id,execucao:{propriedadeId:1},vinculos:[{estado:"ATUAL",aplicacao:{propriedadeId:2,status:"ANULADO"},exame:null,tentativa:null}]}]);
+});
+it("prévia individual mantém DG dependente sem data mesmo com início horário",async()=>{
+  banco.tx.protocolo.findFirst.mockResolvedValue({...protocolo,tipo:"REPRODUTIVO"});
+  banco.tx.animal.findFirst.mockResolvedValue({id,brinco:"10",nome:null});
+  banco.tx.etapaProtocolo.count.mockResolvedValue(1);
+  banco.tx.etapaProtocolo.findMany.mockResolvedValue([{id,nome:"DG",tipo:"EXAME",ordem:1,diaRelativo:30,unidadeIntervalo:"DIAS",configuracao:{referenciaPrazoDiagnostico:true}}]);
+  const r=await preverParticipacaoIndividual({tipo:"REPRODUTIVO",protocoloId:id,animalId:id,propriedadeId:1,inicioReferencia:"2026-10-01T12:00:00Z"});
+  expect(r.itens[0]).toMatchObject({previstaPara:null,precisaoTemporal:"DIA",previsaoPendente:true});
+});
+it("oculta referência provisória nas leituras da etapa e tarefa e desativa adiamento",async()=>{
+  const etapa={id,nome:"DG",tipo:"EXAME",ordem:1,configuracao:{tipo:"AVALIACAO",referenciaPrazoDiagnostico:true}};
+  banco.tx.programacaoProtocolo.findFirst.mockResolvedValue({id,nome:"Grupo",propriedadeId:1,inicioReferencia:data,precisaoTemporal:"DIA",status:"ABERTA",protocolo:{...protocolo,tipo:"REPRODUTIVO"}});
+  banco.tx.tarefaProtocolo.findMany.mockReset().mockResolvedValueOnce([{
+    ...tarefa,etapa,previsaoPendente:true,realizadaEm:null,regularizacaoPendente:false,vinculos:[],manejos:[],
+    parametros:{previstaEm:"2026-10-01",previsaoOriginal:"2026-10-01",inicioReferencia:"2026-10-01"},
+  }]).mockResolvedValueOnce([]);
+  banco.tx.$queryRaw.mockReset().mockResolvedValueOnce([{total:1n}]).mockResolvedValueOnce([{id,situacao:"PREVISTO"}])
+    .mockResolvedValue([{situacao:"PREVISTO",total:1n,atrasadas:0n,animaisPendentes:1n,acompanhamentosPendentes:0n}]);
+  const filtro=consultaOperacaoSchema.parse({});
+  const r=await listarTarefasOperacao({programacaoId:id},1,filtro,{dono:true,areas:[],flags:[]});
+  expect(r.itens[0]).toMatchObject({
+    previstaPara:null,previsaoOriginal:null,previsaoPendente:true,acoes:{adiar:false,atender:true},
+    tarefaOrigem:{previstaEm:null,previstaPara:null,previsaoOriginal:null,planejadoSnapshot:{previstaEm:null,previsaoOriginal:null,inicioReferencia:"2026-10-01"}},
+  });
+  banco.tx.etapaProtocolo.count.mockResolvedValue(1);
+  banco.tx.etapaProtocolo.findMany.mockResolvedValue([etapa]);
+  banco.tx.tarefaProtocolo.findFirst.mockResolvedValue(null);
+  const etapas=await listarEtapasOperacao({programacaoId:id},1,filtro);
+  expect(etapas.itens[0].previstaPara).toBeNull();
+  expect(banco.tx.tarefaProtocolo.findFirst).toHaveBeenCalledWith(expect.objectContaining({where:expect.objectContaining({previsaoPendente:false})}));
 });
 describe("consulta operacional com fato realizado em outro sítio",()=>{
   it("conserva histórico da participação A sem revelar fato de B ao escopo A",async()=>{

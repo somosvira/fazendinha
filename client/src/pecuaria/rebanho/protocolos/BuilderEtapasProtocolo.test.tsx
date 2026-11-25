@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { BuilderEtapasProtocolo, type AcaoBuilderEtapas } from "./BuilderEtapasProtocolo";
+import { BuilderEtapasProtocolo, type AcaoBuilderEtapas, type CargaAcoesCadastro } from "./BuilderEtapasProtocolo";
 import { obterAcoesCadastro, type CadastroProtocoloMeta } from "./cadastros-api";
 
 vi.mock("./cadastros-api", () => ({ obterAcoesCadastro: vi.fn() }));
@@ -11,9 +11,10 @@ const momento = { nome: "Preparação", ordem: 1, modoAtendimento: "MANUAL" as c
 const acao = (i: number): Acao => ({ chaveEdicao: `acao-${i}`, ordem: i + 1, nome: `Ação ${i + 1}`, dia: 0, momento: { ...momento } });
 const origem: CadastroProtocoloMeta = { id: "p", nome: "Modelo", descricao: null, tipo: "SANITARIO", versao: 1, ativo: true, publicado: false, publicadoEm: null, atualizadoEm: "2026-10-23T12:00:00.000Z", totalEtapas: 11, utilizada: false };
 const completo = vi.fn();
-function Editor({ iniciais, fonte = null, indiceErro, aoMudar }: { iniciais: Acao[]; fonte?: CadastroProtocoloMeta | null; indiceErro?: number; aoMudar?: (itens: Acao[]) => void }) {
+function Editor({ iniciais, fonte = null, indiceErro, aoMudar, chaveBuilder }: { iniciais: Acao[]; fonte?: CadastroProtocoloMeta | null; indiceErro?: number; aoMudar?: (itens: Acao[]) => void; chaveBuilder?: number }) {
   const [itens, setItens] = useState(iniciais);
-  return <BuilderEtapasProtocolo permitirAutomacao origem={fonte} itens={itens} onChange={novos => { setItens(novos); aoMudar?.(novos); }} converter={item => ({ ...item, chaveEdicao: `acao-${item.ordem! - 1}` })} onCompletoChange={completo} criarAcao={(m, referencia) => ({ ...acao(itens.length), dia: referencia?.dia ?? 0, momento: m })} indiceErro={indiceErro} renderizarCalendario={(item, indices) => <label>Intervalo da etapa<input type="number" value={item.dia} onChange={e => setItens(itens.map((v, i) => indices.includes(i) ? { ...v, dia: Number(e.target.value) } : v))} /></label>} renderizarAcao={(item, indice) => <label>Nome {item.chaveEdicao}<input value={item.nome} onChange={e => setItens(itens.map((v, i) => i === indice ? { ...v, nome: e.target.value } : v))} /></label>} />;
+  const carga = useRef<CargaAcoesCadastro | null>(null);
+  return <BuilderEtapasProtocolo key={chaveBuilder} cargaPersistida={carga} permitirAutomacao origem={fonte} itens={itens} onChange={novos => { setItens(novos); aoMudar?.(novos); }} converter={item => ({ ...item, chaveEdicao: `acao-${item.ordem! - 1}` })} onCompletoChange={completo} criarAcao={(m, referencia) => ({ ...acao(itens.length), dia: referencia?.dia ?? 0, momento: m })} indiceErro={indiceErro} renderizarCalendario={(item, indices) => <label>Intervalo da etapa<input type="number" value={item.dia} onChange={e => setItens(itens.map((v, i) => indices.includes(i) ? { ...v, dia: Number(e.target.value) } : v))} /></label>} renderizarAcao={(item, indice) => <label>Nome {item.chaveEdicao}<input value={item.nome} onChange={e => setItens(itens.map((v, i) => i === indice ? { ...v, nome: e.target.value } : v))} /></label>} />;
 }
 const editor = () => within(screen.getByRole("region", { name: "Etapa selecionada" }));
 beforeEach(() => { vi.clearAllMocks(); });
@@ -120,6 +121,23 @@ it("carrega páginas de dez explicitamente e preserva edição e revisão ao ane
   const ultimos = aoMudar.mock.lastCall?.[0] as Acao[];
   expect(ultimos).toHaveLength(11);
   expect(ultimos.every(item => item.momento?.nome === "Etapa renomeada" && item.momento.instrucoesGerais === "Orientação editada" && item.momento.modoAtendimento === "AUTOMATIZADA")).toBe(true);
+});
+
+it("remonta sem duplicar ações da origem, reverter edições ou restaurar ações removidas", async () => {
+  const fonte = { ...origem, totalEtapas: 2 };
+  const primeira = { ...acao(0), id: "primeira", nome: "Mesmo procedimento" };
+  const segunda = { ...acao(1), id: "segunda", nome: "Mesmo procedimento" };
+  vi.mocked(obterAcoesCadastro).mockResolvedValue({ itens: [primeira, segunda, primeira], total: 2, pagina: 1, porPagina: 10, revisao: origem.atualizadoEm });
+  const { rerender } = render(<Editor iniciais={[]} fonte={fonte} chaveBuilder={1} />);
+  await screen.findByLabelText("Nome acao-0");
+  expect(screen.getAllByDisplayValue("Mesmo procedimento")).toHaveLength(2);
+  fireEvent.change(screen.getByLabelText("Nome acao-1"), { target: { value: "Editada" } });
+  fireEvent.click(screen.getByRole("button", { name: "Remover procedimento 1" }));
+  rerender(<Editor iniciais={[]} fonte={fonte} chaveBuilder={2} />);
+  await waitFor(() => expect(completo).toHaveBeenLastCalledWith(true));
+  expect(screen.getByLabelText("Nome acao-1")).toHaveProperty("value", "Editada");
+  expect(screen.queryByLabelText("Nome acao-0")).toBeNull();
+  expect(obterAcoesCadastro).toHaveBeenCalledTimes(1);
 });
 
 it("adiciona procedimento à etapa atual e preserva os campos das outras etapas", () => {

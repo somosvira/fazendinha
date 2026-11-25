@@ -23,6 +23,7 @@ export function apresentarProcedimentoCadastro(e: Procedimento) {
     : e.tipo === "TENTATIVA" ? (tipoTentativa === "TE" ? "Transferência de embrião" : tipoTentativa === "IA" ? "Inseminação artificial" : "Tentativa reprodutiva")
     : e.tipo === "EXAME" || e.tipo === "AVALIACAO" ? "Exame / diagnóstico" : "Manejo cadastrado";
   return { id: e.id, nome: e.nome, procedimento,
+    ...(c.referenciaPrazoDiagnostico === true ? { referenciaPrazoDiagnostico: true as const } : {}),
     intervalo: typeof c.intervalo === "number" ? c.intervalo : e.diaRelativo,
     unidadeIntervalo: texto(c.unidade) ?? e.unidadeIntervalo,
     referencia: e.tipo === "APLICACAO" ? texto(produto.nome) ?? texto(produtoSnapshot.nome) ?? e.produto?.nome ?? null

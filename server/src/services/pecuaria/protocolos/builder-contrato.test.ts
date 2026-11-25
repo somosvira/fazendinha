@@ -85,6 +85,22 @@ describe("modalidades independentes de protocolos novos", () => {
   });
 });
 
+it.each([["IATF", "IA"], ["TETF", "TE"]] as const)("preserva prazo factual na leitura e derivação de %s", (finalidade, publico) => {
+  const regra = { finalidade: "DIAGNOSTICO", ocorrencia: 1, publico, referencia: publico, intervalo: 30, unidade: "DIAS", antecedencia: 2, tolerancia: 1, resolucao: "DIAGNOSTICO_CONCLUSIVO" };
+  const dg = { nome: "DG", tipo: "AVALIACAO", intervalo: 7.5, unidade: "DIAS", referenciaPrazoDiagnostico: true, planoAvaliacao: { tipo: "DIAGNOSTICO" } };
+  const input = { ...protocolo, finalidade, modalidadeTentativa: "EXTERNA", modalidadeDiagnostico: "PROTOCOLO", configuracaoAcompanhamento: { versao: 2, efeito: "ALERTA", regras: [regra] }, etapas: [dg] };
+  expect(protocoloSchema.safeParse(input).success).toBe(true);
+  const [gravada] = etapasReprodutivasDoContrato(input.etapas);
+  const derivada = etapaIatfSchema.parse(gravada.configuracao);
+  expect(derivada).toEqual(dg);
+  expect(calendarioIatf(new Date("2026-01-01T15:00:00Z"), [derivada])[0]).toMatchObject({ previsaoPendente: true, precisaoTemporal: "DIA" });
+  expect(protocoloSchema.safeParse({ ...input, configuracaoAcompanhamento: null }).success).toBe(false);
+  expect(protocoloSchema.safeParse({ ...input, etapas: [dg, dg] }).success).toBe(false);
+  expect(protocoloSchema.safeParse({ ...input, configuracaoAcompanhamento: { ...input.configuracaoAcompanhamento, regras: [{ ...regra, intervalo: 1.5 }] } }).success).toBe(false);
+  expect(protocoloSchema.safeParse({ ...input, configuracaoAcompanhamento: { ...input.configuracaoAcompanhamento, regras: [{ ...regra, tipoExameId: id }] } }).success).toBe(false);
+  expect(etapaIatfSchema.safeParse({ ...dg, planoAvaliacao: { tipo: "SEXAGEM" } }).success).toBe(false);
+});
+
 it("recebe exatamente uma origem de produto na aplicação do builder", () => {
   const plano = aplicacao.planoAplicacao;
   expect(etapaIatfSchema.safeParse({ ...aplicacao, planoAplicacao: { ...plano, produtoId: undefined, produtoCatalogoId: id, categoriaId: id } }).success).toBe(true);

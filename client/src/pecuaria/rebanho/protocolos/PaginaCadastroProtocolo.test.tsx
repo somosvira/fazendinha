@@ -38,6 +38,17 @@ async function iniciarZero(tipo: "SANITARIO" | "REPRODUTIVO" = "SANITARIO") {
   render(<PaginaCadastroProtocolo tipo={tipo} podeLancar />);
   fireEvent.click(screen.getByRole("button", { name: /Começar do zero/ }));
 }
+async function iniciarReproComAplicacao() {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo");
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  mudarCampo(screen.getByLabelText("Nome do protocolo"), {target:{value:"Modelo"}});
+  mudarCampo(screen.getByLabelText("Finalidade"), {target:{value:"PRE_SINCRONIZACAO"}});
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
+  fireEvent.click(await screen.findByRole("button", {name:"Adicionar etapa"}));
+  fireEvent.click(screen.getByRole("button", {name:"Ir para procedimentos"}));
+  fireEvent.click(screen.getByRole("button", {name:"Concluir etapa"}));
+  fireEvent.click(screen.getByRole("button", {name:/Editar Aplicação de produto/}));
+}
 it("herda o domínio da rota e lista bases em páginas de dez sem rascunho ou área", async () => {
   vi.mocked(listarCadastrosProtocolos).mockImplementation(async (_tipo, atual) => pagina(Array.from({ length: atual === 1 ? 10 : 1 }, (_, i) => ({ ...meta, id: `p-${atual}-${i}`, nome: `Modelo ${atual}-${i}` })), 11, atual));
   render(<PaginaCadastroProtocolo tipo="SANITARIO" podeLancar />);
@@ -69,24 +80,25 @@ it("cria protocolo sanitário pronto em uma chamada e herda calendário ao adici
   expect(navegarPara).toHaveBeenCalledWith("/configuracoes/pecuaria/sanidade/protocolos");
 });
 it.each(["IA", "TE"] as const)("cria %s com material definido somente no atendimento e sem publicação separada", async tentativaTipo => {
-  await iniciarZero("REPRODUTIVO");
-  fireEvent.click(screen.getByRole("button", { name: "Editar identificação" }));
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo");
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
   mudarCampo(screen.getByLabelText("Nome do protocolo"), { target: { value: "Modelo genético" } });
-  mudarCampo(screen.getByLabelText("Finalidade da versão"), { target: { value: tentativaTipo === "IA" ? "IATF" : "TETF" } });
+  mudarCampo(screen.getByLabelText("Finalidade"), { target: { value: tentativaTipo === "IA" ? "IATF" : "TETF" } });
   mudarCampo(screen.getByLabelText("Tentativa"), {target:{value:"ETAPA"}});
   mudarCampo(screen.getByLabelText("Diagnóstico de gestação"), {target:{value:"EXTERNO"}});
-  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Concluir" }));
-  fireEvent.click(screen.getByRole("button", { name: "Gerenciar etapas e procedimentos" }));
-  fireEvent.click(screen.getByRole("button", {name:"Editar etapa D0"}));
-  mudarCampo(screen.getByLabelText("Intervalo desde o início"), { target: { value: "10.5" } });
-  mudarCampo(screen.getByLabelText("Unidade do intervalo"), { target: { value: "HORAS" } });
-  mudarCampo(screen.getByLabelText("Tipo de procedimento"), { target: { value: tentativaTipo } });
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
+  fireEvent.click(await screen.findByRole("button", {name: tentativaTipo === "IA" ? /Editar Inseminação/ : /Editar Transferência de embrião/}));
   expect(screen.queryByRole("button", { name: /Selecionar Material/ })).toBeNull();
-  fireEvent.click(screen.getByRole("button", {name:"Concluir edição da etapa"}));
-  fireEvent.click(screen.getByRole("button", {name:"Voltar ao quadro"}));
-  fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
+  fireEvent.click(screen.getByRole("button", {name:"Voltar aos dados"}));
+  mudarCampo(screen.getByLabelText("Dia da etapa"), {target:{value:"10.5"}});
+  mudarCampo(screen.getByLabelText("Unidade do intervalo"), {target:{value:"HORAS"}});
+  fireEvent.click(screen.getByRole("button", {name:"Ir para procedimentos"}));
+  fireEvent.click(screen.getByRole("button", {name:"Concluir etapa"}));
+  fireEvent.click(screen.getByRole("button", {name:"Ir para conferência"}));
+  fireEvent.click(screen.getByRole("button", {name:"Salvar protocolo"}));
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({ publicado: true, etapas: [expect.objectContaining({ tipo: "TENTATIVA", tentativaTipo, intervalo: 10.5, unidade: "HORAS" })] }), "POST", undefined));
 });
+
 it("usa proximaVersao do servidor e preserva o nome ao derivar, sem alterar a base", async () => {
   window.history.replaceState(null, "", "/configuracoes/pecuaria/sanidade/protocolos/novo?base=p1&retorno=%2Fconfiguracoes%2Fpecuaria%2Fsanidade%2Fprotocolos%3FcadastroBusca%3DControle%26cadastroPagina%3D2");
   render(<PaginaCadastroProtocolo tipo="SANITARIO" podeLancar />);
@@ -154,15 +166,21 @@ it("trocar a origem exige confirmação e conserva o domínio", async () => {
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
   expect(screen.getByLabelText("Nome do protocolo")).toHaveProperty("value", "Minha edição");
 });
-it("edição de reprodução legada conserva finalidade nula e material planejado no mesmo ID", async () => {
+it("edição legada conserva finalidade, material planejado e avaliação com exame padrão", async () => {
   window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo?editar=p1");
-  vi.mocked(obterCadastroProtocolo).mockResolvedValue({ ...meta, tipo: "REPRODUTIVO", finalidade: null, publicado: false, publicadoEm: null, utilizada: false });
+  vi.mocked(obterCadastroProtocolo).mockResolvedValue({ ...meta, tipo: "REPRODUTIVO", finalidade: null, publicado: false, publicadoEm: null, utilizada: false, totalEtapas: 2 });
   const planoTentativa = { tipo: "IA", materialId: "material-legado", quantidade: 1 };
-  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([{ nome: "Inseminação legada", tipo: "TENTATIVA", intervalo: 10, unidade: "DIAS", planoTentativa, ordem: 1 }]));
+  const planoAvaliacao = { tipo: "DIAGNOSTICO" };
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([
+    { nome: "Inseminação legada", tipo: "TENTATIVA", intervalo: 10, unidade: "DIAS", planoTentativa, ordem: 1 },
+    { nome: "Avaliação legada", tipo: "AVALIACAO", intervalo: 40, unidade: "DIAS", planoAvaliacao, ordem: 2 },
+  ]));
   render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
-  await waitFor(() => expect(screen.getByRole("button", { name: "Salvar protocolo" })).toHaveProperty("disabled", false));
+  await screen.findByDisplayValue("Controle");
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", { name: "Ir para etapas" })); expect(screen.getByRole("button", { name: "Ir para conferência" })).toBeTruthy(); });
+  fireEvent.click(screen.getByRole("button", { name: "Ir para conferência" }));
   fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
-  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos/p1", expect.objectContaining({ publicado: true, etapas: [expect.objectContaining({ planoTentativa })] }), "PATCH", undefined));
+  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos/p1", expect.objectContaining({ publicado: true, etapas: [expect.objectContaining({ planoTentativa }), expect.objectContaining({ planoAvaliacao })] }), "PATCH", undefined));
   expect(vi.mocked(reqV4).mock.calls[0][1]).not.toHaveProperty("finalidade");
 });
 it("edição sanitária legada mantém finalidade nula sem converter a mesma versão", async () => {
@@ -197,30 +215,25 @@ it.each((["IATF", "TETF"] as const).flatMap(finalidade => (["ETAPA", "EXTERNA"] 
   vi.mocked(obterCadastroProtocolo).mockResolvedValue({...meta,tipo:"REPRODUTIVO",finalidade,modalidadeTentativa,modalidadeDiagnostico,totalEtapas:acoes.length});
   vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina(acoes));
   render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar/>);
-  await waitFor(()=>expect(screen.getByRole("button",{name:"Salvar protocolo"})).toHaveProperty("disabled",false));
+  await screen.findByDisplayValue("Controle");
+  if (modalidadeDiagnostico === "PROTOCOLO") mudarCampo(screen.getByLabelText("Dias após a tentativa"), {target:{value:"31"}});
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"})); expect(screen.getByRole("button", {name:"Ir para conferência"})).toBeTruthy(); });
+  fireEvent.click(screen.getByRole("button",{name:"Ir para conferência"}));
   fireEvent.click(screen.getByRole("button",{name:"Salvar protocolo"}));
   await waitFor(()=>expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos",expect.objectContaining({finalidade,modalidadeTentativa,modalidadeDiagnostico}),"POST",undefined));
 });
 
-it("cria IATF com preparo sem tentativa ou DG fictícios e não apaga ações ao trocar modalidade", async () => {
-  await iniciarZero("REPRODUTIVO");
-  fireEvent.click(screen.getByRole("button", { name: "Editar identificação" }));
-  mudarCampo(screen.getByLabelText("Nome do protocolo"),{target:{value:"Preparo flexível"}});
-  mudarCampo(screen.getByLabelText("Finalidade da versão"),{target:{value:"IATF"}});
-  mudarCampo(screen.getByLabelText("Tentativa"),{target:{value:"EXTERNA"}});
-  mudarCampo(screen.getByLabelText("Diagnóstico de gestação"),{target:{value:"EXTERNO"}});
-  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Concluir" }));
-  fireEvent.click(screen.getByRole("button", {name:/Editar Aplicação de produto · D0/}));
-  mudarCampo(screen.getByLabelText("Tipo de procedimento"),{target:{value:"IA"}});
+it("cria IATF externo com preparo sem tentativa ou DG fictícios", async () => {
+  await iniciarReproComAplicacao();
+  mudarCampo(screen.getByLabelText("Tipo de procedimento"), {target:{value:"RETIRADA"}});
   fireEvent.click(screen.getByRole("button", {name:"Concluir etapa"}));
-  fireEvent.click(screen.getByRole("button",{name:"Salvar protocolo"}));
-  expect(await screen.findByText(/Remova a ação de IA ou TE/)).toBeTruthy();
-  expect(reqV4).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", {name:/Editar Inseminação · D0/}));
-  expect(screen.getByLabelText("Tipo de procedimento")).toHaveProperty("value","IA");
-  mudarCampo(screen.getByLabelText("Tipo de procedimento"),{target:{value:"RETIRADA"}});
-  fireEvent.click(screen.getByRole("button", {name:"Concluir etapa"}));
-  fireEvent.click(screen.getByRole("button",{name:"Salvar protocolo"}));
+  fireEvent.click(screen.getByRole("button", {name:"Voltar"}));
+  mudarCampo(screen.getByLabelText("Finalidade"), {target:{value:"IATF"}});
+  mudarCampo(screen.getByLabelText("Tentativa"), {target:{value:"EXTERNA"}});
+  mudarCampo(screen.getByLabelText("Diagnóstico de gestação"), {target:{value:"EXTERNO"}});
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
+  fireEvent.click(screen.getByRole("button", {name:"Ir para conferência"}));
+  fireEvent.click(screen.getByRole("button", {name:"Salvar protocolo"}));
   await waitFor(()=>expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos",expect.objectContaining({finalidade:"IATF",modalidadeTentativa:"EXTERNA",modalidadeDiagnostico:"EXTERNO",etapas:[expect.objectContaining({tipo:"RETIRADA"})]}),"POST",undefined));
 });
 
@@ -230,16 +243,16 @@ it("derivar uma base e mudar finalidade não duplica etapas nem recarrega açõe
   vi.mocked(obterCadastroProtocolo).mockResolvedValue({...meta,tipo:"REPRODUTIVO",finalidade:null,totalEtapas:3});
   vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([1,2,3].map(ordem=>({ordem,nome:`Procedimento ${ordem}`,tipo:"RETIRADA",intervalo:ordem,unidade:"DIAS"}))));
   render(<StrictMode><PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar/></StrictMode>);
-  await waitFor(()=>expect(screen.getAllByRole("button",{name:/Editar Procedimento .*ação legada/})).toHaveLength(3));
+  await screen.findByDisplayValue("Controle");
+  mudarCampo(screen.getByLabelText("Finalidade"),{target:{value:"IATF"}});
+  mudarCampo(screen.getByLabelText("Tentativa"),{target:{value:"EXTERNA"}});
+  mudarCampo(screen.getByLabelText("Diagnóstico de gestação"),{target:{value:"EXTERNO"}});
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"})); expect(screen.getAllByRole("button",{name:/Editar Procedimento .*ação legada/})).toHaveLength(3); });
   const cargas=vi.mocked(obterAcoesCadastro).mock.calls.length;
-  fireEvent.click(screen.getByRole("button", { name: "Editar identificação" }));
-  mudarCampo(screen.getByLabelText("Finalidade da versão"),{target:{value:"IATF"}});
-  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Concluir" }));
+  fireEvent.click(screen.getByRole("button", {name:"Voltar"}));
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
   expect(screen.getAllByRole("button",{name:/Editar Procedimento .*ação legada/})).toHaveLength(3);
   expect(obterAcoesCadastro).toHaveBeenCalledTimes(cargas);
-  expect(screen.getAllByRole("rowgroup")).toHaveLength(4);
-  fireEvent.click(screen.getByRole("button",{name:"Salvar protocolo"}));
-  expect(reqV4).not.toHaveBeenCalled();
 });
 
 it("herda e edita regras do modelo, valida prazo vazio e envia configuração sem alterar a base", async () => {
@@ -249,45 +262,45 @@ it("herda e edita regras do modelo, valida prazo vazio e envia configuração se
   vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([{nome:"Retirada",tipo:"RETIRADA",intervalo:7,unidade:"DIAS",ordem:1,momento:{nome:"Fim do preparo",ordem:1,modoAtendimento:"MANUAL"}}]));
   vi.mocked(reqV4).mockImplementation(async(path)=>path.startsWith("/reproducao/tipos-exame")?[]:{});
   render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar/>);
-  await screen.findByRole("button", { name: "Editar identificação" });
-  fireEvent.click(screen.getByRole("button", { name: "Editar identificação" }));
+  await screen.findByDisplayValue("Controle");
   const intervalo=await screen.findByLabelText("Intervalo (dias)");
   expect(intervalo).toHaveProperty("value","20");
   fireEvent.change(intervalo,{target:{value:""}});
-  fireEvent.submit(document.getElementById("cadastro-protocolo")!);
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"})); expect(screen.getByRole("button", {name:"Ir para conferência"})).toBeTruthy(); });
+  fireEvent.click(screen.getByRole("button", {name:"Ir para conferência"}));
+  fireEvent.click(screen.getByRole("button", {name:"Salvar protocolo"}));
   expect(await screen.findByText(/Informe intervalo, antecedência e tolerância/)).toBeTruthy();
   expect(vi.mocked(reqV4).mock.calls.some(([path])=>path==="/reproducao/protocolos")).toBe(false);
-  fireEvent.change(intervalo,{target:{value:"23"}});
-  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Concluir" }));
-  fireEvent.submit(document.getElementById("cadastro-protocolo")!);
+  fireEvent.click(screen.getByRole("button", {name:"Voltar"}));
+  fireEvent.click(screen.getByRole("button", {name:"Voltar"}));
+  fireEvent.change(screen.getByLabelText("Intervalo (dias)"),{target:{value:"23"}});
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
+  fireEvent.click(screen.getByRole("button", {name:"Ir para conferência"}));
+  fireEvent.click(screen.getByRole("button", {name:"Salvar protocolo"}));
   await waitFor(()=>expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos",expect.objectContaining({configuracaoAcompanhamento:{...configuracao,regras:[{...configuracao.regras[0],intervalo:23}]}}),"POST",undefined));
   expect(configuracao.regras[0].intervalo).toBe(20);
 });
 
 it("abre o procedimento escolhido e cancelar restaura o rascunho da etapa", async () => {
-  await iniciarZero("REPRODUTIVO");
-  const editar = screen.getByRole("button", { name: "Editar Aplicação de produto · D0" });
-  fireEvent.click(editar);
-  const dialogo = screen.getByRole("dialog", { name: "Editar etapa · D0" });
+  await iniciarReproComAplicacao();
+  const dialogo = screen.getByRole("dialog", { name: /Editar etapa/ });
   expect(within(dialogo).getByRole("radio", { name: "Aplicação de produto" })).toHaveProperty("checked", true);
   mudarCampo(within(dialogo).getByLabelText("Tipo de procedimento"), { target: { value: "RETIRADA" } });
+  fireEvent.click(within(dialogo).getByRole("button", {name:"Voltar aos dados"}));
   fireEvent.click(within(dialogo).getByRole("button", { name: "Cancelar" }));
-  expect(screen.getByRole("button", { name: "Editar Aplicação de produto · D0" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: /Editar Aplicação de produto/ })).toBeTruthy();
 });
 
 it("preserva o item de catálogo ao digitar a dose no editor de manutenção", async () => {
-  await iniciarZero("REPRODUTIVO");
-  fireEvent.click(screen.getByRole("button", { name: "Gerenciar etapas e procedimentos" }));
-  fireEvent.click(screen.getByRole("button", { name: "Editar etapa D0" }));
+  await iniciarReproComAplicacao();
   fireEvent.click(screen.getByRole("button", { name: "Ver catálogo" }));
   fireEvent.click(screen.getByRole("button", { name: "Escolher item de catálogo" }));
-  fireEvent.change(screen.getByLabelText("Dose planejada"), { target: { value: "7" } });
+  fireEvent.change(screen.getByLabelText("Quantidade por animal"), { target: { value: "7" } });
   expect(screen.getByRole("combobox", { name: "Produto planejado" }).textContent).toContain("Insumo de catálogo");
   expect(screen.getByText(/Produto do catálogo · será adotado ao salvar/)).toBeTruthy();
-  expect(screen.getByLabelText("Dose planejada")).toHaveProperty("value", "7");
+  expect(screen.getByLabelText("Quantidade por animal")).toHaveProperty("value", "7");
   expect(screen.getByLabelText("Categoria do produto")).toHaveProperty("value", "cat1");
-  fireEvent.click(screen.getByRole("button", { name: "Concluir edição da etapa" }));
-  fireEvent.click(screen.getByRole("button", { name: "Voltar ao quadro" }));
+  fireEvent.click(screen.getByRole("button", { name: "Concluir etapa" }));
   expect(screen.getByText("7 mL")).toBeTruthy();
 });
 
@@ -297,7 +310,9 @@ it("apresenta e foca o erro do servidor no campo da dose sem descartar o rascunh
   vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([{ ordem: 1, nome: "Aplicação", tipo: "APLICACAO", intervalo: 0, unidade: "DIAS", planoAplicacao: { produtoId: "p1", dose: "2", unidadeDose: "ML" }, momento: { nome: "Preparo", ordem: 1, modoAtendimento: "MANUAL" } }]));
   vi.mocked(reqV4).mockRejectedValue(new RebanhoApiError("Selecione a unidade efetiva do produto", 422, "VALIDACAO", "etapas.0.planoAplicacao.unidadeDose"));
   render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
-  await screen.findByRole("button", { name: "Editar Aplicação · Preparo" });
+  await screen.findByDisplayValue("Controle");
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", { name: "Ir para etapas" })); expect(screen.getByRole("button", { name: "Ir para conferência" })).toBeTruthy(); });
+  fireEvent.click(screen.getByRole("button", { name: "Ir para conferência" }));
   fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
   const modal = await screen.findByRole("dialog", { name: "Editar etapa · Preparo" });
   expect(within(modal).getByRole("alert").textContent).toBe("Selecione a unidade efetiva do produto");
@@ -312,15 +327,10 @@ it("começar novamente após trocar a origem invalida o snapshot da identificaç
   vi.mocked(obterCadastroProtocolo).mockResolvedValue({ ...meta, nome: "Modelo antigo", tipo: "REPRODUTIVO", finalidade: "PRE_SINCRONIZACAO" });
   vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([{ nome: "Retirada", tipo: "RETIRADA", intervalo: 7, unidade: "DIAS", ordem: 1 }]));
   render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
-  fireEvent.click(await screen.findByRole("button", { name: "Editar identificação" }));
-  fireEvent.click(within(screen.getByRole("dialog", { name: "Editar identificação" })).getByRole("button", { name: "Trocar origem" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Escolher outra origem" }));
-  fireEvent.click(await screen.findByRole("button", { name: /Começar do zero/ }));
-  expect(screen.queryByRole("dialog", { name: "Editar identificação" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Editar identificação" }));
-  const dialogo = screen.getByRole("dialog", { name: "Editar identificação" });
-  expect(within(dialogo).getByLabelText("Nome do protocolo")).toHaveProperty("value", "");
-  fireEvent.click(within(dialogo).getByRole("button", { name: "Cancelar" }));
+  await screen.findByDisplayValue("Modelo antigo");
+  fireEvent.click(screen.getByRole("radio", {name:"Começar do zero"}));
+  fireEvent.click(screen.getByRole("button", {name:"Trocar origem"}));
+  expect(screen.getByLabelText("Nome do protocolo")).toHaveProperty("value", "");
   expect(screen.queryByText(/Modelo antigo/)).toBeNull();
 });
 
@@ -333,24 +343,22 @@ it("sinaliza calendários distintos e apresenta o intervalo do procedimento ativ
     { ordem: 2, nome: "Segundo", tipo: "RETIRADA", intervalo: 12.5, unidade: "HORAS", momento },
   ]));
   render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
-  expect(await screen.findByText("Intervalos distintos")).toBeTruthy();
-  expect(screen.getAllByText("Definido no atendimento")).toHaveLength(2);
+  await screen.findByDisplayValue("Controle");
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"})); expect(screen.getByText("Intervalos distintos")).toBeTruthy(); });
   fireEvent.click(screen.getByRole("button", { name: "Editar Segundo · Preparo" }));
   const modal = screen.getByRole("dialog", { name: "Editar etapa · Preparo" });
-  expect(within(modal).getByText("H12,5")).toBeTruthy();
-  expect(within(modal).getByText("Horas")).toBeTruthy();
-  fireEvent.click(within(modal).getByRole("radio", { name: "Primeiro" }));
-  expect(within(modal).getByText("D3,75")).toBeTruthy();
-  expect(within(modal).getByText("Dias")).toBeTruthy();
+  fireEvent.click(within(modal).getByRole("button", {name:"Voltar aos dados"}));
+  expect(within(modal).getByText(/intervalos individuais diferentes/)).toBeTruthy();
+  fireEvent.click(within(modal).getByRole("button", {name:"Ir para procedimentos"}));
   fireEvent.click(within(modal).getByRole("button", { name: "Concluir etapa" }));
+  fireEvent.click(screen.getByRole("button", {name:"Ir para conferência"}));
   fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({ etapas: [expect.objectContaining({ intervalo: 3.75, unidade: "DIAS" }), expect.objectContaining({ intervalo: 12.5, unidade: "HORAS" })] }), "POST", undefined));
 });
 
 it("mantém o produto de catálogo no controle, restaura ao cancelar e permite limpar com foco", async () => {
-  await iniciarZero("REPRODUTIVO");
-  fireEvent.click(screen.getByRole("button", { name: "Editar Aplicação de produto · D0" }));
-  let etapa = screen.getByRole("dialog", { name: "Editar etapa · D0" });
+  await iniciarReproComAplicacao();
+  let etapa = screen.getByRole("dialog", { name: /Editar etapa/ });
   const catalogo = within(etapa).getByRole("button", { name: "Ver catálogo" });
   catalogo.focus();
   fireEvent.click(catalogo);
@@ -362,15 +370,16 @@ it("mantém o produto de catálogo no controle, restaura ao cancelar e permite l
   fireEvent.change(within(etapa).getByLabelText("Quantidade por animal"), { target: { value: "2.5" } });
   await waitFor(() => expect(within(etapa).getByLabelText("Categoria do produto")).toHaveProperty("value", "cat1"));
   fireEvent.click(within(etapa).getByRole("button", { name: "Concluir etapa" }));
-  fireEvent.click(screen.getByRole("button", { name: "Editar Aplicação de produto · D0" }));
-  etapa = screen.getByRole("dialog", { name: "Editar etapa · D0" });
+  fireEvent.click(screen.getByRole("button", { name: /Editar Aplicação de produto/ }));
+  etapa = screen.getByRole("dialog", { name: /Editar etapa/ });
   expect(within(etapa).getByRole("combobox", { name: "Produto planejado" }).textContent).toContain("Insumo de catálogo");
   expect(within(etapa).getByLabelText("Quantidade por animal")).toHaveProperty("value", "2.5");
   fireEvent.click(within(etapa).getByRole("button", { name: "Limpar Produto planejado" }));
   expect(document.activeElement).toBe(within(etapa).getByRole("combobox", { name: "Produto planejado" }));
+  fireEvent.click(within(etapa).getByRole("button", {name:"Voltar aos dados"}));
   fireEvent.click(within(etapa).getByRole("button", { name: "Cancelar" }));
-  fireEvent.click(screen.getByRole("button", { name: "Editar Aplicação de produto · D0" }));
-  etapa = screen.getByRole("dialog", { name: "Editar etapa · D0" });
+  fireEvent.click(screen.getByRole("button", { name: /Editar Aplicação de produto/ }));
+  etapa = screen.getByRole("dialog", { name: /Editar etapa/ });
   expect(within(etapa).getByRole("combobox", { name: "Produto planejado" }).textContent).toContain("Insumo de catálogo");
   expect(within(etapa).getByLabelText("Quantidade por animal")).toHaveProperty("value", "2.5");
   expect(within(etapa).getByLabelText("Categoria do produto")).toHaveProperty("value", "cat1");
@@ -403,11 +412,221 @@ it("resolve pelo ID o nome do produto da fazenda herdado da versão-base ao abri
       ? pagina([{ id: "fazenda", nome: "Produto da versão-base", unidade: "ML" }])
       : {});
   render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
-  fireEvent.click(await screen.findByRole("button", { name: "Editar Aplicação · ação legada" }));
+  await screen.findByDisplayValue("Controle");
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"})); expect(screen.getByRole("button", { name: "Editar Aplicação · ação legada" })).toBeTruthy(); });
+  fireEvent.click(screen.getByRole("button", { name: "Editar Aplicação · ação legada" }));
   const etapa = screen.getByRole("dialog", { name: "Editar etapa · Ação legada" });
   fireEvent.click(within(etapa).getByRole("button", { name: "Ver catálogo" }));
   const catalogo = screen.getByRole("dialog", { name: "Catálogo de produtos" });
   expect(await within(catalogo).findByText("Seleção atual: Produto da versão-base")).toBeTruthy();
   fireEvent.click(within(catalogo).getByRole("button", { name: "Concluir" }));
   expect(within(etapa).getByLabelText("Quantidade por animal")).toHaveProperty("value", "3");
+});
+
+it.each([["IATF", "Inseminação"], ["TETF", "Transferência de embrião"]] as const)("insere e protege a tentativa de %s sem duplicá-la ao voltar", async (finalidade, nomeAcao) => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo");
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  mudarCampo(screen.getByLabelText("Nome do protocolo"), { target: { value: "Modelo" } });
+  mudarCampo(screen.getByLabelText("Finalidade"), { target: { value: finalidade } });
+  mudarCampo(screen.getByLabelText("Tentativa"), { target: { value: "ETAPA" } });
+  mudarCampo(screen.getByLabelText("Diagnóstico de gestação"), { target: { value: "EXTERNO" } });
+  await waitFor(() => fireEvent.click(screen.getByRole("button", { name: "Ir para etapas" })));
+  const editar = await screen.findByRole("button", { name: new RegExp(`Editar ${nomeAcao}`) });
+  expect(screen.getAllByRole("button", { name: new RegExp(`Editar ${nomeAcao}`) })).toHaveLength(1);
+  fireEvent.click(editar);
+  expect(screen.getByRole("button", { name: `Remover ${nomeAcao}` })).toHaveProperty("disabled", true);
+  fireEvent.click(screen.getByRole("button", { name: "Voltar aos dados" }));
+  mudarCampo(screen.getByLabelText("Dia da etapa"), { target: { value: "10.5" } });
+  mudarCampo(screen.getByLabelText("Unidade do intervalo"), { target: { value: "HORAS" } });
+  fireEvent.click(screen.getByRole("button", { name: "Ir para procedimentos" }));
+  fireEvent.click(screen.getByRole("button", { name: "Concluir etapa" }));
+  fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ir para etapas" }));
+  expect(screen.getAllByRole("button", { name: new RegExp(`Editar ${nomeAcao}`) })).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Ir para conferência" }));
+  fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
+  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({ etapas: [expect.objectContaining({ tipo: "TENTATIVA", intervalo: 10.5, unidade: "HORAS" })] }), "POST", undefined));
+});
+it("exige prazo de DG e preserva ação dependente ao voltar à identificação", async () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo");
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  mudarCampo(screen.getByLabelText("Nome do protocolo"), {target:{value:"Modelo DG"}});
+  mudarCampo(screen.getByLabelText("Finalidade"), {target:{value:"IATF"}});
+  mudarCampo(screen.getByLabelText("Tentativa"), {target:{value:"EXTERNA"}});
+  mudarCampo(screen.getByLabelText("Diagnóstico de gestação"), {target:{value:"PROTOCOLO"}});
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
+  expect(await screen.findByText(/Informe o prazo do diagnóstico/)).toBeTruthy();
+  mudarCampo(screen.getByLabelText("Dias após a tentativa"), {target:{value:"31"}});
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
+  expect(await screen.findByRole("button", {name:/Editar Diagnóstico de gestação.*31 dias após a tentativa/})).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", {name:/Editar Diagnóstico de gestação/}));
+  expect(screen.getByRole("button", {name:/Remover Diagnóstico de gestação/})).toHaveProperty("disabled", true);
+  fireEvent.click(screen.getByRole("button", {name:"Voltar aos dados"}));
+  fireEvent.click(screen.getByRole("button", {name:"Cancelar"}));
+  fireEvent.click(screen.getByRole("button", {name:"Voltar"}));
+  expect(screen.getByLabelText("Dias após a tentativa")).toHaveProperty("value", "31");
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
+  expect(screen.getAllByRole("button", {name:/Editar Diagnóstico de gestação/})).toHaveLength(1);
+});
+it("seleciona o modelo de exame da última ação DG obrigatória", async () => {
+  const exameId = "00000000-0000-4000-8000-000000000001";
+  vi.mocked(reqProtocolo).mockImplementation(async () => pagina([{id:exameId,nome:"Avaliação reprodutiva"}]));
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo");
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  mudarCampo(screen.getByLabelText("Nome do protocolo"), {target:{value:"Modelo DG"}});
+  mudarCampo(screen.getByLabelText("Finalidade"), {target:{value:"IATF"}});
+  mudarCampo(screen.getByLabelText("Tentativa"), {target:{value:"EXTERNA"}});
+  mudarCampo(screen.getByLabelText("Diagnóstico de gestação"), {target:{value:"PROTOCOLO"}});
+  mudarCampo(screen.getByLabelText("Dias após a tentativa"), {target:{value:"31"}});
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
+  fireEvent.click(await screen.findByRole("button", {name:/Editar Diagnóstico de gestação/}));
+  expect(screen.getByLabelText("Avaliação planejada")).toHaveProperty("disabled", true);
+  fireEvent.click(screen.getByRole("combobox", {name:"Tipo de exame reprodutivo"}));
+  fireEvent.click(await screen.findByRole("option", {name:"Avaliação reprodutiva"}));
+  await waitFor(() => expect(screen.getByRole("combobox", {name:"Tipo de exame reprodutivo"}).textContent).toContain("Avaliação reprodutiva"));
+  fireEvent.click(screen.getByRole("button", {name:"Concluir etapa"}));
+  fireEvent.click(screen.getByRole("button", {name:"Ir para conferência"}));
+  expect(reqV4).not.toHaveBeenCalledWith("/reproducao/protocolos", expect.anything(), "POST", undefined);
+  expect(screen.getByRole("button", {name:"Salvar protocolo"})).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", {name:"Salvar protocolo"}));
+  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({etapas:[expect.objectContaining({referenciaPrazoDiagnostico:true,planoAvaliacao:{tipo:"DIAGNOSTICO",tipoExameId:exameId}})]}), "POST", undefined));
+});
+it("confirma mudança de modalidade antes de remover tentativa e conserva os demais procedimentos", async () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo?base=p1");
+  vi.mocked(obterCadastroProtocolo).mockResolvedValue({...meta,tipo:"REPRODUTIVO",finalidade:"IATF",modalidadeTentativa:"ETAPA",modalidadeDiagnostico:"EXTERNO",totalEtapas:2});
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([{nome:"Retirada",tipo:"RETIRADA",intervalo:7,unidade:"DIAS",ordem:1,momento:{nome:"Preparo",ordem:1,modoAtendimento:"MANUAL"}},{nome:"IA",tipo:"TENTATIVA",tentativaTipo:"IA",intervalo:9,unidade:"DIAS",ordem:2,momento:{nome:"IA",ordem:2,modoAtendimento:"MANUAL"}}]));
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  await screen.findByDisplayValue("Controle");
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"})); expect(screen.getByRole("button", {name:"Ir para conferência"})).toBeTruthy(); });
+  fireEvent.click(screen.getByRole("button", {name:"Voltar"}));
+  mudarCampo(screen.getByLabelText("Tentativa"), {target:{value:"EXTERNA"}});
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
+  let dialogo = screen.getByRole("dialog", {name:"Alterar procedimentos planejados?"});
+  expect(within(dialogo).getByText(/IA/)).toBeTruthy();
+  fireEvent.click(within(dialogo).getByRole("button", {name:"Cancelar"}));
+  expect(screen.getByLabelText("Tentativa")).toHaveProperty("value", "ETAPA");
+  mudarCampo(screen.getByLabelText("Tentativa"), {target:{value:"EXTERNA"}});
+  fireEvent.click(screen.getByRole("button", {name:"Ir para etapas"}));
+  dialogo = screen.getByRole("dialog", {name:"Alterar procedimentos planejados?"});
+  fireEvent.click(within(dialogo).getByRole("button", {name:"Remover e continuar"}));
+  expect(screen.queryByRole("button", {name:/Editar IA/})).toBeNull();
+  expect(screen.getByRole("button", {name:/Editar Retirada/})).toBeTruthy();
+});
+
+it("deriva o prazo da finalidade correta e protege o DG factual quando há DG opcional", async () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo?base=p1");
+  const regra = (tipo: "IA" | "TE", intervalo: number) => ({
+    finalidade: "DIAGNOSTICO", ocorrencia: 1, publico: tipo, referencia: tipo, intervalo, unidade: "DIAS",
+    antecedencia: 0, tolerancia: 0, resolucao: "DIAGNOSTICO_CONCLUSIVO",
+  }) as const;
+  const regras = [regra("TE", 60), regra("IA", 30)];
+  vi.mocked(obterCadastroProtocolo).mockResolvedValue({ ...meta, tipo: "REPRODUTIVO", finalidade: "IATF", modalidadeTentativa: "EXTERNA", modalidadeDiagnostico: "PROTOCOLO", totalEtapas: 2, configuracaoAcompanhamento: { versao: 2, efeito: "ALERTA", regras } });
+  const dg = { tipo: "AVALIACAO", planoAvaliacao: { tipo: "DIAGNOSTICO", tipoExameId: "e1" }, intervalo: 30, unidade: "DIAS" };
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([
+    { ...dg, id: "factual", nome: "DG factual", ordem: 1, referenciaPrazoDiagnostico: true, momento: { nome: "Principal", ordem: 1, modoAtendimento: "MANUAL" } },
+    { ...dg, id: "opcional", nome: "DG opcional", ordem: 2, momento: { nome: "Apoio", ordem: 2, modoAtendimento: "MANUAL" } },
+  ]));
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  expect(await screen.findByLabelText("Dias após a tentativa")).toHaveProperty("value", "30");
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", { name: "Ir para etapas" })); expect(screen.getByRole("button", { name: "Ir para conferência" })).toBeTruthy(); });
+  fireEvent.click(screen.getByRole("button", { name: /Editar DG factual/ }));
+  expect(screen.getByRole("button", { name: /Remover DG factual/ })).toHaveProperty("disabled", true);
+  expect(screen.getByLabelText("Tipo de procedimento")).toHaveProperty("disabled", true);
+  fireEvent.click(screen.getByRole("button", { name: "Voltar aos dados" }));
+  expect(screen.getByRole("button", { name: "Remover etapa" })).toHaveProperty("disabled", true);
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  fireEvent.click(screen.getByRole("button", { name: /Editar DG opcional/ }));
+  expect(screen.getByRole("button", { name: "Remover DG opcional" })).toHaveProperty("disabled", false);
+  expect(screen.getByLabelText("Tipo de procedimento")).toHaveProperty("disabled", false);
+  fireEvent.click(screen.getByRole("button", { name: "Concluir etapa" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ir para conferência" }));
+  fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
+  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({
+    configuracaoAcompanhamento: { versao: 2, efeito: "ALERTA", regras },
+    etapas: [expect.objectContaining({ nome: "DG factual", referenciaPrazoDiagnostico: true }), expect.objectContaining({ nome: "DG opcional" })],
+  }), "POST", undefined));
+});
+
+it("explicita a remoção das duas modalidades ao mudar um rascunho para preparo", async () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo?editar=p1");
+  vi.mocked(obterCadastroProtocolo).mockResolvedValue({ ...meta, tipo: "REPRODUTIVO", finalidade: "IATF", modalidadeTentativa: "ETAPA", modalidadeDiagnostico: "EXTERNO", publicado: false, publicadoEm: null, utilizada: false, totalEtapas: 2 });
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([
+    { nome: "Retirada", tipo: "RETIRADA", intervalo: 7, unidade: "DIAS", ordem: 1 },
+    { nome: "IA", tipo: "TENTATIVA", tentativaTipo: "IA", intervalo: 9, unidade: "DIAS", ordem: 2 },
+  ]));
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  await screen.findByDisplayValue("Controle");
+  mudarCampo(screen.getByLabelText("Finalidade"), { target: { value: "PRE_SINCRONIZACAO" } });
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", { name: "Ir para etapas" })); expect(screen.getByRole("dialog", { name: "Alterar procedimentos planejados?" })).toBeTruthy(); });
+  fireEvent.click(screen.getByRole("button", { name: "Remover e continuar" }));
+  expect(screen.queryByRole("button", { name: /Editar IA/ })).toBeNull();
+  expect(screen.getByRole("button", { name: /Editar Retirada/ })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Ir para conferência" }));
+  expect(reqV4).not.toHaveBeenCalled();
+  expect(screen.getByRole("heading", { name: "Conferência" })).toBeTruthy();
+  expect(screen.getByText("Controle · v2")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Adicionar etapa" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Editar Retirada/ })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Editar etapas" }));
+  expect(screen.getAllByRole("button", { name: /Editar Retirada/ })).toHaveLength(1);
+  expect(obterAcoesCadastro).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("button", { name: "Ir para conferência" }));
+  fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
+  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos/p1", expect.objectContaining({
+    finalidade: "PRE_SINCRONIZACAO", modalidadeTentativa: null, modalidadeDiagnostico: null,
+    etapas: [expect.objectContaining({ nome: "Retirada" })],
+  }), "PATCH", undefined));
+});
+
+it("permite mudar nome e contexto do exame no modal e desfaz os dois ao cancelar", async () => {
+  await iniciarReproComAplicacao();
+  mudarCampo(screen.getByLabelText("Tipo de procedimento"), { target: { value: "EXAME" } });
+  mudarCampo(screen.getByLabelText("Contexto do modelo de exame"), { target: { value: "SANITARIO" } });
+  expect(screen.getByRole("combobox", { name: "Exame sanitário planejado" })).toBeTruthy();
+  fireEvent.click(screen.getByText("Opções do procedimento"));
+  mudarCampo(screen.getByLabelText("Nome do procedimento"), { target: { value: "Análise sanitária" } });
+  fireEvent.click(screen.getByRole("button", { name: "Editar referência de serviço" }));
+  const referencia = screen.getByRole("dialog", { name: "Referência de serviço" });
+  fireEvent.click(within(referencia).getByLabelText("Informar referência explícita"));
+  mudarCampo(within(referencia).getByLabelText("Valor unitário (R$)"), { target: { value: "18" } });
+  fireEvent.click(within(referencia).getByRole("button", { name: "Concluir" }));
+  fireEvent.click(screen.getByRole("button", { name: "Voltar aos dados" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  expect(screen.queryByText("Análise sanitária")).toBeNull();
+  expect(screen.getByRole("button", { name: /Editar Aplicação de produto/ })).toBeTruthy();
+});
+
+it("grava a troca do exame do DG factual na regra compatível e conserva as outras", async () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo?base=p1");
+  const exameAntigo = "00000000-0000-4000-8000-000000000001";
+  const exameNovo = "00000000-0000-4000-8000-000000000002";
+  const diagnostico = {
+    finalidade: "DIAGNOSTICO", publico: "IA", referencia: "IA", ocorrencia: 1, unidade: "DIAS", intervalo: 30, antecedencia: 4, tolerancia: 3,
+    resolucao: "DIAGNOSTICO_CONCLUSIVO", tipoExameId: exameAntigo,
+  } as const;
+  const outra = { ...diagnostico, publico: "TE", referencia: "TE", intervalo: 26, tipoExameVersao: 7 } as const;
+  vi.mocked(obterCadastroProtocolo).mockResolvedValue({ ...meta, tipo: "REPRODUTIVO", finalidade: "IATF", modalidadeTentativa: "EXTERNA", modalidadeDiagnostico: "PROTOCOLO",
+    configuracaoAcompanhamento: { versao: 2, efeito: "ALERTA", regras: [{ ...diagnostico, tipoExameVersao: 7 }, outra] } });
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([{ nome: "DG", tipo: "AVALIACAO", intervalo: 0, unidade: "DIAS", referenciaPrazoDiagnostico: true, planoAvaliacao: { tipo: "DIAGNOSTICO", tipoExameId: exameAntigo } }]));
+  vi.mocked(reqProtocolo).mockResolvedValue(pagina([{ id: exameAntigo, nome: "Exame original" }, { id: exameNovo, nome: "Exame atualizado" }]));
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  await screen.findByDisplayValue("Controle");
+  await waitFor(() => { fireEvent.click(screen.getByRole("button", { name: "Ir para etapas" })); expect(screen.getByRole("button", { name: "Ir para conferência" })).toBeTruthy(); });
+  async function trocarExame() {
+    fireEvent.click(screen.getByRole("button", { name: /Editar DG/ }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Tipo de exame reprodutivo" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Exame atualizado" }));
+  }
+  await trocarExame();
+  fireEvent.click(screen.getByRole("button", { name: "Voltar aos dados" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  expect(await within(screen.getByRole("table")).findByText("Exame original")).toBeTruthy();
+  await trocarExame();
+  fireEvent.click(screen.getByRole("button", { name: "Concluir etapa" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ir para conferência" }));
+  fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
+  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({
+    configuracaoAcompanhamento: { versao: 2, efeito: "ALERTA", regras: [{ ...diagnostico, tipoExameId: exameNovo }, outra] },
+    etapas: [expect.objectContaining({ referenciaPrazoDiagnostico: true, planoAvaliacao: { tipo: "DIAGNOSTICO", tipoExameId: exameNovo } })],
+  }), "POST", undefined));
 });
