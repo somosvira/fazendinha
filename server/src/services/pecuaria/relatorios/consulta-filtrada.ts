@@ -27,15 +27,21 @@ export async function consultarRelatorioFiltrado(q:ConsultaRelatorio,consultores
  * O resumo de cada relatório pode conter médias, que não se somam entre sítios; por isso não é exibido.
  */
 export async function consultarRelatorioConsolidado(q:Omit<ConsultaRelatorio,'propriedadeId'>,sitios:{id:number;nome:string}[],consultores:ConsultorRelatorio[]):Promise<ResultadoRelatorio|null>{
- const limite=10000,porPagina=100,linhas:ResultadoRelatorio['linhas']=[];let algum=false;const avisos=new Set<string>();
+ const limite=10000,linhas:ResultadoRelatorio['linhas']=[];let algum=false;const avisos=new Set<string>();
  for(const sitio of sitios){
-  for(let pagina=1;;pagina++){
-   const r=await consultarRelatorioFiltrado({...q,propriedadeId:sitio.id,pagina,porPagina} as ConsultaRelatorio,consultores);
-   if(!r)break;algum=true;r.avisos?.forEach(a=>avisos.add(a));
-   linhas.push(...r.linhas.map(l=>({...l,sitioConsulta:sitio.nome})));
-   if(linhas.length>limite)throw new ErroFiltroRelatorio('Refine o período: limite de dez mil registros no consolidado; nenhum resultado foi truncado.');
-   if(!r.paginado||pagina*porPagina>=r.total||!r.linhas.length)break;
+  // Uma chamada por sítio: com filtros, a consulta filtrada já reúne o conjunto inteiro (até 10 mil) e o devolve numa página só.
+  let r=await consultarRelatorioFiltrado({...q,propriedadeId:sitio.id,pagina:1,porPagina:limite} as ConsultaRelatorio,consultores);
+  if(!r)continue;algum=true;
+  const doSitio=[...r.linhas];
+  // Sem filtros, um consultor pode limitar o tamanho da página: percorre as páginas uma única vez (custo linear).
+  for(let pagina=2;r.paginado&&doSitio.length<r.total&&r.linhas.length;pagina++){
+   r=await consultarRelatorioFiltrado({...q,propriedadeId:sitio.id,pagina,porPagina:r.porPagina} as ConsultaRelatorio,consultores);
+   if(!r)break;doSitio.push(...r.linhas);
+   if(doSitio.length>limite)break;
   }
+  r?.avisos?.forEach(a=>avisos.add(a));
+  linhas.push(...doSitio.map(l=>({...l,sitioConsulta:sitio.nome})));
+  if(linhas.length>limite)throw new ErroFiltroRelatorio('Refine o período: limite de dez mil registros no consolidado; nenhum resultado foi truncado.');
  }
  if(!algum)return null;
  avisos.add('Consolidado: linhas de todos os sítios; o resumo é calculado por sítio.');

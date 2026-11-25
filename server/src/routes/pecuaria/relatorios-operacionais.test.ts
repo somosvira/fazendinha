@@ -24,6 +24,8 @@ it('em Consolidado junta as linhas dos sítios ativos com a coluna Sítio e sem 
  expect(dados).toMatchObject({escopoConsolidado:true,propriedadeId:null,total:2});
  expect(dados.linhas.map(l=>l.sitioConsulta)).toEqual(['Sede','Arrendado']);
  expect(dados.resumo).toBeUndefined();
+ // Uma consulta por sítio, sem repetir a busca a cada página.
+ expect(mocks.rebanho).toHaveBeenCalledTimes(2);
 });
 it('delega leitura no sítio autorizado e sem valores para perfil de consulta',async()=>{mocks.rebanho.mockResolvedValue({linhas:[{id:'a',animal:'Camila'}],total:1,pagina:1,porPagina:12,paginado:true,consultadoEm:''});const r=await app().request(url);expect(r.status).toBe(200);expect(await r.json()).toMatchObject({propriedadeId:1,total:1});expect(mocks.rebanho).toHaveBeenCalledWith(expect.objectContaining({propriedadeId:1,podeVerValores:false}));expect(mocks.sanidade).not.toHaveBeenCalled()});
 it('recusa fonte inexistente sem devolver página vazia',async()=>{expect((await app().request(url.replace('animais','inexistente'))).status).toBe(422)});
