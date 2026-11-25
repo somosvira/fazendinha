@@ -215,10 +215,6 @@ export function AvaliacaoContextualCampos({
           <>
             {!valor ? (
               <>
-                <p className="text-sm text-ink-3">
-                  Escolha itens e registre condutas separadas do resultado. O
-                  contexto sugere itens, sem exigir todos.
-                </p>
                 <Button
                   type="button"
                   variant="outline"
@@ -276,10 +272,6 @@ export function AvaliacaoContextualCampos({
                     <option value="OUTRO">Outro contexto</option>
                   </SelectCampo>
                 </label>
-                <p className="text-sm text-ink-3">
-                  Não avaliado não significa negativo. As conclusões de gestação
-                  e aptidão são independentes.
-                </p>
                 {catalogo.itens.map((item) => {
                   const v = valor.itens.find(
                     (i) => i.codigo === item.codigo,
@@ -561,10 +553,6 @@ export function AvaliacaoContextualCampos({
                     <legend className="mb-2 font-semibold">
                       Cuidados que este atendimento deve resolver
                     </legend>
-                    <p className="text-sm text-ink-3">
-                      Selecione somente os cuidados atendidos por uma conclusão
-                      compatível. Os demais permanecem pendentes.
-                    </p>
                     {necessidades.map((n) => (
                       <label className="flex items-center gap-2" key={n.id}>
                         <Checkbox

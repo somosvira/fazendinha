@@ -234,7 +234,7 @@ it("busca próximos cuidados sem alterar Hoje nem ocultar cobertura", async () =
   });
   expect(within(proximos).getByText("Programação amanha")).toBeTruthy();
   fireEvent.change(
-    screen.getByRole("textbox", { name: "Buscar próximos cuidados" }),
+    screen.getByRole("searchbox", { name: "Buscar próximos cuidados" }),
     { target: { value: "sem correspondência" } },
   );
   expect(

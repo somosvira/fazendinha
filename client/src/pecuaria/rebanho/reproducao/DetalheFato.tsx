@@ -138,12 +138,6 @@ export function DetalheFato({
               {snapshot.pai?.nome ??
                 (snapshot.pai ? "Animal interno" : "Não informado")}
             </p>
-            {snapshot.receptoraId && (
-              <p className="text-sm">
-                Receptora: animal da tentativa. A receptora não substitui a
-                doadora na filiação.
-              </p>
-            )}
           </section>
         )}
         <p className="text-sm">

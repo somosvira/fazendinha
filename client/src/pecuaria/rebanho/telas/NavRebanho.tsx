@@ -15,9 +15,9 @@ const SECOES: { valor: SecaoRebanho; rotulo: string; href: string }[] = [
   { valor: "lotes", rotulo: "Lotes", href: "/pecuaria/rebanho/lotes" },
 ];
 
-export function NavRebanho({ ativa, comIcones = true }: { ativa: SecaoRebanho; comIcones?: boolean }) {
+export function NavRebanho({ ativa, comIcones = true, contagens = {} }: { ativa: SecaoRebanho; comIcones?: boolean; contagens?: Partial<Record<SecaoRebanho, number>> }) {
   const icones = [LayoutDashboard, IconeAnimais, Layers];
-  return <SubTabs variant="financeiro" ariaLabel="Rebanho" tabs={SECOES.map((s, i) => ({ id: s.valor, label: s.rotulo, icon: comIcones ? icones[i] : undefined }))} active={ativa} onSelect={id => { const secao = SECOES.find(s => s.valor === id); if (secao) navegarPara(secao.href); }} className="rebanho-nav" />;
+  return <SubTabs variant="financeiro" ariaLabel="Rebanho" tabs={SECOES.map((s, i) => ({ id: s.valor, label: contagens[s.valor] ? `${s.rotulo} (${contagens[s.valor]})` : s.rotulo, icon: comIcones ? icones[i] : undefined }))} active={ativa} onSelect={id => { const secao = SECOES.find(s => s.valor === id); if (secao) navegarPara(secao.href); }} className="rebanho-nav" />;
 }
 
 function IconeAnimais({ size = 20, ...props }: LucideProps) {

@@ -50,7 +50,7 @@ describe("Cadastros sanitários", () => {
     await screen.findAllByText("Vacinação");
     fireEvent.click(screen.getAllByRole("button", { name: "Inativar Vacinação" })[0]);
     await screen.findByText("Cadastro atualizado.");
-    expect(screen.getAllByText("Inativo")).toHaveLength(2);
+    expect(screen.getAllByText("Inativo")).toHaveLength(1);
     expect(listarTiposAplicacao).toHaveBeenCalledTimes(1);
     expect(salvarTipoAplicacao).toHaveBeenCalledWith({ ativo: false }, "t1");
   });

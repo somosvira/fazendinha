@@ -1,6 +1,5 @@
 import { ConsumoDietas } from "./ConsumoDietas";
-import { textoCustoDia, PanoramaDietas, CartoesNutricao } from "./PanoramaDietas";
-import { useVisualizacaoConsulta, AlternarVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { textoCustoDia, PanoramaDietas } from "./PanoramaDietas";
 import { useOrdenacaoTabela } from "@/financeiro/OrdenarConsulta";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
@@ -21,6 +20,7 @@ import { custoTexto, EstadoConsulta, LinkNutricional, rotaNutricao } from "./com
 
 import { BuscaLista } from "../../../components/BuscaLista";
 import { PaginacaoLocal, usePaginacaoLocal } from "@/components/PaginacaoLocal";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 export function VisaoGeralNutricao({ podeLancar = false }: { podeLancar?: boolean }) {
   const { dados, erro, carregando, carregar } = useConsulta(
@@ -30,7 +30,6 @@ export function VisaoGeralNutricao({ podeLancar = false }: { podeLancar?: boolea
   const estoque = useConsulta(useCallback(async () => dados ? consultarCobertura(dados.lotes) : null, [dados]));
   const cobertura = estoque.erro ? null : estoque.dados ?? undefined;
   const { params, atualizar } = useFiltrosNutricionais();
-  const visualizacao = useVisualizacaoConsulta("visualNutricao", "consultas", "tabela");
   const busca = params.get("buscaLote") ?? "";
   const situacao = params.get("situacaoDieta") ?? "";
   const consultaColunas = useFiltrosTabelaLocal<NonNullable<typeof dados>["lotes"][number]>([
@@ -56,13 +55,13 @@ export function VisaoGeralNutricao({ podeLancar = false }: { podeLancar?: boolea
     <PanoramaDietas lotes={dados.lotes} verValores={dados.verValores} situacao={situacao} filtrar={valor => atualizar({situacaoDieta:valor})} cobertura={cobertura} />
     {cobertura && <ConsumoDietas cobertura={cobertura} verValores={dados.verValores} sitios={new Map(dados.lotes.map(r => [r.lote.propriedadeId, r.lote.propriedade.nome]))} />}
     <Panel>
-      <div className="dietas-lista-cabecalho"><h2>Nutrição por lote <span>{itens.length} {itens.length === 1 ? "lote" : "lotes"}</span></h2><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização da nutrição por lote" /></div>
+      <div className="dietas-lista-cabecalho"><h2>Nutrição por lote <span>{itens.length} {itens.length === 1 ? "lote" : "lotes"}</span></h2></div>
       <BarraConsulta ordenacao={ordem.controle} campos={campos} edicaoFiltros={edicao} erroFiltros={consultaColunas.erro} criterios={[...consultaColunas.criterios,...(situacao?[{id:"situacao",rotulo:situacao==="programada"?"Com troca programada":situacao==="com"?"Com dieta vigente":"Sem dieta vigente",limpar:()=>atualizar({situacaoDieta:""})}]:[])]} >
         <SelectCampo aria-label="Filtrar lotes por dieta" value={situacao} onValueChange={v => atualizar({situacaoDieta:v})}><option value="">Todas as situações</option><option value="sem">Sem dieta vigente</option><option value="com">Com dieta vigente</option><option value="programada">Com troca programada</option></SelectCampo>
         <BuscaLista rotulo="Buscar lote, sítio ou dieta" valor={busca} placeholder="Buscar lote, sítio ou dieta" onChange={valor => atualizar({ buscaLote: valor })} />
 
       </BarraConsulta>
-      {!itens.length ? <div className="nutricao-vazio">{dados.lotes.length ? "Nenhum lote corresponde aos filtros." : <>Nenhum lote ativo neste contexto. <LinkNutricional href="/pecuaria/rebanho/lotes">Ver lotes do rebanho</LinkNutricional></>}</div> : visualizacao.modo === "visual" ? <CartoesNutricao lotes={paginacao.itens} verValores={dados.verValores} podeLancar={podeLancar} cobertura={cobertura} /> : <TabelaFinanceira ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(campos,edicao,consultaColunas.erro)} rotulo="Nutrição por lote" itens={paginacao.itens} chaveDe={(r) => r.lote.id} colunas={[
+      {!itens.length ? <div className="nutricao-vazio">{dados.lotes.length ? "Nenhum lote corresponde aos filtros." : <>Nenhum lote ativo neste contexto. <LinkNutricional href="/pecuaria/rebanho/lotes">Ver lotes do rebanho</LinkNutricional></>}</div> : <TabelaFinanceira icone={ICONES_TABELA.lote} ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(campos,edicao,consultaColunas.erro)} rotulo="Nutrição por lote" itens={paginacao.itens} chaveDe={(r) => r.lote.id} colunas={[
         { chave: "lote", titulo: "Lote / sítio", principal: true, celula: (r) => <><LinkNutricional href={rotaNutricao({ loteId: r.lote.id })}>{r.lote.nome}</LinkNutricional><p className="nutricao-secundario">{r.lote.propriedade.nome}</p></> },
         { chave: "animais", titulo: "Animais", alinhamento: "direita", larguraMinima: 90, celula: (r) => r.lote.animaisAtivos },
         { chave: "dieta", titulo: "Dieta vigente", larguraMinima: 220, celula: (r) => r.vigente ? <><strong>{r.vigente.dieta.nome}</strong><p className="nutricao-secundario">desde {formatarDataBR(r.vigente.desde)}</p></> : <Pill tone="amber">Sem dieta vigente</Pill> },

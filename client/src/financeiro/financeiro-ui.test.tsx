@@ -19,36 +19,6 @@ describe("tabela paginada compartilhada", () => {
   });
 });
 
-it("adapta a consulta à largura disponível e preserva a abertura após redimensionar", () => {
-  let avisar = () => {};
-  const observerOriginal = globalThis.ResizeObserver;
-  globalThis.ResizeObserver = class {
-    constructor(callback: () => void) { avisar = callback; }
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  } as unknown as typeof ResizeObserver;
-  try {
-    const abrir = vi.fn();
-    const { container } = render(<TabelaFinanceira rotulo="Teste responsivo" itens={[{ id: "1", nome: "Registro" }]} chaveDe={item => item.id} onAbrir={abrir} colunas={[
-      { chave: "nome", titulo: "Nome", principal: true, larguraMinima: 500, celula: item => item.nome },
-      { chave: "detalhe", titulo: "Detalhe", larguraMinima: 400, celula: () => "Informação" },
-    ]} />);
-    const consulta = container.querySelector<HTMLElement>(".fin-consulta-responsiva")!;
-    let largura = 700;
-    Object.defineProperty(consulta, "clientWidth", { get: () => largura });
-    act(() => avisar());
-    expect(consulta.dataset.finVisualizacao).toBe("cartoes");
-    largura = 1200;
-    act(() => avisar());
-    expect(consulta.dataset.finVisualizacao).toBe("tabela");
-    largura = 500;
-    act(() => avisar());
-    expect(consulta.dataset.finVisualizacao).toBe("cartoes");
-    fireEvent.click(container.querySelector(".fin-tabela-cartoes button")!);
-    expect(abrir).toHaveBeenCalledWith({ id: "1", nome: "Registro" });
-  } finally { globalThis.ResizeObserver = observerOriginal; }
-});
 
 describe("datas locais financeiras", () => {
   it("não apresenta valor oculto como zero", () => {
@@ -84,50 +54,7 @@ describe("Modal compartilhado", () => {
 });
 
 
-it("preserva totais explícitos e seus rótulos na tabela e no cartão, sem abrir um registro", () => {
-  const abrir = vi.fn();
-  const { container } = render(<TabelaFinanceira rotulo="Totais preservados" itens={[{ id: "1", nome: "Banco", valor: 125 }]} chaveDe={item => item.id} onAbrir={abrir} rodape={{ nome: "Total", valor: "R$ 500,00", oculto: "—" }} colunas={[
-    { chave: "nome", titulo: "Conta", principal: true, celula: item => item.nome },
-    { chave: "valor", titulo: "Saldo", alinhamento: "direita", celula: item => brl(item.valor) },
-    { chave: "oculto", titulo: "Valor restrito", celula: () => "—" },
-  ]} />);
-  const rodape = container.querySelector("tfoot")!;
-  expect(rodape.textContent).toContain("500,00");
-  expect(rodape.textContent).not.toContain("125,00");
-  fireEvent.click(rodape.querySelector("tr")!);
-  expect(abrir).not.toHaveBeenCalled();
-  const cartao = container.querySelector(".fin-cartao-rodape")!;
-  expect(cartao.textContent).toContain("SaldoR$ 500,00");
-  expect(cartao.textContent).toContain("Valor restrito—");
-});
 
-it("honra a escolha explícita de tabela em um painel estreito sem alterar os registros", () => {
-  let avisar = () => {};
-  const observerOriginal = globalThis.ResizeObserver;
-  globalThis.ResizeObserver = class {
-    constructor(callback: () => void) { avisar = callback; }
-    observe() {} unobserve() {} disconnect() {}
-  } as unknown as typeof ResizeObserver;
-  try {
-    const abrir = vi.fn();
-    const { container, rerender } = render(<TabelaFinanceira visualizacao="tabela" rotulo="Modo escolhido" itens={[{ id: "1", nome: "Aurora" }]} chaveDe={item => item.id} onAbrir={abrir} colunas={[
-      { chave: "nome", titulo: "Animal", principal: true, larguraMinima: 500, celula: item => item.nome },
-      { chave: "origem", titulo: "Origem", larguraMinima: 400, celula: () => "Sítio principal" },
-    ]} />);
-    const consulta = container.querySelector<HTMLElement>(".fin-consulta-responsiva")!;
-    Object.defineProperty(consulta, "clientWidth", { get: () => 700 });
-    act(() => avisar());
-    expect(consulta.dataset.finVisualizacao).toBe("tabela");
-    fireEvent.keyDown(container.querySelector("tbody tr")!, { key: "Enter" });
-    expect(abrir).toHaveBeenCalledWith({ id: "1", nome: "Aurora" });
-    rerender(<TabelaFinanceira rotulo="Modo automático" itens={[{ id: "1", nome: "Aurora" }]} chaveDe={item => item.id} colunas={[
-      { chave: "nome", titulo: "Animal", principal: true, larguraMinima: 500, celula: item => item.nome },
-      { chave: "origem", titulo: "Origem", larguraMinima: 400, celula: () => "Sítio principal" },
-    ]} />);
-    act(() => avisar());
-    expect(consulta.dataset.finVisualizacao).toBe("cartoes");
-  } finally { globalThis.ResizeObserver = observerOriginal; }
-});
 
 it("permite focar e rolar as colunas de uma tabela explícita estreita pelo teclado", () => {
   let avisar = () => {};
@@ -137,7 +64,7 @@ it("permite focar e rolar as colunas de uma tabela explícita estreita pelo tecl
     observe() {} unobserve() {} disconnect() {}
   } as unknown as typeof ResizeObserver;
   try {
-    const { container } = render(<TabelaFinanceira visualizacao="tabela" rotulo="Volumes" itens={[{ id: "1" }]} chaveDe={item => item.id} colunas={[
+    const { container } = render(<TabelaFinanceira rotulo="Volumes" itens={[{ id: "1" }]} chaveDe={item => item.id} colunas={[
       { chave: "dia", titulo: "Dia", larguraMinima: 400, celula: () => "26/10/2026" },
       { chave: "volume", titulo: "Total", larguraMinima: 400, celula: () => "100 L" },
     ]} />);

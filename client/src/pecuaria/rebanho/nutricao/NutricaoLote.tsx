@@ -1,4 +1,3 @@
-import { AjudaCampo } from "@/components/Dica";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { LinhaTempoDietas } from "./LinhaTempoDietas";
 import { CalendarDays, Layers, Settings2 } from "lucide-react";
@@ -16,6 +15,7 @@ import { EstoqueDieta } from "./EstoqueDieta";
 import { PaginacaoNutricao } from "./PaginacaoNutricao";
 import "./nutricao.css";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 export function NutricaoLote({ loteId, podeLancar, vista }: { loteId: string; propriedadeId?: number; podeLancar: boolean; vista?: "lotes" }) {
   const visual = useVisualizacaoConsulta("visualDietasLote", "nutricao", "tabela");
@@ -38,7 +38,7 @@ export function NutricaoLote({ loteId, podeLancar, vista }: { loteId: string; pr
       <CustosLote resumo={r} />
       <EstoqueDieta resumo={r} />
       {completa && <Panel className="nutricao-lote-historico"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Histórico de dietas</h2>{!r.programada && <p>Nenhuma troca programada.</p>}</div><AlternarVisualizacaoConsulta {...visual} visual="Linha do tempo" rotulo="Visualização das dietas do lote" /></div><div className="px-5"><EstadoConsulta erro={historico.erro} carregando={historico.carregando} recarregar={historico.carregar} estrutura="lista" label="Carregando histórico de dietas…" /></div>
-        {historico.dados && <>{!historico.dados.itens.length ? <Empty>Nenhuma dieta atribuída.</Empty> : visual.modo === "visual" ? <LinhaTempoDietas itens={historico.dados.itens} vigenteId={r.vigente?.id} programada={r.programada} escrever={escrever} loteId={loteId} /> : <TabelaFinanceira visualizacao="tabela" rotulo="Histórico de dietas do lote" itens={historico.dados.itens} chaveDe={(v) => v.id} colunas={[
+        {historico.dados && <>{!historico.dados.itens.length ? <Empty>Nenhuma dieta atribuída.</Empty> : visual.modo === "visual" ? <LinhaTempoDietas itens={historico.dados.itens} vigenteId={r.vigente?.id} programada={r.programada} escrever={escrever} loteId={loteId} /> : <TabelaFinanceira icone={ICONES_TABELA.dieta} rotulo="Histórico de dietas do lote" itens={historico.dados.itens} chaveDe={(v) => v.id} colunas={[
           { chave: "receita", titulo: "Receita / versão", principal: true, celula: (v) => <strong>{v.dieta.nome} · v{v.dieta.versao}</strong> },
           { chave: "inicio", titulo: "Início", celula: (v) => formatarDataBR(v.desde) },
           { chave: "fim", titulo: "Fim (troca)", celula: (v) => v.ate ? formatarDataBR(v.ate) : "Sem fim programado" },

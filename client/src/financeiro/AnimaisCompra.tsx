@@ -13,7 +13,7 @@ import { CadastroAnimalCampos, useCadastroAnimal, type AnimalPayload, type FormA
 import type { Aptidao, Sexo } from "../pecuaria/rebanho/types";
 import { CAMPO, CampoErro, SELECT } from "./CamposOperacao";
 import { DialogFinanceiro } from "./DialogFinanceiro";
-import { brl, Button, Empty, ErrorBox } from "./financeiro-ui";
+import { brl, Button, Destaques, Empty, ErrorBox } from "./financeiro-ui";
 import { SelectCampo } from "./SelectCampo";
 import type { ConfiguracoesFinanceiras, Operacao } from "./novo-api";
 import { linkFichaAnimal } from "../pecuaria/rebanho/lib/navegacao";
@@ -152,7 +152,7 @@ export function SecaoAnimais({
         </li>;
       })}</ul>}
     {erroSecao && <CampoErro id="erro-animais" className="mt-3">{sitio ? "Adicione ao menos um animal à compra." : motivoSemSitio}</CampoErro>}
-    {animais.length > 0 && <p className="mt-3 text-sm text-ink-3">{animais.length} {animais.length === 1 ? "animal" : "animais"} · valor dos animais <strong className="text-ink">{brl(total / 100)}</strong></p>}
+    {animais.length > 0 && <Destaques className="mt-3" itens={[{ valor: animais.length, rotulo: animais.length === 1 ? "animal" : "animais" }, { valor: brl(total / 100), rotulo: "valor dos animais" }]} />}
 
     {!correcao && modal && sitio && <ModalAnimalCompra
       key={modal.id ?? "novo"}

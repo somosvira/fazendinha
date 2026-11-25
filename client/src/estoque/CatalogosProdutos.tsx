@@ -1,11 +1,12 @@
 import { navegarPara } from "../router";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ConteudoReferenciaMedicamento, PendenciasMedicamento } from "./ReferenciaMedicamento";
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button, ErrorBox, Panel, Paginacao, TabelaFinanceira, Empty } from '../financeiro/financeiro-ui';
 import { SelectBuscavel } from '../components/SelectBuscavel';
 import { listarCatalogo, listarCatalogoProdutos, obterReferenciaCatalogo, type ItemCatalogo, type ItemCatalogoProduto, type PaginaCatalogoProdutos, type TipoCatalogo } from './catalogos-api';
+import { ICONES_TABELA } from "../components/iconesTabela";
 
 /** Dropdown buscável de fabricante, classificação técnica ou princípio ativo (cadastros do catálogo do sistema, só leitura). */
 export function SeletorCatalogoProduto({ tipo, rotulo, valor, onChange, somenteLeitura }: { tipo: TipoCatalogo; rotulo: string; valor: string; onChange: (id: string, item?: ItemCatalogo) => void; somenteLeitura?: boolean }) {
@@ -76,7 +77,7 @@ export function CatalogoProdutos() {
       <div className="grid gap-3 p-4"><label className="text-sm">Buscar por produto ou fabricante<Input type="search" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} /></label></div>
       <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button>}
       {carregando ? <p role="status" className="p-4">Carregando catálogo…</p> : !erro && (dados?.itens.length
-        ? <TabelaFinanceira itens={dados.itens} chaveDe={i => i.id} rotulo="Catálogo de produtos" colunas={[
+        ? <TabelaFinanceira icone={ICONES_TABELA.produto} itens={dados.itens} chaveDe={i => i.id} rotulo="Catálogo de produtos" colunas={[
             { chave: 'produto', titulo: 'Produto', principal: true, celula: i => i.orientacaoBula || i.conferenciaBula ? <button type="button" className="text-left text-primary underline underline-offset-2" onClick={() => abrirReferencia(i)} aria-label={`Consultar informações de ${i.nomeCompleto}`}>{i.nomeCompleto}</button> : i.nomeCompleto },
             { chave: 'fabricante', titulo: 'Fabricante', celula: i => i.fabricante?.nome ?? '—' },
             { chave: 'classificacao', titulo: 'Classificação', celula: i => i.classificacaoTecnica?.nome ?? '—' },

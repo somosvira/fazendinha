@@ -116,6 +116,16 @@ function mapearResumo(m: MovComItens, podeDesfazer: boolean, loteId: string | nu
   };
 }
 
+function buscaMovimentacao(texto: string): Prisma.MovimentacaoWhereInput {
+  const contem = { contains: texto, mode: "insensitive" as const };
+  return { OR: [
+    { motivo: contem },
+    { loteDestino: { nome: contem } },
+    { propriedadeDestino: { nome: contem } },
+    { animais: { some: { OR: [{ animal: { brinco: contem } }, { animal: { nome: contem } }, { origemLote: { nome: contem } }, { origemPropriedade: { nome: contem } }] } } },
+  ] };
+}
+
 /** Histórico geral (aba Lotes) — com `loteId`, vira o histórico daquele lote. */
 export async function listarMovimentacoes(filtros: ListarMovimentacoesInput, escopo: number | null): Promise<{ itens: MovimentacaoResumoDTO[]; total: number }> {
   const where: Prisma.MovimentacaoWhereInput = {
@@ -128,6 +138,7 @@ export async function listarMovimentacoes(filtros: ListarMovimentacoesInput, esc
       filtros.animalId ? { animais: { some: { animalId: filtros.animalId } } } : {},
       filtros.dataDe || filtros.dataAte ? { data: { ...(filtros.dataDe ? { gte: new Date(filtros.dataDe) } : {}), ...(filtros.dataAte ? { lte: new Date(filtros.dataAte) } : {}) } } : {},
       filtros.incluirDesfeitas ? {} : { desfeitaEm: null },
+      filtros.busca ? buscaMovimentacao(filtros.busca) : {},
     ],
   };
   const [total, movs] = await Promise.all([

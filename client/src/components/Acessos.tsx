@@ -21,7 +21,7 @@ import {
 import type { UsuarioSessao } from "../lib/auth";
 import { useToast } from "./Toast";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { Button, Modal, PageHeader, PaginaFinanceira } from "../financeiro/financeiro-ui";
+import { Button, Destaques, Modal, PageHeader, PaginaFinanceira } from "../financeiro/financeiro-ui";
 import { EsqueletoTabela } from "./Esqueleto";
 
 /* validação simples de email (suficiente p/ feedback antes do envio real) */
@@ -553,6 +553,7 @@ export function Acessos() {
   return (
     <PaginaFinanceira>
       <PageHeader
+        nivel={2}
         titulo={<span className="rotina-titulo"><span><Users/></span>Acessos</span>}
         acao={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} /> Convidar pessoa</Button>}
       />
@@ -563,7 +564,7 @@ export function Acessos() {
         <section className="acessos-equipe" aria-label="Equipe e convidados">
           <div className="acessos-equipe-cabecalho">
             <h2><Users size={18} aria-hidden="true" />Equipe e convidados</h2>
-            <p>{carregando ? "Consultando acessos…" : `${ativos} ativos · ${pendentes} convites pendentes`}</p>
+            {carregando ? <p>Consultando acessos…</p> : <Destaques itens={[{valor:ativos,rotulo:ativos===1?"ativo":"ativos"},{valor:pendentes,rotulo:pendentes===1?"convite pendente":"convites pendentes",tom:pendentes>0?"alerta":undefined}]}/>}
             <label className="acessos-busca"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Buscar pessoa" placeholder="Buscar nome ou e-mail" value={busca} onChange={e => setBusca(e.target.value)} /></label>
             <div className="acessos-status-filtros" aria-label="Filtrar pessoas por situação">{[["", "Todos"], ["ATIVO", "Ativos"], ["PENDENTE", "Pendentes"], ["INATIVO", "Inativos"]].map(([valor, texto]) => <button type="button" key={valor} aria-pressed={statusFiltro === valor} onClick={() => setStatusFiltro(valor)}>{texto}</button>)}</div>
           </div>

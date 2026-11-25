@@ -33,7 +33,7 @@ describe("intenções concorrentes de navegação da visita", () => {
     vi.mocked(listarVisitas).mockResolvedValue([{ id: visita.id, propriedadeId: visita.propriedadeId, nome: visita.nome, data: visita.data, status: visita.status }]);
     window.history.replaceState({}, "", "/pecuaria/visitas");
     render(<Visitas podeLancar/>);
-    fireEvent.click(await screen.findByRole("button", { name: /15\/10\/2026.*Atendimento/ }));
+    fireEvent.click(await screen.findByText(visita.nome));
     await screen.findByText("Atendimento ativo a1");
     expect(obterVisita).toHaveBeenCalledWith("visita");
   });

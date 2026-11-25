@@ -36,7 +36,7 @@ it("lista apresenta datas brasileiras e situação legível", async () => {
   vi.mocked(listarVisitas).mockResolvedValue([{ id: "v1", propriedadeId: 7, nome: "Manejo das matrizes", data: "2026-10-17", status: "ABERTA", responsavel: "Veterinária" }]);
   render(<Visitas podeLancar={false}/>);
   await screen.findByText("Manejo das matrizes");
-  expect(screen.getByLabelText("17/10/2026")).toBeTruthy();
+  expect(screen.getByText("17/10/2026")).toBeTruthy();
   expect(screen.getByText("Aberta")).toBeTruthy();
   expect(screen.getByText("Veterinária")).toBeTruthy();
   expect(screen.queryByText("ABERTA")).toBeNull();
@@ -74,7 +74,6 @@ it("agenda mantém sem previsão ao final nas duas ordens e retorna com contexto
   ] });
   render(<AcompanhamentoReprodutivo atualizacao={0} propriedadeId={7}/>);
   await screen.findAllByText("20/10/2026");
-  fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
   expect(screen.getAllByRole("row")[1].textContent).toContain("20/10/2026");
   expect(screen.getAllByRole("row")[2].textContent).toContain("Previsão a definir");
   fireEvent.click(screen.getByRole("button", { name: "Data crescente" }));
@@ -95,7 +94,6 @@ it("agenda filtra o dia exibido em São Paulo para HORA e preserva o dia civil p
  ]});
  render(<AcompanhamentoReprodutivo atualizacao={0} propriedadeId={7}/>);
  await screen.findAllByText("18/10/2026, 21:30");
- fireEvent.click(screen.getByRole("button", {name:"Tabela"}));
  expect(screen.getAllByRole("row")).toHaveLength(3);
  expect(screen.getAllByText("18/10/2026 · horário não informado").length).toBeGreaterThan(0);
 });

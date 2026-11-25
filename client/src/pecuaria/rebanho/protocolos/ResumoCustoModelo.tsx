@@ -146,9 +146,6 @@ export function ResumoCustoModelo({
               ))}
             </SelectCampo>
           </label>
-          <p className="text-sm text-ink-3">
-            A seleção vale para esta estimativa e preserva a visão global.
-          </p>
           {erroSitios && (
             <>
               <ErrorBox erro={erroSitios} />

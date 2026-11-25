@@ -139,10 +139,6 @@ function ConteudoConfiguracaoAcompanhamento({
           <h2 className="text-xl font-semibold">
             Diagnóstico e reconfirmações
           </h2>
-          <p className="mt-1 text-sm text-ink-3">
-            Escolha os prazos com o responsável pelo manejo; não há prazo
-            clínico padrão. As regras geram alertas.
-          </p>
         </div>
         {podeLancar && vigente?.parametros.versao === 1 && <Button type="button" variant="outline" onClick={() => {setInicial(null); setFormularioAberto(true); setEdicao(e=>e+1);}}>Configurar novos prazos</Button>}
       </div>
@@ -211,9 +207,7 @@ function ConteudoConfiguracaoAcompanhamento({
           </h3>
           {p.parametros.versao === 1 ? (
             <>
-              <p className="text-sm text-ink-3">
-                Formato histórico V1. Mantido sem alteração.
-              </p>
+              <p className="text-sm text-ink-3">Formato histórico V1</p>
               <p>
                 Diagnóstico:{" "}
                 {p.parametros.diagnostico

@@ -6,6 +6,7 @@ import type { MovimentoConta } from "./novo-api";
 import { brl, Button, dataBR, Empty, Panel, TabelaFinanceira } from "./financeiro-ui";
 import { fluxoPeriodo } from "./lib/fluxo-contas";
 import { periodoDoAnoAtual } from "./lib/periodo";
+import { ICONES_TABELA } from "../components/iconesTabela";
 
 // O pai determina o período: ano atual no consolidado, período do extrato na conta.
 export function FluxoContasFinanceiras({ movimentos, consolidado = false, carregando, erro, periodo }: {
@@ -36,7 +37,7 @@ export function FluxoContasFinanceiras({ movimentos, consolidado = false, carreg
 
       <div role="region" aria-label="Gráfico de entradas e saídas" tabIndex={0} className="px-2 sm:px-3"><EntradaSaidaChart vocabulario="entradas-saidas" compacto data={dados} tipo={tipoGrafico} /></div>
       <div className="m-4"><Button secondary onClick={() => setValoresAbertos(true)}>Ver valores por {diario ? "dia" : "mês"}</Button></div>
-      {valoresAbertos && <DialogFinanceiro titulo={`Valores por ${diario ? "dia" : "mês"}`} eyebrow="" onClose={() => setValoresAbertos(false)} className="max-w-3xl" rodape={<Button onClick={() => setValoresAbertos(false)}>Fechar</Button>}><TabelaFinanceira compacta rotulo={`Valores de entradas e saídas por ${diario ? "dia" : "mês"}`} itens={dados} chaveDe={dia => dia.data} colunas={[
+      {valoresAbertos && <DialogFinanceiro titulo={`Valores por ${diario ? "dia" : "mês"}`} eyebrow="" onClose={() => setValoresAbertos(false)} className="max-w-3xl" rodape={<Button onClick={() => setValoresAbertos(false)}>Fechar</Button>}><TabelaFinanceira icone={ICONES_TABELA.analise} compacta rotulo={`Valores de entradas e saídas por ${diario ? "dia" : "mês"}`} itens={dados} chaveDe={dia => dia.data} colunas={[
         { chave: "data", titulo: diario ? "Dia" : "Mês", principal: true, celula: dia => dia.rotulo ?? dataBR(dia.data) },
         { chave: "entradas", titulo: "Entradas", alinhamento: "direita", celula: dia => brl(dia.entradas) },
         { chave: "saidas", titulo: "Saídas", alinhamento: "direita", celula: dia => brl(dia.saidas) },

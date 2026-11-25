@@ -74,8 +74,8 @@
   --secondary-foreground: var(--foreground);
   --muted: var(--secondary);
   --fin-surface-subtle: var(--secondary);
-  --fin-table-header: #e2e7ea;
-  --fin-table-heading: #34434b;
+  --fin-table-header: #f1f5f4;
+  --fin-table-heading: #526863;
   --fin-table-rule: #bdc8cf;
   --fin-table-control-hover: #cdd8dc;
   --fin-filter-bg: #e0efec;

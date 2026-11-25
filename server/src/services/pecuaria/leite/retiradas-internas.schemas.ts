@@ -9,7 +9,7 @@ export const retiradaInternaLeiteSchema = z.object({
 }).strict().refine(v => v.quantidadeLitros <= v.quantidadeDisponivelEsperadaLitros, "A retirada supera o saldo informado");
 export const estornoRetiradaInternaLeiteSchema = z.object({ chave: z.string().uuid(), propriedadeId: propriedadeLeiteSchema.optional(), versaoEsperada: z.number().int().positive(), motivo: z.string().trim().min(5).max(1000) }).strict();
 export const consultaRetiradasInternasLeiteSchema = z.object({
-  de: dataLeiteSchema.optional(), ate: dataLeiteSchema.optional(), propriedadeId: z.coerce.number().int().positive().max(2147483647).optional(), pagina: z.coerce.number().int().min(1).max(100000).default(1),
+  de: dataLeiteSchema.optional(), ate: dataLeiteSchema.optional(), propriedadeId: z.coerce.number().int().positive().max(2147483647).optional(), pagina: z.coerce.number().int().min(1).max(100000).default(1), busca: z.string().trim().max(100).optional(),
 }).strict().refine(v => !v.de || !v.ate || v.de <= v.ate, "Período invertido");
 export type RetiradaInternaLeiteInput = z.infer<typeof retiradaInternaLeiteSchema>;
 export type EstornoRetiradaInternaLeiteInput = z.infer<typeof estornoRetiradaInternaLeiteSchema>;

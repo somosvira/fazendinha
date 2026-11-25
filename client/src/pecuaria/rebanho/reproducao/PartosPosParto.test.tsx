@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { abrirFiltrosConsulta } from "../../../lib/controles.fixture";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PartosPosParto } from "./PartosPosParto";
@@ -29,6 +30,7 @@ it("abre os últimos 90 dias por leitura, com partos recentes primeiro e sem emi
 });
 it("permite consultar outro período e preserva filtros na URL", async () => {
   render(<PartosPosParto propriedadeId={7}/>); await screen.findAllByText("Recente");
+  await abrirFiltrosConsulta();
   fireEvent.click(screen.getByRole("button", { name: /^Período/ }));
   fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
   fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2025-01-01" } });

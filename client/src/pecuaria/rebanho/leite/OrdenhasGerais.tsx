@@ -1,14 +1,10 @@
 import { AvisosAplicacoesTablet } from "./AvisosAplicacoesTablet";
 import { createPortal } from "react-dom";
 import { Milk, Clock3, ClipboardList, Plus } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ComposicaoNaturezas } from "./VisuaisConsultaLeite";
 import "../telas/rotinas-aprovadas.css";
-import { CartaoOrdenhaVisual } from "./VisuaisConsultaLeite";
-import { situacaoOrdenha } from "./visuais-leite";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { TabelaOrdenhasPorDia } from "./TabelaOrdenhasPorDia";
-import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/DatePicker";
@@ -31,7 +27,6 @@ import { EsqueletoTabela } from "../../../components/Esqueleto";
 const situacoes: Record<string, string> = { SEM_AFERICAO: "Sem aferição", PENDENTE_ESTOQUE: "Salva", PARCIAL_ESTOQUE: "Parcial no estoque", CONFIRMADA: "Confirmada" };
 export function OrdenhasGerais({ podeLancar, acoesContainer }: { podeLancar: boolean; acoesContainer?: HTMLElement | null }) {
   const sitio = getPropriedadeAtiva();
-  const visualizacao = useVisualizacaoConsulta("ordenhasVisualizacao", "leite", "visual");
   const [params, setParams] = useState(() => new URLSearchParams(location.search));
   const [lista, setLista] = useState<ConsultaParcelas | null>(null);
   const [erro, setErro] = useState("");
@@ -99,7 +94,7 @@ export function OrdenhasGerais({ podeLancar, acoesContainer }: { podeLancar: boo
   return <div ref={consultaRef} tabIndex={-1} className="leite-page leite-ordenhas-consulta">
     <AvisosAplicacoesTablet key={`${sitio}:${fim}`} sitio={sitio} data={fim} />
     {acoesContainer ? createPortal(<><DatePicker aria-label="Dia das ordenhas" value={inicio === fim ? inicio : ""} onChange={dia => { if (dia) atualizar({ordenhasInicio:dia,ordenhasFim:dia,paginaOrdenhas:null}); }} />{acoesRegistro}</>, acoesContainer) : <CabecalhoTabela titulo="Ordenhas" acao={acoesRegistro} />}
-    <BarraConsulta acao={<AlternarVisualizacaoConsulta modo={visualizacao.modo} mudar={visualizacao.mudar} rotulo="Visualização de ordenhas registradas" />} edicaoFiltros={filtros} erroFiltros={filtros.rascunho.inicio > filtros.rascunho.fim ? "A data inicial deve ser igual ou anterior à final." : null} adicionais={<>
+    <BarraConsulta edicaoFiltros={filtros} erroFiltros={filtros.rascunho.inicio > filtros.rascunho.fim ? "A data inicial deve ser igual ou anterior à final." : null} adicionais={<>
       <CampoFiltro rotulo="Data inicial"><DatePicker aria-label="Data inicial das ordenhas" value={filtros.rascunho.inicio} onChange={v => filtros.editar("inicio", v)} /></CampoFiltro>
       <CampoFiltro rotulo="Data final"><DatePicker aria-label="Data final das ordenhas" value={filtros.rascunho.fim} onChange={v => filtros.editar("fim", v)} /></CampoFiltro>
       <CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação da ordenha" value={filtros.rascunho.situacao} onValueChange={v => filtros.editar("situacao", v)}><option value="">Todas</option>{Object.entries(situacoes).map(([id, texto]) => <option key={id} value={id}>{texto}</option>)}</SelectCampo></CampoFiltro>
@@ -111,16 +106,7 @@ export function OrdenhasGerais({ podeLancar, acoesContainer }: { podeLancar: boo
     </BarraConsulta>
     {carregando ? <EsqueletoTabela label="Carregando ordenhas" className="p-5" /> : erro ? <div role="alert" className="p-5">{erro}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : lista && <>
       <section className="ordenhas-visao-periodo" aria-label="Resumo das ordenhas"><div className="ordenhas-volume"><span><Milk size={20}/>{inicio === fim ? "Volume aferido no dia" : "Volume aferido no período"}</span><strong>{formatarLitros(lista.resumo.totalLitros)}</strong><span>{lista.resumo.sessoes - lista.resumo.semAfericao} de {lista.resumo.sessoes} ordenhas com aferição</span></div><div className="ordenhas-distribuicao"><h3>Distribuição do volume aferido</h3><ComposicaoNaturezas itens={lista.resumo.porNatureza.filter(p => p.natureza !== "A_CLASSIFICAR" || p.litros != null)}/></div></section><div className="ordenhas-pendencias"><span><Clock3 size={18}/>{lista.resumo.semAfericao} sem aferição</span><span><ClipboardList size={18}/>{lista.resumo.pendentesEstoque} {lista.resumo.pendentesEstoque === 1 ? "pendente de estoque" : "pendentes de estoque"}</span></div>
-      {!lista.itens.length ? <Empty icone={Milk}><strong>Nenhuma ordenha neste período</strong>{podeLancar ? "Use Registrar ordenha para lançar a primeira do dia." : "As ordenhas registradas aparecem aqui."}</Empty> : visualizacao.modo === "tabela" ? <TabelaOrdenhasPorDia exibirDatas={inicio !== fim} itens={lista.itens} abrir={abrir} podeLancar={podeLancar}/> : <ListaConsultaLeite layout="grade" renderizarVisual={r => <CartaoOrdenhaVisual registro={r} abrir={() => abrir(r)} podeLancar={podeLancar}/>} visualizacao={visualizacao} preferencia="ordenhasVisualizacao" tituloDe={r => r.nome} detalheDe={r => `${formatarDataBR(r.dataOperacional)} · Fonte ${r.fonteProducao === "INDIVIDUAL" ? "individual" : "geral"}`} destaque="total" rotulo="Ordenhas registradas" itens={lista.itens} chaveDe={r => r.id} onAbrir={abrir} colunas={[
-        { chave: "data", titulo: "Data", principal: true, larguraMinima: 120, celula: r => formatarDataBR(r.dataOperacional) },
-        { chave: "ordenha", titulo: "Ordenha", ocultarNoCartao: true, larguraMinima: 130, celula: r => r.nome },
-        { chave: "comercial", titulo: "Comercial", alinhamento: "direita", larguraMinima: 120, celula: r => litrosNatureza(r, "COMERCIAL") },
-        { chave: "descarte", titulo: "Não comercial", alinhamento: "direita", larguraMinima: 120, celula: r => litrosNatureza(r, "NAO_COMERCIAL") },
-        { chave: "colostro", titulo: "Colostro", alinhamento: "direita", larguraMinima: 120, celula: r => litrosNatureza(r, "COLOSTRO") },
-        { chave: "total", titulo: "Total", alinhamento: "direita", larguraMinima: 120, celula: r => r.litros == null ? "Não aferido" : formatarLitros(r.litros) },
-        { chave: "situacao", titulo: "Situação", larguraMinima: 160, celula: r => situacaoOrdenha(r) },
-        { chave: "acoes", titulo: "Ação", acoes: true, larguraMinima: 150, celula: r => <Button variant="outline" onClick={() => abrir(r)}>{r.situacao === "CONFIRMADA" || !podeLancar ? "Consultar" : "Editar registro"}</Button> },
-      ]} />}
+      {!lista.itens.length ? <Empty icone={Milk}><strong>Nenhuma ordenha neste período</strong>{podeLancar ? "Use Registrar ordenha para lançar a primeira do dia." : "As ordenhas registradas aparecem aqui."}</Empty> : <TabelaOrdenhasPorDia exibirDatas={inicio !== fim} itens={lista.itens} abrir={abrir} podeLancar={podeLancar}/>}
       {lista.total > 0 && <div className="ordenhas-paginacao"><label>Por página<SelectCampo aria-label="Ordenhas por página" value={String(porPagina)} onValueChange={v => atualizar({ ordenhasTamanho: v, paginaOrdenhas: null })}>{[6,12,20].map(t=><option key={t} value={String(t)}>{t}</option>)}</SelectCampo></label><Paginacao pagina={lista.pagina} totalPaginas={Math.max(1, Math.ceil(lista.total / lista.porPagina))} total={lista.total} porPagina={lista.porPagina} rotulo="Paginação de ordenhas" substantivo="ordenhas" idSelect="pagina-ordenhas" onPagina={p => atualizar({ paginaOrdenhas: String(p) })} /></div>}
     </>}
   </div>;

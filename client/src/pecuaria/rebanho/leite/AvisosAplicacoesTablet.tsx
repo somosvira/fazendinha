@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { Syringe } from "lucide-react";
+import { LinkInterno } from "@/components/LinkInterno";
+import { getUsuario } from "@/lib/auth";
 import { obterAvisosAplicacoes } from "./api";
 
 export function AvisosAplicacoesTablet({ data, sitio }: { data: string; sitio: number | null }) {
@@ -25,8 +28,12 @@ export function AvisosAplicacoesTablet({ data, sitio }: { data: string; sitio: n
       document.removeEventListener("visibilitychange", consultar);
     };
   }, [data, sitio]);
-  return <div aria-live="polite">{animais.length > 0 && <div className="leite-pendencia">
-    <strong>Aplicações aguardando conferência</strong>
-    <p>{animais.map(a => [a.brinco, a.nome].filter(Boolean).join(" · ")).join(" / ")}</p>
+  const usuario = getUsuario();
+  const podeConferir = !!usuario && (usuario.dono || usuario.flags.includes("revisarAplicacoesTablet"));
+  const nomes = animais.map(a => [a.brinco, a.nome].filter(Boolean).join(" · ")).join(", ");
+  return <div aria-live="polite">{animais.length > 0 && <div className="leite-aviso-aplicacoes" title={nomes}>
+    <Syringe size={16} aria-hidden />
+    <span>{animais.length === 1 ? "1 animal com aplicação aguardando conferência" : `${animais.length} animais com aplicações aguardando conferência`}</span>
+    {podeConferir && <LinkInterno area="pecuaria" href="/pecuaria/sanidade/tablet/aprovacao">Conferir</LinkInterno>}
   </div>}</div>;
 }

@@ -34,6 +34,5 @@ export function ConferenciaExecucao({ previa, animais, paginadaNoServidor = fals
     </section>} />
     <h3 className="font-semibold">Consumo total · Previsto para confirmação</h3>
     {previa.consumos.length ? <ListaRascunho itens={previa.consumos} rotulo="consumos previstos" renderizar={(c, n) => <p key={n}>{c.quantidade} {unidadeSanitaria(c.unidade)} · {valorComparacaoExecucao("produtoId", c.produtoId, c.produtoNome)} · {c.partidaId ? <>lote {valorComparacaoExecucao("partidaId", c.partidaId, c.partidaNome)} · validade {c.partidaValidade ? dataSanitaria(c.partidaValidade) : "não informada"}</> : c.itemCompraDiretaId ? "compra direta" : "estoque"}</p>} /> : <p>Sem consumo de estoque.</p>}
-    <p className="text-sm text-ink-3">A confirmação salva o conjunto inteiro. Revise origem, lote, hora, responsável e carência antes de confirmar.</p>
   </section>;
 }

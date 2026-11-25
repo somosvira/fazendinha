@@ -16,13 +16,14 @@ export function SubTabs<T extends string>({ tabs, active, onSelect, className, a
   className?: string;
   ariaLabel?: string;
   variant?: "financeiro";
-  aparencia?: "abas" | "botoes";
+  /** "segmentado" é o nível interno (dentro de uma aba raiz): menor e mais leve que as abas. */
+  aparencia?: "abas" | "segmentado" | "botoes"; // "botoes": @deprecated apelido de "segmentado" durante o split
   idDaAba?: (id: T) => string;
   idDoPainel?: (id: T) => string;
 }) {
   const listaRef = useAbaAtivaVisivel<HTMLDivElement>(active);
-  if (variant === "financeiro") return <Tabs value={active} onValueChange={id => onSelect(id as T)} className={cn("min-w-0", aparencia === "abas" && "abas-navegacao", className)}>
-    <TabsList variant={aparencia === "botoes" ? "default" : "pasta"} aria-label={ariaLabel} className="fin-abas">
+  if (variant === "financeiro") return <Tabs value={active} onValueChange={id => onSelect(id as T)} className={cn("min-w-0", aparencia === "abas" && "abas-navegacao", (aparencia === "segmentado" || aparencia === "botoes") && "abas-segmentadas", className)}>
+    <TabsList variant={(aparencia === "segmentado" || aparencia === "botoes") ? "default" : "pasta"} aria-label={ariaLabel} className="fin-abas">
       {tabs.map(({ id, label, icon: Icon }) => <TabsTrigger key={id} value={id} onClick={event => { if (event.detail === 0 && active !== id) onSelect(id); }} className="h-auto min-h-10 whitespace-normal px-3 text-left">{Icon && <Icon size={16} strokeWidth={1.8} aria-hidden="true" />}{label}</TabsTrigger>)}
     </TabsList>
   </Tabs>;

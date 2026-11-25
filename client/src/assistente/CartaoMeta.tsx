@@ -184,8 +184,8 @@ function AlvoReferencias({ d, unidade, limites, faixa = true }: { d: DefinicaoMe
     {faixa && d.tipo === "minimo" && <ReferenceArea y1={limites[0]} y2={d.minimo!} fill="var(--metas-fora-fundo)" fillOpacity={1} />}
     {faixa && d.tipo === "maximo" && <ReferenceArea y1={d.maximo!} y2={limites[1]} fill="var(--metas-fora-fundo)" fillOpacity={1} />}
     {faixa && d.tipo === "faixa" && <ReferenceArea y1={d.minimo!} y2={d.maximo!} fill="var(--metas-ok-fundo)" fillOpacity={1} />}
-    {d.minimo !== null && <ReferenceLine y={d.minimo} stroke={cor} strokeWidth={2} strokeDasharray="6 4" label={{ value: `Mínimo ${numero(d.minimo)} ${unidade}`, position: "insideBottomLeft", fill: cor, fontSize: 11, fontWeight: 600 }} />}
-    {d.maximo !== null && <ReferenceLine y={d.maximo} stroke={cor} strokeWidth={2} strokeDasharray="6 4" label={{ value: `Máximo ${numero(d.maximo)} ${unidade}`, position: "insideTopLeft", fill: cor, fontSize: 11, fontWeight: 600 }} />}
+    {d.minimo !== null && <ReferenceLine y={d.minimo} stroke={cor} strokeWidth={2} strokeDasharray="6 4" label={{ value: `Mínimo ${numero(d.minimo)} ${unidade}`, position: "insideBottomLeft", fill: cor, fontSize: 12, fontWeight: 600 }} />}
+    {d.maximo !== null && <ReferenceLine y={d.maximo} stroke={cor} strokeWidth={2} strokeDasharray="6 4" label={{ value: `Máximo ${numero(d.maximo)} ${unidade}`, position: "insideTopLeft", fill: cor, fontSize: 12, fontWeight: 600 }} />}
   </>;
 }
 
@@ -203,8 +203,8 @@ function LinhaMeta({ meta, unidade }: { meta: Meta; unidade: string }) {
       <ComposedChart data={dados} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
         <defs><pattern id={padrao} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="var(--metas-hachura)" strokeWidth="2" /></pattern></defs>
         <CartesianGrid vertical={false} stroke="var(--metas-grade)" />
-        <XAxis dataKey="data" tickFormatter={diaMes} tick={{ fontSize: 11 }} minTickGap={24} />
-        <YAxis domain={limites} tick={{ fontSize: 11 }} width={48} tickFormatter={(v) => numero(Number(v))} allowDataOverflow />
+        <XAxis dataKey="data" tickFormatter={diaMes} tick={{ fontSize: 12 }} minTickGap={24} />
+        <YAxis domain={limites} tick={{ fontSize: 12 }} width={48} tickFormatter={(v) => numero(Number(v))} allowDataOverflow />
         <AlvoReferencias d={d} unidade={unidade} limites={limites} />
         <Bar dataKey="pendente" fill={`url(#${padrao})`} barSize={14} isAnimationActive={false} />
         <Tooltip labelFormatter={(v) => dataBR(String(v))} formatter={(v, nome) => nome === "pendente" ? ["sem apuração", "Situação"] : [`${numero(Number(v))} ${unidade}`, "Medição"]} />
@@ -225,10 +225,10 @@ function BarrasMeta({ meta, unidade }: { meta: Meta; unidade: string }) {
     <ResponsiveContainer width="100%" height={210}>
       <ComposedChart data={dados} margin={{ top: 18, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} stroke="var(--metas-grade)" />
-        <XAxis dataKey="data" tickFormatter={mesCurto} tick={{ fontSize: 11 }} />
-        <YAxis domain={[0, limites[1]]} tick={{ fontSize: 11 }} width={48} tickFormatter={(v) => numero(Number(v))} />
+        <XAxis dataKey="data" tickFormatter={mesCurto} tick={{ fontSize: 12 }} />
+        <YAxis domain={[0, limites[1]]} tick={{ fontSize: 12 }} width={48} tickFormatter={(v) => numero(Number(v))} />
         <Tooltip labelFormatter={(v) => dataBR(String(v))} formatter={(v) => [`${numero(Number(v))} ${unidade}`, "Medição"]} />
-        <Bar dataKey="valor" barSize={28} radius={[4, 4, 0, 0]} isAnimationActive={false} label={{ position: "top", fontSize: 11, formatter: (v: unknown) => numero(Number(v)) }}>
+        <Bar dataKey="valor" barSize={28} radius={[4, 4, 0, 0]} isAnimationActive={false} label={{ position: "top", fontSize: 12, formatter: (v: unknown) => numero(Number(v)) }}>
           {dados.map((p) => <Cell key={p.data} fill={dentroDoAlvo(p.valor, d) ? "var(--metas-barra)" : "var(--metas-fora)"} />)}
         </Bar>
         <AlvoReferencias d={d} unidade={unidade} limites={[0, limites[1]]} faixa={false} />
