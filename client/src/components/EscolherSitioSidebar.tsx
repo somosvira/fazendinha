@@ -94,7 +94,7 @@ export function ExigeSitioDoShell({ onSelecionar, consolidado }: { onSelecionar?
  * Com um único sítio ativo, consulta esse sítio; com vários em Consolidado, orienta a escolha na sidebar.
  */
 /** `cabecalhoAviso` só aparece junto do aviso: a página sem sítio ainda diz onde a pessoa está e como voltar. */
-export function ConsultaDoSitio({ children, cabecalho, cabecalhoAviso }: { children: (sitioId: number) => ReactNode; cabecalho?: ReactNode; cabecalhoAviso?: ReactNode }) {
+export function ConsultaDoSitio({ children, cabecalho, cabecalhoAviso, consolidado }: { children: (sitioId: number) => ReactNode; cabecalho?: ReactNode; cabecalhoAviso?: ReactNode; /** Com 2+ sítios em Consolidado, mostra esta visão em vez do aviso. */ consolidado?: ReactNode }) {
   const global = getPropriedadeAtiva();
   const { sitios, erro, tentarNovamente } = useSitiosAtivos(global == null);
   // Trocar o sítio na sidebar remonta a área: rascunhos e conferências do sítio anterior não sobrevivem.
@@ -105,6 +105,6 @@ export function ConsultaDoSitio({ children, cabecalho, cabecalhoAviso }: { child
     {sitios === null ? <EstadoSitios erro={erro} tentarNovamente={tentarNovamente} />
       : unico ? <div key={unico.id}>{children(unico.id)}</div>
       : !sitios.length ? <Empty>Nenhum sítio disponível para consulta.</Empty>
-      : <>{cabecalhoAviso}<AvisoEscolherSitio /></>}
+      : consolidado ?? <>{cabecalhoAviso}<AvisoEscolherSitio /></>}
   </div>;
 }

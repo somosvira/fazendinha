@@ -57,13 +57,20 @@ it("troca rotina pela URL preservando filtros e deep links e responde ao histór
   expect(screen.queryByRole("tab", { name: "Política reprodutiva" })).toBeNull();
   expect(screen.queryByRole("link", { name: "Política reprodutiva" })).toBeNull();
 });
-it.each(["partos", "indicadores"])("consolidado orienta a escolha do sítio pela sidebar, sem seletor na página, para %s", async rotina => {
+it.each([["partos", "Partos do sítio"], ["indicadores", "Indicadores do sítio"]])("consolidado soma os sítios em %s, sem seletor na página", async (rotina, texto) => {
   setPropriedadeAtiva(null);
   window.history.replaceState(null, "", `/pecuaria/reproducao?rotina=${rotina}`);
   render(<Reproducao podeLancar />);
-  await screen.findByRole("heading", { name: "Escolha um sítio na barra lateral" });
+  expect((await screen.findByText(new RegExp(texto))).textContent?.trim()).toBe(texto);
+  expect(screen.queryByRole("heading", { name: "Escolha um sítio na barra lateral" })).toBeNull();
   expect(screen.queryByLabelText("Sítio da consulta")).toBeNull();
-  expect(screen.queryByText(/do sítio 7/)).toBeNull();
+});
+it("consolidado orienta a escolha do sítio pela sidebar nas rotinas de operação", async () => {
+  setPropriedadeAtiva(null);
+  window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=geral");
+  render(<Reproducao podeLancar />);
+  await screen.findByRole("heading", { name: "Escolha um sítio na barra lateral" });
+  expect(screen.queryByText(/Visão geral operacional/)).toBeNull();
   expect(obterReproducao).not.toHaveBeenCalled();
 });
 it("elegibilidade individual recebe localização comprovada mesmo com outro sítio ativo", async () => {

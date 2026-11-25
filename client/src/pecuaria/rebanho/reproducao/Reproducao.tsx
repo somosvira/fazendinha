@@ -144,7 +144,9 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
       }}>Voltar às filas de manejo</Button>
       <ConteudoReproducao podeLancar={podeLancar} propriedadeId={propriedadeId ?? (Number(parametros.get("sitio")) || null)}/>
     </>;
-    return <ConsultaPorSitio>{sitioId => <div key={`${sitioId}:${rotina}`} className="space-y-5">
+    // Consolidado (2+ sítios): Partos e Indicadores somam os sítios; as rotinas de operação seguem por sítio.
+    const consolidado = rotina === "partos" ? <PartosPosParto propriedadeId={null}/> : rotina === "indicadores" ? <IndicadoresReprodutivos propriedadeId={null} podeLancar={podeLancar} modo="painel"/> : undefined;
+    return <ConsultaPorSitio consolidado={consolidado}>{sitioId => <div key={`${sitioId}:${rotina}`} className="space-y-5">
       {rotina === "geral" ? <VisaoGeralReprodutiva propriedadeId={sitioId}/>
         : rotina === "partos" ? <PartosPosParto propriedadeId={sitioId}/>
         : rotina === "indicadores" ? <IndicadoresReprodutivos propriedadeId={sitioId} podeLancar={podeLancar} modo="painel"/>
