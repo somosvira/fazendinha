@@ -216,15 +216,24 @@
 .cadastro-passos button[aria-current="step"] span,.quadro-passos button[aria-current="step"] span { color:var(--primary-foreground); background:var(--primary); border-color:var(--primary); }
 .cadastro-reprodutivo-corpo { display:grid; grid-template-columns:minmax(0,1fr) 302px; min-height:0; }
 .cadastro-reprodutivo .cadastro-protocolo-editor { border:0; border-radius:0; padding:22px; min-width:0; margin:0; }
-.cadastro-acompanhamento { min-width:0; border:1px solid var(--border); border-radius:8px; padding:0 14px; }
-.cadastro-acompanhamento legend { padding-inline:5px; font-weight:650; }
+.cadastro-acompanhamento { min-width:0; }
+.cadastro-acompanhamento legend { font-weight:650; }
 .cadastro-acompanhamento-linha { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:12px 16px; padding-block:10px; }
-.cadastro-acompanhamento-linha + .cadastro-acompanhamento-linha { border-top:1px solid var(--border); }
-.cadastro-acompanhamento-prazo { margin-top:10px; }
-.cadastro-acompanhamento-prazo > div { display:flex; align-items:center; gap:8px; margin-top:6px; color:var(--muted-foreground); font-size:.875rem; }
-.cadastro-acompanhamento-prazo input { width:5.5rem; }
-.cadastro-acompanhamento-exame { border-top:1px solid var(--border); padding-block:10px; font-size:.875rem; }
-.cadastro-acompanhamento-exame span { margin-inline-end:4px; color:var(--muted-foreground); }
+.cadastro-acompanhamento-opcoes { border:1px solid var(--border); border-radius:8px; }
+.cadastro-acompanhamento-controles { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.5fr); align-items:start; gap:8px 16px; padding:8px 12px; }
+.cadastro-acompanhamento-controles + .cadastro-acompanhamento-controles { border-top:1px solid var(--border); }
+.cadastro-protocolo-identificacao .cadastro-acompanhamento-controles label:has(input[role="switch"]) { display:flex; align-items:center; gap:8px; min-height:var(--campo-altura); font-weight:600; }
+.cadastro-acompanhamento-controles label:has(input[role="switch"]) > span:first-child { margin-block-start:0; }
+.cadastro-acompanhamento-controles label:has(input[role="switch"]) > span:last-child { font-size:.875rem; line-height:1.4; }
+.cadastro-acompanhamento-prazo { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:0 8px; }
+.cadastro-protocolo-identificacao .cadastro-acompanhamento-prazo > label { display:block; text-align:end; font-size:.8125rem; color:var(--muted-foreground); }
+.cadastro-acompanhamento-prazo > input { width:4.5rem; margin-block:0; padding-inline:8px; }
+.cadastro-acompanhamento-prazo > [role="alert"] { grid-column:1/-1; }
+.cadastro-acompanhamento-resumo { border-top:1px solid var(--border); margin-top:14px; font-size:.875rem; }
+.cadastro-acompanhamento-resumo > div { padding-block:10px; }
+.cadastro-acompanhamento-resumo > div + div { border-top:1px solid var(--border); }
+.cadastro-acompanhamento-resumo dt { font-weight:650; }
+.cadastro-acompanhamento-resumo dd { color:var(--muted-foreground); line-height:1.5; }
 .cadastro-reprodutivo .cadastro-protocolo-revisao { position:static; border:0; border-left:1px solid var(--border); border-radius:0; background:var(--secondary); max-height:none; }
 .cadastro-reprodutivo .cadastro-protocolo-resumo { padding:22px 19px; }
 .cadastro-reprodutivo .cadastro-protocolo-resumo h2 { color:var(--primary); }
@@ -292,3 +301,11 @@
   .cadastro-reprodutivo-rodape { padding-inline:14px; }
   .quadro-remover-procedimento { width:38px; height:38px; }
 }
+
+@media (max-width:480px) {
+  .cadastro-acompanhamento-controles { grid-template-columns:minmax(0,1fr); gap:4px; }
+  .cadastro-protocolo-identificacao .cadastro-acompanhamento-prazo > label { text-align:start; }
+}
+
+.cadastro-reprodutivo .cadastro-protocolo-identificacao [aria-invalid="true"] { border-color:var(--destructive); }
+.cadastro-reprodutivo .cadastro-protocolo-identificacao [aria-invalid="true"]:focus { border-color:var(--destructive); outline-color:var(--destructive); box-shadow:0 0 0 2px color-mix(in srgb, var(--destructive) 20%, transparent); }
