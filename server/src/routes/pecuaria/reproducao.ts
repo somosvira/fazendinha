@@ -1,3 +1,5 @@
+import { mascararReferenciasModelo } from "../../services/pecuaria/protocolos/mascarar-referencias.js";
+import { detalheErroProduto } from "../../services/estoque/produtos-catalogo.js";
 import * as avaliacaoContextual from "../../services/pecuaria/reproducao/avaliacao-contextual.js";
 import { criarCatalogoAvaliacaoSchema } from "../../services/pecuaria/reproducao/avaliacao-contextual.schemas.js";
 import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../../services/pecuaria/protocolos/automacao.schemas.js";
@@ -68,6 +70,9 @@ export function apresentarV4<T>(c: Context, resultado: T): T {
     c.get("sitioCustosPecuaria") as number | null | undefined,
   );
 }
+function apresentarModeloV4<T>(c: Context, resultado: T): T {
+  return apresentarV4(c, mascararReferenciasModelo(resultado, podeVerValoresFinanceiros(getUsuario(c))));
+}
 export function falhaV4(c: Context, e: unknown) {
   if (e instanceof ValorizacaoError) return c.json({ error: e.message, code: e.code }, e.code === "VALIDACAO" ? 422 : 409);
   if (e instanceof z.ZodError)
@@ -81,7 +86,7 @@ export function falhaV4(c: Context, e: unknown) {
     );
   if (e instanceof RebanhoError || e instanceof FinanceiroError)
     return c.json(
-      { error: e.message, code: e.code, campo: e.campo },
+      { error: e.message, code: e.code, campo: e.campo, ...detalheErroProduto(e) },
       e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409,
     );
   if (e instanceof PropriedadeError)
@@ -431,7 +436,7 @@ export const reproducaoRouter = new Hono()
     try {
       await resolverEscopoLeitura(c);
       return c.json(
-        apresentarV4(
+        apresentarModeloV4(
           c,
           await iatf.listarProtocolos(),
         ),
@@ -443,8 +448,9 @@ export const reproducaoRouter = new Hono()
   .post("/protocolos", validarV4(s.protocoloSchema), async (c) => {
     try {
       await resolverEscopoLeitura(c);
+      if (!podeVerValoresFinanceiros(getUsuario(c)) && c.req.valid("json").etapas.some(e => e.referenciasCusto)) return c.json({ error: "Permissão financeira para editar valores necessária", code: "SEM_PERMISSAO" }, 403);
       return c.json(
-        await iatf.criarProtocolo(c.req.valid("json"), usuarioV4(c)),
+        apresentarModeloV4(c, await iatf.criarProtocolo(c.req.valid("json"), usuarioV4(c))),
         201,
       );
     } catch (e) {
@@ -452,11 +458,11 @@ export const reproducaoRouter = new Hono()
     }
   })
   .patch("/protocolos/:id", validarV4(s.protocoloSchema), async c => {
-    try { await resolverEscopoLeitura(c); return c.json(await iatf.editarProtocolo(z.string().uuid().parse(c.req.param("id")), c.req.valid("json"), usuarioV4(c))); }
+    try { await resolverEscopoLeitura(c); if (!podeVerValoresFinanceiros(getUsuario(c)) && c.req.valid("json").etapas.some(e => e.referenciasCusto)) return c.json({ error: "Permissão financeira para editar valores necessária", code: "SEM_PERMISSAO" }, 403); return c.json(apresentarModeloV4(c, await iatf.editarProtocolo(z.string().uuid().parse(c.req.param("id")), c.req.valid("json"), usuarioV4(c), podeVerValoresFinanceiros(getUsuario(c))))); }
     catch (e) { return falhaV4(c, e); }
   })
   .post("/protocolos/:id/publicar", async c => {
-    try { await resolverEscopoLeitura(c); return c.json(await iatf.publicarProtocolo(z.string().uuid().parse(c.req.param("id")), usuarioV4(c))); }
+    try { await resolverEscopoLeitura(c); return c.json(apresentarModeloV4(c, await iatf.publicarProtocolo(z.string().uuid().parse(c.req.param("id")), usuarioV4(c)))); }
     catch (e) { return falhaV4(c, e); }
   })
   .post("/protocolos/:id/inativar", async c => {

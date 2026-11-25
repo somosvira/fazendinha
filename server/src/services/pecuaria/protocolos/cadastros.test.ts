@@ -43,3 +43,13 @@ it("devolve calendário completo e metadados de momento para derivação sem arr
   const resultado = await listarAcoesCadastroProtocolo("p", {});
   expect(resultado.itens[0]).toMatchObject({ intervalo: 7.5, unidade: "DIAS", orientacaoTemporal, momento });
 });
+
+it("oculta referências de custo reprodutivas e preserva o contrato do editor sanitário", async () => {
+  const referenciasCusto = { material: { valorUnitario: "123.45", origem: "Tabela" } };
+  db.etapaProtocolo.findMany.mockResolvedValue([{ id: "e", configuracao: { referenciasCusto, planoAplicacao: { dose: "2" } } }]);
+  expect((await listarAcoesCadastroProtocolo("p", {}, false)).itens[0]).toMatchObject({ configuracao: { referenciasCusto } });
+  db.protocolo.findUnique.mockResolvedValue({ ...meta, tipo: "REPRODUTIVO" });
+  expect((await listarAcoesCadastroProtocolo("p", {}, false)).itens[0]).toMatchObject({ planoAplicacao: { dose: "2" } });
+  expect((await listarAcoesCadastroProtocolo("p", {}, false)).itens[0]).not.toHaveProperty("referenciasCusto");
+  expect((await listarAcoesCadastroProtocolo("p", {}, true)).itens[0]).toMatchObject({ referenciasCusto });
+});

@@ -77,3 +77,55 @@ it("consulta todas as guardas de formulários e preserva a restante ao desmontar
   expect(navegar).toHaveBeenCalledOnce();
   cancelarSegunda();
 });
+
+it("entrega a intenção de troca de sítio às guardas sem liberar navegação comum", async () => {
+  const guarda = vi.fn(async (intencao: "navegacao" | "troca-sitio") => intencao === "troca-sitio");
+  const remover = registrarGuardaNavegacao(guarda);
+  const trocar = vi.fn(), sair = vi.fn();
+  try {
+    await executarComGuardaNavegacao(trocar, "troca-sitio");
+    await executarComGuardaNavegacao(sair);
+    expect(trocar).toHaveBeenCalledOnce();
+    expect(sair).not.toHaveBeenCalled();
+    expect(guarda).toHaveBeenNthCalledWith(1, "troca-sitio");
+    expect(guarda).toHaveBeenNthCalledWith(2, "navegacao");
+  } finally { remover(); }
+});
+
+it("não reaproveita autorização de troca de sítio para saída concorrente", async () => {
+  let resolverTroca!: (valor: boolean) => void;
+  const guarda = vi.fn((intencao: "navegacao" | "troca-sitio") => intencao === "troca-sitio" ? new Promise<boolean>(resolve => { resolverTroca = resolve; }) : Promise.resolve(false));
+  const remover = registrarGuardaNavegacao(guarda);
+  const trocar = vi.fn(), sair = vi.fn();
+  try {
+    const troca = executarComGuardaNavegacao(trocar, "troca-sitio");
+    const saida = executarComGuardaNavegacao(sair);
+    resolverTroca(true);
+    await Promise.all([troca, saida]);
+    expect(guarda).toHaveBeenCalledTimes(2);
+    expect(sair).not.toHaveBeenCalled();
+  } finally { remover(); }
+});
+
+it("reusa a confirmação da saída após uma troca concorrente e executa apenas a intenção mais recente", async () => {
+  let concluir!: (ok: boolean) => void;
+  const guarda = vi.fn((intencao: "navegacao" | "troca-sitio") =>
+    intencao === "troca-sitio" ? Promise.resolve(true) : new Promise<boolean>(ok => { concluir = ok; }));
+  const remover = registrarGuardaNavegacao(guarda);
+  const primeira = vi.fn(), trocar = vi.fn(), ultima = vi.fn(), sincronizar = vi.fn();
+  try {
+    const resultados = [
+      executarComGuardaNavegacao(primeira),
+      executarComGuardaNavegacao(trocar, "troca-sitio"),
+      executarComGuardaNavegacao(ultima),
+      executarComGuardaNavegacao(sincronizar),
+    ];
+    concluir(true);
+    await expect(Promise.all(resultados)).resolves.toEqual([true, true, true, true]);
+    expect(guarda).toHaveBeenCalledTimes(2);
+    expect(primeira).not.toHaveBeenCalled();
+    expect(trocar).not.toHaveBeenCalled();
+    expect(ultima).toHaveBeenCalledOnce();
+    expect(sincronizar).toHaveBeenCalledOnce();
+  } finally { remover(); }
+});

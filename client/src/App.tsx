@@ -183,6 +183,13 @@ export function App() {
     if (destino === "gerencial") fixarSitioNaUrlDoPainel(getPropriedadeAtiva());
     return getPropriedadeAtiva();
   });
+  const [areaMontada, setAreaMontada] = useState(() => ({ sitio: propAtiva, revisao: 0 }));
+  if (areaMontada.sitio !== propAtiva) {
+    // A navegação pode mudar a URL antes de a guarda aceitar a saída do editor.
+    // A área remonta somente em resposta à troca de sítio fora desse editor.
+    const noBuilder = /^\/configuracoes\/pecuaria\/reproducao\/protocolos\/novo\/?$/.test(window.location.pathname);
+    setAreaMontada({ sitio: propAtiva, revisao: areaMontada.revisao + (noBuilder ? 0 : 1) });
+  }
   const trocarPropriedade = (id: number | null) => {
     void executarComGuardaNavegacao(() => {
       if (id !== getPropriedadeAtiva() && /^\/pecuaria\/rebanho\/animais\/?$/.test(window.location.pathname)) {
@@ -203,7 +210,7 @@ export function App() {
         if(id==null)delete filtros.propriedadeId;else filtros.propriedadeId=String(id);
         return {tab:"gerencial",filtros};
       });
-    });
+    }, "troca-sitio");
   };
 
   // Deep-link da IA (chat): filtros aplicados numa tela via query string
@@ -670,7 +677,7 @@ export function App() {
         onSair={onSair}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
-        <div key={propAtiva ?? "all"} data-design-operacional={usaDesignOperacional(tab, window.location.pathname) ? "" : undefined} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
+        <div key={areaMontada.revisao} data-design-operacional={usaDesignOperacional(tab, window.location.pathname) ? "" : undefined} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
           <LimiteCarregamentoArea contexto={`${tab}:${propAtiva ?? "all"}`}><Suspense fallback={<div className="shell-wide pagina-financeira"><EsqueletoPagina label="Carregando área" /></div>}>{conteudo}</Suspense></LimiteCarregamentoArea>
         </div>
       </main>

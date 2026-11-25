@@ -84,3 +84,10 @@ describe("modalidades independentes de protocolos novos", () => {
     expect(protocoloSchema.safeParse({ ...protocolo, finalidade: "IATF", modalidadeTentativa: "ETAPA", modalidadeDiagnostico: "EXTERNO" }).success).toBe(false);
   });
 });
+
+it("recebe exatamente uma origem de produto na aplicação do builder", () => {
+  const plano = aplicacao.planoAplicacao;
+  expect(etapaIatfSchema.safeParse({ ...aplicacao, planoAplicacao: { ...plano, produtoId: undefined, produtoCatalogoId: id, categoriaId: id } }).success).toBe(true);
+  expect(etapaIatfSchema.safeParse({ ...aplicacao, planoAplicacao: { ...plano, produtoCatalogoId: id } }).success).toBe(false);
+  expect(etapaIatfSchema.safeParse({ ...aplicacao, planoAplicacao: { ...plano, produtoId: undefined } }).success).toBe(false);
+});

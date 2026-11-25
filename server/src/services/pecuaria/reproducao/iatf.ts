@@ -1,3 +1,4 @@
+import { resolverProdutoIdTx, prefixarCampoErro } from "../../estoque/produtos-catalogo.js";
 import { demandaDispensada } from "./agenda-demanda.calc.js";
 import { tipoAplicacaoLegadaId } from "../sanidade/desvios.js";
 import { conferirImpactosTx, aplicarImpactosTx } from "./impactos.js";
@@ -66,11 +67,25 @@ async function congelarEtapasTx(
   tx: Prisma.TransactionClient,
   etapas: EtapaIatf[],
   builder = false,
+  usuarioId: number | null = null,
 ) {
+  const resolvidas: EtapaIatf[] = [];
+  for (const [indice, etapa] of etapas.entries()) {
+    if (!etapa.planoAplicacao) { resolvidas.push(etapa); continue; }
+    const { produtoCatalogoId, categoriaId, ...plano } = etapa.planoAplicacao;
+    try {
+      if (produtoCatalogoId) {
+        const item = await tx.produtoCatalogo.findUnique({ where: { id: produtoCatalogoId }, select: { ativo: true, usoSanitario: true } });
+        if (!item?.ativo || !item.usoSanitario) throw new RebanhoError("VALIDACAO", "Selecione um item ativo de uso sanitário no catálogo", "produtoCatalogoId");
+      }
+      const produtoId = await resolverProdutoIdTx(tx, { produtoId: plano.produtoId, produtoCatalogoId, categoriaId }, usuarioId);
+      resolvidas.push({ ...etapa, planoAplicacao: { ...plano, produtoId } });
+    } catch (e) { throw prefixarCampoErro(e, `etapas.${indice}.planoAplicacao.`); }
+  }
   const materiais = await tx.materialGenetico.findMany({
     where: {
       id: {
-        in: etapas.flatMap((e) =>
+        in: resolvidas.flatMap((e) =>
           e.planoTentativa ? [e.planoTentativa.materialId] : [],
         ),
       },
@@ -78,24 +93,30 @@ async function congelarEtapasTx(
     include: { produto: true },
   });
   await travarUsosProduto(tx, [
-    ...etapas.flatMap((e) =>
-      e.planoAplicacao ? [e.planoAplicacao.produtoId] : [],
+    ...resolvidas.flatMap((e) =>
+      e.planoAplicacao?.produtoId ? [e.planoAplicacao.produtoId] : [],
     ),
     ...materiais.map((m) => m.produtoId),
   ]);
-  await travarTiposExame(tx, etapas.flatMap(e => e.planoAvaliacao ? [e.planoAvaliacao.tipoExameId ?? TIPO_EXAME_REPRODUTIVO] : e.planoExame ? [e.planoExame.tipoExameId] : []));
+  await travarTiposExame(tx, resolvidas.flatMap(e => e.planoAvaliacao ? [e.planoAvaliacao.tipoExameId ?? TIPO_EXAME_REPRODUTIVO] : e.planoExame ? [e.planoExame.tipoExameId] : []));
   const congeladas: EtapaFonte[] = [];
-  for (const [indice, original] of etapas.entries()) {
+  for (const [indice, original] of resolvidas.entries()) {
     let e = original;
+    // O novo builder usa a valorização de estoque; referências antigas de material
+    // permanecem na origem e não são congeladas na versão derivada.
+    if (builder && e.referenciasCusto?.material) {
+      const { material: _material, ...restantes } = e.referenciasCusto;
+      e = { ...e, referenciasCusto: Object.keys(restantes).length ? restantes : undefined };
+    }
     const referencias: Record<string, unknown> = {};
     if (e.planoAplicacao) {
       const p = await tx.produto.findUnique({
-        where: { id: e.planoAplicacao.produtoId }, include: { perfilSanitarioProduto: true },
+        where: { id: e.planoAplicacao.produtoId! }, include: { perfilSanitarioProduto: true },
       });
       if (!p?.ativo || !p.usoSanitario)
         erro(
           `Etapa ${indice + 1}: selecione Produto ativo de uso sanitário`,
-          "etapas",
+          `etapas.${indice}.planoAplicacao.produtoId`,
         );
       try {
         converterQuantidade(
@@ -106,11 +127,11 @@ async function congelarEtapasTx(
       } catch {
         erro(
           `Etapa ${indice + 1}: unidade da dose incompatível com Produto`,
-          "etapas",
+          `etapas.${indice}.planoAplicacao.unidadeDose`,
         );
       }
       validarReferenciasCusto(e.referenciasCusto, e.planoAplicacao.unidadeDose, true);
-      if (builder && e.planoAplicacao.unidadeDose !== p.unidade) erro(`Etapa ${indice + 1}: unidade deve ser herdada do produto`, "etapas");
+      if ((builder || etapas[indice].planoAplicacao?.produtoCatalogoId) && e.planoAplicacao.unidadeDose !== p.unidade) erro(`Etapa ${indice + 1}: unidade deve ser herdada do produto`, `etapas.${indice}.planoAplicacao.unidadeDose`);
       const classificacao = await resolverTipoAplicacaoCadastroTx(tx, e.planoAplicacao.tipoAplicacaoId, builder ? p.perfilSanitarioProduto?.tipoAplicacaoId : null, e.momento?.modoAtendimento === "AUTOMATIZADA", `etapas.${indice}.planoAplicacao.tipoAplicacaoId`);
       if (classificacao) e = { ...e, planoAplicacao: { ...e.planoAplicacao, tipoAplicacaoId: classificacao.id } };
       if (builder) e = { ...e, planoAplicacao: { ...e.planoAplicacao!, via: p.perfilSanitarioProduto?.viaPadrao ?? null, orientacaoUso: p.perfilSanitarioProduto?.orientacaoUso ?? null } };
@@ -191,10 +212,10 @@ export async function criarProtocolo(
     const origem=input.origemVersaoId?await tx.protocolo.findFirst({where:{id:input.origemVersaoId,tipo:"REPRODUTIVO"}}):null;
     if(input.origemVersaoId&&!origem)erro("Versão de origem reprodutiva não encontrada", "origemVersaoId");
     if (origem && input.nome.trim() !== origem.nome) erro("Uma nova versão deve preservar o protocolo-base", "nome");
-    const etapas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null);
+    const etapas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null, usuarioId);
     if (input.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,input.configuracaoAcompanhamento);
     const p = await criarProtocoloReprodutivoTx(tx, {
-      data: { ...input, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : undefined, etapas: json(etapas), criadoPorId: usuarioId,...(origem?.referenciaTecnica?{referenciaTecnica:json({...origem.referenciaTecnica as Record<string,unknown>,protocoloOrigemId:origem.id})}:{}) },
+      data: { ...input, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : undefined, etapas: json(etapas), criadoPorId: usuarioId,...(origem ? { referenciaTecnica: json({ ...(origem.referenciaTecnica && typeof origem.referenciaTecnica === "object" && !Array.isArray(origem.referenciaTecnica) ? origem.referenciaTecnica : {}), protocoloOrigemId: origem.id }) } : {}) },
     });
     await auditar(tx, {
       entidade: "ProtocoloIatf",
@@ -230,14 +251,15 @@ async function publicarReprodutivoTx(tx: Prisma.TransactionClient, id: string, u
   const [contrato, meta] = await Promise.all([tx.protocoloIatf.findUniqueOrThrow({ where: { id } }), tx.protocolo.findUniqueOrThrow({ where: { id }, select: { finalidade: true, modalidadeTentativa: true, modalidadeDiagnostico: true, configuracaoAcompanhamento: true } })]);
   return { ...contrato, ...meta };
 }
-export async function editarProtocolo(id: string, input: z.infer<typeof protocoloSchema>, usuarioId: number | null) {
+export async function editarProtocolo(id: string, input: z.infer<typeof protocoloSchema>, usuarioId: number | null, podeVerValores = true) {
   return transacaoPecuaria(async tx => {
     const identidade = await resolverIdReprodutivoTx(tx, "protocolo", id);
     const antes = await carregarVersaoTx(tx, identidade, "REPRODUTIVO", true);
+    if (!podeVerValores && antes.etapas.some(e => e.configuracao && typeof e.configuracao === "object" && !Array.isArray(e.configuracao) && "referenciasCusto" in e.configuracao)) throw new RebanhoError("CONFLITO", "Esta versão contém referências financeiras protegidas; solicite a edição a um usuário com acesso a valores", "etapas");
     input = protocoloSchema.parse({ ...input, finalidade: input.finalidade ?? antes.finalidade, modalidadeTentativa: input.modalidadeTentativa ?? antes.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico ?? antes.modalidadeDiagnostico, configuracaoAcompanhamento: input.configuracaoAcompanhamento === undefined ? antes.configuracaoAcompanhamento : input.configuracaoAcompanhamento });
     if (input.versao !== antes.versao) erro("A edição de um rascunho conserva o número da versão", "versao");
     if (input.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,input.configuracaoAcompanhamento);
-    const congeladas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null);
+    const congeladas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null, usuarioId);
     await tx.etapaProtocolo.deleteMany({ where: { protocoloId: identidade } });
     await tx.momentoProtocolo.deleteMany({ where: { protocoloId: identidade } });
     await tx.protocolo.update({ where: { id: identidade, tipo: "REPRODUTIVO" }, data: { nome: input.nome, descricao: input.descricao, finalidade: input.finalidade, modalidadeTentativa: input.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : Prisma.DbNull, etapas: { deleteMany: {}, create: etapasReprodutivasDoContrato(json(congeladas)) } } });

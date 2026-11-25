@@ -72,6 +72,9 @@ export type EtapaIatf = {
   orientacaoTemporal?: {versao:1;referencia:"INICIO_EFETIVO"|"ETAPA_ANTERIOR";intervaloHoras:number;toleranciaAntesMinutos:number;toleranciaDepoisMinutos:number;efeito:"ALERTA"};
   planoAplicacao?: {
     produtoId: string;
+    produtoCatalogoId?: string;
+    categoriaId?: string;
+    nomeProduto?: string;
     dose: string;
     unidadeDose: UnidadeMedida;
     via?: string | null;
@@ -92,13 +95,13 @@ export function etapaParaCadastro(e: EtapaIatf, contratoNovo = false): EtapaIatf
     ...(e.momento ? { momento: momentoParaCadastro(e.momento) } : {}),
     ...(e.tipo === "APLICACAO" && e.subtipo ? { subtipo: e.subtipo } : {}),
     ...(e.orientacaoTemporal ? {orientacaoTemporal:e.orientacaoTemporal} : {}),
-    ...(e.tipo === "APLICACAO" && e.planoAplicacao ? { planoAplicacao: { produtoId: e.planoAplicacao.produtoId, dose: e.planoAplicacao.dose, unidadeDose: e.planoAplicacao.unidadeDose, via: e.planoAplicacao.via, ...(e.planoAplicacao.tipoAplicacaoId ? { tipoAplicacaoId: e.planoAplicacao.tipoAplicacaoId } : {}) } } : {}),
+    ...(e.tipo === "APLICACAO" && e.planoAplicacao ? { planoAplicacao: { ...(e.planoAplicacao.produtoId ? { produtoId: e.planoAplicacao.produtoId } : { produtoCatalogoId: e.planoAplicacao.produtoCatalogoId, categoriaId: e.planoAplicacao.categoriaId }), dose: e.planoAplicacao.dose, unidadeDose: e.planoAplicacao.unidadeDose, via: e.planoAplicacao.via, ...(e.planoAplicacao.tipoAplicacaoId ? { tipoAplicacaoId: e.planoAplicacao.tipoAplicacaoId } : {}) } } : {}),
     ...(e.tipo === "TENTATIVA" && e.tentativaTipo && !e.planoTentativa ? { tentativaTipo: e.tentativaTipo } : {}),
     ...(e.tipo === "TENTATIVA" && contratoNovo ? { tentativaTipo: e.tentativaTipo ?? e.planoTentativa?.tipo } : {}),
     ...(e.tipo === "TENTATIVA" && !contratoNovo && e.planoTentativa ? { planoTentativa: { tipo: e.planoTentativa.tipo, materialId: e.planoTentativa.materialId, quantidade: e.planoTentativa.quantidade } } : {}),
     ...(e.tipo === "EXAME" && e.planoExame ? { planoExame: { tipoExameId: e.planoExame.tipoExameId } } : {}),
     ...(e.tipo === "AVALIACAO" && e.planoAvaliacao ? { planoAvaliacao: { tipoExameId: e.planoAvaliacao.tipoExameId, tipo: e.planoAvaliacao.tipo } } : {}),
-  };
+  } as EtapaIatf;
 }
 export type ProtocoloIatf = {
   id: string;

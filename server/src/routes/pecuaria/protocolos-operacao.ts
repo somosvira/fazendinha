@@ -19,7 +19,7 @@ import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { getUsuario } from "../../middleware/permissao.js";
 import { temArea, temPermissao } from "../../services/auth/papeis.js";
-import { PropriedadeError, resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
+import { PropriedadeError, resolverEscopoEscrita, resolverEscopoLeitura, resolverEscopoSidebar } from "../../services/propriedade.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { conflitoTransacaoPecuaria } from "../../services/pecuaria/transacao.js";
 import { eventoTarefaSchema, registrarEventoTarefa } from "../../services/pecuaria/protocolos/eventos.js";
@@ -60,7 +60,7 @@ function falha(c: Context, erro: unknown) {
 export const protocolosOperacaoRouter = new Hono().use("*", async (c, next) => {
   const usuario = getUsuario(c);
   if (!usuario || !temArea(usuario, "pecuaria")) return c.json({ error: "Acesso à Pecuária necessário", code: "SEM_PERMISSAO" }, 403);
-  const previa = c.req.method === "POST" && /\/(participacoes\/previa|automacoes\/previa-adesao)\/?$/.test(c.req.path);
+  const previa = c.req.method === "POST" && /\/(participacoes\/previa|automacoes\/previa-adesao|modelos\/estimativa)\/?$/.test(c.req.path);
   if (c.req.method !== "GET" && !previa && !temPermissao(usuario, "lancar"))
     return c.json({ error: "Permissão para lançar necessária", code: "SEM_PERMISSAO" }, 403);
   await next();
@@ -264,4 +264,4 @@ protocolosOperacaoRouter.get("/participacoes/:id/tentativas-candidatas",async c=
 protocolosOperacaoRouter.post("/participacoes/:id/tentativa-externa",async c=>{try{const ator=usuarioId(c);if(!ator)return c.json({error:"Sessão de usuário necessária",code:"SEM_PERMISSAO"},403);const i=vincularTentativaParticipacaoSchema.parse(await c.req.json());return c.json(await vincularTentativaParticipacao(uuid.parse(c.req.param("id")),{...i,propriedadeId:await resolverEscopoEscrita(c,i.propriedadeId)},ator),201);}catch(e){return falha(c,e);}});
 protocolosOperacaoRouter.post("/vinculos-tentativa/:id/revogacao",async c=>{try{const ator=usuarioId(c);if(!ator)return c.json({error:"Sessão de usuário necessária",code:"SEM_PERMISSAO"},403);const i=revogarTentativaParticipacaoSchema.parse(await c.req.json());return c.json(await revogarTentativaParticipacao(uuid.parse(c.req.param("id")),{...i,propriedadeId:await resolverEscopoEscrita(c,i.propriedadeId)},ator));}catch(e){return falha(c,e);}});
 
-protocolosOperacaoRouter.post("/modelos/estimativa",async c=>{try{if(!podeVerValoresFinanceiros(getUsuario(c)??null))return c.json({error:"Permissão financeira para consultar valores necessária",code:"SEM_PERMISSAO"},403);const i=estimativaModeloSchema.parse(await c.req.json());return c.json(await estimarModelo({...i,propriedadeId:await resolverEscopoEscrita(c,i.propriedadeId)}));}catch(e){return falha(c,e);}});
+protocolosOperacaoRouter.post("/modelos/estimativa",async c=>{try{if(!podeVerValoresFinanceiros(getUsuario(c)??null))return c.json({error:"Permissão financeira para consultar valores necessária",code:"SEM_PERMISSAO"},403);const i=estimativaModeloSchema.parse(await c.req.json());return c.json(await estimarModelo(i,resolverEscopoSidebar(c)));}catch(e){return falha(c,e);}});

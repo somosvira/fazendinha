@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronsUpDown, Loader2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronsUpDown, Loader2, X } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,7 @@ const rotuloOpcao = (o: OpcaoBuscavel) => (o.ativo === false ? `${o.nome} (inati
  * (o filtro do cmdk fica desligado); `selecionadoId` pede a opção já escolhida, mesmo inativa, para
  * exibir seu nome sem depender da busca atual.
  */
-export function SelectBuscavel<T extends OpcaoBuscavel>({ rotulo, valor, onChange, buscar, somenteLeitura, erroCampo, placeholder = "Selecione ou digite", detalhe, limpavel = true, contentClassName, containerPopover }: {
+export function SelectBuscavel<T extends OpcaoBuscavel>({ rotulo, valor, onChange, buscar, somenteLeitura, erroCampo, placeholder = "Selecione ou digite", detalhe, limpavel = true, chevronSimples = false, contentClassName, containerPopover }: {
   rotulo: string;
   valor: string;
   onChange: (id: string, opcao?: T) => void;
@@ -29,6 +29,7 @@ export function SelectBuscavel<T extends OpcaoBuscavel>({ rotulo, valor, onChang
   detalhe?: (opcao: T) => ReactNode;
   /** Mostra o botão que limpa a seleção (padrão). */
   limpavel?: boolean;
+  chevronSimples?: boolean;
   /** Classes extras do painel (ex.: z-index quando o campo vive dentro de um modal). */
   contentClassName?: string;
   containerPopover?: HTMLElement | null;
@@ -69,6 +70,7 @@ export function SelectBuscavel<T extends OpcaoBuscavel>({ rotulo, valor, onChang
   const escolher = (opcao: T) => { setSelecionada(opcao); onChange(opcao.id, opcao); mudarAberto(false); };
   const limpar = () => { setSelecionada(null); onChange(""); };
 
+  const Chevron = chevronSimples ? ChevronDown : ChevronsUpDown;
   const nomeAtual = !valor ? null : selecionada?.id === valor ? rotuloOpcao(selecionada) : "Referência planejada";
   if (somenteLeitura) return <span>{nomeAtual ?? "Não informado"}</span>;
 
@@ -80,7 +82,7 @@ export function SelectBuscavel<T extends OpcaoBuscavel>({ rotulo, valor, onChang
           <button id={id} type="button" role="combobox" aria-expanded={aberto} aria-haspopup="listbox" aria-invalid={erroCampo ? true : undefined} aria-describedby={erroCampo ? `${id}-erro` : undefined}
             className={cn("flex min-h-10 w-full items-center justify-between gap-2 rounded-lg border bg-card px-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", valor && limpavel ? "pr-16" : "pr-3", erroCampo ? "border-destructive" : "border-border")}>
             <span className={cn("truncate", !nomeAtual && "text-ink-3")}>{nomeAtual ?? placeholder}</span>
-            <ChevronsUpDown className="ml-auto size-4 shrink-0 text-ink-3" aria-hidden="true" />
+            <Chevron className="ml-auto size-4 shrink-0 text-ink-3" aria-hidden="true" />
           </button>
         </PopoverTrigger>
         {valor && limpavel && <button type="button" aria-label={`Limpar ${rotulo}`} onClick={limpar} className="absolute right-9 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-3 hover:bg-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><X className="size-3.5" aria-hidden="true" /></button>}

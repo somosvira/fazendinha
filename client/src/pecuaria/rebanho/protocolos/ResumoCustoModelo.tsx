@@ -1,9 +1,5 @@
-import { SelectCampo } from "../../../financeiro/SelectCampo";
-import {
-  listarPropriedades,
-  type PropriedadeDTO,
-} from "../../../api/propriedades";
 import { useEffect, useState } from "react";
+import { Package } from "lucide-react";
 import { Button, ErrorBox, brl } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { getUsuario } from "../../../lib/auth";
@@ -12,6 +8,7 @@ import type { EtapaIatf } from "../reproducao/Iatf";
 import { reqProtocolo } from "./api";
 type Referencia = {
   descricao: string;
+  situacao: string;
   natureza: string;
   origem: string;
   data: string | null;
@@ -26,6 +23,7 @@ type Estimativa = {
   totalConhecido: string | null;
   componentesConhecidos: number;
   componentesPendentes: number;
+  escopo?: { tipo: "SITIO" | "CONSOLIDADO" };
   referencias: {
     itens: Referencia[];
     total: number;
@@ -48,61 +46,32 @@ export function ResumoCustoModelo({
       usuario.dono ||
       (usuario.areas.includes("financeiro") &&
         usuario.flags.includes("verValores"));
-  const [sitioLocal, setSitioLocal] = useState<number | null>(() => {
-    const id = Number(new URLSearchParams(window.location.search).get("sitio"));
-    return Number.isInteger(id) && id > 0 ? id : null;
-  });
-  const propriedadeId = propriedadeInformada ?? sitioLocal;
-  const [sitios, setSitios] = useState<PropriedadeDTO[]>([]);
-  const [erroSitios, setErroSitios] = useState<string | null>(null);
-  const [carregandoSitios, setCarregandoSitios] = useState(false);
-  const [revisaoSitios, setRevisaoSitios] = useState(0);
-  useEffect(() => {
-    if (!permitido || propriedadeInformada != null) return;
-    let ativo = true;
-    setCarregandoSitios(true);
-    setErroSitios(null);
-    listarPropriedades()
-      .then((v) => {
-        if (ativo) setSitios(v);
-      })
-      .catch((e) => {
-        if (ativo) setErroSitios(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => {
-        if (ativo) setCarregandoSitios(false);
-      });
-    return () => {
-      ativo = false;
-    };
-  }, [permitido, propriedadeInformada, revisaoSitios]);
+  const propriedadeId = propriedadeInformada;
   const [dados, setDados] = useState<Estimativa | null>(null),
     [erro, setErro] = useState<string | null>(null),
     [aberto, setAberto] = useState(false),
     [pagina, setPagina] = useState(1),
     [tentativa, setTentativa] = useState(0);
   const payload = JSON.stringify({
-    propriedadeId,
     referenciasPagina: pagina,
     etapas: etapas.map((e) => ({
       nome: e.nome,
       tipo: e.tipo,
-      produtoId: e.planoAplicacao?.produtoId || null,
-      quantidade:
-        e.tipo === "APLICACAO" ? (e.planoAplicacao?.dose ?? null) : null,
-      unidade: e.planoAplicacao?.unidadeDose ?? null,
-      ...(e.referenciasCusto ? { referenciasCusto: e.referenciasCusto } : {}),
+      ...(e.planoAplicacao?.produtoId ? { produtoId: e.planoAplicacao.produtoId } : {}),
+      ...(e.planoAplicacao?.produtoCatalogoId ? { produtoCatalogoId: e.planoAplicacao.produtoCatalogoId } : {}),
+      ...(e.tipo === "APLICACAO" && e.planoAplicacao?.dose ? { quantidade: e.planoAplicacao.dose, unidade: e.planoAplicacao.unidadeDose } : {}),
+      ...(e.referenciasCusto?.servico ? { referenciasCusto: { servico: e.referenciasCusto.servico } } : {}),
     })),
   });
   useEffect(() => {
-    if (!permitido || !propriedadeId || !completo) return;
+    if (!permitido || !completo) return;
     let ativo = true;
     setDados(null);
     setErro(null);
     const espera = window.setTimeout(() => {
       reqProtocolo<Estimativa>(
         "/modelos/estimativa",
-        propriedadeId,
+        propriedadeId ?? undefined,
         JSON.parse(payload),
       )
         .then((d) => {
@@ -123,53 +92,8 @@ export function ResumoCustoModelo({
       aria-label="Custo previsto do modelo"
     >
       <h3>Custo previsto por animal</h3>
-      {permitido && propriedadeInformada == null && (
-        <div className="grid gap-2">
-          <label>
-            Sítio para referências de custo
-            <SelectCampo
-              aria-label="Sítio para referências de custo"
-              value={sitioLocal ? String(sitioLocal) : ""}
-              disabled={carregandoSitios || !!erroSitios}
-              onValueChange={(valor) => {
-                setSitioLocal(valor ? Number(valor) : null);
-                setPagina(1);
-                setDados(null);
-                setErro(null);
-              }}
-            >
-              <option value="">Selecione um sítio</option>
-              {sitios.map((s) => (
-                <option value={s.id} key={s.id}>
-                  {s.nome}
-                </option>
-              ))}
-            </SelectCampo>
-          </label>
-          <p className="text-sm text-ink-3">
-            A seleção vale para esta estimativa e preserva a visão global.
-          </p>
-          {erroSitios && (
-            <>
-              <ErrorBox erro={erroSitios} />
-              <Button
-                secondary
-                type="button"
-                onClick={() => setRevisaoSitios((v) => v + 1)}
-              >
-                Consultar sítios novamente
-              </Button>
-            </>
-          )}
-        </div>
-      )}
       {!permitido ? (
         <p>Valores ocultos</p>
-      ) : !propriedadeId ? (
-        <p>
-          Selecione um sítio para consultar o custo previsto com a base
-          valorizada.
-        </p>
       ) : !completo ? (
         <p>Carregue toda a estrutura para estimar.</p>
       ) : erro ? (
@@ -192,18 +116,9 @@ export function ResumoCustoModelo({
               ? "Não apurado"
               : brl(dados.totalConhecido)}
           </strong>
-          <p>
-            {dados.situacao === "COMPLETO"
-              ? "Estimativa completa"
-              : dados.situacao === "PARCIAL"
-                ? "Estimativa parcial"
-                : "Referências insuficientes"}
-          </p>
-          {dados.componentesPendentes > 0 && (
-            <p>{dados.componentesPendentes} componentes não apurados</p>
-          )}
+          <span className="quadro-custo-situacao">{dados.situacao === "COMPLETO" ? "Completo" : dados.situacao === "PARCIAL" ? "Parcial" : "Pendente"}</span>
           <Button secondary type="button" onClick={() => setAberto(true)}>
-            Conferir referências
+            <Package size={18} aria-hidden /> Conferir referências
           </Button>
         </>
       )}
@@ -228,6 +143,7 @@ export function ResumoCustoModelo({
             )
           ) : (
             <>
+              <p>{dados.componentesPendentes} componentes não apurados · {dados.escopo?.tipo === "CONSOLIDADO" ? "Consolidado" : "Sítio selecionado"}</p>
               <div className="protocolo-tabela">
                 <table aria-label="Referências do modelo">
                   <thead>
@@ -262,7 +178,7 @@ export function ResumoCustoModelo({
                           {r.quantidade ?? "A definir"} {r.unidade ?? ""}
                         </td>
                         <td>
-                          {r.valor == null ? "Não apurado" : brl(r.valor)}
+                          {r.valor == null ? ({ CATALOGO_NAO_ADOTADO: "Produto ainda não adotado", PRODUTO_NAO_INFORMADO: "Produto não informado", PRODUTO_NAO_ENCONTRADO: "Produto não encontrado", UNIDADE_INCOMPATIVEL: "Unidade incompatível", QUANTIDADE_PENDENTE: "Quantidade pendente", COBERTURA_INSUFICIENTE: "Cobertura insuficiente", SALDO_ZERO: "Sem saldo", ESCOPO_VAZIO: "Sem sítios no escopo", REFERENCIA_INCOMPLETA: "Referência incompleta" }[r.situacao] ?? "Não apurado") : brl(r.valor)}
                         </td>
                       </tr>
                     ))}
