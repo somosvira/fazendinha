@@ -33,9 +33,12 @@ function montar(animal = base, podeLancar = true) {
 describe("PesoEGanho", () => {
   it("mostra ausência de dados e faixa integrada sem inventar GMD", () => {
     montar();
-    expect(screen.getByRole("status").textContent).toContain("Pesagens insuficientes para a curva e o GMD do período");
+    const vazioEvolucao = within(screen.getByRole("status")).getByRole("note");
+    expect(vazioEvolucao.textContent).toContain("Pesagens insuficientes para a curva e o GMD do período");
+    expect(vazioEvolucao.textContent).toContain("São necessárias pelo menos duas pesagens compatíveis em datas diferentes.");
     const vazioEcc = screen.getByText("Nenhum ECC registrado.").closest("[role=note]");
     const vazioPesagens = screen.getByText("Nenhuma pesagem registrada.").closest("[role=note]");
+    expect(vazioEvolucao.className).toBe(vazioPesagens?.className);
     expect(vazioEcc?.className).toBe(vazioPesagens?.className);
     expect(vazioEcc?.querySelector("[aria-hidden=true] svg")).toBeTruthy();
     expect(screen.getByText("Últimas pesagens")).toBeTruthy();
@@ -152,12 +155,13 @@ it("preserva GMD recente e desde a entrada quando falta base no período recorta
   expect(screen.getByText("+0,500 kg/dia")).toBeTruthy();
   expect(screen.getByText("GMD recente")).toBeTruthy();
   expect(screen.getByRole("status").textContent).toContain("Pesagens insuficientes para a curva e o GMD do período");
+  expect(within(screen.getByRole("status")).getByText("Escolha um período maior para consultar outras pesagens.")).toBeTruthy();
 });
 
 it("mostra GMD disponível e aviso próprio da curva quando o histórico local é insuficiente", () => {
   montar({ ...base, historicoPesagens: [pesagem], peso: { ...base.peso, gmdPeriodo: { valor: 0.5, dias: 30, pesagens: 2 } } });
   expect(screen.getByText("+0,500 kg/dia")).toBeTruthy();
-  expect(screen.getByRole("status").textContent).toContain("Uma pesagem ainda não forma uma curva");
+  expect(within(screen.getByRole("status")).getByRole("note").textContent).toContain("Uma pesagem ainda não forma uma curva");
   expect(screen.queryByText("Pesagens insuficientes para a curva e o GMD do período")).toBeNull();
 });
 

@@ -70,7 +70,13 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
       </dl>
       {mesmaBase && <AjudaCampo rotulo="Como foi calculado o GMD" texto={`O ganho médio diário considera a diferença de peso entre as pesagens de ${formatarDataBR(datasDaBase[0])} e ${formatarDataBR(datasDaBase[1])}, dividida pelo intervalo de ${peso.gmdPeriodo.dias} dias. Como há apenas duas pesagens, GMD recente e GMD desde a entrada usam esses mesmos registros.`}/>}
     </div>
-    {semBaseConjunta ? <div className="peso-sem-dados ficha-peso-aviso" role="status"><Scale size={28} aria-hidden="true"/><div><h3>Pesagens insuficientes para a curva e o GMD do período</h3><p>São necessárias pelo menos duas pesagens compatíveis em datas diferentes.</p>{historicoPesagens.filter(p => p.data.slice(0, 10) <= limite).length >= 2 && <p>Escolha um período maior para consultar outras pesagens.</p>}</div></div> : <>
+    {semBaseConjunta ? <div role="status">
+      <Empty>
+        <h3>Pesagens insuficientes para a curva e o GMD do período</h3>
+        <p>São necessárias pelo menos duas pesagens compatíveis em datas diferentes.</p>
+        {historicoPesagens.filter(p => p.data.slice(0, 10) <= limite).length >= 2 && <p>Escolha um período maior para consultar outras pesagens.</p>}
+      </Empty>
+    </div> : <>
       {peso.gmdPeriodo.valor == null && <p role="status" className="ficha-peso-aviso-gmd">Pesagens insuficientes para o GMD do período. Pesos estimados, informados ou externos podem aparecer no gráfico sem formar uma base válida para o indicador.</p>}
       <GraficoPeso historicoPesagens={historicoPesagens} desde={desde} ate={limite}/>
     </>}
