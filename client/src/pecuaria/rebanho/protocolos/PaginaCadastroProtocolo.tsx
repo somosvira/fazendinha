@@ -5,6 +5,7 @@ import { executarComGuardaNavegacao, registrarGuardaNavegacao } from "../../../n
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ClipboardList, Copy, FilePlus, Info } from "lucide-react";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { Button as BotaoIcone } from "../../../components/ui/button";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro, classeInput } from "../../../financeiro/PainelCadastro";
 import { navegarPara } from "../../../router";
@@ -262,8 +263,12 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
         || tentativa && modalidadeDiagnostico === "PROTOCOLO" && !restantes.some(e => e.tipo === "AVALIACAO" && e.planoAvaliacao?.tipo === "DIAGNOSTICO"));
     };
     return <div className="protocolos-pagina cadastro-protocolo-pagina cadastro-reprodutivo">
-      <nav className="cadastro-protocolo-caminho" aria-label="Cadastro de protocolos"><button type="button" onClick={sair}><ArrowLeft size={16} aria-hidden />Protocolos reprodutivos</button></nav>
-      <h1>{editarId ? "Editar protocolo" : origem ? "Nova versão de protocolo" : "Novo protocolo"}</h1>
+      <header className="cadastro-reprodutivo-cabecalho">
+        <BotaoIcone type="button" variant="ghost" size="icon" className="shrink-0 text-primary" aria-label="Voltar para protocolos reprodutivos" disabled={salvando} onClick={sair}>
+          <ArrowLeft aria-hidden />
+        </BotaoIcone>
+        <h1>{editarId ? "Editar protocolo" : origem ? "Nova versão de protocolo" : "Novo protocolo"}</h1>
+      </header>
       <div className="cadastro-reprodutivo-moldura">
         <nav className="cadastro-passos" aria-label="Etapas do cadastro">{["Identificação", "Etapas", "Conferência"].map((nomePasso, i) => <button type="button" key={nomePasso} aria-current={passo === i ? "step" : undefined} disabled={i > passo} onClick={() => setPasso(i as 0 | 1 | 2)}><span>{i + 1}</span>{nomePasso}</button>)}</nav>
         <div className="cadastro-reprodutivo-corpo"><form id="cadastro-protocolo" noValidate onChangeCapture={() => { setIndiceErro(null); setErroCampo(null); }} onSubmit={e => { e.preventDefault(); void salvar(); }} className="cadastro-protocolo-editor">
