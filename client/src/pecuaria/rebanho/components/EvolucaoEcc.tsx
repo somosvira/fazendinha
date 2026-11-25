@@ -1,3 +1,4 @@
+import { Empty } from "@/financeiro/financeiro-ui";
 import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Activity } from "lucide-react";
@@ -7,7 +8,7 @@ import { formatarDataBR } from "../lib/rotulos";
 export function EvolucaoEcc({ historico = [] }: { historico?: AnimalFicha["historicoEcc"] }) {
   const escalas = [...new Set(historico.filter(e => e.escalaMin !== null && e.escalaMax !== null).map(e => `${e.escalaMin}:${e.escalaMax}`))];
   return <CardFicha titulo="Condição corporal (ECC)" icon={Activity}>
-    {!historico.length ? <p>Nenhum ECC registrado.</p> : <>
+    {!historico.length ? <Empty>Nenhum ECC registrado.</Empty> : <>
       {escalas.map(escala => { const [min, max] = escala.split(":").map(Number); const pontos = historico.filter(e => e.valor !== null && e.escalaMin === min && e.escalaMax === max);
         return <div key={escala} className="mt-3"><p>Escala {min}–{max}</p>{pontos.length > 1 ? <div className="h-48" role="img" aria-label={`Evolução de ECC na escala ${min} a ${max}; valores no histórico abaixo`}><ResponsiveContainer width="100%" height="100%"><LineChart data={pontos}><CartesianGrid vertical={false}/><XAxis dataKey="data" tickFormatter={formatarDataBR}/><YAxis domain={[min,max]}/><Tooltip labelFormatter={v => formatarDataBR(String(v))}/><Line dataKey="valor" name="ECC" stroke="var(--color-primary, #326861)" strokeWidth={2} connectNulls={false}/></LineChart></ResponsiveContainer></div> : <p>Um registro nesta escala; a curva exige duas avaliações.</p>}</div>; })}
       <ConsultaOperacional rotulo="Histórico de ECC" itens={[...historico].reverse()} chaveDe={e => e.id} colunas={[

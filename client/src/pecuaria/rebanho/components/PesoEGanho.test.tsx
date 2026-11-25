@@ -34,6 +34,10 @@ describe("PesoEGanho", () => {
   it("mostra ausência de dados e faixa integrada sem inventar GMD", () => {
     montar();
     expect(screen.getByRole("status").textContent).toContain("Pesagens insuficientes para a curva e o GMD do período");
+    const vazioEcc = screen.getByText("Nenhum ECC registrado.").closest("[role=note]");
+    const vazioPesagens = screen.getByText("Nenhuma pesagem registrada.").closest("[role=note]");
+    expect(vazioEcc?.className).toBe(vazioPesagens?.className);
+    expect(vazioEcc?.querySelector("[aria-hidden=true] svg")).toBeTruthy();
     expect(screen.getByText("Últimas pesagens")).toBeTruthy();
     expect(screen.getByText("Evolução do peso").compareDocumentPosition(screen.getByText("Últimas pesagens")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText("Últimas pesagens").compareDocumentPosition(screen.getByText("Condição corporal (ECC)")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
