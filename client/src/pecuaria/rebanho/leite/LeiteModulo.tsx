@@ -70,8 +70,7 @@ export function LeiteModulo({ podeLancar, podeFinanceiro, podeExportar = false, 
       <SubTabs variant="financeiro" ariaLabel="Rotinas do leite" tabs={consultas.map(({ id, nome, Icon }) => ({ id, label: nome, icon: Icon }))} active={secao} onSelect={id => selecionar(id)} />
     </nav>
     <AcoesRotinaLeite.Provider value={acoesContainer}><div className="leite-superficie" data-rotina={secao}>
-      {secao === "producao" ? <ConsultasProducaoLeite podeExportar={podeExportar} /> : sitio == null ? <ExigeSitioDoShell onSelecionar={onSelecionarSitio}/>
-        : secao === "estoque" ? <EstoqueLeite podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />
+      {secao === "producao" ? <ConsultasProducaoLeite podeExportar={podeExportar} /> : secao === "estoque" ? <EstoqueLeite podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} /> : sitio == null ? <ExigeSitioDoShell onSelecionar={onSelecionarSitio}/>
         : secao === "coletas" ? <ConsultasComerciaisLeite tipo="coletas" podeLancar={podeLancar} />
         : secao === "vendas" ? <VendasLeite podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />
         : secao === "destinos" ? <><ResumoDestinosLeite revisao={revisaoDestinos}/><div className="leite-historicos-destinos"><SubTabs aparencia="segmentado" variant="financeiro" ariaLabel="Históricos dos destinos" tabs={[{id:"fornecimentos",label:"Fornecimentos"},{id:"retiradas",label:"Casa e Funcionários"},{id:"descarte",label:"Descarte físico"}]} active={destinosAba} onSelect={id=>{setDestinosAba(id);const url=new URL(location.href);url.searchParams.set("destinosAba",id);history.replaceState(history.state,"",url);}}/>

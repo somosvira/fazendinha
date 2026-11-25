@@ -27,5 +27,6 @@ export const leiteConsultasV5Router = new Hono().use("*", exigeArea("pecuaria"))
   .get("/estoque/resumo", async c => {
     const filtro = consultaResumoEstoqueLeiteSchema.safeParse(c.req.query());
     if (!filtro.success) return c.json({ code: "VALIDACAO", error: filtro.error.issues[0].message }, 422);
-    try { return c.json(await consultarResumoEstoqueLeite(await sitio(c), filtro.data, podeVerValoresFinanceiros(getUsuario(c)))); } catch (e) { return falhaV4(c, e); }
+    // null = Consolidado: uma linha por produto e sítio.
+    try { return c.json(await consultarResumoEstoqueLeite(await resolverEscopoLeitura(c), filtro.data, podeVerValoresFinanceiros(getUsuario(c)))); } catch (e) { return falhaV4(c, e); }
   });
