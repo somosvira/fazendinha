@@ -75,7 +75,6 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
       <GraficoPeso historicoPesagens={historicoPesagens} desde={desde} ate={limite}/>
     </>}
     </CardFicha>
-      <EvolucaoEcc historico={animal.historicoEcc}/>
       <CardFicha icon={Weight} titulo="Últimas pesagens">
       {historicoPesagens.length ? <div className="ficha-pesagens-rolagem" role="region" aria-label="Últimas pesagens" tabIndex={0}><table data-tabela-operacional className="ficha-pesagens-tabela consulta-tabela">
         <caption className="sr-only">Últimas pesagens do animal</caption>
@@ -100,6 +99,7 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
       </table></div> : <Empty>Nenhuma pesagem registrada.</Empty>}
       {historicoPesagens.length > 5 && <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={historicoPesagens.length} itensPorPagina={5} onPaginaChange={setPagina} rotulo="pesagens" idSelect="pagina-pesagens-animal"/>}
       </CardFicha>
+      <EvolucaoEcc historico={animal.historicoEcc}/>
     <Dialog open={!!pesagemAberta} onOpenChange={aberto => { if (!aberto) setPesagemAberta(null); }}>
       <DialogContent aria-describedby={undefined} className="max-w-xl max-h-[85vh] overflow-y-auto gap-6 p-6">
         <DialogHeader><DialogTitle>Detalhes da pesagem</DialogTitle></DialogHeader>

@@ -35,6 +35,8 @@ describe("PesoEGanho", () => {
     montar();
     expect(screen.getByRole("status").textContent).toContain("Pesagens insuficientes para a curva e o GMD do período");
     expect(screen.getByText("Últimas pesagens")).toBeTruthy();
+    expect(screen.getByText("Evolução do peso").compareDocumentPosition(screen.getByText("Últimas pesagens")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("Últimas pesagens").compareDocumentPosition(screen.getByText("Condição corporal (ECC)")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Manejos registrados/ })).toBeNull();
     expect(screen.queryByText("Manejo disponível")).toBeNull();
     expect(screen.queryByText("Último peso")).toBeNull();
@@ -52,6 +54,8 @@ describe("PesoEGanho", () => {
     montar({ ...base, historicoPesagens: [pesagem, { ...pesagem, id: "p0", data: "2026-09-01", pesoKg: 470 }] }, false);
     expect(screen.getByRole("table")).toBeTruthy();
     expect(screen.getByRole("table").textContent).toContain("470 kg");
+    expect(screen.getByText("Evolução do peso").compareDocumentPosition(screen.getByText("Últimas pesagens")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("Últimas pesagens").compareDocumentPosition(screen.getByText("Condição corporal (ECC)")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Editar pesagem/ })).toBeNull();
   });
   it("mostra um só indicador quando período, recente e entrada usam as mesmas duas pesagens", () => {
