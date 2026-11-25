@@ -86,6 +86,28 @@ describe("OperacaoFinanceiraDetalhe", () => {
     expect(screen.getByText("Total dos itens").parentElement?.textContent?.replace(/\s/g, " ")).toContain("R$ 0,30");
     expect(screen.getByRole("link", { name: /Cooperativa/ }).getAttribute("href")).toContain(`parceiro=${uid(1)}`);
   });
+  it("leva o produto ao Estoque, integra o total à tabela e mostra o histórico financeiro em tabela", async () => {
+    obterOperacao.mockResolvedValue(operacao);
+    render(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+    const itens = await screen.findByRole("table", { name: "Itens da operação" });
+    expect(within(itens).getByRole("link", { name: "Ração" }).getAttribute("href")).toBe(`/estoque/produtos/${uid(1)}`);
+    expect(within(itens).getByText("Total dos itens")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Cooperativa" }).querySelector("svg")).toBeNull();
+    const historico = screen.getByRole("table", { name: "Transações da operação" });
+    expect(within(historico).getByText("Pagamento #1")).toBeTruthy();
+    expect(within(historico).getByText("Pix")).toBeTruthy();
+  });
+  it("compra de animais por cabeça mostra um único valor por animal, com acesso à ficha", async () => {
+    obterOperacao.mockResolvedValue({ ...operacao, tipo: "COMPRA_ANIMAIS", transacoes: [], movimentosEstoque: [], itens: [
+      { id: uid(3), ordem: 1, descricao: "Brinco 101", quantidade: "1", unidade: "cab", valorUnitario: "3000", valorTotal: "3000", estocavel: false, produtoId: null, animalId: uid(7) },
+    ] });
+    render(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+    const itens = await screen.findByRole("table", { name: "Itens da operação" });
+    expect(within(itens).queryByRole("columnheader", { name: "Quantidade" })).toBeNull();
+    expect(within(itens).queryByRole("columnheader", { name: "Valor unitário" })).toBeNull();
+    expect(within(itens).getByRole("columnheader", { name: "Valor do animal" })).toBeTruthy();
+    expect(itens.textContent).not.toContain("1 cab");
+  });
   const transferencia = {
     ...operacao, tipo: "TRANSFERENCIA_ESTOQUE", descricao: "Reposição entre sítios", valorTotal: "24", itens: [], transacoes: [],
     transferencias: [{ produtoId: uid(1), produtoNome: "Vacina V3", quantidade: "2", unidade: "mL", motivo: "Reposição entre sítios", custoUnitario: "12", valorTotal: "24",
