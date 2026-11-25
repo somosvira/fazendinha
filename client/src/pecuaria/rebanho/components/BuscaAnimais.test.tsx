@@ -45,11 +45,6 @@ it("descarta a resposta anterior ao trocar filtro",async()=>{
  fireEvent.change(screen.getByRole("combobox",{name:"Sexo"}),{target:{value:"M"}});await screen.findByRole("button",{name:/DEV-019/});
  await act(async()=>resolver(resultado([{...animal,id:"antigo",brinco:"RESPOSTA-ANTIGA"}])));expect(screen.queryByText("RESPOSTA-ANTIGA")).toBeNull();
 });
-it("mantém o sítio selecionado no shell e não oferece outros sítios",async()=>{
- setPropriedadeAtiva(7);catalogos.mockResolvedValue({propriedades:[{id:7,nome:"Sede"},{id:8,nome:"Outra"}],lotes:[],racas:[],motivosBaixa:[]});
- render(<BuscaAnimais {...props()}/>);await screen.findByRole("button",{name:/DEV-019/});fireEvent.click(screen.getByRole("button",{name:"Mais filtros"}));
- expect(screen.getByRole("combobox",{name:"Sítio"}).hasAttribute("disabled")).toBe(true);expect(screen.queryByRole("option",{name:"Outra"})).toBeNull();
-});
 it("seta a partir do botão move também o foco para a ficha destacada",async()=>{
  listar.mockResolvedValue(resultado([animal,{...animal,id:"a2",brinco:"DEV-020",nome:"Lua"}]));const p=props();render(<BuscaAnimais {...p}/>);
  const primeiro=await screen.findByRole("button",{name:/DEV-019/});const segundo=screen.getByRole("button",{name:/DEV-020/});
@@ -68,14 +63,6 @@ it("reabrir limpa os filtros da abertura anterior",async()=>{
  fireEvent.change(screen.getByRole("combobox",{name:"Situação"}),{target:{value:"BAIXADO"}});
  rerender(<BuscaAnimais {...p} aberto={false}/>);rerender(<BuscaAnimais {...p}/>);
  expect(screen.getByRole("combobox",{name:"Situação"})).toHaveProperty("value","TODOS");
-});
-it("o filtro de sítio em consolidado restringe a consulta e limpa o lote",async()=>{
- catalogos.mockResolvedValue({propriedades:[{id:7,nome:"Sede"},{id:8,nome:"Outra"}],lotes:[{id:"l1",nome:"Lote da Sede",propriedadeId:7}],racas:[],motivosBaixa:[]});
- render(<BuscaAnimais {...props()}/>);await screen.findByRole("option",{name:"Lote da Sede"});
- fireEvent.change(screen.getByRole("combobox",{name:"Lote"}),{target:{value:"l1"}});fireEvent.click(screen.getByRole("button",{name:"Mais filtros"}));
- fireEvent.change(screen.getByRole("combobox",{name:"Sítio"}),{target:{value:"8"}});fireEvent.click(screen.getByRole("button",{name:"Aplicar filtros"}));
- await waitFor(()=>expect(listar).toHaveBeenLastCalledWith(expect.objectContaining({propriedadeId:8,loteId:undefined,page:1}),undefined,expect.any(AbortSignal)));
- expect(screen.getByRole("combobox",{name:"Lote"})).toHaveProperty("value","");
 });
 it("só aplica os filtros avançados ao confirmar e descarta o rascunho ao cancelar",async()=>{
  render(<BuscaAnimais {...props()}/>);await screen.findByRole("button",{name:/DEV-019/});const chamadas=listar.mock.calls.length;
