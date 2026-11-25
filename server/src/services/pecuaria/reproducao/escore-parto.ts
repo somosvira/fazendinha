@@ -16,7 +16,8 @@ export async function aplicarEscorePartoTx(tx: Prisma.TransactionClient, parto: 
   const anteriores = await tx.exameAnimal.findMany({ where: { partoPosPartoId: parto.id, status: "VALIDO", finalidadePrincipal: "ESCORE_CORPORAL" }, include: { resultados: { where: { vigente: true } } } });
   if (acao.acao === "REGISTRAR" && anteriores.length) erro("Já há escore vigente; use substituição explícita com motivo");
   if (acao.acao === "SUBSTITUIR" && acao.escalaMin === undefined) {
-    const anterior = anteriores.find(e => e.id === acao.exameId);
+    const exameId = acao.exameId;
+    const anterior = anteriores.find(e => e.id === exameId);
     const valorCampo = (campo: string) => anterior?.resultados.find(r => r.campo === campo)?.valor;
     const minimo = valorCampo("ESCALA_MIN"), maximo = valorCampo("ESCALA_MAX");
     if (minimo != null && maximo != null) {
