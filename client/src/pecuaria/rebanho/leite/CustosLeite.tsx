@@ -7,7 +7,8 @@ import { consultarLeite } from "./operacoes-api";
 import { hojeOperacional } from "./modelo";
 import { ICONES_TABELA } from "../../../components/iconesTabela";
 interface Custos { totalConhecido: string | null; cobertura: string }
-interface Relatorio { consolidado: { situacao: string; custoPorLitro: string | null; custos: Custos; motivos: string[] }; porClassificacao: { finalidade: string; custos: Custos }[] }
+interface CustoSitio { propriedadeId: number; nome: string; custoPorLitro: string | null; totalConhecido: string | null; litros: number | null }
+interface Relatorio { escopoConsolidado?: boolean; porSitio?: CustoSitio[]; consolidado: { situacao: string; custoPorLitro: string | null; custos: Custos; motivos: string[] }; porClassificacao: { finalidade: string; custos: Custos }[] }
 const dinheiro = (v: string | null) => v === null ? "Sem valor" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const nomes: Record<string, string> = { NUTRICAO: "Nutrição", SANIDADE: "Sanidade", REPRODUCAO: "Reprodução", LEITE: "Leite", ROTINA: "Rotina", "null": "Sem classificação" };
 export function CustosLeite({ periodo, podeExportar: _podeExportar = false }: { periodo?: { inicio: string; fim: string; natureza?: string }; podeExportar?: boolean }) {
@@ -30,6 +31,11 @@ export function CustosLeite({ periodo, podeExportar: _podeExportar = false }: { 
           <div><dt>Total conhecido</dt><dd>{dinheiro(dados.consolidado.custos.totalConhecido)}</dd></div>
           <div><dt>Custo por litro</dt><dd>{dados.consolidado.custoPorLitro === null ? <Pill tone="amber">Sem valor</Pill> : dinheiro(dados.consolidado.custoPorLitro)}</dd></div>
         </dl>
+        {dados.escopoConsolidado && dados.porSitio && <ConsultaOperacional icone={ICONES_TABELA.sitio} rotulo="Custos por sítio" itens={dados.porSitio} chaveDe={s => s.propriedadeId} colunas={[
+          { chave: "sitio", titulo: "Sítio", principal: true, celula: s => s.nome },
+          { chave: "total", titulo: "Total conhecido", alinhamento: "direita", celula: s => dinheiro(s.totalConhecido) },
+          { chave: "litro", titulo: "Custo por litro", alinhamento: "direita", celula: s => s.custoPorLitro === null ? <Pill tone="amber">Sem valor</Pill> : dinheiro(s.custoPorLitro) },
+        ]} />}
         {dados.consolidado.motivos.includes("NATUREZA_SEM_VINCULO") && <p role="status">Custos sem vínculo comprovado com esta natureza: valor e custo por litro a apurar.</p>}
       </>}
     </>}

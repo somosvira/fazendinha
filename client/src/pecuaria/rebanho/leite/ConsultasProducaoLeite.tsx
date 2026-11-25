@@ -84,10 +84,8 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
       ]} />
     </section>}
     {!periodoInvalido && (dados?.consolidado
-      ? <p className="leite-producao-escopo text-sm text-ink-3">Agregados históricos e custos da produção são por sítio: escolha um sítio na barra lateral para consultá-los.</p>
-      : <>
-        <HistoricoColetivoLeite key={`${sitio}:${inicio}:${fim}`} propriedadeId={sitio} inicio={inicio} fim={fim} />
-        <CustosLeite periodo={{ inicio, fim, natureza }} />
-      </>)}
+      ? <p className="leite-producao-escopo text-sm text-ink-3">Agregados históricos são por sítio: escolha um sítio na barra lateral para consultá-los.</p>
+      : <HistoricoColetivoLeite key={`${sitio}:${inicio}:${fim}`} propriedadeId={sitio} inicio={inicio} fim={fim} />)}
+    {!periodoInvalido && <CustosLeite periodo={{ inicio, fim, natureza }} />}
   </section>;
 }
