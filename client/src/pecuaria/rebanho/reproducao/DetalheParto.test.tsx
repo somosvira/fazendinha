@@ -60,7 +60,7 @@ it.each([false,true])("oculta escritas para leitor ou parto anulado (anulado=%s)
 it("avaliação de escore conserva parto e sítio mesmo sem avaliações anteriores",async()=>{
  vi.mocked(reqV4).mockResolvedValue({...parto,acompanhamentos:[]});
  render(<DetalheParto id="p" propriedadeId={1} podeLancar/>);
- fireEvent.click(await screen.findByRole("button",{name:"Registrar avaliação de escore"}));
+ fireEvent.click(await screen.findByRole("button",{name:"Registrar escore de condição corporal (ECC)"}));
  expect(screen.getByRole("dialog",{name:"Correção do parto"}).textContent).toContain("p · sítio 1 · complemento escore");
  expect(vi.mocked(reqV4).mock.calls.every(c=>c[2]==="GET")).toBe(true);
 });
