@@ -16,13 +16,15 @@ it("leitor consulta sem Financeiro e exportação exige ação própria", async 
   expect((await app(["exportar"]).request(`/exportacao${query}`)).status).toBe(200);
   expect(m.consultar).toHaveBeenLastCalledWith(2, expect.anything(), true);
 });
-it("valida datas, sessão e área e recusa consolidado antes da leitura", async () => {
+it("valida datas, sessão e área e consulta o Consolidado com escopo nulo", async () => {
   expect((await app([], [], false).request(`/${query}`)).status).toBe(401);
   expect((await app([], ["financeiro"]).request(`/${query}`)).status).toBe(403);
   expect((await app().request("/?inicio=2026-11-01&fim=2026-10-01")).status).toBe(422);
-  m.sitio.mockResolvedValue(null);
-  expect((await app().request(`/${query}`)).status).toBe(422);
   expect(m.consultar).not.toHaveBeenCalled();
+  m.sitio.mockResolvedValue(null);
+  m.consultar.mockResolvedValue({ consolidado: true });
+  expect((await app().request(`/${query}`)).status).toBe(200);
+  expect(m.consultar).toHaveBeenCalledWith(null, expect.objectContaining({ inicio: "2026-10-01" }), false);
 });
 
 it("resumo operacional exige sessão, Pecuária, sítio e período válido sem exigir valores", async () => {

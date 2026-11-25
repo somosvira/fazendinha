@@ -71,13 +71,18 @@ describe("Consultas independentes no módulo Leite", () => {
 });
 
 it("sem sítio e com um único sítio ativo, entrega esse sítio ao shell sem montar consultas",async()=>{
- escopoModulo.id=null;const selecionar=vi.fn();render(<LeiteModulo podeLancar podeFinanceiro onSelecionarSitio={selecionar}/>);
+ history.replaceState(null,"","/pecuaria/leite?leiteSecao=estoque");escopoModulo.id=null;const selecionar=vi.fn();render(<LeiteModulo podeLancar podeFinanceiro onSelecionarSitio={selecionar}/>);
  expect(screen.queryByText(/Consulta de produção com/)).toBeNull();
  await waitFor(()=>expect(selecionar).toHaveBeenCalledWith(7));expect(screen.queryByRole("alert")).toBeNull();
 });
 it("no consolidado com vários sítios orienta a escolha pela sidebar sem assumir um sítio",async()=>{
- vi.mocked(listarPropriedades).mockResolvedValueOnce([{id:7,nome:"Principal",principal:true,ativo:true},{id:8,nome:"Outro",principal:false,ativo:true}] as never);
+ history.replaceState(null,"","/pecuaria/leite?leiteSecao=estoque");vi.mocked(listarPropriedades).mockResolvedValueOnce([{id:7,nome:"Principal",principal:true,ativo:true},{id:8,nome:"Outro",principal:false,ativo:true}] as never);
  escopoModulo.id=null;const selecionar=vi.fn();render(<LeiteModulo podeLancar podeFinanceiro onSelecionarSitio={selecionar}/>);
  await screen.findByRole("heading",{name:"Escolha um sítio na barra lateral"});
  expect(selecionar).not.toHaveBeenCalled();expect(screen.queryByText(/Consulta de produção com/)).toBeNull();
+});
+it("no consolidado a Produção abre com os dados de todos os sítios, sem pedir sítio",()=>{
+ escopoModulo.id=null;const selecionar=vi.fn();render(<LeiteModulo podeLancar podeFinanceiro podeExportar onSelecionarSitio={selecionar}/>);
+ expect(screen.getByText("Consulta de produção com exportação")).toBeTruthy();
+ expect(screen.queryByRole("heading",{name:"Escolha um sítio na barra lateral"})).toBeNull();expect(selecionar).not.toHaveBeenCalled();
 });
