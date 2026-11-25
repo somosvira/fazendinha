@@ -26,6 +26,28 @@ export function EditorModeloReprodutivo({ origemCadastro, etapas, setEtapas, set
   const [catalogo, setCatalogo] = useState<number | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [erroCategorias, setErroCategorias] = useState("");
+  const [produtoLocalResolvido, setProdutoLocalResolvido] = useState<{ id: string; nome: string } | null>(null);
+  const planoCatalogo = catalogo == null ? undefined : etapas[catalogo]?.planoAplicacao;
+  const idProdutoLocal = planoCatalogo?.produtoId;
+  const nomeProdutoNoPlano = planoCatalogo?.nomeProduto;
+  useEffect(() => {
+    if (!idProdutoLocal || nomeProdutoNoPlano) return;
+    let ativo = true;
+    opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO", propriedadeId: sitioEfetivo ?? undefined })({ busca: "", selecionadoId: idProdutoLocal })
+      .then(({ itens }) => {
+        if (ativo) setProdutoLocalResolvido(itens.find(item => item.id === idProdutoLocal) ?? null);
+      })
+      .catch(() => { if (ativo) setProdutoLocalResolvido(null); });
+    return () => { ativo = false; };
+  }, [idProdutoLocal, nomeProdutoNoPlano, sitioEfetivo]);
+  const escolhaCatalogo: ProdutoEscolhido | null = planoCatalogo?.produtoCatalogoId ? {
+    tipo: "catalogo", produtoCatalogoId: planoCatalogo.produtoCatalogoId,
+    nomeCompleto: planoCatalogo.nomeProduto || "Produto do catálogo", unidadeSugerida: planoCatalogo.unidadeDose,
+    categoriaSugeridaId: planoCatalogo.categoriaId ?? null,
+  } : idProdutoLocal ? {
+    tipo: "produto", produtoId: idProdutoLocal,
+    nome: nomeProdutoNoPlano || (produtoLocalResolvido?.id === idProdutoLocal ? produtoLocalResolvido.nome : "Produto planejado"),
+  } : null;
   useEffect(() => { if (!etapas.some(e => e.planoAplicacao?.produtoCatalogoId)) return; let ativo = true; listarCategorias().then(v => { if (ativo) setCategorias(v.filter(c => c.ativo)); }).catch(() => { if (ativo) setErroCategorias("Não foi possível carregar as categorias."); }); return () => { ativo = false; }; }, [etapas.some(e => !!e.planoAplicacao?.produtoCatalogoId)]);
   function camposAplicacao(t: EtapaIatf, indice: number, compacto = false) {
     const plano = t.planoAplicacao;
@@ -46,16 +68,17 @@ export function EditorModeloReprodutivo({ origemCadastro, etapas, setEtapas, set
         <SelectBuscavel
           buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO", propriedadeId: sitioEfetivo ?? undefined })}
           rotulo="Produto planejado" valor={plano?.produtoId ?? ""} erroCampo={erroProduto}
-          limpavel={!compacto} chevronSimples={compacto}
+          opcaoExterna={plano?.produtoCatalogoId ? { nome: plano.nomeProduto || "Produto do catálogo" } : undefined}
+          limpavel={!compacto || !!plano?.produtoCatalogoId} chevronSimples={compacto}
           onChange={(produtoId, produto) => alterarPlano(atual => !produtoId ? undefined : produtoId === atual?.produtoId ? atual : {
-            produtoId, dose: "", unidadeDose: (produto?.unidade ?? "ML") as UnidadeMedida,
+            produtoId, nomeProduto: produto?.nome, dose: "", unidadeDose: (produto?.unidade ?? "ML") as UnidadeMedida,
             via: produto?.perfilSanitario?.viaPadrao ?? null, tipoAplicacaoId: produto?.perfilSanitario?.tipoAplicacaoId ?? null,
           })}
         />
         <Button secondary type="button" onClick={() => setCatalogo(indice)}>Ver catálogo</Button>
       </div>
       {plano?.produtoCatalogoId && <>
-        <p>{plano.nomeProduto} · será adotado ao salvar</p>
+        <p>Produto do catálogo · será adotado ao salvar</p>
         <div>
           <label htmlFor={idCategoria}>Categoria do produto</label>
           <SelectCampo id={idCategoria} value={plano.categoriaId ?? ""} aria-invalid={!!erroCategoria}
@@ -85,9 +108,29 @@ export function EditorModeloReprodutivo({ origemCadastro, etapas, setEtapas, set
       {erroGeral && <p role="alert" className="text-sm text-destructive" tabIndex={-1}>{erroGeral}</p>}
     </>;
   }
+  function escolherNoCatalogo(escolha: ProdutoEscolhido | null) {
+    if (!escolha) return;
+    setEtapas(itens => itens.map((acao, indice) => {
+      if (indice !== catalogo) return acao;
+      const atual = acao.planoAplicacao;
+      if (escolha.tipo === "produto") {
+        if (escolha.produtoId === atual?.produtoId) return acao;
+        return { ...acao, planoAplicacao: {
+          produtoId: escolha.produtoId, nomeProduto: escolha.nome,
+          dose: "", unidadeDose: escolha.produto?.unidade ?? "ML",
+        } };
+      }
+      if (escolha.produtoCatalogoId === atual?.produtoCatalogoId) return acao;
+      return { ...acao, planoAplicacao: {
+        produtoId: "", produtoCatalogoId: escolha.produtoCatalogoId, nomeProduto: escolha.nomeCompleto,
+        categoriaId: escolha.categoriaSugeridaId ?? undefined, dose: "", unidadeDose: escolha.unidadeSugerida,
+      } };
+    }));
+    setCatalogo(null);
+  }
   return <><BuilderEtapasProtocolo<EtapaIatf> permitirAutomacao editorEmModal
-                  quadro={item => ({ procedimento: item.nome, produto: item.tipo === "APLICACAO" && item.planoAplicacao?.produtoId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO" })} rotulo="Produto planejado" valor={item.planoAplicacao.produtoId} onChange={() => {}} /> : item.planoAplicacao?.nomeProduto ?? (item.tipo === "EXAME" && item.planoExame?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO" })} rotulo="Modelo de exame" valor={item.planoExame.tipoExameId} onChange={() => {}} /> : item.tipo === "AVALIACAO" && item.planoAvaliacao?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO" })} rotulo="Modelo de exame" valor={item.planoAvaliacao.tipoExameId} onChange={() => {}} /> : item.tipo === "TENTATIVA" ? "Material genético" : item.tipo === "RETIRADA" ? "Não informado" : "Pendente"), quantidade: item.tipo === "RETIRADA" ? "Não se aplica" : item.tipo === "APLICACAO" && item.planoAplicacao?.dose ? `${item.planoAplicacao.dose} ${rotuloUnidade(item.planoAplicacao.unidadeDose)}` : "Pendente" })}
-                  resumoEtapa={itens => ({ referencia: `${itens[0]?.unidade === "HORAS" ? "H" : "D"}${itens[0]?.intervalo ?? 0}`, procedimentos: itens.map(item => item.nome).join(" · ") })}
+                  quadro={item => ({ procedimento: item.nome, produto: item.tipo === "APLICACAO" && item.planoAplicacao?.produtoId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO" })} rotulo="Produto planejado" valor={item.planoAplicacao.produtoId} onChange={() => {}} /> : item.planoAplicacao?.nomeProduto ?? (item.tipo === "EXAME" && item.planoExame?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO" })} rotulo="Modelo de exame" valor={item.planoExame.tipoExameId} onChange={() => {}} /> : item.tipo === "AVALIACAO" && item.planoAvaliacao?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO" })} rotulo="Modelo de exame" valor={item.planoAvaliacao.tipoExameId} onChange={() => {}} /> : item.tipo === "TENTATIVA" ? "Material genético" : item.tipo === "RETIRADA" ? "Definido no atendimento" : "Pendente"), quantidade: item.tipo === "RETIRADA" ? "Não se aplica" : item.tipo === "APLICACAO" && item.planoAplicacao?.dose ? `${item.planoAplicacao.dose} ${rotuloUnidade(item.planoAplicacao.unidadeDose)}` : "Pendente" })}
+                  resumoEtapa={itens => ({ referencia: itens.some(item => item.intervalo !== itens[0]?.intervalo || item.unidade !== itens[0]?.unidade) ? "Intervalos distintos" : `${itens[0]?.unidade === "HORAS" ? "H" : "D"}${new Intl.NumberFormat("pt-BR", { useGrouping: false, maximumFractionDigits: 20 }).format(itens[0]?.intervalo ?? 0)}`, procedimentos: itens.map(item => item.nome).join(" · ") })}
                   origem={origemCadastro} itens={etapas} onChange={setEtapas} onCompletoChange={setAcoesCompletas}
                   indiceErro={indiceErroCadastro}
                   criarAcao={(momento, referencia) => ({ chaveEdicao: crypto.randomUUID(), nome: "Aplicação de produto", tipo: "APLICACAO", intervalo: referencia?.intervalo ?? 0, unidade: referencia?.unidade ?? "DIAS", orientacaoTemporal: referencia?.orientacaoTemporal, momento: { ...momento } })}
@@ -112,5 +155,5 @@ export function EditorModeloReprodutivo({ origemCadastro, etapas, setEtapas, set
                     {t.tipo === "APLICACAO" ? camposAplicacao(t, i) : <PlanoEtapa propriedadeId={sitioEfetivo ?? undefined} etapa={t} contratoNovo={contratoNovo} tipoDefinido onChange={novo => setEtapas(es => es.map((acao, j) => j === i ? novo : acao))} />}
                     {podeVerValores && <Button secondary type="button" onClick={() => setReferencias(i)}>Editar referência de serviço</Button>}
                   </div>}
-                />{referencias !== null && etapas[referencias] && <PainelCadastro aberto titulo="Referência de serviço" camada="sobreDetalhe" rascunhoPersistido onFechar={() => setReferencias(null)} rodape={<Button type="button" onClick={() => setReferencias(null)}>Concluir</Button>}><CamposReferenciasCusto direto valor={etapas[referencias].referenciasCusto} material={false} onChange={referenciasCusto => setEtapas(es => es.map((acao,j) => j === referencias ? { ...acao, referenciasCusto } : acao))} /></PainelCadastro>}{catalogo !== null && <PainelCadastro aberto titulo="Catálogo de produtos" camada="sobreDetalhe" rascunhoPersistido onFechar={() => setCatalogo(null)} rodape={<Button type="button" onClick={() => setCatalogo(null)}>Concluir</Button>}><p>O produto do catálogo será adotado ao salvar o protocolo.</p><SeletorProdutoCatalogo rotulo="Produto planejado" uso="sanitario" value={null} onChange={(escolha: ProdutoEscolhido | null) => { if (!escolha) return; setEtapas(es => es.map((acao, i) => i !== catalogo || (escolha.tipo === "catalogo" ? escolha.produtoCatalogoId === acao.planoAplicacao?.produtoCatalogoId : escolha.produtoId === acao.planoAplicacao?.produtoId) ? acao : { ...acao, planoAplicacao: { produtoId: escolha.tipo === "produto" ? escolha.produtoId : "", ...(escolha.tipo === "catalogo" ? { produtoCatalogoId: escolha.produtoCatalogoId, categoriaId: escolha.categoriaSugeridaId ?? undefined, nomeProduto: escolha.nomeCompleto } : { nomeProduto: escolha.nome }), dose: (escolha.tipo === "catalogo" ? escolha.produtoCatalogoId === acao.planoAplicacao?.produtoCatalogoId : escolha.produtoId === acao.planoAplicacao?.produtoId) ? acao.planoAplicacao?.dose ?? "" : "", unidadeDose: (escolha.tipo === "catalogo" ? escolha.produtoCatalogoId === acao.planoAplicacao?.produtoCatalogoId : escolha.produtoId === acao.planoAplicacao?.produtoId) ? acao.planoAplicacao?.unidadeDose ?? "ML" : escolha.tipo === "catalogo" ? escolha.unidadeSugerida : escolha.produto?.unidade ?? "ML" } })); setCatalogo(null); }} /></PainelCadastro>}</>;
+                />{referencias !== null && etapas[referencias] && <PainelCadastro aberto titulo="Referência de serviço" camada="sobreDetalhe" rascunhoPersistido onFechar={() => setReferencias(null)} rodape={<Button type="button" onClick={() => setReferencias(null)}>Concluir</Button>}><CamposReferenciasCusto direto valor={etapas[referencias].referenciasCusto} material={false} onChange={referenciasCusto => setEtapas(es => es.map((acao,j) => j === referencias ? { ...acao, referenciasCusto } : acao))} /></PainelCadastro>}{catalogo !== null && <PainelCadastro aberto titulo="Catálogo de produtos" camada="sobreDetalhe" rascunhoPersistido onFechar={() => setCatalogo(null)} rodape={<Button type="button" onClick={() => setCatalogo(null)}>Concluir</Button>}><p>O produto do catálogo será adotado ao salvar o protocolo.</p><SeletorProdutoCatalogo permitirCadastro={false} limpavel={false} rotulo="Produto planejado" uso="sanitario" value={escolhaCatalogo} onChange={escolherNoCatalogo} /></PainelCadastro>}</>;
 }

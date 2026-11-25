@@ -194,3 +194,11 @@
   .fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-quantidade input[type="number"] { font-size: 16px; }
   .fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-etapa-corpo [data-slot="select-trigger"] { height: 40px; min-height: 40px; font-size: 16px; }
 }
+.fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo [data-slot="dialog-footer"] button:first-child { border-color: #9db6b1; }
+@media (max-width: 500px) {
+  .fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-etapa-corpo { grid-template-columns: minmax(0, 1fr); }
+  .fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-etapa-corpo section > div,
+  .fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-produto { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+  .fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-produto { display: grid; }
+  .fin-cadastro-dialog[data-slot="dialog-content"].quadro-etapa-dialogo .quadro-produto > button { justify-self: start; }
+}

@@ -115,7 +115,7 @@ for (const familia of ["programacoes", "participacoes"] as const) {
     try { return c.json(await consultas.listarMomentosOperacao(contexto(c), await resolverEscopoLeitura(c), consulta(c))); } catch(e) { return falha(c,e); }
   });
   protocolosOperacaoRouter.get(`/${familia}/:id/etapas`, async c => {
-    try { return c.json(await consultas.listarEtapasOperacao(contexto(c), await resolverEscopoLeitura(c), consulta(c))); } catch (e) { return falha(c, e); }
+    try { return c.json(await consultas.listarEtapasOperacao(contexto(c), await resolverEscopoLeitura(c), consulta(c), getUsuario(c))); } catch (e) { return falha(c, e); }
   });
   protocolosOperacaoRouter.get(`/${familia}/:id/tarefas`, async c => {
     try { return c.json(await consultas.listarTarefasOperacao(contexto(c), await resolverEscopoLeitura(c), consulta(c), getUsuario(c))); } catch (e) { return falha(c, e); }

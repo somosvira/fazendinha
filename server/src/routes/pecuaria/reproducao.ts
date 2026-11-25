@@ -70,8 +70,11 @@ export function apresentarV4<T>(c: Context, resultado: T): T {
     c.get("sitioCustosPecuaria") as number | null | undefined,
   );
 }
-function apresentarModeloV4<T>(c: Context, resultado: T): T {
-  return apresentarV4(c, mascararReferenciasModelo(resultado, podeVerValoresFinanceiros(getUsuario(c))));
+function protegerReferenciasModelo<T>(c: Context, resultado: T): T {
+  return mascararReferenciasModelo(resultado, podeVerValoresFinanceiros(getUsuario(c)));
+}
+export function apresentarModeloV4<T>(c: Context, resultado: T): T {
+  return apresentarV4(c, protegerReferenciasModelo(c, resultado));
 }
 export function falhaV4(c: Context, e: unknown) {
   if (e instanceof ValorizacaoError) return c.json({ error: e.message, code: e.code }, e.code === "VALIDACAO" ? 422 : 409);
@@ -473,13 +476,13 @@ export const reproducaoRouter = new Hono()
     try {
       const animalId = z.string().uuid().parse(c.req.query("animalId"));
       const propriedadeId = await resolverEscopoLeitura(c);
-      return c.json(apresentarV4(c, await iatf.listarProgramacoes(propriedadeId, undefined, animalId)));
+      return c.json(apresentarModeloV4(c, await iatf.listarProgramacoes(propriedadeId, undefined, animalId)));
     } catch (e) { return falhaV4(c, e); }
   })
   .get("/programacoes", async (c) => {
     try {
       return c.json(
-        apresentarV4(
+        apresentarModeloV4(
           c,
           await iatf.listarProgramacoes(await resolverEscopoLeitura(c)),
         ),
@@ -501,7 +504,7 @@ export const reproducaoRouter = new Hono()
           "NAO_ENCONTRADO",
           "Programação não encontrada neste sítio",
         );
-      return c.json(apresentarV4(c, item));
+      return c.json(apresentarModeloV4(c, item));
     } catch (e) {
       return falhaV4(c, e);
     }
@@ -586,13 +589,13 @@ export const reproducaoRouter = new Hono()
       try {
         const b = c.req.valid("json");
         return c.json(
-          await iatf.reprogramarTarefa(
+          protegerReferenciasModelo(c, await iatf.reprogramarTarefa(
             c.req.param("id"),
             await resolverEscopoEscrita(c, b.propriedadeId),
             b.previstaEm,
             b.motivo,
             usuarioV4(c),
-          ),
+          )),
         );
       } catch (e) {
         return falhaV4(c, e);
@@ -603,7 +606,7 @@ export const reproducaoRouter = new Hono()
     try {
       const b = c.req.valid("json");
       return c.json(
-        apresentarV4(
+        apresentarModeloV4(
           c,
           await iatf.executarTarefa(
             c.req.param("id"),
@@ -896,7 +899,7 @@ reproducaoRouter.get("/alertas-sanitarios", async c => {
 });
 
 reproducaoRouter.post("/tarefas-iatf/:id/regularizacao",validarV4(s.regularizacaoSchema),async c=>{
-  try{const b=c.req.valid("json");return c.json(apresentarV4(c,await iatf.regularizarTarefa(c.req.param("id"),{...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c))));}catch(e){return falhaV4(c,e);}
+  try{const b=c.req.valid("json");return c.json(apresentarModeloV4(c,await iatf.regularizarTarefa(c.req.param("id"),{...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c))));}catch(e){return falhaV4(c,e);}
 });
 
 reproducaoRouter.get("/tarefas-iatf/:id/substitutos", async c => {

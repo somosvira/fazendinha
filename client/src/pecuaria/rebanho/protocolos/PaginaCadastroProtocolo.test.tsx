@@ -16,8 +16,8 @@ vi.mock("../reproducao/api", () => ({ reqV4: vi.fn() }));
 vi.mock("../sanidade/api", () => ({ reqSanidade: vi.fn() }));
 vi.mock("../../../router", () => ({ navegarPara: vi.fn() }));
 vi.mock("../../../estoque/SeletorProdutoCatalogo", () => ({
-  SeletorProdutoCatalogo: ({ onChange }: { onChange: (v: unknown) => void }) =>
-    <button onClick={() => onChange({ tipo: "catalogo", produtoCatalogoId: "c1", nomeCompleto: "Insumo de catálogo", unidadeSugerida: "ML", categoriaSugeridaId: "cat1" })}>Escolher item de catálogo</button>,
+  SeletorProdutoCatalogo: ({ onChange, value, permitirCadastro, limpavel }: { onChange: (v: unknown) => void; value?: { nomeCompleto?: string; nome?: string } | null; permitirCadastro?: boolean; limpavel?: boolean }) =>
+    <><span data-testid="cadastro-permitido">{String(permitirCadastro)}</span><span data-testid="seletor-limpavel">{String(limpavel)}</span><span>Seleção atual: {value?.nomeCompleto ?? value?.nome ?? "nenhuma"}</span><button onClick={() => onChange({ tipo: "catalogo", produtoCatalogoId: "c1", nomeCompleto: "Insumo de catálogo", unidadeSugerida: "ML", categoriaSugeridaId: "cat1" })}>Escolher item de catálogo</button></>,
 }));
 vi.mock("../../../estoque/api", () => ({ listarCategorias: async () => [{ id: "cat1", nome: "Medicamentos", ativo: true }] }));
 const meta: CadastroProtocoloMeta = { id: "p1", nome: "Controle", tipo: "SANITARIO", finalidade: "SANITARIO", versao: 2, proximaVersao: 5, publicado: true, publicadoEm: "2026-10-01", ativo: true, utilizada: true, atualizadoEm: "2026-10-23T12:00:00Z", descricao: "Descrição da base", totalEtapas: 1 };
@@ -282,7 +282,8 @@ it("preserva o item de catálogo ao digitar a dose no editor de manutenção", a
   fireEvent.click(screen.getByRole("button", { name: "Ver catálogo" }));
   fireEvent.click(screen.getByRole("button", { name: "Escolher item de catálogo" }));
   fireEvent.change(screen.getByLabelText("Dose planejada"), { target: { value: "7" } });
-  expect(screen.getByText(/Insumo de catálogo · será adotado ao salvar/)).toBeTruthy();
+  expect(screen.getByRole("combobox", { name: "Produto planejado" }).textContent).toContain("Insumo de catálogo");
+  expect(screen.getByText(/Produto do catálogo · será adotado ao salvar/)).toBeTruthy();
   expect(screen.getByLabelText("Dose planejada")).toHaveProperty("value", "7");
   expect(screen.getByLabelText("Categoria do produto")).toHaveProperty("value", "cat1");
   fireEvent.click(screen.getByRole("button", { name: "Concluir edição da etapa" }));
@@ -321,4 +322,92 @@ it("começar novamente após trocar a origem invalida o snapshot da identificaç
   expect(within(dialogo).getByLabelText("Nome do protocolo")).toHaveProperty("value", "");
   fireEvent.click(within(dialogo).getByRole("button", { name: "Cancelar" }));
   expect(screen.queryByText(/Modelo antigo/)).toBeNull();
+});
+
+it("sinaliza calendários distintos e apresenta o intervalo do procedimento ativo sem alterá-los", async () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo?base=p1");
+  vi.mocked(obterCadastroProtocolo).mockResolvedValue({ ...meta, tipo: "REPRODUTIVO", finalidade: "PRE_SINCRONIZACAO", totalEtapas: 2 });
+  const momento = { nome: "Preparo", ordem: 1, modoAtendimento: "MANUAL" };
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([
+    { ordem: 1, nome: "Primeiro", tipo: "RETIRADA", intervalo: 3.75, unidade: "DIAS", momento },
+    { ordem: 2, nome: "Segundo", tipo: "RETIRADA", intervalo: 12.5, unidade: "HORAS", momento },
+  ]));
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  expect(await screen.findByText("Intervalos distintos")).toBeTruthy();
+  expect(screen.getAllByText("Definido no atendimento")).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button", { name: "Editar Segundo · Preparo" }));
+  const modal = screen.getByRole("dialog", { name: "Editar etapa · Preparo" });
+  expect(within(modal).getByText("H12,5")).toBeTruthy();
+  expect(within(modal).getByText("Horas")).toBeTruthy();
+  fireEvent.click(within(modal).getByRole("radio", { name: "Primeiro" }));
+  expect(within(modal).getByText("D3,75")).toBeTruthy();
+  expect(within(modal).getByText("Dias")).toBeTruthy();
+  fireEvent.click(within(modal).getByRole("button", { name: "Concluir etapa" }));
+  fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
+  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({ etapas: [expect.objectContaining({ intervalo: 3.75, unidade: "DIAS" }), expect.objectContaining({ intervalo: 12.5, unidade: "HORAS" })] }), "POST", undefined));
+});
+
+it("mantém o produto de catálogo no controle, restaura ao cancelar e permite limpar com foco", async () => {
+  await iniciarZero("REPRODUTIVO");
+  fireEvent.click(screen.getByRole("button", { name: "Editar Aplicação de produto · D0" }));
+  let etapa = screen.getByRole("dialog", { name: "Editar etapa · D0" });
+  const catalogo = within(etapa).getByRole("button", { name: "Ver catálogo" });
+  catalogo.focus();
+  fireEvent.click(catalogo);
+  expect(screen.getByTestId("cadastro-permitido").textContent).toBe("false");
+  expect(screen.getByTestId("seletor-limpavel").textContent).toBe("false");
+  fireEvent.click(screen.getByRole("button", { name: "Escolher item de catálogo" }));
+  await waitFor(() => expect(document.activeElement).toBe(catalogo));
+  expect(within(etapa).getByRole("combobox", { name: "Produto planejado" }).textContent).toContain("Insumo de catálogo");
+  fireEvent.change(within(etapa).getByLabelText("Quantidade por animal"), { target: { value: "2.5" } });
+  await waitFor(() => expect(within(etapa).getByLabelText("Categoria do produto")).toHaveProperty("value", "cat1"));
+  fireEvent.click(within(etapa).getByRole("button", { name: "Concluir etapa" }));
+  fireEvent.click(screen.getByRole("button", { name: "Editar Aplicação de produto · D0" }));
+  etapa = screen.getByRole("dialog", { name: "Editar etapa · D0" });
+  expect(within(etapa).getByRole("combobox", { name: "Produto planejado" }).textContent).toContain("Insumo de catálogo");
+  expect(within(etapa).getByLabelText("Quantidade por animal")).toHaveProperty("value", "2.5");
+  fireEvent.click(within(etapa).getByRole("button", { name: "Limpar Produto planejado" }));
+  expect(document.activeElement).toBe(within(etapa).getByRole("combobox", { name: "Produto planejado" }));
+  fireEvent.click(within(etapa).getByRole("button", { name: "Cancelar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Editar Aplicação de produto · D0" }));
+  etapa = screen.getByRole("dialog", { name: "Editar etapa · D0" });
+  expect(within(etapa).getByRole("combobox", { name: "Produto planejado" }).textContent).toContain("Insumo de catálogo");
+  expect(within(etapa).getByLabelText("Quantidade por animal")).toHaveProperty("value", "2.5");
+  expect(within(etapa).getByLabelText("Categoria do produto")).toHaveProperty("value", "cat1");
+  within(etapa).getByRole("button", { name: "Ver catálogo" }).focus();
+  fireEvent.click(within(etapa).getByRole("button", { name: "Ver catálogo" }));
+  expect(screen.getByText("Seleção atual: Insumo de catálogo")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Escolher item de catálogo" }));
+  await waitFor(() => expect(document.activeElement).toBe(within(etapa).getByRole("button", { name: "Ver catálogo" })));
+  expect(within(etapa).getByLabelText("Quantidade por animal")).toHaveProperty("value", "2.5");
+  expect(within(etapa).getByLabelText("Categoria do produto")).toHaveProperty("value", "cat1");
+  vi.mocked(reqProtocolo).mockImplementation(async path => path.startsWith("/cadastros/opcoes?") ? pagina([{ id: "p2", nome: "Produto da fazenda", unidade: "L" }]) : {});
+  fireEvent.click(within(etapa).getByRole("combobox", { name: "Produto planejado" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Produto da fazenda" }));
+  expect(within(etapa).getByRole("combobox", { name: "Produto planejado" }).textContent).toContain("Produto da fazenda");
+  expect(within(etapa).getByLabelText("Quantidade por animal")).toHaveProperty("value", "");
+  expect(within(etapa).queryByLabelText("Categoria do produto")).toBeNull();
+  fireEvent.click(within(etapa).getByRole("button", { name: "Ver catálogo" }));
+  expect(within(screen.getByRole("dialog", { name: "Catálogo de produtos" })).getByText("Seleção atual: Produto da fazenda")).toBeTruthy();
+});
+
+it("resolve pelo ID o nome do produto da fazenda herdado da versão-base ao abrir o catálogo", async () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo?base=p1");
+  vi.mocked(obterCadastroProtocolo).mockResolvedValue({ ...meta, tipo: "REPRODUTIVO", finalidade: "PRE_SINCRONIZACAO" });
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([{
+    ordem: 1, nome: "Aplicação", tipo: "APLICACAO", intervalo: 0, unidade: "DIAS",
+    planoAplicacao: { produtoId: "fazenda", dose: "3", unidadeDose: "ML" },
+  }]));
+  vi.mocked(reqProtocolo).mockImplementation(async path =>
+    new URL(path, "https://local").searchParams.get("selecionadoId") === "fazenda"
+      ? pagina([{ id: "fazenda", nome: "Produto da versão-base", unidade: "ML" }])
+      : {});
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  fireEvent.click(await screen.findByRole("button", { name: "Editar Aplicação · ação legada" }));
+  const etapa = screen.getByRole("dialog", { name: "Editar etapa · Ação legada" });
+  fireEvent.click(within(etapa).getByRole("button", { name: "Ver catálogo" }));
+  const catalogo = screen.getByRole("dialog", { name: "Catálogo de produtos" });
+  expect(await within(catalogo).findByText("Seleção atual: Produto da versão-base")).toBeTruthy();
+  fireEvent.click(within(catalogo).getByRole("button", { name: "Concluir" }));
+  expect(within(etapa).getByLabelText("Quantidade por animal")).toHaveProperty("value", "3");
 });

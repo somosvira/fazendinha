@@ -83,7 +83,7 @@ O deploy de STG e produção executa apenas migrations (ver [DEPLOY.md](../DEPLO
 - **Cadastrar produto**: ação no seletor e na tela de Produtos, com o formulário atual (`FormProduto`).
 - **Ficha do produto adotado**: campos herdáveis com indicação de origem e ação Restaurar; princípios ativos somente leitura; campos da fazenda editáveis como hoje.
 - **Tela de Produtos (Estoque)**: lista só Meus produtos. Busca no catálogo apenas pelo seletor e pela aba única de consulta "Catálogo" (`/estoque?aba=catalogo`), somente leitura, com produto, fabricante, classificação, uso e situação na fazenda. Fabricantes, classificações e princípios ativos não têm abas próprias; seguem como filtros de Produtos. Links antigos `?aba=fabricantes|classificacoes-tecnicas|principios-ativos` abrem o Catálogo.
-- Estados: carregando, erro com Tentar novamente, busca sem resultado (oferecer Cadastrar produto), conflito de nome na adoção, item do catálogo inativo já adotado.
+- Estados: carregando, erro com Tentar novamente, busca sem resultado, conflito de nome na adoção, item do catálogo inativo já adotado. Fluxos com cadastro avulso oferecem **Cadastrar produto** na busca vazia. No cadastro de modelos reprodutivos, o seletor permite escolher produtos existentes ou itens do catálogo para adoção na gravação da versão.
 
 ## API
 

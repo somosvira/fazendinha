@@ -1,3 +1,7 @@
+import { mascararReferenciasVisita } from "../../services/pecuaria/protocolos/mascarar-referencias.js";
+import { podeVerValoresFinanceiros } from "../../services/pecuaria/custos/permissoes.js";
+import { getUsuario } from "../../middleware/permissao.js";
+import type { Context } from "hono";
 import * as planner from "../../services/pecuaria/reproducao/planner.js";
 import * as selecoes from "../../services/pecuaria/reproducao/selecoes.js";
 import { consultaPlannerSchema, previaSelecaoLivreSchema, previaGrupoPlannerSchema, incluirGrupoPlannerSchema } from "../../services/pecuaria/reproducao/planner.schemas.js";
@@ -14,9 +18,16 @@ import {
   validarV4,
   falhaV4,
   apresentarV4,
+  apresentarModeloV4,
   usuarioV4,
   protegerCustosV4,
 } from "./reproducao.js";
+function protegerReferenciasVisita<T>(c: Context, resultado: T): T {
+  return mascararReferenciasVisita(resultado, podeVerValoresFinanceiros(getUsuario(c)));
+}
+function apresentarVisitaV4<T>(c: Context, resultado: T): T {
+  return apresentarV4(c, protegerReferenciasVisita(c, resultado));
+}
 const envelope = z.object({ propriedadeId: s.sitio }).strict();
 export const visitasRouter = new Hono()
   .use("*", protegerCustosV4)
@@ -35,7 +46,7 @@ export const visitasRouter = new Hono()
       const { data: _data, propriedadeId: _sitio, ...filtros } = c.req.query();
       const criterios = s.criteriosVisitaSchema.parse(filtros);
       return c.json(
-        apresentarV4(
+        apresentarVisitaV4(
           c,
           await visitas.sugestoesVisita(await resolverEscopoLeitura(c), data, criterios),
         ),
@@ -65,18 +76,18 @@ export const visitasRouter = new Hono()
   })
   .get("/agenda", async c => {
     try { const b = consultaPlannerSchema.parse({ ...c.req.query(), propriedadeId: await resolverEscopoLeitura(c) });
-      return c.json(apresentarV4(c, await planner.consultarAgenda(b)));
+      return c.json(apresentarVisitaV4(c, await planner.consultarAgenda(b)));
     } catch (e) { return falhaV4(c, e); }
   })
   .post("/selecoes/previa", validarV4(previaSelecaoLivreSchema), async c => {
     try { const b = c.req.valid("json"); const propriedadeId = s.sitio.parse(await resolverEscopoLeitura(c));
       if (propriedadeId !== b.propriedadeId) throw new z.ZodError([{ code: "custom", path: ["propriedadeId"], message: "Sítio da prévia difere do escopo ativo" }]);
-      return c.json(apresentarV4(c, await planner.previaGrupoPlanner(b)));
+      return c.json(apresentarVisitaV4(c, await planner.previaGrupoPlanner(b)));
     } catch (e) { return falhaV4(c, e); }
   })
   .get("/planner", async c => {
     try { const b=consultaPlannerSchema.parse({ ...c.req.query(), propriedadeId: await resolverEscopoLeitura(c) });
-      return c.json(apresentarV4(c,await planner.consultarPlanner(b)));
+      return c.json(apresentarVisitaV4(c,await planner.consultarPlanner(b)));
     } catch(e) { return falhaV4(c,e); }
   })
   .get("/planner/previa", async c => {
@@ -86,23 +97,23 @@ export const visitasRouter = new Hono()
       try { grupo = JSON.parse(consulta.grupo ?? "null"); }
       catch { throw new z.ZodError([{ code: "custom", path: ["grupo"], message: "Grupo inválido" }]); }
       const b = previaGrupoPlannerSchema.parse({ ...consulta, grupo, propriedadeId: await resolverEscopoLeitura(c) });
-      return c.json(apresentarV4(c, await planner.previaGrupoPlanner(b)));
+      return c.json(apresentarVisitaV4(c, await planner.previaGrupoPlanner(b)));
     } catch (e) { return falhaV4(c, e); }
   })
   .post("/planner/previa", validarV4(previaGrupoPlannerSchema), async c => {
-    try { const b=c.req.valid("json"); return c.json(apresentarV4(c,await planner.previaGrupoPlanner({ ...b,
+    try { const b=c.req.valid("json"); return c.json(apresentarVisitaV4(c,await planner.previaGrupoPlanner({ ...b,
       propriedadeId: await resolverEscopoEscrita(c,b.propriedadeId) })));
     } catch(e) { return falhaV4(c,e); }
   })
   .post("/:id/grupos", validarV4(incluirGrupoPlannerSchema), async c => {
-    try { const b=c.req.valid("json"); return c.json(apresentarV4(c,await planner.incluirGrupoPlanner(s.uuid.parse(c.req.param("id")),{ ...b,
+    try { const b=c.req.valid("json"); return c.json(apresentarVisitaV4(c,await planner.incluirGrupoPlanner(s.uuid.parse(c.req.param("id")),{ ...b,
       propriedadeId: await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c))),201);
     } catch(e) { return falhaV4(c,e); }
   })
   .get("/:id", async (c) => {
     try {
       return c.json(
-        apresentarV4(
+        apresentarVisitaV4(
           c,
           c.req.query("resumo")==="true" ? await resumoVisita(s.uuid.parse(c.req.param("id")),await resolverEscopoLeitura(c)) : await visitas.detalheVisita(
             c.req.param("id"),
@@ -135,14 +146,14 @@ export const visitasRouter = new Hono()
     try {
       const b = c.req.valid("json");
       return c.json(
-        await visitas.adicionarAtividade(
+        protegerReferenciasVisita(c, await visitas.adicionarAtividade(
           c.req.param("id"),
           {
             ...b,
             propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId),
           },
           usuarioV4(c),
-        ),
+        )),
         201,
       );
     } catch (e) {
@@ -160,7 +171,7 @@ export const visitasRouter = new Hono()
       try {
         const b = c.req.valid("json");
         return c.json(
-          apresentarV4(
+          apresentarVisitaV4(
             c,
             await visitas.salvarRascunho(
               c.req.param("id"),
@@ -184,7 +195,7 @@ export const visitasRouter = new Hono()
       try {
         const b = c.req.valid("json");
         return c.json(
-          apresentarV4(
+          apresentarVisitaV4(
             c,
             await visitas.confirmarAtividade(
               c.req.param("id"),
@@ -206,7 +217,7 @@ export const visitasRouter = new Hono()
     try {
       const b = c.req.valid("json");
       return c.json(
-        apresentarV4(
+        apresentarVisitaV4(
           c,
           await visitas.imprimirVisita(
             c.req.param("id"),
@@ -237,32 +248,32 @@ export const visitasRouter = new Hono()
 visitasRouter.get("/:id/atividades/:atividadeId/previa", async (c) => {
   try {
     return c.json(
-      await visitas.previaAtividade(
+      protegerReferenciasVisita(c, await visitas.previaAtividade(
         c.req.param("id"),
         c.req.param("atividadeId"),
         await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId"))),
         {...Object.fromEntries(Object.entries(c.req.query()).filter(([k])=>k!=="propriedadeId"&&k!=="participanteId")),...(c.req.queries("participanteId")?.length?{participanteIds:c.req.queries("participanteId")}:{})},
-      ),
+      )),
     );
   } catch (e) {
     return falhaV4(c, e);
   }
 });
 visitasRouter.get("/:id/atividades/:atividadeId/confirmacoes/:chave",async c=>{
-  try{const {propriedadeId:_sitio,...consulta}=c.req.query();return c.json(await visitas.obterConfirmacaoVisita(c.req.param("id"),c.req.param("atividadeId"),c.req.param("chave"),await resolverEscopoEscrita(c,Number(c.req.query("propriedadeId"))),usuarioV4(c),consulta));}catch(e){return falhaV4(c,e);}
+  try{const {propriedadeId:_sitio,...consulta}=c.req.query();return c.json(protegerReferenciasVisita(c,await visitas.obterConfirmacaoVisita(c.req.param("id"),c.req.param("atividadeId"),c.req.param("chave"),await resolverEscopoEscrita(c,Number(c.req.query("propriedadeId"))),usuarioV4(c),consulta)));}catch(e){return falhaV4(c,e);}
 });
 
 visitasRouter.get("/:id/atividades/:atividadeId/participantes",async c=>{
- try {const {motivo:_motivo,propriedadeId:_sitio,...query}=c.req.query();return c.json(apresentarV4(c,await listarParticipantesAtividade(s.uuid.parse(c.req.param("id")),s.uuid.parse(c.req.param("atividadeId")),await resolverEscopoLeitura(c),{...query,motivos:c.req.queries("motivo")??[]})));} catch(e){return falhaV4(c,e);}
+ try {const {motivo:_motivo,propriedadeId:_sitio,...query}=c.req.query();return c.json(apresentarVisitaV4(c,await listarParticipantesAtividade(s.uuid.parse(c.req.param("id")),s.uuid.parse(c.req.param("atividadeId")),await resolverEscopoLeitura(c),{...query,motivos:c.req.queries("motivo")??[]})));} catch(e){return falhaV4(c,e);}
 });
 visitasRouter.get("/:id/impressoes/:impressaoId",async c=>{
- try{return c.json(apresentarV4(c,await obterImpressaoVisita(s.uuid.parse(c.req.param("id")),s.uuid.parse(c.req.param("impressaoId")),await resolverEscopoLeitura(c))));}catch(e){return falhaV4(c,e);}
+ try{return c.json(apresentarVisitaV4(c,await obterImpressaoVisita(s.uuid.parse(c.req.param("id")),s.uuid.parse(c.req.param("impressaoId")),await resolverEscopoLeitura(c))));}catch(e){return falhaV4(c,e);}
 });
 visitasRouter.get("/:id/participantes/:participanteId",async c=>{
- try{return c.json(apresentarV4(c,await obterParticipanteVisita(s.uuid.parse(c.req.param("id")),s.uuid.parse(c.req.param("participanteId")),await resolverEscopoLeitura(c))));}catch(e){return falhaV4(c,e);}
+ try{return c.json(apresentarVisitaV4(c,await obterParticipanteVisita(s.uuid.parse(c.req.param("id")),s.uuid.parse(c.req.param("participanteId")),await resolverEscopoLeitura(c))));}catch(e){return falhaV4(c,e);}
 });
 visitasRouter.post("/:id/participantes/:participanteId/regularizacao",validarV4(s.regularizacaoSchema),async c=>{
-  try{const b=c.req.valid("json");return c.json(apresentarV4(c,await visitas.regularizarParticipanteVisita(c.req.param("id"),c.req.param("participanteId"),{...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c))));}catch(e){return falhaV4(c,e);}
+  try{const b=c.req.valid("json");return c.json(apresentarVisitaV4(c,await visitas.regularizarParticipanteVisita(c.req.param("id"),c.req.param("participanteId"),{...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c))));}catch(e){return falhaV4(c,e);}
 });
 
 visitasRouter.get("/:id/participantes/:participanteId/substitutos", async c => {
@@ -272,9 +283,10 @@ visitasRouter.get("/:id/participantes/:participanteId/substitutos", async c => {
 
 visitasRouter.get("/:id/participantes/:participanteId/tarefa", async c => {
   try {
-    return c.json(apresentarV4(c, await visitas.tarefaParticipanteVisita(
+    const tarefa = await visitas.tarefaParticipanteVisita(
       s.uuid.parse(c.req.param("id")), s.uuid.parse(c.req.param("participanteId")),
       s.sitio.parse(await resolverEscopoLeitura(c)),
-    )));
+    );
+    return c.json(tarefa.origem === "REPRODUTIVA" ? apresentarModeloV4(c, tarefa) : apresentarVisitaV4(c, tarefa));
   } catch (e) { return falhaV4(c, e); }
 });
