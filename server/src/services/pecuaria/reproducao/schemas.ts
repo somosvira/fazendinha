@@ -32,15 +32,16 @@ export const planoAplicacaoIatfSchema = z.object({ produtoId: uuid.optional(), p
 export const planoTentativaIatfSchema = z.object({ tipo: z.enum(["IA", "TE"]), materialId: uuid, quantidade: z.number().positive().max(99999999) }).strict();
 export const planoAvaliacaoIatfSchema = z.object({ tipoExameId: uuid.optional(), tipo: z.enum(["DIAGNOSTICO", "RECONFIRMACAO", "SEXAGEM"]) }).strict();
 export const orientacaoTemporalSchema = z.object({versao:z.literal(1),referencia:z.enum(["INICIO_EFETIVO","ETAPA_ANTERIOR"]),intervaloHoras:z.number().nonnegative().max(24000),toleranciaAntesMinutos:z.number().int().nonnegative().max(10080),toleranciaDepoisMinutos:z.number().int().nonnegative().max(10080),efeito:z.literal("ALERTA")}).strict();
-export const etapaIatfSchema = z.object({ referenciaPrazoDiagnostico: z.literal(true).optional(), referenciasCusto: referenciasCustoSchema.optional(), momento: momentoAcaoSchema.optional(), subtipo: z.enum(["APLICACAO", "INSERCAO_DISPOSITIVO"]).optional(), tentativaTipo: z.enum(["IA", "TE"]).optional(), nome: z.string().trim().min(1).max(120), tipo: z.enum(["APLICACAO", "MANEJO", "RETIRADA", "TENTATIVA", "AVALIACAO", "EXAME"]), intervalo: z.number().nonnegative().max(10000), unidade: z.enum(["DIAS", "HORAS"]), orientacaoTemporal:orientacaoTemporalSchema.optional(), planoAplicacao: planoAplicacaoIatfSchema.optional(), planoTentativa: planoTentativaIatfSchema.optional(), planoExame: z.object({ tipoExameId: uuid }).strict().optional(), planoAvaliacao: planoAvaliacaoIatfSchema.optional() }).strict().superRefine((etapa,ctx)=>{
+export const etapaIatfSchema = z.object({ referenciaPrazoDiagnostico: z.literal(true).optional(), referenciaPrazoReconfirmacao: z.literal(true).optional(), referenciasCusto: referenciasCustoSchema.optional(), momento: momentoAcaoSchema.optional(), subtipo: z.enum(["APLICACAO", "INSERCAO_DISPOSITIVO"]).optional(), tentativaTipo: z.enum(["IA", "TE", "COBERTURA"]).optional(), nome: z.string().trim().min(1).max(120), tipo: z.enum(["APLICACAO", "MANEJO", "RETIRADA", "TENTATIVA", "AVALIACAO", "EXAME"]), intervalo: z.number().nonnegative().max(10000), unidade: z.enum(["DIAS", "HORAS"]), orientacaoTemporal:orientacaoTemporalSchema.optional(), planoAplicacao: planoAplicacaoIatfSchema.optional(), planoTentativa: planoTentativaIatfSchema.optional(), planoExame: z.object({ tipoExameId: uuid }).strict().optional(), planoAvaliacao: planoAvaliacaoIatfSchema.optional() }).strict().superRefine((etapa,ctx)=>{
   if (etapa.referenciaPrazoDiagnostico && (etapa.tipo !== "AVALIACAO" || etapa.planoAvaliacao?.tipo !== "DIAGNOSTICO")) ctx.addIssue({code:"custom",path:["referenciaPrazoDiagnostico"],message:"A referência factual exige avaliação de diagnóstico"});
+  if (etapa.referenciaPrazoReconfirmacao && (etapa.tipo !== "AVALIACAO" || etapa.planoAvaliacao?.tipo !== "RECONFIRMACAO")) ctx.addIssue({code:"custom",path:["referenciaPrazoReconfirmacao"],message:"A referência factual exige avaliação de reconfirmação"});
   if (etapa.tentativaTipo && etapa.tipo !== "TENTATIVA") ctx.addIssue({code:"custom",path:["tentativaTipo"],message:"Tipo de tentativa exige ação de tentativa"});
   if (etapa.momento?.modoAtendimento === "AUTOMATIZADA" && ["TENTATIVA", "AVALIACAO", "EXAME"].includes(etapa.tipo)) ctx.addIssue({code:"custom",path:["momento","modoAtendimento"],message:"Exames e tentativas exigem atendimento manual"});
   if (etapa.referenciasCusto?.material && !["APLICACAO", "TENTATIVA"].includes(etapa.tipo)) ctx.addIssue({code:"custom",path:["referenciasCusto","material"],message:"Ação não utiliza material planejado"});
   if (etapa.subtipo && etapa.tipo !== "APLICACAO") ctx.addIssue({ code:"custom",path:["subtipo"],message:"Subtipo de aplicação exige ação de aplicação" });
   for(const [campo,tipo] of [["planoExame","EXAME"],["planoAplicacao","APLICACAO"],["planoTentativa","TENTATIVA"],["planoAvaliacao","AVALIACAO"]] as const) if(etapa[campo] && etapa.tipo!==tipo)ctx.addIssue({code:"custom",path:[campo],message:"Planejamento incompatível com a ação da etapa"});
 });
-export const protocoloSchema = z.object({ configuracaoAcompanhamento: parametrosAcompanhamentoV2Schema.nullish(), modalidadeTentativa: z.enum(["ETAPA", "EXTERNA"]).nullish(), modalidadeDiagnostico: z.enum(["PROTOCOLO", "EXTERNO"]).nullish(), finalidade: z.enum(["PRE_SINCRONIZACAO", "IATF", "TETF"]).nullish(), origemVersaoId:uuid.optional(), descricao: texto, nome: z.string().trim().min(2).max(120), versao: z.number().int().positive(), publicado: z.boolean().default(false), etapas: z.array(etapaIatfSchema).min(1).max(100) }).strict().superRefine((protocolo,ctx)=>{
+export const protocoloSchema = z.object({ encerramentoGuiado: z.literal(true).optional(), configuracaoAcompanhamento: parametrosAcompanhamentoV2Schema.nullish(), modalidadeTentativa: z.enum(["ETAPA", "EXTERNA"]).nullish(), modalidadeDiagnostico: z.enum(["PROTOCOLO", "EXTERNO"]).nullish(), finalidade: z.enum(["PRE_SINCRONIZACAO", "IATF", "TETF"]).nullish(), origemVersaoId:uuid.optional(), descricao: texto, nome: z.string().trim().min(2).max(120), versao: z.number().int().positive(), publicado: z.boolean().default(false), etapas: z.array(etapaIatfSchema).min(1).max(100) }).strict().superRefine((protocolo,ctx)=>{
   const builder = protocolo.finalidade != null;
   const dependentes = protocolo.etapas.filter(e => e.referenciaPrazoDiagnostico);
   if (dependentes.length) {
@@ -49,19 +50,31 @@ export const protocoloSchema = z.object({ configuracaoAcompanhamento: parametros
     const regra = protocolo.configuracaoAcompanhamento?.regras.find(r => r.finalidade === "DIAGNOSTICO" && r.publico === publico);
     if (regra?.tipoExameId && dependentes[0] && regra.tipoExameId !== (dependentes[0].planoAvaliacao?.tipoExameId ?? TIPO_EXAME_REPRODUTIVO)) ctx.addIssue({code:"custom",path:["configuracaoAcompanhamento"],message:"O exame da regra de diagnóstico deve corresponder ao exame da ação"});
   }
+  const reconfirmacoes = protocolo.etapas.filter(e => e.referenciaPrazoReconfirmacao);
+  if (reconfirmacoes.length && (reconfirmacoes.length !== 1 || !["IATF", "TETF"].includes(protocolo.finalidade ?? "") || !protocolo.configuracaoAcompanhamento?.regras.some(r => r.finalidade === "RECONFIRMACAO" && r.ocorrencia === 1))) ctx.addIssue({code:"custom",path:["configuracaoAcompanhamento"],message:"A reconfirmação dependente exige uma regra de primeiro DG positivo"});
+  if (reconfirmacoes.length && (reconfirmacoes[0].planoAvaliacao?.tipoExameId || protocolo.configuracaoAcompanhamento?.regras.some(r => r.finalidade === "RECONFIRMACAO" && r.ocorrencia === 1 && r.tipoExameId))) ctx.addIssue({code:"custom",path:["configuracaoAcompanhamento"],message:"A reconfirmação guiada usa a avaliação reprodutiva padrão"});
   protocolo.etapas.forEach((etapa, i) => {
     if (builder && etapa.tipo === "MANEJO") ctx.addIssue({ code: "custom", path: ["etapas", i, "tipo"], message: "O novo builder não oferece procedimentos livres" });
     if (builder && etapa.planoTentativa) ctx.addIssue({ code: "custom", path: ["etapas", i, "planoTentativa"], message: "Material genético é definido na realização, sem plano fixo no builder" });
-    if (builder && etapa.tipo === "TENTATIVA" && !etapa.tentativaTipo) ctx.addIssue({ code: "custom", path: ["etapas", i, "tentativaTipo"], message: "Declare IA ou TE para esta ação" });
+    if (builder && etapa.tipo === "TENTATIVA" && !etapa.tentativaTipo) ctx.addIssue({ code: "custom", path: ["etapas", i, "tentativaTipo"], message: "Declare IA, TE ou cobertura para esta ação" });
   });
   if ((protocolo.modalidadeTentativa == null) !== (protocolo.modalidadeDiagnostico == null)) ctx.addIssue({ code: "custom", path: ["modalidadeDiagnostico"], message: "Declare as duas modalidades" });
   if (protocolo.modalidadeTentativa && !["IATF", "TETF"].includes(protocolo.finalidade ?? "")) ctx.addIssue({ code: "custom", path: ["modalidadeTentativa"], message: "Modalidades disponíveis para IATF ou TETF" });
   if(!protocolo.publicado)return;
   if (!builder && !protocolo.etapas.some(e=>e.tipo==="TENTATIVA")) ctx.addIssue({code:"custom",path:["etapas"],message:"Protocolo publicado exige etapa de tentativa planejada"});
+  if (protocolo.encerramentoGuiado && ["IATF", "TETF"].includes(protocolo.finalidade ?? "") && protocolo.modalidadeTentativa !== "EXTERNA") {
+    const tentativas = protocolo.etapas.flatMap((etapa, i) => etapa.tipo === "TENTATIVA" ? [i] : []);
+    if (tentativas.length !== 1) ctx.addIssue({code:"custom",path:["etapas"],message:"Inclua exatamente uma tentativa interna"});
+    else {
+      const indice = tentativas[0];
+      const tentativa = protocolo.etapas[indice];
+      const horas = (etapa: typeof tentativa) => etapa.intervalo * (etapa.unidade === "DIAS" ? 24 : 1);
+      if (protocolo.etapas.some((etapa, i) => etapa.tipo !== "AVALIACAO" && i !== indice && (horas(etapa) > horas(tentativa) || horas(etapa) === horas(tentativa) && i > indice))) ctx.addIssue({code:"custom",path:["etapas",indice],message:"A tentativa deve ser a última ação antes das avaliações"});
+    }
+  }
   const tentativaExigida = protocolo.finalidade === "IATF" ? "IA" : protocolo.finalidade === "TETF" ? "TE" : null;
-  if (tentativaExigida && protocolo.modalidadeTentativa !== "EXTERNA" && !protocolo.etapas.some(e => e.tipo === "TENTATIVA" && e.tentativaTipo === tentativaExigida)) ctx.addIssue({ code: "custom", path: ["etapas"], message: `Finalidade ${protocolo.finalidade} exige ao menos uma ação ${tentativaExigida}` });
+  if (tentativaExigida && protocolo.modalidadeTentativa !== "EXTERNA" && !protocolo.etapas.some(e => e.tipo === "TENTATIVA" && e.tentativaTipo)) ctx.addIssue({ code: "custom", path: ["etapas"], message: "Inclua uma ação de tentativa reprodutiva" });
   if (tentativaExigida && protocolo.modalidadeTentativa === "EXTERNA" && protocolo.etapas.some(e => e.tipo === "TENTATIVA")) ctx.addIssue({ code: "custom", path: ["etapas"], message: "Tentativa externa não pode ser etapa do modelo" });
-  if (tentativaExigida && protocolo.etapas.some(e => e.tipo === "TENTATIVA" && e.tentativaTipo !== tentativaExigida)) ctx.addIssue({ code: "custom", path: ["etapas"], message: `Tentativa incompatível com ${protocolo.finalidade}` });
   const temDg = protocolo.etapas.some(e => e.tipo === "AVALIACAO" && e.planoAvaliacao?.tipo === "DIAGNOSTICO");
   if (protocolo.modalidadeDiagnostico === "PROTOCOLO" && !temDg) ctx.addIssue({ code: "custom", path: ["etapas"], message: "Inclua uma avaliação de diagnóstico no protocolo" });
   if (protocolo.modalidadeDiagnostico === "EXTERNO" && temDg) ctx.addIssue({ code: "custom", path: ["etapas"], message: "Diagnóstico externo não pode ser etapa do modelo" });

@@ -40,7 +40,7 @@ it("oculta referência provisória nas leituras da etapa e tarefa e desativa adi
   const filtro=consultaOperacaoSchema.parse({});
   const r=await listarTarefasOperacao({programacaoId:id},1,filtro,{dono:true,areas:[],flags:[]});
   expect(r.itens[0]).toMatchObject({
-    previstaPara:null,previsaoOriginal:null,previsaoPendente:true,acoes:{adiar:false,atender:true},
+    previstaPara:null,previsaoOriginal:null,previsaoPendente:true,acoes:{adiar:false,atender:false},
     tarefaOrigem:{previstaEm:null,previstaPara:null,previsaoOriginal:null,planejadoSnapshot:{previstaEm:null,previsaoOriginal:null,inicioReferencia:"2026-10-01"}},
   });
   banco.tx.etapaProtocolo.count.mockResolvedValue(1);

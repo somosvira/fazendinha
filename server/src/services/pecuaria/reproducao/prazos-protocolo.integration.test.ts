@@ -32,7 +32,7 @@ banco("prazos e revisões no PostgreSQL autorizado",()=>{
    const tarefa=await tx.tarefaProtocolo.create({data:{execucaoId:participacao.id,etapaId:etapa.id,previstaPara:dia("2026-01-01")}});
    const tarefaDg=await tx.tarefaProtocolo.create({data:{execucaoId:participacao.id,etapaId:etapaDg.id,previstaPara:dia("2026-01-01"),previsaoOriginal:dia("2026-01-01"),precisaoTemporal:"DIA",previsaoPendente:true,parametros:{previsaoOriginal:"2026-01-01",previsaoPendente:true}}});
    const tarefaConvencional=await tx.tarefaProtocolo.create({data:{id:`00000000-0000-4000-8000-${randomUUID().slice(-12)}`,execucaoId:participacao.id,etapaId:etapaConvencional.id,previstaPara:dia("2026-01-01"),precisaoTemporal:"DIA"}});
-   await expect(registrarEventoTarefaTx(tx,tarefaDg.id,{chave:randomUUID(),propriedadeId:sitio.id,tipo:"ADIAMENTO",ocorridaEm:"2026-01-01T12:00:00Z",motivo:"Tentativa ainda pendente",previstaPara:"2026-02-01"},null)).rejects.toThrow("O diagnóstico aguarda a tentativa vinculada");
+   await expect(registrarEventoTarefaTx(tx,tarefaDg.id,{chave:randomUUID(),propriedadeId:sitio.id,tipo:"ADIAMENTO",ocorridaEm:"2026-01-01T12:00:00Z",motivo:"Tentativa ainda pendente",previstaPara:"2026-02-01"},null)).rejects.toThrow("A avaliação aguarda o fato de referência");
    expect(await tx.eventoTarefaProtocolo.count({where:{tarefaId:tarefaDg.id}})).toBe(0);
    const tentativa=await tx.tentativaReprodutiva.create({data:{animalId:animal.id,propriedadeId:sitio.id,tarefaId:tarefa.id,data:dia("2026-01-01"),tipo:"TE",ciclo:1,ordem:1,origemMaterial:"DOCUMENTADA",geneticaSnapshot:{}}});
    await criarDemandasDoFatoTx(tx,{tentativaId:tentativa.id,tipoTentativa:"TE",animalId:animal.id,propriedadeId:sitio.id,data:tentativa.data},null,undefined,participacao.id);
@@ -73,6 +73,42 @@ banco("prazos e revisões no PostgreSQL autorizado",()=>{
    await criarDemandasDoFatoTx(tx,{tentativaId:outraTentativa.id,tipoTentativa:"TE",animalId:outroAnimal.id,propriedadeId:sitio.id,data:outraTentativa.data},null,undefined,outraParticipacao.id);
    expect(await tx.demandaAcompanhamentoReprodutivo.findFirstOrThrow({where:{tentativaId:outraTentativa.id}})).toMatchObject({origemAdocao:"SEM_REGRA",previstaPara:null,regraSnapshot:{motivo:"REGRA_NAO_CONFIGURADA"}});
    await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
+   throw cancelar;
+  },{timeout:30000})).rejects.toBe(cancelar);
+ });
+});
+
+banco("reconfirmação factual no PostgreSQL autorizado",()=>{
+ it("aguarda DG separado positivo, vincula uma vez e revoga previsão quando a prova é invalidada",async()=>{
+  exigirBancoIntegracaoPecuaria();
+  const marca=`qa-reconfirmacao-${randomUUID()}`, cancelar=new Error("reverter fixture");
+  await expect(prisma.$transaction(async tx=>{
+   const sitio=await tx.propriedade.create({data:{nome:marca}});
+   const animal=await tx.animal.create({data:{brinco:marca,sexo:"F",origem:"COMPRADO",dataNascimento:dia("2023-01-01"),dataEntrada:dia("2024-01-01"),localizacoes:{create:{propriedadeId:sitio.id,desde:dia("2024-01-01")}}}});
+   const regraRec={finalidade:"RECONFIRMACAO",ocorrencia:1,publico:"GESTACAO",referencia:"PRIMEIRO_DG_POSITIVO",intervalo:20,unidade:"DIAS",antecedencia:0,tolerancia:0,resolucao:"RECONFIRMACAO_CONCLUSIVA"};
+   const config={versao:2,efeito:"ALERTA",regras:[regraRec]};
+   const modelo=await tx.protocolo.create({data:{nome:marca,tipo:"REPRODUTIVO",finalidade:"IATF",modalidadeTentativa:"ETAPA",modalidadeDiagnostico:"EXTERNO",configuracaoAcompanhamento:json(config)}});
+   const tentativaEtapa=await tx.etapaProtocolo.create({data:{protocoloId:modelo.id,ordem:1,nome:"IA",tipo:"TENTATIVA",diaRelativo:0,configuracao:{tipo:"TENTATIVA",tentativaTipo:"IA"}}});
+   const recEtapa=await tx.etapaProtocolo.create({data:{protocoloId:modelo.id,ordem:2,nome:"Reconfirmação",tipo:"EXAME",diaRelativo:0,configuracao:{tipo:"AVALIACAO",referenciaPrazoReconfirmacao:true,planoAvaliacao:{tipo:"RECONFIRMACAO"}}}});
+   const snapshot={versao:1,protocoloId:modelo.id,protocoloVersao:modelo.versao,diagnosticoIndividualEm:null,modelo:config,sitio:null};
+   const participacao=await tx.participacaoProtocolo.create({data:{protocoloId:modelo.id,animalId:animal.id,propriedadeId:sitio.id,inicio:dia("2026-01-01"),acompanhamentoSnapshot:json(snapshot)}});
+   const tentativaTarefa=await tx.tarefaProtocolo.create({data:{execucaoId:participacao.id,etapaId:tentativaEtapa.id,previstaPara:dia("2026-01-01")}});
+   const rec=await tx.tarefaProtocolo.create({data:{execucaoId:participacao.id,etapaId:recEtapa.id,previstaPara:dia("2026-01-01"),previsaoPendente:true,parametros:{previsaoPendente:true}}});
+   const tentativa=await tx.tentativaReprodutiva.create({data:{animalId:animal.id,propriedadeId:sitio.id,tarefaId:tentativaTarefa.id,data:dia("2026-01-10"),tipo:"IA",ciclo:1,ordem:1,origemMaterial:"DOCUMENTADA",geneticaSnapshot:{}}});
+   await reconciliarDemandasAnimalTx(tx,animal.id,null);
+   expect(await tx.tarefaProtocolo.findUniqueOrThrow({where:{id:rec.id}})).toMatchObject({previsaoPendente:true});
+   const gestacao=await tx.gestacaoAnimal.create({data:{animalId:animal.id,propriedadeId:sitio.id,tentativaId:tentativa.id,confirmadaEm:dia("2026-02-01")}});
+   const tipo=await tx.tipoExame.create({data:{nome:marca,tipoResultado:"MULTIPLO",contexto:"REPRODUTIVO",campos:[{codigo:"CONCLUSAO_GESTACIONAL",tipo:"OPCAO",opcoes:["POSITIVO","NEGATIVO","INCONCLUSIVO"]}]}});
+   const exame=await tx.exameAnimal.create({data:{animalId:animal.id,propriedadeId:sitio.id,tipoExameId:tipo.id,data:dia("2026-02-01"),finalidades:["DIAGNOSTICO"],finalidadePrincipal:"DIAGNOSTICO",formatoSnapshot:{nome:marca,tipoResultado:"MULTIPLO",versao:1},interpretacao:{create:{tentativaId:tentativa.id,gestacaoId:gestacao.id}},resultados:{create:{campo:"CONCLUSAO_GESTACIONAL",valor:"POSITIVO"}}}});
+   const origem={gestacaoId:gestacao.id,animalId:animal.id,propriedadeId:sitio.id,data:exame.data,exameOrigemId:exame.id};
+   await criarDemandasDoFatoTx(tx,origem,null); await criarDemandasDoFatoTx(tx,origem,null);
+   await reconciliarDemandasAnimalTx(tx,animal.id,null); await reconciliarDemandasAnimalTx(tx,animal.id,null);
+   expect(await tx.demandaAcompanhamentoReprodutivo.count({where:{gestacaoId:gestacao.id,finalidade:"RECONFIRMACAO"}})).toBe(1);
+   expect(await tx.tarefaProtocolo.findUniqueOrThrow({where:{id:rec.id}})).toMatchObject({previsaoPendente:false,previstaPara:dia("2026-02-21")});
+   expect(await tx.demandaAcompanhamentoReprodutivo.findFirstOrThrow({where:{gestacaoId:gestacao.id}})).toMatchObject({tarefaId:rec.id,exameOrigemId:exame.id});
+   await tx.exameAnimal.update({where:{id:exame.id},data:{status:"ANULADO",anuladoEm:new Date(),motivoAnulacao:"Correção de evidência de teste"}});
+   await reconciliarDemandasAnimalTx(tx,animal.id,null);
+   expect(await tx.tarefaProtocolo.findUniqueOrThrow({where:{id:rec.id}})).toMatchObject({previsaoPendente:true});
    throw cancelar;
   },{timeout:30000})).rejects.toBe(cancelar);
  });

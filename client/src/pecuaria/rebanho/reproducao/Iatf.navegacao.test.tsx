@@ -34,7 +34,7 @@ it.each(["IA", "TE"] as const)("cria modelo %s com procedimentos no mesmo calend
   mudarCampo(screen.getByLabelText("Nome do protocolo"), { target: { value: "Modelo genético" } });
   mudarCampo(screen.getByLabelText("Finalidade"), { target: { value: tentativaTipo === "IA" ? "IATF" : "TETF" } });
   mudarCampo(screen.getByLabelText("Tentativa"), { target: { value: "ETAPA" } });
-  mudarCampo(screen.getByLabelText("Diagnóstico de gestação"), { target: { value: "EXTERNO" } });
+  expect(screen.getByLabelText("Diagnóstico de gestação (DG)")).toHaveProperty("value", "EXTERNO");
   avancarParaEtapas();
   fireEvent.click(await screen.findByRole("button", { name: tentativaTipo === "IA" ? /Editar Inseminação/ : /Editar Transferência de embrião/ }));
   fireEvent.click(screen.getByRole("button", { name: "Voltar aos dados" }));
@@ -51,8 +51,8 @@ it.each(["IA", "TE"] as const)("cria modelo %s com procedimentos no mesmo calend
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({ etapas: expect.any(Array) }), "POST", 7));
   const [, body] = vi.mocked(reqV4).mock.calls.find(([path, body]) => path === "/reproducao/protocolos" && !!body)!;
   expect(body).toMatchObject({ modalidadeTentativa: "ETAPA", modalidadeDiagnostico: "EXTERNO", etapas: [
-    { tipo: "TENTATIVA", tentativaTipo, intervalo: 10.5, unidade: "HORAS", momento: { ordem: 1, modoAtendimento: "MANUAL", instrucoesGerais: "Registrar o material por animal ou grupo." } },
     { tipo: "RETIRADA", intervalo: 10.5, unidade: "HORAS", momento: { ordem: 1 } },
+    { tipo: "TENTATIVA", tentativaTipo, intervalo: 10.5, unidade: "HORAS", momento: { ordem: 2, modoAtendimento: "MANUAL", instrucoesGerais: "Registrar o material por animal ou grupo." } },
   ] });
   expect(JSON.stringify(body)).not.toContain("materialGeneticoId");
 });
@@ -78,7 +78,7 @@ it.each(["Editar rascunho","Nova versão"])("%s envia apenas parâmetros editáv
   await screen.findByDisplayValue("Modelo");
   mudarCampo(screen.getByLabelText("Finalidade"), { target: { value: "IATF" } });
   mudarCampo(screen.getByLabelText("Tentativa"), { target: { value: "EXTERNA" } });
-  mudarCampo(screen.getByLabelText("Diagnóstico de gestação"), { target: { value: "PROTOCOLO" } });
+  mudarCampo(screen.getByLabelText("Diagnóstico de gestação (DG)"), { target: { value: "PROTOCOLO" } });
   mudarCampo(screen.getByLabelText("Dias após a tentativa"), { target: { value: "30" } });
   avancarParaEtapas();
   avancarParaConferencia();
@@ -127,7 +127,10 @@ it.each(["PRE_SINCRONIZACAO", "IATF", "TETF"] as const)("publicação valida a f
   comecarZero();
   mudarCampo(screen.getByLabelText("Nome do protocolo"), { target: { value: "Nome não classifica finalidade" } });
   mudarCampo(screen.getByLabelText("Finalidade"), { target: { value: finalidade } });
-  if (finalidade !== "PRE_SINCRONIZACAO") { mudarCampo(screen.getByLabelText("Tentativa"), { target: { value: "ETAPA" } }); mudarCampo(screen.getByLabelText("Diagnóstico de gestação"), { target: { value: "EXTERNO" } }); }
+  if (finalidade !== "PRE_SINCRONIZACAO") {
+    mudarCampo(screen.getByLabelText("Tentativa"), { target: { value: "ETAPA" } });
+    expect(screen.getByLabelText("Diagnóstico de gestação (DG)")).toHaveProperty("value", "EXTERNO");
+  }
   avancarParaEtapas();
   if (finalidade === "PRE_SINCRONIZACAO") {
     fireEvent.click(screen.getByRole("button", { name: "Adicionar etapa" }));

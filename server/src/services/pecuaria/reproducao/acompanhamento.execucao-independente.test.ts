@@ -101,7 +101,8 @@ function fixture() {
       findMany: vi.fn(async ({ where }: Prisma.TarefaProtocoloFindManyArgs) => {
         const etapa = where?.etapa;
         const configuracao = etapa && "configuracao" in etapa ? etapa.configuracao : undefined;
-        if (configuracao?.path?.[0] === "referenciaPrazoDiagnostico" && configuracao.equals === true) return [];
+        if (configuracao && "path" in configuracao && Array.isArray(configuracao.path)
+          && ["referenciaPrazoDiagnostico", "referenciaPrazoReconfirmacao"].includes(String(configuracao.path[0])) && configuracao.equals === true) return [];
         return [tarefaComum()];
       }),
       findUniqueOrThrow: vi.fn(async () => tarefaComum()),
@@ -116,11 +117,17 @@ function fixture() {
       create: vi.fn(async ({ data: entrada }) => { requisicoes.set(entrada.chave, structuredClone(entrada)); return entrada; }) },
   };
   banco.tx = db as unknown as Prisma.TransactionClient;
-  return { tx: banco.tx, db, demandas, exames, participante, visita, atividade, gestacao };
+  return { tx: banco.tx, db, demandas, exames, participante, visita, atividade, gestacao, tarefa };
 }
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe("ocorrência de acompanhamento na execução real da tarefa e da visita", () => {
+  it.each(["referenciaPrazoDiagnostico", "referenciaPrazoReconfirmacao"])("recusa executar tarefa com referência factual %s pendente", async marcador => {
+    const f=fixture();
+    Object.assign(f.tarefa,{previsaoPendente:true,planejadoSnapshot:{...f.tarefa.planejadoSnapshot,etapa:{...f.tarefa.planejadoSnapshot.etapa,[marcador]:true}}});
+    await expect(executarTarefaTx(f.tx,tarefa2,{chave:uid(33),propriedadeId:7,realizadaEm:data,dados:{resultado:"RECONFIRMACAO",gestacaoId}},7)).rejects.toThrow("aguarda o fato de referência");
+    expect(f.exames).toHaveLength(0);
+  });
   it("reconfirmação negativa exige encerramento documentado, sem criar perda", async () => {
     const f=fixture();
     const catalogo={id:uid(30),versao:1,tipoExameId:TIPO_EXAME_REPRODUTIVO,itens:[{codigo:"RECONF",rotulo:"Reconfirmação",tipo:"RECONFIRMACAO",contextos:["GESTACAO_CONHECIDA"]}],condutas:[]};

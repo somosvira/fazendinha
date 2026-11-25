@@ -13,6 +13,7 @@ const m = vi.hoisted(() => ({
   criarDemandas: vi.fn(),
   reconciliarDemandas: vi.fn(),
   reconciliarPrevisaoDiagnostico: vi.fn(),
+  reconciliarPrevisaoReconfirmacao: vi.fn(),
   lerRequisicao: vi.fn(),
   guardarRequisicao: vi.fn(),
   atualizarDemanda: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock("../reproducao/acompanhamento.js", () => ({
   criarDemandasDoFatoTx: m.criarDemandas,
   reconciliarDemandasAnimalTx: m.reconciliarDemandas,
   reconciliarPrevisoesDiagnosticoTx: m.reconciliarPrevisaoDiagnostico,
+  reconciliarPrevisoesReconfirmacaoTx: m.reconciliarPrevisaoReconfirmacao,
 }));
 vi.mock("../reproducao/alertas/produtor.js", () => ({
   reconciliarAlertasReprodutivosAnimalTx: m.alertas,
@@ -101,7 +103,11 @@ beforeEach(() => {
     expect(vinculo.revogadoEm).toBeInstanceOf(Date);
   });
   m.reconciliarPrevisaoDiagnostico.mockImplementation(async () => {
-    eventos.push("previsao");
+    eventos.push("previsaoDiagnostico");
+    expect(vinculo.revogadoEm).toBeInstanceOf(Date);
+  });
+  m.reconciliarPrevisaoReconfirmacao.mockImplementation(async () => {
+    eventos.push("previsaoReconfirmacao");
     expect(vinculo.revogadoEm).toBeInstanceOf(Date);
   });
   m.lerRequisicao.mockImplementation(async () => requisicao);
@@ -114,21 +120,24 @@ beforeEach(() => {
   );
 });
 
-it("reconcilia a previsão derivada e os alertas na transação já travada, sem reabrir demanda ou conclusão", async () => {
+it("reconcilia as previsões derivadas e os alertas na transação já travada, sem reabrir demanda ou conclusão", async () => {
   const resposta = await revogarTentativaParticipacao("vinculo", input, 27);
   expect(eventos).toEqual([
     "trava",
     "leitura",
     "revogar",
     "auditar",
-    "previsao",
+    "previsaoDiagnostico",
+    "previsaoReconfirmacao",
     "alertas",
     "guardar",
   ]);
   expect(m.trava).toHaveBeenCalledWith(tx, ["animal"]);
   expect(m.reconciliarPrevisaoDiagnostico).toHaveBeenCalledWith(tx, "animal", 27);
+  expect(m.reconciliarPrevisaoReconfirmacao).toHaveBeenCalledWith(tx, "animal", 27);
   expect(m.alertas).toHaveBeenCalledTimes(1);
   expect(m.reconciliarPrevisaoDiagnostico).toHaveBeenCalledTimes(1);
+  expect(m.reconciliarPrevisaoReconfirmacao).toHaveBeenCalledTimes(1);
   expect(m.alertas).toHaveBeenCalledWith(tx, "animal", 27);
   expect(m.auditar).toHaveBeenCalledWith(
     tx,
@@ -148,19 +157,21 @@ it("reconcilia a previsão derivada e os alertas na transação já travada, sem
   });
 });
 
-it("reenvio da mesma chave recupera o recibo sem repetir revogação, auditoria ou publicação de alertas", async () => {
+it("reenvio da mesma chave recupera o recibo sem repetir revogação, auditoria ou conciliação", async () => {
   const primeira = await revogarTentativaParticipacao("vinculo", input, 27);
   const reenvio = await revogarTentativaParticipacao("vinculo", input, 27);
   expect(reenvio).toEqual(primeira);
   expect(m.revogar).toHaveBeenCalledTimes(1);
   expect(m.auditar).toHaveBeenCalledTimes(1);
+  expect(m.reconciliarPrevisaoDiagnostico).toHaveBeenCalledTimes(1);
+  expect(m.reconciliarPrevisaoReconfirmacao).toHaveBeenCalledTimes(1);
   expect(m.alertas).toHaveBeenCalledTimes(1);
   expect(m.alertas).toHaveBeenCalledWith(tx, "animal", 27);
   expect(m.guardarRequisicao).toHaveBeenCalledTimes(1);
   expect(m.reconciliarDemandas).not.toHaveBeenCalled();
 });
 
-it("mesma chave com outros dados continua recusada sem reconciliar alertas novamente", async () => {
+it("recusa a mesma chave com outros dados sem reconciliar previsões nem alertas novamente", async () => {
   await revogarTentativaParticipacao("vinculo", input, 27);
   await expect(
     revogarTentativaParticipacao(
@@ -170,5 +181,7 @@ it("mesma chave com outros dados continua recusada sem reconciliar alertas novam
     ),
   ).rejects.toThrow("Chave de reenvio usada com outros dados");
   expect(m.revogar).toHaveBeenCalledTimes(1);
+  expect(m.reconciliarPrevisaoDiagnostico).toHaveBeenCalledTimes(1);
+  expect(m.reconciliarPrevisaoReconfirmacao).toHaveBeenCalledTimes(1);
   expect(m.alertas).toHaveBeenCalledTimes(1);
 });

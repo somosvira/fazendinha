@@ -68,6 +68,8 @@ A revisão visual de Animais/ficha/ordenhas/filas mantém o catálogo, os gates 
 
 O acabamento operacional geral conserva os destinos da busca. A seleção por `usuario` em Acessos abre o editor em modal. Receitas, operações nutricionais e protocolos consomem os parâmetros de suas URLs. O resultado **Modelos de protocolos reprodutivos** abre a consulta de Configurações; a rota dedicada do builder conserva parâmetros de edição, derivação e retorno em todas as fases. Procedimentos continuam sendo acessados pela versão do modelo. Filtros e parâmetros persistentes ficam cobertos pelos testes de navegação.
 
+Os prazos opcionais de DG e reconfirmação aparecem no contexto da versão do protocolo e, após a adesão, da participação e do acompanhamento. A busca localiza a versão e os registros principais. Esses destinos apresentam a referência factual e o prazo conforme as permissões e o sítio da consulta.
+
 A reformulação da composição operacional preserva as URLs, fontes e gates da busca. Cabeçalhos integrados do Leite, agrupamento das visitas, seleção superior dos relatórios e cartões de Sítios são apresentações dos mesmos destinos. O histórico dos cadastros é consultado em modal sob demanda; não há novo tipo de registro pesquisável introduzido por essa apresentação.
 
 A composição das consultas operacionais mantém os destinos existentes de políticas, exames, estoque e relatórios. A ação de resultado completo no cartão de exame abre o mesmo registro pelo handler de detalhe, sem criar uma nova entidade pesquisável. Formulários de nova versão em modal preservam a página de configuração alcançada pela busca. Alterações de espaçamento e resumo visual não modificam catálogo, fontes, gates ou parâmetros de navegação.

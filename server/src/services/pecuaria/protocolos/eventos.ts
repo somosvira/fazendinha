@@ -51,7 +51,7 @@ export async function registrarEventoTarefaTx(tx: Prisma.TransactionClient, id: 
     }
     const nova = input.tipo === "ADIAMENTO" ? lerDataIatf(input.previstaPara!) : null;
     if (nova && referenciaDiagnosticoPendente(tarefa.etapa.configuracao, tarefa.previsaoPendente))
-      throw new RebanhoError("CONFLITO", "O diagnóstico aguarda a tentativa vinculada antes de admitir adiamento", "previstaPara");
+      throw new RebanhoError("CONFLITO", "A avaliação aguarda o fato de referência antes de admitir adiamento", "previstaPara");
     if (nova && !anteriorIatf(tarefa.previstaPara, tarefa.precisaoTemporal, nova.instante, nova.precisao))
       throw new RebanhoError("VALIDACAO", "Escolha uma previsão posterior à atual", "previstaPara");
     // CURRENT_TIMESTAMP é o início da transação, podendo anteceder uma gravação que esperou a trava.

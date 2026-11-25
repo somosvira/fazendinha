@@ -215,8 +215,9 @@ export async function criarProtocolo(
     if (origem && input.nome.trim() !== origem.nome) erro("Uma nova versão deve preservar o protocolo-base", "nome");
     const etapas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null, usuarioId);
     if (input.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,input.configuracaoAcompanhamento);
+    const { encerramentoGuiado: _encerramentoGuiado, ...dadosProtocolo } = input;
     const p = await criarProtocoloReprodutivoTx(tx, {
-      data: { ...input, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : undefined, etapas: json(etapas), criadoPorId: usuarioId,...(origem ? { referenciaTecnica: json({ ...(origem.referenciaTecnica && typeof origem.referenciaTecnica === "object" && !Array.isArray(origem.referenciaTecnica) ? origem.referenciaTecnica : {}), protocoloOrigemId: origem.id }) } : {}) },
+      data: { ...dadosProtocolo, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : undefined, etapas: json(etapas), criadoPorId: usuarioId,...(origem ? { referenciaTecnica: json({ ...(origem.referenciaTecnica && typeof origem.referenciaTecnica === "object" && !Array.isArray(origem.referenciaTecnica) ? origem.referenciaTecnica : {}), protocoloOrigemId: origem.id }) } : {}) },
     });
     await auditar(tx, {
       entidade: "ProtocoloIatf",
@@ -687,6 +688,7 @@ export async function prepararExecucaoTarefaTx(
   else
     await conferirMatrizTx(tx, participante.animalId, input.propriedadeId, dia(data));
   const planoOriginal = tarefa.planejadoSnapshot as SnapshotIatf | null;
+  if (referenciaDiagnosticoPendente(planoOriginal?.etapa, tarefa.previsaoPendente)) erro("A avaliação aguarda o fato de referência antes do atendimento", "realizadaEm");
   // A referência operacional pode ser adiada sem reescrever o snapshot publicado.
   const plano = planoOriginal ? { ...planoOriginal, previstaEm: serializarDataIatf(tarefa.previstaEm, tarefa.precisaoTemporal),
     precisaoTemporal: tarefa.precisaoTemporal, previsaoPendente: tarefa.previsaoPendente } : null;

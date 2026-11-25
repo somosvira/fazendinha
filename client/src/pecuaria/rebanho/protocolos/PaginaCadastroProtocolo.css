@@ -216,6 +216,15 @@
 .cadastro-passos button[aria-current="step"] span,.quadro-passos button[aria-current="step"] span { color:var(--primary-foreground); background:var(--primary); border-color:var(--primary); }
 .cadastro-reprodutivo-corpo { display:grid; grid-template-columns:minmax(0,1fr) 302px; min-height:0; }
 .cadastro-reprodutivo .cadastro-protocolo-editor { border:0; border-radius:0; padding:22px; min-width:0; margin:0; }
+.cadastro-acompanhamento { min-width:0; border:1px solid var(--border); border-radius:8px; padding:0 14px; }
+.cadastro-acompanhamento legend { padding-inline:5px; font-weight:650; }
+.cadastro-acompanhamento-linha { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:12px 16px; padding-block:10px; }
+.cadastro-acompanhamento-linha + .cadastro-acompanhamento-linha { border-top:1px solid var(--border); }
+.cadastro-acompanhamento-prazo { margin-top:10px; }
+.cadastro-acompanhamento-prazo > div { display:flex; align-items:center; gap:8px; margin-top:6px; color:var(--muted-foreground); font-size:.875rem; }
+.cadastro-acompanhamento-prazo input { width:5.5rem; }
+.cadastro-acompanhamento-exame { border-top:1px solid var(--border); padding-block:10px; font-size:.875rem; }
+.cadastro-acompanhamento-exame span { margin-inline-end:4px; color:var(--muted-foreground); }
 .cadastro-reprodutivo .cadastro-protocolo-revisao { position:static; border:0; border-left:1px solid var(--border); border-radius:0; background:var(--secondary); max-height:none; }
 .cadastro-reprodutivo .cadastro-protocolo-resumo { padding:22px 19px; }
 .cadastro-reprodutivo .cadastro-protocolo-resumo h2 { color:var(--primary); }
@@ -274,6 +283,7 @@
   .cadastro-passos { padding:12px 14px; }
 }
 @media (max-width:600px) {
+  .cadastro-acompanhamento-linha { grid-template-columns:minmax(0,1fr); }
   .cadastro-passos button,.quadro-passos button { font-size:12px; gap:5px; }
   .cadastro-passos button span,.quadro-passos button span { width:24px; height:24px; }
   .cadastro-passos button:not(:last-child)::after,.quadro-passos button:not(:last-child)::after { margin-inline-start:0; min-width:3px; }

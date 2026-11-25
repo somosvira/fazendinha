@@ -54,15 +54,22 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
   const [iniciado, setIniciado] = useState(tipo === "REPRODUTIVO" && !editarId && !params.get("base"));
   const [passo, setPasso] = useState<0 | 1 | 2>(0);
   const [prazoDg, setPrazoDg] = useState("");
+  const [prazoReconfirmacao, setPrazoReconfirmacao] = useState("");
+  const [incluirReconfirmacao, setIncluirReconfirmacao] = useState(false);
+  const [tipoTentativa, setTipoTentativa] = useState<"IA" | "TE" | "COBERTURA">("IA");
+  const [tentativaEditada, setTentativaEditada] = useState(false);
+  const [dgEditado, setDgEditado] = useState(false);
+  const [reconfirmacaoEditada, setReconfirmacaoEditada] = useState(false);
+  const cargaIdentificacao = useRef<string | null>(null);
   const [confirmarIncompatibilidade, setConfirmarIncompatibilidade] = useState(false);
-  const identificacaoConfirmada = useRef<{ finalidade: FinalidadeProtocoloCadastro | ""; tentativa: "ETAPA" | "EXTERNA" | ""; diagnostico: "PROTOCOLO" | "EXTERNO" | ""; prazoDg: string } | null>(null);
+  const identificacaoConfirmada = useRef<{ finalidade: FinalidadeProtocoloCadastro | ""; tentativa: "ETAPA" | "EXTERNA" | ""; diagnostico: "PROTOCOLO" | "EXTERNO" | ""; prazoDg: string; tipoTentativa: "IA" | "TE" | "COBERTURA"; incluirReconfirmacao: boolean; prazoReconfirmacao: string; dgEditado: boolean; reconfirmacaoEditada: boolean; tentativaEditada: boolean } | null>(null);
   const [basePendente, setBasePendente] = useState<string | null>(null);
   const [origemEscolha, setOrigemEscolha] = useState<"zero" | "base">(params.get("base") || editarId ? "base" : "zero");
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [finalidade, setFinalidade] = useState<FinalidadeProtocoloCadastro | "">(tipo === "SANITARIO" ? "SANITARIO" : "");
-  const [modalidadeTentativa, setModalidadeTentativa] = useState<"ETAPA" | "EXTERNA" | "">("");
-  const [modalidadeDiagnostico, setModalidadeDiagnostico] = useState<"PROTOCOLO" | "EXTERNO" | "">("");
+  const [modalidadeTentativa, setModalidadeTentativa] = useState<"ETAPA" | "EXTERNA" | "">("EXTERNA");
+  const [modalidadeDiagnostico, setModalidadeDiagnostico] = useState<"PROTOCOLO" | "EXTERNO" | "">("EXTERNO");
   const [configuracaoAcompanhamento,setConfiguracaoAcompanhamento]=useState<ConfiguracaoAcompanhamentoV2|null>(null);
   const [regrasAbertas,setRegrasAbertas]=useState(false);
   const [sanitarias, setSanitarias] = useState<Etapa[]>([]);
@@ -123,13 +130,15 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
       if (meta.tipo !== tipo) throw new Error("Este protocolo pertence a outro cadastro. Escolha uma base desta área.");
       if (editarId && (meta.publicado || meta.publicadoEm || meta.utilizada || !meta.ativo)) throw new Error("Esta versão não pode ser editada. Abra uma nova versão a partir do cadastro.");
       if (!editarId && !meta.proximaVersao) throw new Error("Não foi possível determinar a próxima versão. Recarregue o protocolo-base.");
-      setOrigemEscolha("base"); setOrigem(meta); setConfiguracaoAcompanhamento(meta.configuracaoAcompanhamento??null); setRegrasAbertas(!!meta.configuracaoAcompanhamento); setNome(meta.nome); setDescricao(meta.descricao ?? "");
+      setOrigemEscolha("base"); setOrigem(meta); setConfiguracaoAcompanhamento(meta.configuracaoAcompanhamento??null); setRegrasAbertas(false); setNome(meta.nome); setDescricao(meta.descricao ?? "");
       setFinalidade(editarId && !meta.finalidade ? "" : tipo === "SANITARIO" ? "SANITARIO" : meta.finalidade ?? "");
-      setModalidadeTentativa(meta.modalidadeTentativa ?? ""); setModalidadeDiagnostico(meta.modalidadeDiagnostico ?? "");
+      setModalidadeTentativa(meta.modalidadeTentativa ?? (editarId ? "" : "EXTERNA")); setModalidadeDiagnostico(meta.modalidadeDiagnostico ?? (editarId ? "" : "EXTERNO"));
       const prazo = prazoDaFinalidade(meta.configuracaoAcompanhamento, meta.finalidade);
-      identificacaoConfirmada.current = { finalidade: meta.finalidade ?? "", tentativa: meta.modalidadeTentativa ?? "", diagnostico: meta.modalidadeDiagnostico ?? "", prazoDg: prazo };
+      identificacaoConfirmada.current = { finalidade: meta.finalidade ?? "", tentativa: meta.modalidadeTentativa ?? "", diagnostico: meta.modalidadeDiagnostico ?? "", prazoDg: prazo, tipoTentativa: tipoTentativaDaFinalidade(meta.finalidade) ?? "IA", incluirReconfirmacao: false, prazoReconfirmacao: "", dgEditado: false, reconfirmacaoEditada: false, tentativaEditada: false };
       setPrazoDg(prazo);
-      cargaReprodutiva.current = null;
+      const reconfirmacao = meta.configuracaoAcompanhamento?.regras.find(r => r.finalidade === "RECONFIRMACAO" && r.ocorrencia === 1 && r.publico === "GESTACAO");
+      setIncluirReconfirmacao(!!reconfirmacao); setPrazoReconfirmacao(reconfirmacao ? String(reconfirmacao.intervalo) : ""); setTipoTentativa(tipoTentativaDaFinalidade(meta.finalidade) ?? "IA"); setTentativaEditada(false); setDgEditado(false); setReconfirmacaoEditada(false);
+      cargaReprodutiva.current = null; cargaIdentificacao.current = null;
       setSanitarias([]); setReprodutivas([]); setCompleto(false); setIndiceErro(null); setIniciado(true);
     } catch (e) { if (vivo.current && geracao.current === pedido) setErro(e instanceof Error ? e.message : "Não foi possível carregar a base."); }
     finally { if (vivo.current && geracao.current === pedido) setCarregando(false); }
@@ -144,18 +153,42 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
     identificacaoConfirmada.current = null;
     setOrigemEscolha("zero"); setOrigem(null); setConfiguracaoAcompanhamento(null); setRegrasAbertas(false); setIniciado(true); setNome(""); setDescricao(""); setErro(null); setIndiceErro(null); setCompleto(true);
     setFinalidade(tipo === "SANITARIO" ? "SANITARIO" : "");
-    setModalidadeTentativa(""); setModalidadeDiagnostico("");
+    setModalidadeTentativa("EXTERNA"); setModalidadeDiagnostico("EXTERNO");
     setSanitarias(tipo === "SANITARIO" ? [nova()] : []);
     cargaReprodutiva.current = null;
-    setReprodutivas([]); setPrazoDg(""); setPasso(0);
+    setReprodutivas([]); setPrazoDg(""); setPrazoReconfirmacao(""); setIncluirReconfirmacao(false); setTipoTentativa("IA"); setTentativaEditada(false); setDgEditado(false); setReconfirmacaoEditada(false); setPasso(0);
+  }
+  useEffect(() => {
+    if (!origem || !completo || cargaIdentificacao.current === origem.id) return;
+    cargaIdentificacao.current = origem.id;
+    const acao = reprodutivas.find(e => e.tipo === "TENTATIVA");
+    if (acao?.tentativaTipo) setTipoTentativa(acao.tentativaTipo);
+    const temReconfirmacao = reprodutivas.some(e => e.referenciaPrazoReconfirmacao);
+    setIncluirReconfirmacao(temReconfirmacao);
+    if (identificacaoConfirmada.current) identificacaoConfirmada.current = { ...identificacaoConfirmada.current, tipoTentativa: acao?.tentativaTipo ?? tipoTentativaDaFinalidade(origem.finalidade) ?? "IA", incluirReconfirmacao: temReconfirmacao, prazoReconfirmacao };
+  }, [origem, completo, reprodutivas]);
+  function ordenarEncerramento(itens: EtapaIatf[]) {
+    const prioridade = (e: EtapaIatf) => e.referenciaPrazoDiagnostico ? 2 : e.referenciaPrazoReconfirmacao ? 3 : e.tipo === "TENTATIVA" ? 1 : 0;
+    const ordenadas = itens.map((e, indice) => ({ e, indice })).sort((a, b) => prioridade(a.e) - prioridade(b.e) || (a.e.momento?.ordem ?? a.e.ordem ?? a.indice) - (b.e.momento?.ordem ?? b.e.ordem ?? b.indice));
+    const grupos = new Map<string, number>();
+    return ordenadas.map(({ e, indice }) => {
+      if (!e.momento) return e;
+      const chave = `${prioridade(e)}:${e.momento.ordem}`;
+      if (!grupos.has(chave)) grupos.set(chave, grupos.size + 1);
+      return { ...e, momento: { ...e.momento, ordem: grupos.get(chave)! }, ordem: indice + 1 };
+    });
   }
   function falhar(indice: number, mensagem: string) {
     if (tipo === "REPRODUTIVO") setPasso(1);
     setIndiceErro(indice);
     setErro(`Procedimento ${indice + 1}: ${mensagem}`);
   }
+  const encerramentoGuiado = !origem || tentativaEditada || dgEditado || reconfirmacaoEditada
+    || modalidadeTentativa !== (origem.modalidadeTentativa ?? (editarId ? "" : "EXTERNA"))
+    || modalidadeDiagnostico !== (origem.modalidadeDiagnostico ?? (editarId ? "" : "EXTERNO"))
+    || (modalidadeTentativa === "ETAPA" && reprodutivas.some(e => e.tipo === "TENTATIVA") && !reprodutivas.some(e => e.tipo === "TENTATIVA" && (e.tentativaTipo ?? e.planoTentativa?.tipo) === tipoTentativa));
   function avaliacaoSemExame(etapa: EtapaIatf) {
-    return etapa.tipo === "AVALIACAO" && (contratoNovo ? !etapa.planoAvaliacao?.tipoExameId : !etapa.planoAvaliacao);
+    return etapa.tipo === "AVALIACAO" && !etapa.referenciaPrazoDiagnostico && !etapa.referenciaPrazoReconfirmacao && (contratoNovo ? !etapa.planoAvaliacao?.tipoExameId : !etapa.planoAvaliacao);
   }
   function configuracaoParaSalvar() {
     const publico = tipoTentativaDaFinalidade(finalidade);
@@ -187,7 +220,7 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
     } else {
       const indice = reprodutivas.findIndex(e => e.intervaloPendente || !e.nome.trim() || !Number.isFinite(e.intervalo) || e.intervalo < 0 || contratoNovo && e.tipo === "MANEJO" || e.tipo === "APLICACAO" && (!(e.planoAplicacao?.produtoId || e.planoAplicacao?.produtoCatalogoId) || !(Number(e.planoAplicacao?.dose) > 0)) || e.tipo === "EXAME" && !e.planoExame?.tipoExameId || avaliacaoSemExame(e) || e.momento?.modoAtendimento === "AUTOMATIZADA" && ["TENTATIVA", "EXAME", "AVALIACAO"].includes(e.tipo));
       if (indice >= 0) return falhar(indice, "confira nome, intervalo, produto/quantidade e modelo de exame; exames e tentativas exigem modo manual.");
-      const exigida = finalidade === "IATF" ? "IA" : finalidade === "TETF" ? "TE" : null;
+      const exigida = tipoTentativaDaFinalidade(finalidade) ? tipoTentativa : null;
       if (exigida && modalidadeTentativa !== "EXTERNA" && !reprodutivas.some(e => e.tipo === "TENTATIVA" && (e.tentativaTipo ?? e.planoTentativa?.tipo) === exigida)) { setErro(`Finalidade ${finalidade} exige ao menos uma ação ${exigida} antes de salvar.`); return; }
     }
     if (tipo === "REPRODUTIVO" && ["IATF", "TETF"].includes(finalidade)) {
@@ -201,7 +234,7 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
     try {
       const comum = { nome: nome.trim(), descricao: descricao.trim() || null, ...(finalidade ? { finalidade } : {}), versao, publicado: true, ...(!editarId && origem ? { origemVersaoId: origem.id } : {}) };
       if (tipo === "SANITARIO") await reqSanidade(`/protocolos${editarId ? `/${encodeURIComponent(editarId)}` : ""}`, { method: editarId ? "PATCH" : "POST", body: JSON.stringify({ ...comum, etapas: sanitarias.map(e => ({ diaRelativo: e.diaRelativo, tipo: e.tipo, referenciasCusto: e.referenciasCusto, ...(e.momento ? { momento: momentoParaCadastro(e.momento) } : {}), ...(e.tipo === "APLICACAO" ? { subtipo: e.subtipo ?? "APLICACAO", produtoId: e.produtoId, ...(e.tipoAplicacaoId ? { tipoAplicacaoId: e.tipoAplicacaoId } : {}), dose: Number(e.dose), unidade: e.unidade } : e.tipo === "EXAME" ? { tipoExameId: e.tipoExameId } : {}) })) }) });
-      else await reqV4("/reproducao/protocolos" + (editarId ? `/${encodeURIComponent(editarId)}` : ""), { ...comum, versao, configuracaoAcompanhamento: configuracao, ...(finalidade === "PRE_SINCRONIZACAO" ? { modalidadeTentativa: null, modalidadeDiagnostico: null } : tipoTentativaDaFinalidade(finalidade) && modalidadeTentativa && modalidadeDiagnostico ? { modalidadeTentativa, modalidadeDiagnostico } : {}), etapas: reprodutivas.map(e => { const item = etapaParaCadastro(e, contratoNovo); return !editarId && item.referenciasCusto ? { ...item, referenciasCusto: item.referenciasCusto.servico ? { servico: item.referenciasCusto.servico } : undefined } : item; }) }, editarId ? "PATCH" : "POST", getPropriedadeAtiva() ?? undefined);
+      else await reqV4("/reproducao/protocolos" + (editarId ? `/${encodeURIComponent(editarId)}` : ""), { ...comum, versao, ...(tipoTentativaDaFinalidade(finalidade) && encerramentoGuiado ? { encerramentoGuiado: true } : {}), configuracaoAcompanhamento: configuracao, ...(finalidade === "PRE_SINCRONIZACAO" ? { modalidadeTentativa: null, modalidadeDiagnostico: null } : tipoTentativaDaFinalidade(finalidade) && modalidadeTentativa && modalidadeDiagnostico ? { modalidadeTentativa, modalidadeDiagnostico } : {}), etapas: reprodutivas.map(e => { const item = etapaParaCadastro(e, contratoNovo); return !editarId && item.referenciasCusto ? { ...item, referenciasCusto: item.referenciasCusto.servico ? { servico: item.referenciasCusto.servico } : undefined } : item; }) }, editarId ? "PATCH" : "POST", getPropriedadeAtiva() ?? undefined);
       if (vivo.current) { liberarSaida.current = true; void executarComGuardaNavegacao(() => { setIniciado(false); navegarPara(retorno); }); }
     } catch (e) {
       if (vivo.current) {
@@ -233,31 +266,48 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
   function isSanitario() { return tipo === "SANITARIO"; }
   function isReprodutivo() { return tipo === "REPRODUTIVO"; }
   if (isReprodutivo()) {
-    const tentativa = tipoTentativaDaFinalidade(finalidade);
-    const conflitos = legadoEditavel && !finalidade ? [] : reprodutivas.filter(e => e.tipo === "TENTATIVA" && (!tentativa || modalidadeTentativa !== "ETAPA" || (e.tentativaTipo ?? e.planoTentativa?.tipo) !== tentativa) || e.tipo === "AVALIACAO" && e.planoAvaliacao?.tipo === "DIAGNOSTICO" && (!tentativa || modalidadeDiagnostico !== "PROTOCOLO"));
+    const tentativa = tipoTentativaDaFinalidade(finalidade) ? tipoTentativa : null;
+    const conflitos = legadoEditavel && !finalidade ? [] : reprodutivas.filter(e => e.tipo === "TENTATIVA" && (!tentativa || modalidadeTentativa !== "ETAPA" || (e.tentativaTipo ?? e.planoTentativa?.tipo) !== tentativa) || e.tipo === "AVALIACAO" && e.planoAvaliacao?.tipo === "DIAGNOSTICO" && (!tentativa || modalidadeDiagnostico !== "PROTOCOLO") || !tentativa && !!e.referenciaPrazoReconfirmacao);
     function avancarIdentificacao(confirmado = false) {
       setErro(null);
       if (origemEscolha === "base" && !origem) { setErro("Selecione o protocolo-base."); return; }
       if (nome.trim().length < 2 || (!finalidade && !legadoEditavel)) { setErro("Informe o nome e a finalidade do protocolo."); return; }
-      if (tentativa && (!modalidadeTentativa || !modalidadeDiagnostico)) { setErro("Escolha como acompanhar a tentativa e o diagnóstico de gestação."); return; }
+      if (tentativa && !modalidadeTentativa) { setErro("Escolha como registrar a tentativa."); return; }
       if (!completo) { setErro("Aguarde o carregamento completo da versão-base."); return; }
-      if (modalidadeDiagnostico === "PROTOCOLO" && tentativa && (prazoDg.trim() === "" || !Number.isInteger(Number(prazoDg)) || Number(prazoDg) < 0 || Number(prazoDg) > 1000)) { setErro("Informe o prazo do diagnóstico em dias inteiros entre 0 e 1000."); return; }
+      if (modalidadeDiagnostico === "PROTOCOLO" && tentativa && (dgEditado || !origem || reprodutivas.some(e => e.referenciaPrazoDiagnostico)) && (prazoDg.trim() === "" || !Number.isInteger(Number(prazoDg)) || Number(prazoDg) < (dgEditado || !origem ? 1 : 0) || Number(prazoDg) > 1000)) { setErro("Informe o prazo do diagnóstico em dias inteiros entre 1 e 1000."); return; }
+      if (tentativa && incluirReconfirmacao && (prazoReconfirmacao.trim() === "" || !Number.isInteger(Number(prazoReconfirmacao)) || Number(prazoReconfirmacao) < (reconfirmacaoEditada || !origem ? 1 : 0) || Number(prazoReconfirmacao) > 1000)) { setErro("Informe o prazo da reconfirmação em dias inteiros entre 1 e 1000."); return; }
       if (conflitos.length && !confirmado) { setConfirmarIncompatibilidade(true); return; }
-      const proximas = confirmado ? reprodutivas.filter(e => !conflitos.includes(e)) : [...reprodutivas];
-      const faltam = Number(!!tentativa && modalidadeTentativa === "ETAPA" && !proximas.some(e => e.tipo === "TENTATIVA" && (e.tentativaTipo ?? e.planoTentativa?.tipo) === tentativa)) + Number(!!tentativa && modalidadeDiagnostico === "PROTOCOLO" && !proximas.some(e => e.tipo === "AVALIACAO" && e.planoAvaliacao?.tipo === "DIAGNOSTICO"));
+      const proximas = (confirmado ? reprodutivas.filter(e => !conflitos.includes(e)) : [...reprodutivas]).filter(e => incluirReconfirmacao || !e.referenciaPrazoReconfirmacao);
+      const faltam = Number(!!tentativa && modalidadeTentativa === "ETAPA" && !proximas.some(e => e.tipo === "TENTATIVA" && (e.tentativaTipo ?? e.planoTentativa?.tipo) === tentativa)) + Number(!!tentativa && modalidadeDiagnostico === "PROTOCOLO" && !proximas.some(e => e.tipo === "AVALIACAO" && e.planoAvaliacao?.tipo === "DIAGNOSTICO")) + Number(!!tentativa && incluirReconfirmacao && !proximas.some(e => e.referenciaPrazoReconfirmacao));
       if (proximas.length + faltam > 100) { setErro("O modelo excederia o limite de 100 procedimentos. Remova procedimentos antes de avançar."); setConfirmarIncompatibilidade(false); return; }
       const adicionar = (e: Partial<EtapaIatf> & Pick<EtapaIatf, "nome" | "tipo">) => { const ordem = Math.max(0, ...proximas.map(item => item.momento?.ordem ?? 0)) + 1; proximas.push({ chaveEdicao: crypto.randomUUID(), intervalo: 0, unidade: "DIAS", ...e, momento: { nome: e.nome, ordem, modoAtendimento: "MANUAL", politicaExecucao: "CONFIRMACAO_OBRIGATORIA" } }); };
-      if (tentativa && modalidadeTentativa === "ETAPA" && !proximas.some(e => e.tipo === "TENTATIVA" && (e.tentativaTipo ?? e.planoTentativa?.tipo) === tentativa)) adicionar({ nome: tentativa === "IA" ? "Inseminação" : "Transferência de embrião", tipo: "TENTATIVA", tentativaTipo: tentativa, intervaloPendente: true });
+      if (tentativa && modalidadeTentativa === "ETAPA" && !proximas.some(e => e.tipo === "TENTATIVA" && (e.tentativaTipo ?? e.planoTentativa?.tipo) === tentativa)) adicionar({ nome: tentativa === "IA" ? "Inseminação" : tentativa === "TE" ? "Transferência de embrião" : "Cobertura observada", tipo: "TENTATIVA", tentativaTipo: tentativa, intervaloPendente: true });
       if (tentativa && modalidadeDiagnostico === "PROTOCOLO") {
         let dg = proximas.find(e => e.tipo === "AVALIACAO" && e.planoAvaliacao?.tipo === "DIAGNOSTICO" && e.referenciaPrazoDiagnostico) ?? proximas.find(e => e.tipo === "AVALIACAO" && e.planoAvaliacao?.tipo === "DIAGNOSTICO");
         if (!dg) { adicionar({ nome: "Diagnóstico de gestação", tipo: "AVALIACAO", planoAvaliacao: { tipo: "DIAGNOSTICO" }, referenciaPrazoDiagnostico: true }); dg = proximas[proximas.length - 1]; }
-        else { const i = proximas.indexOf(dg); proximas[i] = { ...dg, referenciaPrazoDiagnostico: true }; }
-        setConfiguracaoAcompanhamento(atual => { const regras = [...(atual?.regras ?? [])]; const i = regras.findIndex(r => r.finalidade === "DIAGNOSTICO" && r.ocorrencia === 1 && r.publico === tentativa); if (i >= 0) regras[i] = { ...regras[i], intervalo: Number(prazoDg) }; else regras.push({ finalidade: "DIAGNOSTICO", ocorrencia: 1, publico: tentativa, referencia: tentativa, intervalo: Number(prazoDg), unidade: "DIAS", antecedencia: 0, tolerancia: 0, resolucao: "DIAGNOSTICO_CONCLUSIVO" }); return { versao: 2, efeito: "ALERTA", regras }; });
+        else if (dgEditado || !origem || dg.referenciaPrazoDiagnostico) { const i = proximas.indexOf(dg); proximas[i] = { ...dg, referenciaPrazoDiagnostico: true }; }
+
       }
-      setReprodutivas(proximas); identificacaoConfirmada.current = { finalidade, tentativa: modalidadeTentativa, diagnostico: modalidadeDiagnostico, prazoDg }; setConfirmarIncompatibilidade(false); setPasso(1);
+      if (tentativa && incluirReconfirmacao && !proximas.some(e => e.referenciaPrazoReconfirmacao)) adicionar({ nome: "Reconfirmação", tipo: "AVALIACAO", planoAvaliacao: { tipo: "RECONFIRMACAO" }, referenciaPrazoReconfirmacao: true });
+      if (!tentativa && confirmado) {
+        const removeDg = conflitos.some(e => e.referenciaPrazoDiagnostico);
+        const removeReconfirmacao = conflitos.some(e => e.referenciaPrazoReconfirmacao);
+        setConfiguracaoAcompanhamento(atual => {
+          if (!atual) return null;
+          const regras = atual.regras.filter(r => !(r.ocorrencia === 1 && (removeDg && r.finalidade === "DIAGNOSTICO" || removeReconfirmacao && r.finalidade === "RECONFIRMACAO")));
+          return regras.length ? { ...atual, regras } : null;
+        });
+        setIncluirReconfirmacao(false); setPrazoReconfirmacao("");
+      } else if (dgEditado || reconfirmacaoEditada || !origem) setConfiguracaoAcompanhamento(atual => {
+        const regras = (atual?.regras ?? []).filter(r => !(r.ocorrencia === 1 && ((dgEditado || !origem) && r.finalidade === "DIAGNOSTICO" || (reconfirmacaoEditada || !origem) && r.finalidade === "RECONFIRMACAO" && r.publico === "GESTACAO")));
+        if (tentativa && (dgEditado || !origem) && modalidadeDiagnostico === "PROTOCOLO") for (const publico of ["IA", "TE", "COBERTURA"] as const) regras.push({ finalidade: "DIAGNOSTICO", ocorrencia: 1, publico, referencia: publico, intervalo: Number(prazoDg), unidade: "DIAS", antecedencia: 0, tolerancia: 0, resolucao: "DIAGNOSTICO_CONCLUSIVO" });
+        if (tentativa && (reconfirmacaoEditada || !origem) && incluirReconfirmacao) regras.push({ finalidade: "RECONFIRMACAO", ocorrencia: 1, publico: "GESTACAO", referencia: "PRIMEIRO_DG_POSITIVO", intervalo: Number(prazoReconfirmacao), unidade: "DIAS", antecedencia: 0, tolerancia: 0, resolucao: "RECONFIRMACAO_CONCLUSIVA" });
+        return regras.length ? { versao: 2, efeito: "ALERTA", regras } : null;
+      });
+      setReprodutivas(proximas); identificacaoConfirmada.current = { finalidade, tentativa: modalidadeTentativa, diagnostico: modalidadeDiagnostico, prazoDg, tipoTentativa, incluirReconfirmacao, prazoReconfirmacao, dgEditado, reconfirmacaoEditada, tentativaEditada }; setConfirmarIncompatibilidade(false); setPasso(1);
     }
     const podeRemover = (indices: number[]) => {
-      if (tentativa && modalidadeDiagnostico === "PROTOCOLO" && indices.some(i => reprodutivas[i]?.referenciaPrazoDiagnostico)) return false;
+      if (indices.some(i => reprodutivas[i]?.referenciaPrazoDiagnostico || reprodutivas[i]?.referenciaPrazoReconfirmacao)) return false;
       const restantes = reprodutivas.filter((_, i) => !indices.includes(i));
       return !(tentativa && modalidadeTentativa === "ETAPA" && !restantes.some(e => e.tipo === "TENTATIVA" && (e.tentativaTipo ?? e.planoTentativa?.tipo) === tentativa)
         || tentativa && modalidadeDiagnostico === "PROTOCOLO" && !restantes.some(e => e.tipo === "AVALIACAO" && e.planoAvaliacao?.tipo === "DIAGNOSTICO"));
@@ -279,23 +329,55 @@ export function PaginaCadastroProtocolo({ tipo, podeLancar }: { tipo: Tipo; pode
             {erroLista && <ErrorBox erro={erroLista} />}{lista && lista.total > 10 && <Paginacao paginaAtual={lista.pagina} totalPaginas={Math.ceil(lista.total / 10)} totalItens={lista.total} itensPorPagina={10} onPaginaChange={setPagina} rotulo="protocolos-base" idSelect="pagina-protocolos-base" />}
             <label className="cadastro-protocolo-nome">Nome do protocolo<input className={classeInput} value={nome} readOnly={!!origem && !editarId} onChange={e => setNome(e.target.value)} maxLength={120} /></label><label>Finalidade<SelectCampo value={finalidade} onValueChange={v => {
               const escolhida = v as FinalidadeProtocoloCadastro | "";
-              if (escolhida !== finalidade) setPrazoDg(prazoDaFinalidade(configuracaoAcompanhamento, escolhida));
+              if (escolhida !== finalidade) {
+                const tipoPadrao = tipoTentativaDaFinalidade(escolhida);
+                setPrazoDg(prazoDaFinalidade(configuracaoAcompanhamento, escolhida));
+                setTipoTentativa(tipoPadrao ?? "IA");
+                if (tipoPadrao) {
+                  setModalidadeTentativa(atual => atual || "EXTERNA");
+                  setModalidadeDiagnostico(atual => atual || "EXTERNO");
+                }
+              }
               setFinalidade(escolhida);
             }}><option value="">Selecione</option>{(["PRE_SINCRONIZACAO", "IATF", "TETF"] as const).map(f => <option key={f} value={f}>{finalidades[f]}</option>)}</SelectCampo></label><label>Versão<input className={classeInput} readOnly value={versao ?? "A confirmar"} /></label>
-            {tentativa && <><label>Tentativa<SelectCampo value={modalidadeTentativa} onValueChange={v => setModalidadeTentativa(v as "ETAPA" | "EXTERNA")}><option value="">Selecione</option><option value="ETAPA">No protocolo</option><option value="EXTERNA">Acompanhar separadamente</option></SelectCampo></label><label>Diagnóstico de gestação<SelectCampo value={modalidadeDiagnostico} onValueChange={v => setModalidadeDiagnostico(v as "PROTOCOLO" | "EXTERNO")}><option value="">Selecione</option><option value="PROTOCOLO">No protocolo</option><option value="EXTERNO">Acompanhar separadamente</option></SelectCampo></label>{modalidadeDiagnostico === "PROTOCOLO" && <label>Dias após a tentativa<input className={classeInput} type="number" min="0" max="1000" step="1" value={prazoDg} onChange={e => setPrazoDg(e.target.value)} /></label>}</>}
-            <label className="cadastro-protocolo-nome">Descrição (opcional)<textarea className={classeInput} value={descricao} onChange={e => setDescricao(e.target.value)} maxLength={2000} /></label></div></section>{regrasAbertas ? <EditorRegrasAcompanhamentoModelo valor={configuracaoAcompanhamento} onChange={setConfiguracaoAcompanhamento} propriedadeId={getPropriedadeAtiva() ?? undefined} disabled={salvando} /> : <Button secondary type="button" onClick={() => setRegrasAbertas(true)}>Definir outras regras de acompanhamento</Button>}</div>}
+            {tentativa && <fieldset className="cadastro-protocolo-nome cadastro-acompanhamento">
+              <legend>Encerramento e acompanhamento</legend>
+              <div className="cadastro-acompanhamento-linha">
+                <label>Tentativa<SelectCampo value={modalidadeTentativa || "EXTERNA"} onValueChange={v => { setModalidadeTentativa(v as "ETAPA" | "EXTERNA"); setTentativaEditada(true); }}><option value="EXTERNA">Registrar separadamente</option><option value="ETAPA">Incluir no protocolo</option></SelectCampo></label>
+                {modalidadeTentativa === "ETAPA" && <label>Tipo de tentativa<SelectCampo value={tipoTentativa} onValueChange={v => { setTipoTentativa(v as "IA" | "TE" | "COBERTURA"); setTentativaEditada(true); }}><option value="IA">Inseminação artificial (IA)</option><option value="TE">Transferência de embrião (TE)</option><option value="COBERTURA">Cobertura observada</option></SelectCampo></label>}
+              </div>
+              <div className="cadastro-acompanhamento-linha">
+                <div>
+                  <label>Diagnóstico de gestação (DG)<SelectCampo value={modalidadeDiagnostico || "EXTERNO"} onValueChange={v => { setModalidadeDiagnostico(v as "PROTOCOLO" | "EXTERNO"); setDgEditado(true); }}><option value="EXTERNO">Não incluir</option><option value="PROTOCOLO">Incluir no protocolo</option></SelectCampo></label>
+                  {modalidadeDiagnostico === "PROTOCOLO" && <div className="cadastro-acompanhamento-prazo">
+                    <label htmlFor="cadastro-prazo-dg">Dias após a tentativa</label>
+                    <div><input id="cadastro-prazo-dg" className={classeInput} type="number" inputMode="numeric" min="1" max="1000" step="1" value={prazoDg} onChange={e => { setPrazoDg(e.target.value); setDgEditado(true); }} /><span aria-hidden>dias corridos</span></div>
+                  </div>}
+                </div>
+                <div>
+                  <label>Reconfirmação<SelectCampo value={incluirReconfirmacao ? "SIM" : "NAO"} onValueChange={v => { setIncluirReconfirmacao(v === "SIM"); setReconfirmacaoEditada(true); }}><option value="NAO">Não incluir</option><option value="SIM">Incluir no protocolo</option></SelectCampo></label>
+                  {incluirReconfirmacao && <div className="cadastro-acompanhamento-prazo">
+                    <label htmlFor="cadastro-prazo-reconfirmacao">Dias após o primeiro DG positivo</label>
+                    <div><input id="cadastro-prazo-reconfirmacao" className={classeInput} type="number" inputMode="numeric" min="1" max="1000" step="1" value={prazoReconfirmacao} onChange={e => { setPrazoReconfirmacao(e.target.value); setReconfirmacaoEditada(true); }} /><span aria-hidden>dias corridos</span></div>
+                  </div>}
+                </div>
+              </div>
+              {(modalidadeDiagnostico === "PROTOCOLO" || incluirReconfirmacao) && <p className="cadastro-acompanhamento-exame"><span>Exame padrão</span> <strong>Avaliação reprodutiva</strong></p>}
+            </fieldset>}
+
+            <label className="cadastro-protocolo-nome">Descrição (opcional)<textarea className={classeInput} value={descricao} onChange={e => setDescricao(e.target.value)} maxLength={2000} /></label></div></section>{origem?.configuracaoAcompanhamento && <p>As demais regras de acompanhamento da versão de origem serão preservadas.</p>}</div>}
           {passo === 2 && <section aria-labelledby="cadastro-conferencia">
             <header className="quadro-protocolo-cabecalho"><h2 id="cadastro-conferencia">Conferência</h2><Button secondary type="button" disabled={salvando} onClick={() => setPasso(1)}>Editar etapas</Button></header>
             <dl className="quadro-etapa-resumo cadastro-conferencia-resumo">
               <div><dt>Origem</dt><dd>{origem ? `${origem.nome} · v${origem.versao}` : "Começar do zero"}</dd></div>
               <div><dt>Finalidade</dt><dd>{finalidade ? finalidades[finalidade] : "Conforme a versão de origem"}</dd></div>
-              {tentativa && <div><dt>Diagnóstico de gestação</dt><dd>{modalidadeDiagnostico === "PROTOCOLO" ? `${prazoDg} dias após a tentativa` : "Acompanhar separadamente"}</dd></div>}
+              {tentativa && <><div><dt>Diagnóstico de gestação</dt><dd>{modalidadeDiagnostico === "PROTOCOLO" ? `${prazoDg} dias após a tentativa` : "Não incluído"}</dd></div><div><dt>Reconfirmação</dt><dd>{incluirReconfirmacao ? `${prazoReconfirmacao} dias após o primeiro DG positivo` : "Não incluída"}</dd></div></>}
             </dl>
           </section>}
-          {iniciado && <div hidden={passo === 0 && completo}><section><EditorModeloReprodutivo origemCadastro={origem} cargaPersistida={cargaReprodutiva} etapas={reprodutivas} setEtapas={setReprodutivas} setAcoesCompletas={setCompleto} acoesCompletas={completo} indiceErroCadastro={indiceErro} erroCampo={erroCampo} sitioEfetivo={getPropriedadeAtiva()} contratoNovo={contratoNovo} podeRemover={podeRemover} prazoDg={prazoDg} somenteLeitura={passo === 2} tituloQuadro={passo === 2 ? "Procedimentos planejados" : "Etapas e procedimentos"} /></section></div>}
-        </form><aside className="cadastro-protocolo-revisao"><div className="cadastro-protocolo-resumo"><h2>Resumo do protocolo</h2><h3>{nome || "Nome não informado"}</h3><p>Versão {versao ?? "a confirmar"} · {finalidade ? finalidades[finalidade] : "Finalidade não informada"}</p><p>{etapasTotal} etapas · {total} procedimentos{!completo ? " · carregamento incompleto" : ""}</p><h3>Produtos por animal</h3>{produtos.size ? [...produtos.values()].map(p => <div className="cadastro-protocolo-produto" key={`${p.id}:${p.unidade}`}>{p.nome ? <span>{p.nome}</span> : <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: tipo })} rotulo="Produto previsto" valor={p.id} onChange={() => {}} />}<span>{p.quantidade.toLocaleString("pt-BR")} {p.unidade}</span></div>) : <p>Nenhum produto predefinido.</p>}{reprodutivas.some(e => e.tipo === "TENTATIVA") && <p>Material genético: a definir no atendimento.</p>}</div></aside></div>
-        <footer className="cadastro-reprodutivo-rodape"><Button secondary type="button" onClick={() => passo ? setPasso((passo - 1) as 0 | 1) : sair()}>{passo ? "Voltar" : "Cancelar"}</Button>{passo === 0 ? <Button key="etapas" type="button" disabled={!iniciado || carregando} onClick={() => avancarIdentificacao()}>Ir para etapas</Button> : passo === 1 ? <Button key="conferencia" type="button" onClick={() => { if (!reprodutivas.length) { setErro("Adicione ao menos um procedimento antes da conferência."); return; } if (conflitos.length) { setErro(`Os procedimentos ${conflitos.map(e => e.nome).join(", ")} são incompatíveis com a identificação. Revise-os antes da conferência.`); return; } const i = reprodutivas.findIndex(e => e.intervaloPendente || avaliacaoSemExame(e) || e.tipo === "APLICACAO" && (!(e.planoAplicacao?.produtoId || e.planoAplicacao?.produtoCatalogoId) || !(Number(e.planoAplicacao?.dose) > 0))); if (i >= 0) { setErro(`Procedimento ${i + 1}: complete o dia, produto ou modelo de exame pendente.`); setIndiceErro(i); return; } setErro(null); setPasso(2); }}>Ir para conferência</Button> : <Button key="salvar" type="button" onClick={() => void salvar()} disabled={!completo || salvando || carregando}>{salvando ? "Salvando…" : "Salvar protocolo"}</Button>}</footer>
-      </div><ConfirmDialog open={basePendente !== null} title="Trocar origem do protocolo?" message="As alterações do rascunho serão descartadas." confirmLabel="Trocar origem" onCancel={() => setBasePendente(null)} onConfirm={() => { const id = basePendente; setBasePendente(null); if (id) void usarBase(id); else comecar(); }} /><ConfirmDialog open={confirmarIncompatibilidade} title="Alterar procedimentos planejados?" message={`A mudança exige remover ${conflitos.map(e => e.nome).join(", ")}. Os demais procedimentos serão preservados.`} confirmLabel="Remover e continuar" onCancel={() => { const anterior = identificacaoConfirmada.current; if (anterior) { setFinalidade(anterior.finalidade); setModalidadeTentativa(anterior.tentativa); setModalidadeDiagnostico(anterior.diagnostico); setPrazoDg(anterior.prazoDg); } setConfirmarIncompatibilidade(false); }} onConfirm={() => avancarIdentificacao(true)} />
+          {iniciado && <div hidden={passo === 0 && completo}><section><EditorModeloReprodutivo origemCadastro={origem} cargaPersistida={cargaReprodutiva} etapas={reprodutivas} setEtapas={setReprodutivas} setAcoesCompletas={setCompleto} acoesCompletas={completo} indiceErroCadastro={indiceErro} erroCampo={erroCampo} sitioEfetivo={getPropriedadeAtiva()} contratoNovo={contratoNovo} podeRemover={podeRemover} prazoDg={prazoDg} prazoReconfirmacao={prazoReconfirmacao} somenteLeitura={passo === 2} tituloQuadro={passo === 2 ? "Procedimentos planejados" : "Etapas e procedimentos"} /></section></div>}
+        </form><aside className="cadastro-protocolo-revisao"><div className="cadastro-protocolo-resumo"><h2>Resumo do protocolo</h2><h3>{nome || "Nome não informado"}</h3><p>Versão {versao ?? "a confirmar"} · {finalidade ? finalidades[finalidade] : "Finalidade não informada"}</p><p>{etapasTotal} etapas · {total} procedimentos{!completo ? " · carregamento incompleto" : ""}</p><h3>Produtos por animal</h3>{produtos.size ? [...produtos.values()].map(p => <div className="cadastro-protocolo-produto" key={`${p.id}:${p.unidade}`}>{p.nome ? <span>{p.nome}</span> : <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: tipo })} rotulo="Produto previsto" valor={p.id} onChange={() => {}} />}<span>{p.quantidade.toLocaleString("pt-BR")} {p.unidade}</span></div>) : <p>Nenhum produto predefinido.</p>}{reprodutivas.some(e => e.tipo === "TENTATIVA" && e.tentativaTipo !== "COBERTURA") && <p>Material genético: a definir no atendimento.</p>}</div></aside></div>
+        <footer className="cadastro-reprodutivo-rodape"><Button secondary type="button" onClick={() => passo ? setPasso((passo - 1) as 0 | 1) : sair()}>{passo ? "Voltar" : "Cancelar"}</Button>{passo === 0 ? <Button key="etapas" type="button" disabled={!iniciado || carregando} onClick={() => avancarIdentificacao()}>Ir para etapas</Button> : passo === 1 ? <Button key="conferencia" type="button" onClick={() => { if (!reprodutivas.length) { setErro("Adicione ao menos um procedimento antes da conferência."); return; } if (conflitos.length) { setErro(`Os procedimentos ${conflitos.map(e => e.nome).join(", ")} são incompatíveis com a identificação. Revise-os antes da conferência.`); return; } const i = reprodutivas.findIndex(e => e.intervaloPendente || avaliacaoSemExame(e) || e.tipo === "APLICACAO" && (!(e.planoAplicacao?.produtoId || e.planoAplicacao?.produtoCatalogoId) || !(Number(e.planoAplicacao?.dose) > 0))); if (i >= 0) { setErro(`Procedimento ${i + 1}: complete o dia, produto ou modelo de exame pendente.`); setIndiceErro(i); return; } setErro(null); if (encerramentoGuiado) setReprodutivas(ordenarEncerramento(reprodutivas)); setPasso(2); }}>Ir para conferência</Button> : <Button key="salvar" type="button" onClick={() => void salvar()} disabled={!completo || salvando || carregando}>{salvando ? "Salvando…" : "Salvar protocolo"}</Button>}</footer>
+      </div><ConfirmDialog open={basePendente !== null} title="Trocar origem do protocolo?" message="As alterações do rascunho serão descartadas." confirmLabel="Trocar origem" onCancel={() => setBasePendente(null)} onConfirm={() => { const id = basePendente; setBasePendente(null); if (id) void usarBase(id); else comecar(); }} /><ConfirmDialog open={confirmarIncompatibilidade} title="Alterar procedimentos planejados?" message={`A mudança exige remover ${conflitos.map(e => e.nome).join(", ")}. Os demais procedimentos serão preservados.`} confirmLabel="Remover e continuar" onCancel={() => { const anterior = identificacaoConfirmada.current; if (anterior) { setFinalidade(anterior.finalidade); setModalidadeTentativa(anterior.tentativa); setModalidadeDiagnostico(anterior.diagnostico); setPrazoDg(anterior.prazoDg); setTipoTentativa(anterior.tipoTentativa); setIncluirReconfirmacao(anterior.incluirReconfirmacao); setPrazoReconfirmacao(anterior.prazoReconfirmacao); setDgEditado(anterior.dgEditado); setReconfirmacaoEditada(anterior.reconfirmacaoEditada); setTentativaEditada(anterior.tentativaEditada); } setConfirmarIncompatibilidade(false); }} onConfirm={() => avancarIdentificacao(true)} />
       <ConfirmDialog open={confirmar === "sair"} title="Sair sem salvar?" message="As alterações desta página serão descartadas." confirmLabel="Sair sem salvar" onCancel={() => { resolverSaida.current?.(false); resolverSaida.current = null; setConfirmar(null); }} onConfirm={() => { resolverSaida.current?.(true); resolverSaida.current = null; setConfirmar(null); }} />
     </div>;
   }

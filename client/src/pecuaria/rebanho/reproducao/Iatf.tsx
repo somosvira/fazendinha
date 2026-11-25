@@ -62,8 +62,9 @@ export type EtapaIatf = {
   chaveEdicao?: string;
   intervaloPendente?: boolean;
   referenciaPrazoDiagnostico?: boolean;
+  referenciaPrazoReconfirmacao?: boolean;
   exameDgAlterado?: boolean;
-  tentativaTipo?: "IA" | "TE";
+  tentativaTipo?: "IA" | "TE" | "COBERTURA";
   referenciasCusto?: ReferenciasCustoCadastro;
   ordem?: number;
   momento?: MomentoCadastro;
@@ -97,6 +98,7 @@ export function etapaParaCadastro(e: EtapaIatf, contratoNovo = false): EtapaIatf
     referenciasCusto:e.referenciasCusto, nome: e.nome, tipo: e.tipo, intervalo: e.intervalo, unidade: e.unidade,
     ...(e.momento ? { momento: momentoParaCadastro(e.momento) } : {}),
     ...(e.referenciaPrazoDiagnostico ? { referenciaPrazoDiagnostico: true } : {}),
+    ...(e.referenciaPrazoReconfirmacao ? { referenciaPrazoReconfirmacao: true } : {}),
     ...(e.tipo === "APLICACAO" && e.subtipo ? { subtipo: e.subtipo } : {}),
     ...(e.orientacaoTemporal ? {orientacaoTemporal:e.orientacaoTemporal} : {}),
     ...(e.tipo === "APLICACAO" && e.planoAplicacao ? { planoAplicacao: { ...(e.planoAplicacao.produtoId ? { produtoId: e.planoAplicacao.produtoId } : { produtoCatalogoId: e.planoAplicacao.produtoCatalogoId, categoriaId: e.planoAplicacao.categoriaId }), dose: e.planoAplicacao.dose, unidadeDose: e.planoAplicacao.unidadeDose, via: e.planoAplicacao.via, ...(e.planoAplicacao.tipoAplicacaoId ? { tipoAplicacaoId: e.planoAplicacao.tipoAplicacaoId } : {}) } } : {}),

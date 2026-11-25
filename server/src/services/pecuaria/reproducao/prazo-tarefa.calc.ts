@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
 export function referenciaDiagnosticoPendente(configuracao: unknown, previsaoPendente: boolean) {
- return previsaoPendente && !!configuracao && typeof configuracao === "object" && "referenciaPrazoDiagnostico" in configuracao && configuracao.referenciaPrazoDiagnostico === true;
+ return previsaoPendente && !!configuracao && typeof configuracao === "object" && (("referenciaPrazoDiagnostico" in configuracao && configuracao.referenciaPrazoDiagnostico === true) || ("referenciaPrazoReconfirmacao" in configuracao && configuracao.referenciaPrazoReconfirmacao === true));
 }
 
 export function ocultarDataPendenteDiagnostico(snapshot: Prisma.JsonValue) {

@@ -107,6 +107,7 @@ banco("vínculo externo e prazo congelado em PostgreSQL", () => {
             snapshot: {
               tentativaId: t.id,
               animalId: animal.id,
+              propriedadeId: sitio.id,
               data: "2026-01-12",
               tipo: "IA",
             },

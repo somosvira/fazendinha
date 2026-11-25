@@ -18,10 +18,10 @@ describe("finalidade explícita e compatibilidade", () => {
     expect(protocoloSchema.safeParse({ ...protocolo, nome: "IATF sem classificação" }).success).toBe(false);
     expect(protocoloSchema.safeParse({ ...protocolo, finalidade: "SANITARIO" }).success).toBe(false);
   });
-  it.each([['IATF', 'IA', 'TE'], ['TETF', 'TE', 'IA']] as const)("%s exige %s declarado sem material fixo", (finalidade, tentativaTipo, outro) => {
+  it.each([['IATF', 'IA', 'TE'], ['TETF', 'TE', 'IA']] as const)("%s aceita %s ou outro fato declarado sem material fixo", (finalidade, tentativaTipo, outro) => {
     const etapa = { nome: "Tentativa", tipo: "TENTATIVA", intervalo: 36, unidade: "HORAS", tentativaTipo };
     expect(protocoloSchema.safeParse({ ...protocolo, finalidade, etapas: [etapa] }).success).toBe(true);
-    expect(protocoloSchema.safeParse({ ...protocolo, finalidade, etapas: [{ ...etapa, tentativaTipo: outro }] }).success).toBe(false);
+    expect(protocoloSchema.safeParse({ ...protocolo, finalidade, etapas: [{ ...etapa, tentativaTipo: outro }] }).success).toBe(true);
     expect(protocoloSchema.safeParse({ ...protocolo, finalidade, etapas: [{ ...etapa, planoTentativa: { tipo: tentativaTipo, materialId: id, quantidade: 1 } }] }).success).toBe(false);
     const { tentativaTipo: _, ...legado } = etapa;
     expect(protocoloSchema.safeParse({ ...protocolo, etapas: [{ ...legado, planoTentativa: { tipo: tentativaTipo, materialId: id, quantidade: 1 } }] }).success).toBe(true);
@@ -106,4 +106,34 @@ it("recebe exatamente uma origem de produto na aplicação do builder", () => {
   expect(etapaIatfSchema.safeParse({ ...aplicacao, planoAplicacao: { ...plano, produtoId: undefined, produtoCatalogoId: id, categoriaId: id } }).success).toBe(true);
   expect(etapaIatfSchema.safeParse({ ...aplicacao, planoAplicacao: { ...plano, produtoCatalogoId: id } }).success).toBe(false);
   expect(etapaIatfSchema.safeParse({ ...aplicacao, planoAplicacao: { ...plano, produtoId: undefined } }).success).toBe(false);
+});
+
+
+it.each(["IATF", "TETF"])("calendário de %s aceita tentativa factual e acompanhamentos independentes", finalidade => {
+ const tentativa = {nome:"Cobertura",tipo:"TENTATIVA",tentativaTipo:"COBERTURA",intervalo:2,unidade:"DIAS"};
+ const dg = {nome:"DG",tipo:"AVALIACAO",intervalo:0,unidade:"DIAS",referenciaPrazoDiagnostico:true,planoAvaliacao:{tipo:"DIAGNOSTICO"}};
+ const rec = {nome:"Reconfirmação",tipo:"AVALIACAO",intervalo:0,unidade:"DIAS",referenciaPrazoReconfirmacao:true,planoAvaliacao:{tipo:"RECONFIRMACAO"}};
+ const regrasDG = ["IA","TE","COBERTURA"].map(publico=>({finalidade:"DIAGNOSTICO",ocorrencia:1,publico,referencia:publico,intervalo:30,unidade:"DIAS",antecedencia:0,tolerancia:0,resolucao:"DIAGNOSTICO_CONCLUSIVO"}));
+ const regraRec = {finalidade:"RECONFIRMACAO",ocorrencia:1,publico:"GESTACAO",referencia:"PRIMEIRO_DG_POSITIVO",intervalo:20,unidade:"DIAS",antecedencia:0,tolerancia:0,resolucao:"RECONFIRMACAO_CONCLUSIVA"};
+ for(const incluiDG of [false,true]) for(const incluiRec of [false,true]){
+  const regras=[...(incluiDG?regrasDG:[]),...(incluiRec?[regraRec]:[])];
+  const input={...protocolo,finalidade,modalidadeTentativa:"ETAPA",modalidadeDiagnostico:incluiDG?"PROTOCOLO":"EXTERNO",configuracaoAcompanhamento:regras.length?{versao:2,efeito:"ALERTA",regras}:null,etapas:[tentativa,...(incluiDG?[dg]:[]),...(incluiRec?[rec]:[])]};
+  const parsed=protocoloSchema.parse(input);
+  const etapas=etapasReprodutivasDoContrato(parsed.etapas).map(e=>etapaIatfSchema.parse(e.configuracao));
+  const calendario=calendarioIatf(new Date("2026-01-01T12:00:00Z"),etapas);
+  expect(calendario[0].previsaoPendente).toBe(false);
+  expect(calendario.slice(1).every(e=>e.previsaoPendente)).toBe(true);
+ }
+ expect(etapaIatfSchema.safeParse({...rec,planoAvaliacao:{tipo:"DIAGNOSTICO"}}).success).toBe(false);
+});
+
+it("valida ordem guiada sem reinterpretar versões legadas", () => {
+ const tentativa={nome:"Tentativa",tipo:"TENTATIVA",tentativaTipo:"IA",intervalo:2,unidade:"DIAS"};
+ const preparo={...aplicacao,intervalo:48,unidade:"HORAS"};
+ const base={...protocolo,finalidade:"IATF",modalidadeTentativa:"ETAPA",modalidadeDiagnostico:"EXTERNO",encerramentoGuiado:true};
+ expect(protocoloSchema.safeParse({...base,etapas:[preparo,tentativa]}).success).toBe(true);
+ expect(protocoloSchema.safeParse({...base,etapas:[tentativa,preparo]}).success).toBe(false);
+ expect(protocoloSchema.safeParse({...base,etapas:[{...preparo,intervalo:49},tentativa]}).success).toBe(false);
+ expect(protocoloSchema.safeParse({...base,etapas:[tentativa,tentativa]}).success).toBe(false);
+ expect(protocoloSchema.safeParse({...base,encerramentoGuiado:undefined,etapas:[tentativa,preparo]}).success).toBe(true);
 });
