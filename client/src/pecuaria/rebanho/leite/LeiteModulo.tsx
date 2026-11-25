@@ -79,9 +79,9 @@ export function LeiteModulo({ podeLancar, podeFinanceiro, podeExportar = false, 
           <div hidden={destinosAba!=="retiradas"}><DescarteLeite modo="retirada" podeLancar={podeLancar} aoMudou={()=>setRevisaoDestinos(v=>v+1)}/></div>
           <div hidden={destinosAba!=="descarte"}><DescarteLeite podeLancar={podeLancar} aoMudou={()=>setRevisaoDestinos(v=>v+1)}/></div>
         </div></>
+        : secao === "relatorios" ? <RelatoriosLeite podeExportar={podeExportar} podeFinanceiro={podeFinanceiro} />
         : sitio == null ? <ExigeSitioDoShell onSelecionar={onSelecionarSitio}/>
         : secao === "historico" ? <PreviaHistoricaLeite podeLancar={podeLancar} />
-        : secao === "relatorios" ? <RelatoriosLeite podeExportar={podeExportar} podeFinanceiro={podeFinanceiro} />
         : secao === "programacao" ? <ProgramacaoRetirada podeLancar={podeLancar} />
         : secao === "configuracoes" ? <><ConfiguracoesProducaoLeite podeLancar={podeLancar} /><ProgramacaoRetirada podeLancar={podeLancar} /></>
         : <>
