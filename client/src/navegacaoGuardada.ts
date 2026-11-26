@@ -1,18 +1,19 @@
-type GuardaNavegacao = () => Promise<boolean>;
+type IntencaoNavegacao = "navegacao" | "troca-sitio";
+type GuardaNavegacao = (intencao: IntencaoNavegacao) => Promise<boolean>;
 type RegistroGuarda = { id: symbol; guarda: GuardaNavegacao };
 
 let registro: RegistroGuarda | null = null;
 let registros: RegistroGuarda[] = [];
-let execucaoPendente: { id: symbol; promessa: Promise<boolean> } | null = null;
+const execucoesPendentes = new Map<IntencaoNavegacao, { id: symbol; promessa: Promise<boolean> }>();
 let execucaoAutorizadaSincrona = 0;
 let proximaIntencao = 0;
-let loteAberto = false;
+let intencaoDoLote: IntencaoNavegacao | null = null;
 
-function registrarIntencao(): number {
-  if (!loteAberto) {
-    proximaIntencao++;
-    loteAberto = true;
-    queueMicrotask(() => { loteAberto = false; });
+function registrarIntencao(intencao: IntencaoNavegacao): number {
+  if (intencaoDoLote !== intencao) {
+    const sequencia = ++proximaIntencao;
+    intencaoDoLote = intencao;
+    queueMicrotask(() => { if (sequencia === proximaIntencao) intencaoDoLote = null; });
   }
   return proximaIntencao;
 }
@@ -34,10 +35,10 @@ function atualizarRegistro() {
   const atuais = [...registros];
   registro = {
     id: Symbol("conjunto-guardas-navegacao"),
-    guarda: async () => {
+    guarda: async (intencao) => {
       for (const item of atuais) {
         if (!registros.some(ativo => ativo.id === item.id)) return false;
-        if (!await item.guarda()) return false;
+        if (!await item.guarda(intencao)) return false;
       }
       return true;
     },
@@ -45,27 +46,30 @@ function atualizarRegistro() {
 }
 
 /** Executa a ação imediatamente quando não há guarda; com guarda, só após confirmação. */
-export function executarComGuardaNavegacao(acao: () => void): void | Promise<boolean> {
+export function executarComGuardaNavegacao(acao: () => void, intencao: IntencaoNavegacao = "navegacao"): void | Promise<boolean> {
   if (execucaoAutorizadaSincrona > 0) { acao(); return; }
   const atual = registro;
   if (!atual) { acao(); return; }
-  const intencao = registrarIntencao();
+  const sequencia = registrarIntencao(intencao);
 
-  let promessa = execucaoPendente?.id === atual.id ? execucaoPendente.promessa : null;
+  const pendente = execucoesPendentes.get(intencao);
+  let promessa = pendente?.id === atual.id ? pendente.promessa : null;
   if (!promessa) {
     let retorno: Promise<boolean>;
-    try { retorno = Promise.resolve(atual.guarda()); }
+    try { retorno = Promise.resolve(atual.guarda(intencao)); }
     catch { retorno = Promise.resolve(false); }
     promessa = retorno.catch(() => false).then(Boolean);
     const referencia = promessa;
-    execucaoPendente = { id: atual.id, promessa };
-    void promessa.finally(() => { if (execucaoPendente?.promessa === referencia) execucaoPendente = null; });
+    execucoesPendentes.set(intencao, { id: atual.id, promessa });
+    void promessa.finally(() => {
+      if (execucoesPendentes.get(intencao)?.promessa === referencia) execucoesPendentes.delete(intencao);
+    });
   }
   return promessa.then(ok => {
     if (!ok || registro?.id !== atual.id) return false;
     // O salvamento foi aceito, mas uma ação mais recente já substituiu este
     // destino. Consome sem executar e sem sinalizar falha para não reverter URL.
-    if (intencao !== proximaIntencao) return true;
+    if (sequencia !== proximaIntencao) return true;
     execucaoAutorizadaSincrona++;
     try { acao(); }
     finally { queueMicrotask(() => { execucaoAutorizadaSincrona = Math.max(0, execucaoAutorizadaSincrona - 1); }); }

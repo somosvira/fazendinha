@@ -37,3 +37,7 @@ it("protege detalhes pela área e valida versão, etapa, revisão e limite de p�
   expect((await app().request(`/${uid(805)}/estrutura/${uid(806)}/procedimentos?pagina=2`)).status).toBe(200);
   expect((await app().request(`/${uid(805)}/estrutura/invalida/procedimentos`)).status).toBe(422);
 });
+it("consulta ações com o perfil financeiro resolvido pela sessão", async () => {
+  expect((await app().request(`/${uid(805)}/acoes`)).status).toBe(200);
+  expect(mocks.acoes).toHaveBeenCalledWith(uid(805), expect.objectContaining({ pagina: 1 }), false);
+});

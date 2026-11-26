@@ -407,13 +407,16 @@ it("indicação confirmada leva à programação existente só por ação explí
 });
 
 
-it.each(["AVALIACAO", "TENTATIVA", "EXAME", "APLICACAO"] as const)(
-  "carrega tarefa %s fora da janela de sugestões e abre os parâmetros no sítio da visita",
-  async tipo => {
+it.each([
+  ["AVALIACAO", false], ["TENTATIVA", false], ["EXAME", false], ["APLICACAO", false], ["TENTATIVA", true],
+] as const)(
+  "carrega tarefa %s (cobertura: %s) fora das sugestões e abre os parâmetros no sítio da visita",
+  async (tipo, cobertura) => {
     setPropriedadeAtiva(99);
+    const planoTentativa = { tipo: "TE" as const, materialId: "embriao", quantidade: 1 };
     const planejado = { etapa: {
       planoAvaliacao: { tipoExameId: "exame-avaliacao", tipo: "SEXAGEM" as const },
-      planoTentativa: { tipo: "TE" as const, materialId: "embriao", quantidade: 1 },
+      ...(cobertura ? { tentativaTipo: "COBERTURA" as const } : { planoTentativa }),
       planoExame: { tipoExameId: "exame-sanitario" },
       planoAplicacao: { produtoId: "produto", dose: "2.5", unidadeDose: "ML", via: "IM" },
     } };
@@ -430,7 +433,7 @@ it.each(["AVALIACAO", "TENTATIVA", "EXAME", "APLICACAO"] as const)(
       await screen.findByText("Procedimento reprodutivo pronto");
       expect(vi.mocked(FormReproducao).mock.calls.at(-1)?.[0]).toMatchObject({
         propriedadeId: 7, animalInicial: "a", tipoExameInicial: "exame-avaliacao", finalidadeInicial: "SEXAGEM",
-        tentativaInicial: planejado.etapa.planoTentativa,
+        tentativaInicial: cobertura ? { tipo: "COBERTURA" } : planoTentativa,
       });
     } else if (tipo === "EXAME") {
       await screen.findByText("Procedimento sanitário pronto");

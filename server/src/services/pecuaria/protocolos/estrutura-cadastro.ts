@@ -21,16 +21,19 @@ export function apresentarProcedimentoCadastro(e: Procedimento) {
   const tipoTentativa = texto(c.tentativaTipo) ?? texto(tentativa.tipo);
   const procedimento = e.tipo === "APLICACAO" ? (c.subtipo === "INSERCAO_DISPOSITIVO" ? "Inserção de dispositivo" : "Aplicação de produto")
     : e.tipo === "RETIRADA" ? "Retirada de dispositivo"
-    : e.tipo === "TENTATIVA" ? (tipoTentativa === "TE" ? "Transferência de embrião" : tipoTentativa === "IA" ? "Inseminação artificial" : "Tentativa reprodutiva")
+    : e.tipo === "TENTATIVA" ? (tipoTentativa === "TE" ? "Transferência de embrião" : tipoTentativa === "IA" ? "Inseminação artificial" : tipoTentativa === "COBERTURA" ? "Cobertura observada" : "Tentativa reprodutiva")
     : e.tipo === "EXAME" || e.tipo === "AVALIACAO" ? "Exame / diagnóstico" : "Manejo cadastrado";
   const nomeExame = texto(exame.nome) ?? e.tipoExame?.nome ?? null;
   return { id: e.id, nome: e.nome, procedimento,
+    ...(c.referenciaPrazoReconfirmacao === true ? { referenciaPrazoReconfirmacao: true as const } : {}),
+    ...(c.referenciaPrazoDiagnostico === true ? { referenciaPrazoDiagnostico: true as const } : {}),
     intervalo: typeof c.intervalo === "number" ? c.intervalo : e.diaRelativo,
     unidadeIntervalo: texto(c.unidade) ?? e.unidadeIntervalo,
     referencia: e.tipo === "APLICACAO" ? texto(produto.nome) ?? texto(produtoSnapshot.nome) ?? e.produto?.nome ?? null
       : e.tipo === "EXAME" || e.tipo === "AVALIACAO" ? nomeExame ? nomeExameApresentacao(e.tipoExameId, nomeExame) : null
+      : e.tipo === "TENTATIVA" && tipoTentativa === "COBERTURA" ? "Reprodutor definido no atendimento"
       : e.tipo === "TENTATIVA" ? texto(material.produtoNome) ?? texto(material.nome) ?? texto(objeto(material.produto).nome) ?? e.material?.produto.nome ?? null : null,
-    definirMaterialNoAtendimento: e.tipo === "TENTATIVA" && !e.material && !Object.keys(tentativa).length,
+    definirMaterialNoAtendimento: e.tipo === "TENTATIVA" && tipoTentativa !== "COBERTURA" && !e.material && !Object.keys(tentativa).length,
     quantidade: e.tipo === "APLICACAO" ? texto(aplicacao.dose) ?? e.dose?.toString() ?? null
       : e.tipo === "TENTATIVA" && typeof tentativa.quantidade === "number" ? String(tentativa.quantidade) : null,
     unidadeQuantidade: e.tipo === "APLICACAO" ? texto(aplicacao.unidadeDose) ?? e.unidade

@@ -17,6 +17,7 @@ function fixture(tipo = "ABORTO", observacao: string | null = null) {
     partoAnimal: { findFirst: vi.fn(async () => structuredClone(parto)), findUniqueOrThrow: vi.fn(async () => structuredClone(parto)),
       update: vi.fn(async ({ data }) => { Object.assign(parto, data, { versao: parto.versao + 1 }); return structuredClone(parto); }) },
     criaParto: { findMany: vi.fn().mockResolvedValue([]) }, ocorrenciaSanitaria: { count: vi.fn().mockResolvedValue(0) },
+    tarefaProtocolo: { findMany: vi.fn().mockResolvedValue([]) },
     demandaAcompanhamentoReprodutivo: { findMany: vi.fn().mockResolvedValue([]) },
     auditoriaPecuaria: { create: vi.fn(async ({ data }) => data) },
   };

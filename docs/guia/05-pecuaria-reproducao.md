@@ -92,6 +92,13 @@ Idade gestacional desde IA/cobertura vinculada é uma referência operacional. T
 
 Protocolo é uma versão de planejamento. Momentos agrupam ações; participação liga animal e versão; tarefa representa o que deve ser realizado. Programação reúne participações num contexto coletivo. A mesma base atende sanitário/reprodutivo e individual/coletivo.
 
+### Criar ou derivar um modelo
+
+1. Em **Configurações → Pecuária → Reprodução → Protocolos reprodutivos**, abra **Novo protocolo**. Em **Identificação**, comece do zero ou escolha a versão de um protocolo-base. A nova versão herda a estrutura da base. Animais, atendimentos e consumos ficam vinculados à versão de origem.
+2. Em IATF e TETF, escolha se a tentativa entra no protocolo ou será registrada separadamente. A tentativa planejada pode ser IA, TE ou cobertura observada e encerra as ações de preparo. DG e reconfirmação são opcionais e independentes. Ao incluí-los, informe os dias corridos após a tentativa registrada ou após o primeiro DG positivo válido, respectivamente. Os prazos podem ser alterados voltando à **Identificação**.
+3. Em **Etapas**, use **Adicionar etapa** para configurar o dia e os procedimentos. Clique na etapa para editar seus dados ou no lápis para editar o procedimento. O quadro organiza as etapas por dia. Se uma etapa herdada tem intervalos distintos, sua posição é definida pelo menor intervalo previsto. Etapas pendentes e acompanhamentos que dependem de um evento aparecem ao final. Consulte no resumo a soma das quantidades por produto e unidade. A retirada de dispositivo fica fora desse total.
+4. Em **Conferência**, revise identificação, calendário e quantidades e escolha **Salvar protocolo**. Salvar publica a versão do modelo. O estoque é movimentado pelos registros de consumo no atendimento.
+
 Aplicação, exame, tentativa, avaliação, manejo e retirada de dispositivo são registrados no atendimento. Confira a prévia e veja quais tarefas ficaram concluídas. Adiar ou não atender não administra produto, não insemina e não diagnostica.
 
 Na consulta histórica, **Sem tentativa vinculada** descreve a ausência de vínculo registrado com a participação. **IA não prevista neste modelo histórico** depende das etapas da versão, sem dedução pelo nome do protocolo: um modelo com TE ou somente preparação não fica incompleto por não ter IA. Etapas e fatos avulsos posteriores permanecem separados; datas próximas não atribuem vínculo nem sucesso ao protocolo. O acesso à ficha preserva o contexto de retorno e permite consultar os mesmos fatos.

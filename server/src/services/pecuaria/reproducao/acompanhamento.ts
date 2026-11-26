@@ -11,11 +11,19 @@ import { transacaoPecuaria } from "../transacao.js";
 import { hashDados, operacaoIdempotenteTx } from "./operacoes.js";
 import { proporAcompanhamentos, identidadeDemandaAcompanhamento } from "./acompanhamento.calc.js";
 import { consultaAcompanhamentoSchema, parametrosAcompanhamentoSchema, type CriarPoliticaAcompanhamentoInput, type PreviaAdocaoAcompanhamentoInput, type AdotarAcompanhamentoInput } from "./acompanhamento.schemas.js";
+import { diaIatf } from "./horarios.calc.js";
+import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
 
 const dia=(s:string)=>new Date(`${s}T00:00:00Z`);
 const texto=(d:Date)=>d.toISOString().slice(0,10);
 const json=(v:unknown):Prisma.InputJsonValue=>JSON.parse(JSON.stringify(v));
 function erro(message:string,campo?:string):never{throw new RebanhoError("VALIDACAO",message,campo);}
+const registro = (valor: Prisma.JsonValue | undefined) => valor && typeof valor === "object" && !Array.isArray(valor) ? valor : {};
+
+function formatoCompativel(demanda: Pick<DemandaAcompanhamentoReprodutivo, "regraSnapshot">, tipo: string | undefined, versao: Prisma.JsonValue | undefined) {
+ const regra = registro(demanda.regraSnapshot);
+ return (!regra.tipoExameId || regra.tipoExameId === tipo) && (!regra.tipoExameVersao || regra.tipoExameVersao === versao);
+}
 
 type OrigemDemanda = Pick<DemandaAcompanhamentoReprodutivo, "animalId" | "gestacaoId" | "finalidade" | "exameOrigemId" | "dataReferencia" | "origemAdocao">;
 type ExameOrigem = {
@@ -87,19 +95,140 @@ export async function garantirDemandaProtocoloTx(tx: Prisma.TransactionClient, t
  const origem={tentativaId:exame.interpretacao.tentativaId,gestacaoId:exame.interpretacao.gestacaoId};
  const mesmaOrigem=origem.tentativaId?{tentativaId:origem.tentativaId}:origem.gestacaoId?{gestacaoId:origem.gestacaoId}:{tarefaId};
  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:exame.animalId,finalidade,...mesmaOrigem},orderBy:[{ocorrencia:"desc"},{id:"asc"}]});
- const pendente=demandas.find(d=>d.estado==="PENDENTE"&&!d.tarefaId);
+ const formato=registro(exame.formatoSnapshot);
+ const pendente=demandas.find(d=>d.estado==="PENDENTE"&&!d.tarefaId&&formatoCompativel(d,exame.tipoExameId,formato.versao));
  if(pendente){
   const salva=await tx.demandaAcompanhamentoReprodutivo.update({where:{id:pendente.id},data:{tarefaId,versao:{increment:1}}});
   if(!parcialSemDG)await tx.exameAnimal.update({where:{id:exame.id},data:{demandaAcompanhamentoId:salva.id}});
   return salva;
  }
- const formato=exame.formatoSnapshot as Record<string,unknown>;
  const criada=await tx.demandaAcompanhamentoReprodutivo.create({data:{animalId:exame.animalId,propriedadeOrigemId:tarefa.execucao.propriedadeId!,
   finalidade,...origem,ocorrencia:(demandas[0]?.ocorrencia??0)+1,politicaId:null,previstaPara:null,
   tarefaId,exameOrigemId:exame.id,dataReferencia:exame.data,origemAdocao:"PROTOCOLO",regraSnapshot:json({versao:1,efeito:"ALERTA",tipoExameId:exame.tipoExameId,tipoExameVersao:formato.versao,acao:tarefa.etapa.configuracao}),criadoPorId:usuarioId}});
  if(!parcialSemDG)await tx.exameAnimal.update({where:{id:exame.id},data:{demandaAcompanhamentoId:criada.id}});
  await auditar(tx,{entidade:"DemandaAcompanhamentoReprodutivo",entidadeId:criada.id,animalId:exame.animalId,propriedadeId:tarefa.execucao.propriedadeId,acao:"REGISTRO_PROTOCOLO",usuarioId,depois:criada});
  return criada;
+}
+
+/** O vínculo externo só vale enquanto o fato conserva a evidência revista. */
+function participacaoExternaValida(t:{animalId:string;propriedadeId:number|null;data:Date;tipo:string;status:string;tarefaId:string|null;participacoesExplicitas:Array<{participacaoId:string;propriedadeId:number;snapshot:Prisma.JsonValue}>}) {
+ return t.participacoesExplicitas.find(v=>{const s=registro(v.snapshot);return !t.tarefaId && t.status==="VALIDO" && v.propriedadeId===t.propriedadeId && s.propriedadeId===t.propriedadeId && s.animalId===t.animalId && s.tipo===t.tipo && s.data===texto(t.data);})?.participacaoId;
+}
+
+export function primeiroDiagnosticoPositivoTx(tx: Prisma.TransactionClient, animalId: string, gestacaoId: string, propriedadeId?: number) {
+ return tx.exameAnimal.findFirst({
+  where: {
+   animalId, propriedadeId, status: "VALIDO", realizacao: "REALIZADO", finalidades: { has: "DIAGNOSTICO" },
+   interpretacao: { gestacaoId },
+   resultados: { some: { campo: "CONCLUSAO_GESTACIONAL", vigente: true, valor: { equals: "POSITIVO" } } },
+  },
+  orderBy: [{ data: "asc" }, { criadoEm: "asc" }, { id: "asc" }],
+  select: { id: true, data: true },
+ });
+}
+
+/** Consulta factual sem reprogramar a tarefa nem alterar o histórico manual. */
+export async function referenciaGuiadaValidaTx(tx: Prisma.TransactionClient, tarefaId: string, animalId: string, participacaoId: string, propriedadeId: number, reconfirmacao: boolean) {
+ const tentativa = await tx.tentativaReprodutiva.findFirst({where:{animalId,status:"VALIDO"},orderBy:[{data:"desc"},{ordem:"desc"}],include:{tarefa:true,participacoesExplicitas:{where:{revogadoEm:null},select:{participacaoId:true,propriedadeId:true,snapshot:true}}}});
+ if (!tentativa || tentativa.propriedadeId !== propriedadeId || (tentativa.tarefa?.execucaoId ?? participacaoExternaValida(tentativa)) !== participacaoId) return false;
+ if (await tx.partoAnimal.findFirst({where:{animalId,status:"VALIDO",data:{gte:tentativa.data}},select:{id:true}})) return false;
+ if (!reconfirmacao) return tentativa;
+ const demanda = await tx.demandaAcompanhamentoReprodutivo.findUnique({where:{tarefaId},include:{decisaoOperacional:true,exameOrigem:{include:incluirExameOrigem},gestacao:true}});
+ if (!demanda || demanda.finalidade !== "RECONFIRMACAO" || demanda.ocorrencia !== 1 || demanda.estado !== "PENDENTE" || !demanda.previstaPara || demandaDispensada(demanda) || !demanda.gestacaoId || demanda.gestacao?.tentativaId !== tentativa.id || demanda.gestacao.status !== "VALIDO" || demanda.gestacao.encerradaEm || !demanda.exameOrigemId || pendenciasOrigemDemanda(demanda,demanda.exameOrigem).length || !formatoCompativel(demanda,TIPO_EXAME_REPRODUTIVO,undefined)) return false;
+ const primeiro = await primeiroDiagnosticoPositivoTx(tx, animalId, demanda.gestacaoId);
+ return primeiro?.id === demanda.exameOrigemId ? tentativa : false;
+}
+
+/** A tarefa segue a tentativa vigente da participação. A demanda preserva sua própria regra. */
+export async function reconciliarPrevisoesDiagnosticoTx(tx: Prisma.TransactionClient, animalId: string, usuarioId: number | null) {
+ const tarefas = await tx.tarefaProtocolo.findMany({
+  where: { realizadaEm: null, dispensadaEm: null, regularizacaoPendente: false,
+   execucao: { animalId, canceladaEm: null, OR: [{ rodadaId: null }, { rodada: { status: "ABERTA" } }] },
+   etapa: { configuracao: { path: ["referenciaPrazoDiagnostico"], equals: true } },
+   exames: { none: {} }, vinculos: { none: { exameId: { not: null } } },
+  },
+  include: { etapa: true, execucao: true, demandaAcompanhamento: { include: { decisaoOperacional: true } },
+   eventos: { where: { tipo: "ADIAMENTO" }, select: { id: true }, take: 1 } },
+ });
+ if (!tarefas.length) return;
+ const tentativa = await tx.tentativaReprodutiva.findFirst({
+  where: { animalId, status: "VALIDO" }, orderBy: [{ data: "desc" }, { ordem: "desc" }],
+  include: { tarefa: true, participacoesExplicitas: { where: { revogadoEm: null }, select: { participacaoId: true, propriedadeId:true, snapshot:true } } },
+ });
+ const parto = tentativa && await tx.partoAnimal.findFirst({ where: { animalId, status: "VALIDO", data: { gte: tentativa.data } }, select: { id: true } });
+ const participacaoId = parto ? null : tentativa?.tarefa?.execucaoId ?? (tentativa ? participacaoExternaValida(tentativa) : null);
+ const demandas = participacaoId && tentativa ? await tx.demandaAcompanhamentoReprodutivo.findMany({
+  where: { tentativaId: tentativa.id, finalidade: "DIAGNOSTICO", ocorrencia: 1 }, include: { decisaoOperacional: true },
+ }) : [];
+ for (const tarefa of tarefas) {
+  const participacao = tarefa.execucao;
+  const config = registro(tarefa.etapa.configuracao);
+  if (config.referenciaPrazoDiagnostico !== true) continue;
+  const plano = registro(config.planoAvaliacao);
+  const referenciaExame = registro(registro(config.referencias).exame);
+  const tipoExame = typeof plano.tipoExameId === "string" ? plano.tipoExameId : TIPO_EXAME_REPRODUTIVO;
+  const antiga = tarefa.demandaAcompanhamento;
+  if (antiga?.origemAdocao === "PROTOCOLO") continue;
+  const fato = tentativa && participacaoId === participacao.id && tentativa.propriedadeId === participacao.propriedadeId ? tentativa : null;
+  const compativel = (d: DemandaAcompanhamentoReprodutivo) => d.tentativaId === fato?.id && d.finalidade === "DIAGNOSTICO" && formatoCompativel(d, tipoExame, referenciaExame.versao);
+  const demanda = antiga && compativel(antiga) ? antiga : demandas.find(d => !d.tarefaId && d.estado === "PENDENTE" && d.previstaPara && !demandaDispensada(d) && compativel(d));
+  const audit = { animalId, propriedadeId: participacao.propriedadeId, usuarioId };
+  const atualizarVinculo = async (d: DemandaAcompanhamentoReprodutivo, tarefaId: string | null) => {
+   const salva = await tx.demandaAcompanhamentoReprodutivo.update({ where: { id: d.id }, data: { tarefaId, versao: { increment: 1 } } });
+   await auditar(tx, { ...audit, entidade: "DemandaAcompanhamentoReprodutivo", entidadeId: d.id, acao: "RECONCILIACAO", antes: d, depois: salva });
+  };
+  if (antiga && antiga !== demanda) await atualizarVinculo(antiga, null);
+  if (demanda && demanda !== antiga) await atualizarVinculo(demanda, tarefa.id);
+  const revisada = Array.isArray(tarefa.historicoReprogramacao) && tarefa.historicoReprogramacao.some(item => registro(item).acao === "REVISAO_REGRA_ACOMPANHAMENTO");
+  if (tarefa.eventos.length || revisada || !tarefa.previsaoPendente && tarefa.previsaoOriginal && tarefa.previstaPara.getTime() !== tarefa.previsaoOriginal.getTime()) continue;
+
+  const parametros = registro(tarefa.parametros);
+  const dataTentativa = fato ? texto(fato.data) : null;
+  const mesmaOrigem = fato && parametros.tentativaPrazoDiagnosticoId === fato.id && parametros.dataTentativaPrazoDiagnostico === dataTentativa;
+  if ((mesmaOrigem && !tarefa.previsaoPendente) || (!fato && tarefa.previsaoPendente)) continue;
+  const prazo = fato && participacao.acompanhamentoSnapshot ? proporPrazoDaParticipacao(participacao.acompanhamentoSnapshot,
+   { tentativaId: fato.id, tipoTentativa: fato.tipo, data: texto(fato.data) }, participacao.id)[0] : null;
+  const prevista = demanda?.previstaPara ?? (prazo?.previstaPara ? dia(prazo.previstaPara) : null);
+  const previstaPara = prevista ?? dia(diaIatf(participacao.inicio, participacao.precisaoTemporal));
+  const atualizada = await tx.tarefaProtocolo.update({ where: { id: tarefa.id }, data: {
+   previstaPara, precisaoTemporal: "DIA", previsaoOriginal: prevista, previsaoPendente: !prevista,
+   parametros: json({ ...parametros, precisaoTemporal: "DIA", previsaoPendente: !prevista,
+    previstaEm: prevista ? texto(prevista) : null, previsaoOriginal: prevista ? texto(prevista) : null,
+    tentativaPrazoDiagnosticoId: fato?.id ?? null, dataTentativaPrazoDiagnostico: dataTentativa }),
+  } });
+  await auditar(tx, { ...audit, entidade: "TarefaProtocolo", entidadeId: tarefa.id, acao: "PREVISAO_POR_TENTATIVA", antes: tarefa, depois: atualizada });
+ }
+}
+
+/** A tarefa só recebe data de uma demanda baseada em DG positivo válido e na tentativa vinculada. */
+export async function reconciliarPrevisoesReconfirmacaoTx(tx: Prisma.TransactionClient, animalId: string, usuarioId: number | null) {
+ const tarefas = await tx.tarefaProtocolo.findMany({where:{realizadaEm:null,dispensadaEm:null,regularizacaoPendente:false,
+  execucao:{animalId,canceladaEm:null,OR:[{rodadaId:null},{rodada:{status:"ABERTA"}}]},
+  etapa:{configuracao:{path:["referenciaPrazoReconfirmacao"],equals:true}}, exames:{none:{}},vinculos:{none:{exameId:{not:null}}}},
+  include:{etapa:true,execucao:true,demandaAcompanhamento:{include:{decisaoOperacional:true,exameOrigem:{include:incluirExameOrigem},gestacao:true}},eventos:{where:{tipo:"ADIAMENTO"},select:{id:true},take:1}}});
+ if (!tarefas.length) return;
+ const tentativa = await tx.tentativaReprodutiva.findFirst({where:{animalId,status:"VALIDO"},orderBy:[{data:"desc"},{ordem:"desc"}],include:{tarefa:true,participacoesExplicitas:{where:{revogadoEm:null},select:{participacaoId:true,propriedadeId:true,snapshot:true}}}});
+ const parto = tentativa && await tx.partoAnimal.findFirst({where:{animalId,status:"VALIDO",data:{gte:tentativa.data}},select:{id:true}});
+ const participacaoId = parto ? null : tentativa?.tarefa?.execucaoId ?? (tentativa ? participacaoExternaValida(tentativa) : null);
+ const demandas = tentativa && participacaoId ? await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId,finalidade:"RECONFIRMACAO",ocorrencia:1,OR:[{participacaoAcompanhamentoId:participacaoId},{participacaoAcompanhamentoId:null}],gestacao:{tentativaId:tentativa.id,status:"VALIDO",encerradaEm:null}},include:{decisaoOperacional:true,exameOrigem:{include:incluirExameOrigem},gestacao:true}}) : [];
+ for(const tarefa of tarefas){
+  const antiga=tarefa.demandaAcompanhamento;
+  if(antiga?.origemAdocao==="PROTOCOLO")continue;
+  const valida=(d:typeof demandas[number])=>{
+   const prazo = tarefa.execucao.acompanhamentoSnapshot && d.gestacaoId ? proporReconfirmacoesDaParticipacao(tarefa.execucao.acompanhamentoSnapshot,{gestacaoId:d.gestacaoId,data:texto(d.dataReferencia)},tarefa.execucaoId).find(p=>p.origemAdocao==="MODELO"&&p.ocorrencia===1) : null;
+   return participacaoId===tarefa.execucaoId && tentativa?.propriedadeId===tarefa.execucao.propriedadeId && d.gestacao?.tentativaId===tentativa.id && d.gestacao.status==="VALIDO" && !d.gestacao.encerradaEm && d.estado==="PENDENTE" && !!d.previstaPara && !demandaDispensada(d) && !!d.exameOrigemId && !pendenciasOrigemDemanda(d,d.exameOrigem).length && formatoCompativel(d,TIPO_EXAME_REPRODUTIVO,undefined) && (d.participacaoAcompanhamentoId===tarefa.execucaoId || !!prazo?.previstaPara && prazo.previstaPara===texto(d.previstaPara));
+  };
+  const demanda=antiga && valida(antiga) ? antiga : demandas.find(d=>!d.tarefaId&&valida(d));
+  const audit={animalId,propriedadeId:tarefa.execucao.propriedadeId,usuarioId};
+  for(const [d,id] of [[antiga && antiga!==demanda ? antiga : null,null],[demanda && demanda!==antiga ? demanda : null,tarefa.id]] as const) if(d){const salva=await tx.demandaAcompanhamentoReprodutivo.update({where:{id:d.id},data:{tarefaId:id,versao:{increment:1}}});await auditar(tx,{...audit,entidade:"DemandaAcompanhamentoReprodutivo",entidadeId:d.id,acao:"RECONCILIACAO",antes:d,depois:salva});}
+  const revisada=Array.isArray(tarefa.historicoReprogramacao)&&tarefa.historicoReprogramacao.some(item=>registro(item).acao==="REVISAO_REGRA_ACOMPANHAMENTO");
+  if(tarefa.eventos.length||revisada||!tarefa.previsaoPendente&&tarefa.previsaoOriginal&&tarefa.previstaPara.getTime()!==tarefa.previsaoOriginal.getTime())continue;
+  const prevista=demanda?.previstaPara??null;
+  const parametros=registro(tarefa.parametros);
+  if(tarefa.previsaoPendente===!prevista && (!prevista || tarefa.previstaPara.getTime()===prevista.getTime()) && parametros.demandaPrazoReconfirmacaoId===(demanda?.id??null))continue;
+  const atualizada=await tx.tarefaProtocolo.update({where:{id:tarefa.id},data:{previstaPara:prevista??dia(diaIatf(tarefa.execucao.inicio,tarefa.execucao.precisaoTemporal)),precisaoTemporal:"DIA",previsaoOriginal:prevista,previsaoPendente:!prevista,parametros:json({...parametros,precisaoTemporal:"DIA",previsaoPendente:!prevista,previstaEm:prevista?texto(prevista):null,previsaoOriginal:prevista?texto(prevista):null,demandaPrazoReconfirmacaoId:demanda?.id??null})}});
+  await auditar(tx,{...audit,entidade:"TarefaProtocolo",entidadeId:tarefa.id,acao:"PREVISAO_POR_DG_POSITIVO",antes:tarefa,depois:atualizada});
+ }
 }
 
 export function listarPoliticasAcompanhamento(propriedadeId:number){return prisma.politicaAcompanhamentoReprodutivo.findMany({where:{propriedadeId},orderBy:{versao:"desc"}});}
@@ -136,9 +265,9 @@ async function propostasTx(tx:Prisma.TransactionClient,origem:Origem,politicaId?
 }
 const selecionarParticipacaoPrazo = { id: true, animalId: true, propriedadeId: true, acompanhamentoSnapshot: true } as const;
 const selecionarOrigemTentativa = {
- id: true,
+ id: true, animalId:true, propriedadeId:true, data:true, tipo:true, status:true, tarefaId:true,
  tarefa: { select: { execucao: { select: selecionarParticipacaoPrazo } } },
- participacoesExplicitas: { where: { revogadoEm: null }, select: { participacao: { select: selecionarParticipacaoPrazo } } },
+ participacoesExplicitas: { where: { revogadoEm: null }, select: { participacaoId:true, propriedadeId:true, snapshot:true, participacao: { select: selecionarParticipacaoPrazo } } },
 } as const;
 type ParticipacaoPrazo = { id: string; animalId: string; propriedadeId: number | null; acompanhamentoSnapshot: Prisma.JsonValue };
 
@@ -169,7 +298,8 @@ export async function preverDemandasNovaGestacaoTx(tx: Prisma.TransactionClient,
   where: { id: tentativaId, animalId: origem.animalId, status: "VALIDO", data: { lte: origem.data } },
   select: selecionarOrigemTentativa,
  }) : null;
- const participacao = tentativa?.tarefa?.execucao ?? tentativa?.participacoesExplicitas?.[0]?.participacao;
+ const externaId = tentativa ? participacaoExternaValida(tentativa) : null;
+ const participacao = tentativa?.tarefa?.execucao ?? tentativa?.participacoesExplicitas?.find(v=>v.participacaoId===externaId)?.participacao;
  const propostas = await proporDemandasGestacaoTx(tx, { ...fato, gestacaoId: "PREVIA" }, participacao, tentativaId ?? undefined);
  return propostas.map(({ gestacaoId: _gestacaoId, ...proposta }) => proposta);
 }
@@ -183,7 +313,9 @@ export async function criarDemandasDoFatoTx(tx:Prisma.TransactionClient,origem:O
    : (await propostasTx(tx,origem)).map(p=>({...p,origemAdocao:"FATO_NOVO" as const,participacaoAcompanhamentoId:null}));
  }else if(origem.gestacaoId && !politicaId){
   const gestacao=await tx.gestacaoAnimal.findUnique({where:{id:origem.gestacaoId},select:{TentativaReprodutiva:{select:selecionarOrigemTentativa}}});
-  const participacao=gestacao?.TentativaReprodutiva?.tarefa?.execucao ?? gestacao?.TentativaReprodutiva?.participacoesExplicitas?.[0]?.participacao;
+  const tentativa=gestacao?.TentativaReprodutiva;
+  const externaId=tentativa ? participacaoExternaValida(tentativa) : null;
+  const participacao=tentativa?.tarefa?.execucao ?? tentativa?.participacoesExplicitas?.find(v=>v.participacaoId===externaId)?.participacao;
   propostas=await proporDemandasGestacaoTx(tx, { ...origem, gestacaoId: origem.gestacaoId }, participacao, gestacao?.TentativaReprodutiva?.id);
  }else propostas=(await propostasTx(tx,origem,politicaId)).map(p=>({...p,origemAdocao:politicaId?"ADOCAO_EXPLICITA" as const:"FATO_NOVO" as const,participacaoAcompanhamentoId:null}));
  for(const p of propostas){
@@ -196,8 +328,9 @@ export async function criarDemandasDoFatoTx(tx:Prisma.TransactionClient,origem:O
 
 /** Reavalia apenas demandas já criadas, inclusive quando uma evidência é anulada. Não aplica uma política nova. */
 export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,animalId:string,usuarioId:number|null){
+ await reconciliarPrevisoesDiagnosticoTx(tx,animalId,usuarioId);
  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId},include:{tentativa:{include:{tarefa:true,participacoesExplicitas:{where:{revogadoEm:null},select:{participacaoId:true}}}},gestacao:true,exameOrigem:true,vinculoConclusaoResolucao:true},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{ocorrencia:"asc"},{id:"asc"}]});
- if(!demandas.length){await reconciliarAlertasReprodutivosAnimalTx(tx,animalId,usuarioId);return;}
+ if(!demandas.length){await reconciliarPrevisoesReconfirmacaoTx(tx,animalId,usuarioId);await reconciliarAlertasReprodutivosAnimalTx(tx,animalId,usuarioId);return;}
  const exames=await tx.exameAnimal.findMany({where:{animalId,status:"VALIDO",realizacao:"REALIZADO"},include:{interpretacao:true,resultados:{where:{vigente:true,campo:{in:["CONCLUSAO_GESTACIONAL","SEXO_FETAL"]}}}},orderBy:[{data:"asc"},{criadoEm:"asc"},{id:"asc"}]});
  const partos=await tx.partoAnimal.findMany({where:{animalId,status:"VALIDO"},orderBy:[{data:"asc"},{id:"asc"}]});
  const tentativas=await tx.tentativaReprodutiva.findMany({where:{animalId,status:"VALIDO"},include:{tarefa:true,participacoesExplicitas:{where:{revogadoEm:null},select:{participacaoId:true}}},orderBy:[{data:"asc"},{ordem:"asc"}]});
@@ -212,15 +345,18 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
   const tarefaOrigem=d.tentativa?.tarefa??tentativas.find(t=>t.id===d.gestacao?.tentativaId)?.tarefa;
   const tentativaOrigem=d.tentativa??tentativas.find(t=>t.id===d.gestacao?.tentativaId);
   const participacaoOrigemId=tarefaOrigem?.execucaoId??tentativaOrigem?.participacoesExplicitas?.[0]?.participacaoId;
-  if(!d.tarefaId&&participacaoOrigemId){
+  const tentativaSubstituida=d.tentativa && tentativas.some(t=>t.data>d.tentativa!.data || t.data.getTime()===d.tentativa!.data.getTime() && t.ordem>d.tentativa!.ordem);
+  if(!d.tarefaId&&participacaoOrigemId&&d.estado!=="ENCERRADA"&&(!d.tentativa||d.tentativa.status==="VALIDO"&&!tentativaSubstituida)){
    const tarefas=await tx.tarefaProtocolo.findMany({where:{execucaoId:participacaoOrigemId,demandaAcompanhamento:null,dispensadaEm:null,realizadaEm:null,regularizacaoPendente:false},include:{etapa:true},orderBy:[{previstaPara:"asc"},{id:"asc"}]});
    const compativel=tarefas.find(t=>{
     const config=t.etapa.configuracao as Record<string,unknown>;
     const plano=config.planoAvaliacao as {tipo?:string;tipoExameId?:string}|undefined;
     const refs=config.referencias as {exame?:{versao?:number}}|undefined;
-    return !tarefasReservadas.has(t.id)&&(!regra.tipoExameVersao||refs?.exame?.versao===regra.tipoExameVersao)&&config.tipo==="AVALIACAO"&&plano?.tipo===d.finalidade&&(!regra.tipoExameId||plano.tipoExameId===regra.tipoExameId)&&t.previstaPara>=d.dataReferencia;
+    return config.referenciaPrazoDiagnostico!==true&&config.referenciaPrazoReconfirmacao!==true&&!tarefasReservadas.has(t.id)&&formatoCompativel(d,plano?.tipoExameId,refs?.exame?.versao)&&config.tipo==="AVALIACAO"&&plano?.tipo===d.finalidade&&t.previstaPara>=d.dataReferencia;
    });
-   if(compativel){tarefaId=compativel.id;tarefasReservadas.add(compativel.id);demandaPorTarefa.set(compativel.id,d.id);}
+   if(compativel){
+    tarefaId=compativel.id;tarefasReservadas.add(compativel.id);demandaPorTarefa.set(compativel.id,d.id);
+   }
   }
   const fonte=d.tentativa??d.gestacao??(d.origemAdocao==="PROTOCOLO"?d.exameOrigem:null);
   const origemValida=pendenciasOrigemDemanda(d,exames.find(e=>e.id===d.exameOrigemId)).length===0;
@@ -264,6 +400,7 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
   const salva=await tx.demandaAcompanhamentoReprodutivo.update({where:{id:antes.id},data:{...dados,versao:{increment:1}}});
   await auditar(tx,{entidade:"DemandaAcompanhamentoReprodutivo",entidadeId:antes.id,animalId,propriedadeId:antes.propriedadeOrigemId,acao:"RECONCILIACAO",usuarioId,antes,depois:salva});
  }
+ await reconciliarPrevisoesReconfirmacaoTx(tx,animalId,usuarioId);
  await reconciliarAlertasReprodutivosAnimalTx(tx,animalId,usuarioId);
 }
 async function previaAdocaoTx(tx:Prisma.TransactionClient,input:PreviaAdocaoAcompanhamentoInput){
@@ -271,7 +408,13 @@ async function previaAdocaoTx(tx:Prisma.TransactionClient,input:PreviaAdocaoAcom
  if(tentativas.length!==input.tentativaIds.length||gestacoes.length!==input.gestacaoIds.length)erro("Fatos válidos não pertencem ao sítio escolhido; gestações devem estar abertas");
  const origens:Origem[]=tentativas.map(t=>({tentativaId:t.id,tipoTentativa:t.tipo,animalId:t.animalId,propriedadeId:input.propriedadeId,data:t.data}));
  for(const g of gestacoes){
-  const primeiro=await tx.exameAnimal.findFirst({where:{animalId:g.animalId,status:"VALIDO",realizacao:"REALIZADO",interpretacao:{gestacaoId:g.id},resultados:{some:{campo:"CONCLUSAO_GESTACIONAL",vigente:true,valor:{equals:"POSITIVO"}}}},orderBy:[{data:"asc"},{id:"asc"}]});
+  // A adoção administrativa de gestações legadas admite evidência positiva já registrada.
+  const primeiro = await tx.exameAnimal.findFirst({
+   where: { animalId: g.animalId, status: "VALIDO", realizacao: "REALIZADO", interpretacao: { gestacaoId: g.id },
+    resultados: { some: { campo: "CONCLUSAO_GESTACIONAL", vigente: true, valor: { equals: "POSITIVO" } } } },
+   orderBy: [{ data: "asc" }, { id: "asc" }],
+   select: { id: true, data: true },
+  });
   if(!primeiro)erro("Gestação sem primeiro DG positivo comprovado; reconcilie a evidência antes de adotar reconfirmações", "gestacaoIds");
   origens.push({gestacaoId:g.id,animalId:g.animalId,propriedadeId:input.propriedadeId,data:primeiro.data,exameOrigemId:primeiro.id});
  }

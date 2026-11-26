@@ -185,6 +185,7 @@ export type SugestaoTarefa = {
   precisaoTemporal?: "DIA" | "HORA";
   planejadoSnapshot?: { etapa: {
     planoAplicacao?: { produtoId: string; dose: string; unidadeDose: string; via?: string | null };
+    tentativaTipo?: "IA" | "TE" | "COBERTURA";
     planoTentativa?: { tipo: "IA" | "TE"; materialId: string; quantidade: number };
     planoExame?: { tipoExameId: string };
     planoAvaliacao?: { tipoExameId?: string; tipo?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM" } } } | null;

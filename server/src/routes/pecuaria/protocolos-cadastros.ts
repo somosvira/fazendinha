@@ -1,3 +1,4 @@
+import { podeVerValoresFinanceiros } from "../../services/pecuaria/custos/permissoes.js";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { getUsuario } from "../../middleware/permissao.js";
@@ -29,7 +30,7 @@ protocolosCadastrosRouter.get("/:id", async c => {
   try { return c.json(await obterCadastroProtocolo(z.string().uuid().parse(c.req.param("id")))); } catch (e) { return falha(c, e); }
 });
 protocolosCadastrosRouter.get("/:id/acoes", async c => {
-  try { return c.json(await listarAcoesCadastroProtocolo(z.string().uuid().parse(c.req.param("id")), consultaAcoesCadastroSchema.parse(c.req.query()))); } catch (e) { return falha(c, e); }
+  try { return c.json(await listarAcoesCadastroProtocolo(z.string().uuid().parse(c.req.param("id")), consultaAcoesCadastroSchema.parse(c.req.query()), podeVerValoresFinanceiros(getUsuario(c)))); } catch (e) { return falha(c, e); }
 });
 protocolosCadastrosRouter.get("/:id/estrutura", async c => {
   try { return c.json(await listarEstruturaCadastro(z.string().uuid().parse(c.req.param("id")), consultaAcoesCadastroSchema.parse(c.req.query()))); } catch (e) { return falha(c, e); }

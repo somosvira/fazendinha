@@ -49,7 +49,7 @@ describe("operação comum de protocolos", () => {
     expect(pagina.status).toBe(200);
     expect(mocks.tarefas).toHaveBeenCalledWith({ programacaoId: id }, 114, expect.objectContaining({ pagina: 2, porPagina: 10, situacao: "PENDENTES", etapaId: uid(407) }), expect.objectContaining({ id: 7 }));
     expect((await app().request(`/participacoes/${id}/etapas?propriedadeId=114`)).status).toBe(200);
-    expect(mocks.etapas).toHaveBeenCalledWith({ participacaoId: id }, 114, expect.objectContaining({ porPagina: 10 }));
+    expect(mocks.etapas).toHaveBeenCalledWith({ participacaoId: id }, 114, expect.objectContaining({ porPagina: 10 }), expect.objectContaining({ id: 7 }));
     expect((await app().request(`/programacoes/${id}/tarefas?propriedadeId=114&porPagina=11`)).status).toBe(422);
     expect(mocks.tarefas).toHaveBeenCalledTimes(1);
     expect((await app().request(`/programacoes/${id}/participantes?propriedadeId=114&pagina=2`)).status).toBe(200);

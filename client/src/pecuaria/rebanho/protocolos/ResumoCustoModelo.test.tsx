@@ -1,4 +1,3 @@
-import { alterarControle } from "@/lib/controles.fixture";
 // @vitest-environment jsdom
 import {
   act,
@@ -64,9 +63,8 @@ beforeEach(() => {
 afterEach(cleanup);
 it("zero documentado mantém valor e cobertura parcial; modal continua aberto ao paginar", async () => {
   render(<ResumoCustoModelo etapas={[]} propriedadeId={1} completo />);
-  expect(await screen.findByText("Estimativa parcial")).toBeTruthy();
+  expect(await screen.findByText("Parcial")).toBeTruthy();
   expect(screen.getByText(/0,00/)).toBeTruthy();
-  expect(screen.getByText("1 componentes não apurados")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Conferir referências" }));
   const modal = screen.getByRole("dialog");
   expect(
@@ -93,60 +91,24 @@ it("zero documentado mantém valor e cobertura parcial; modal continua aberto ao
     within(modal).getByRole("table", { name: "Referências do modelo" }),
   ).toBeTruthy();
 });
-it("sem permissão financeira ou sítio não consulta valores", () => {
+it("sem permissão financeira não consulta valores", () => {
   m.usuario.mockReturnValue({ dono: false, areas: ["pecuaria"], flags: [] });
-  const tela = render(
-    <ResumoCustoModelo etapas={[]} propriedadeId={1} completo />,
-  );
+  render(<ResumoCustoModelo etapas={[]} propriedadeId={1} completo />);
   expect(screen.getByText("Valores ocultos")).toBeTruthy();
-  expect(m.req).not.toHaveBeenCalled();
-  tela.unmount();
-  m.usuario.mockReturnValue({
-    dono: true,
-    areas: ["pecuaria", "financeiro"],
-    flags: [],
-  });
-  render(<ResumoCustoModelo etapas={[]} propriedadeId={null} completo />);
-  expect(
-    screen.getByText(/Selecione um sítio para consultar o custo previsto/),
-  ).toBeTruthy();
   expect(m.req).not.toHaveBeenCalled();
 });
 
-it("respeita sítio do endereço em Consolidado sem exigir alterar o seletor global", async () => {
-  window.history.replaceState(
-    null,
-    "",
-    "/configuracoes/pecuaria/reproducao/protocolos/novo?sitio=7",
-  );
+it("usa o escopo consolidado sem propriedade no corpo, ignorando sítio na URL", async () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo?sitio=7");
   render(<ResumoCustoModelo etapas={[]} propriedadeId={null} completo />);
-  await waitFor(() =>
-    expect(m.req).toHaveBeenCalledWith(
-      "/modelos/estimativa",
-      7,
-      expect.objectContaining({ propriedadeId: 7 }),
-    ),
-  );
-  expect(
-    screen.getByRole("combobox", { name: "Sítio para referências de custo" }),
-  ).toBeTruthy();
-  expect(
-    screen.queryByText(/Selecione um sítio para consultar o custo/),
-  ).toBeNull();
+  await waitFor(() => expect(m.req).toHaveBeenCalledWith("/modelos/estimativa", undefined, { etapas: [], referenciasPagina: 1 }));
+  expect(screen.queryByRole("combobox", { name: "Sítio para referências de custo" })).toBeNull();
 });
-it("oferece seleção local dentro da revisão e só estima após escolher o sítio", async () => {
-  render(<ResumoCustoModelo etapas={[]} propriedadeId={null} completo />);
-  expect(m.req).not.toHaveBeenCalled();
-  const controle = await screen.findByRole("combobox", {
-    name: "Sítio para referências de custo",
-  });
-  await waitFor(() => expect(controle).toHaveProperty("disabled", false));
-  await alterarControle(controle, { target: { value: "7" } });
-  await waitFor(() =>
-    expect(m.req).toHaveBeenCalledWith(
-      "/modelos/estimativa",
-      7,
-      expect.objectContaining({ propriedadeId: 7 }),
-    ),
-  );
+
+it("reconsulta ao trocar o sítio e envia produto do catálogo como pendente", async () => {
+  const etapas = [{ nome: "Aplicação", tipo: "APLICACAO" as const, intervalo: 0, unidade: "DIAS" as const, planoAplicacao: { produtoId: "", produtoCatalogoId: "catalogo", dose: "2", unidadeDose: "ML" as const } }];
+  const tela = render(<ResumoCustoModelo etapas={etapas} propriedadeId={null} completo />);
+  await waitFor(() => expect(m.req).toHaveBeenCalledWith("/modelos/estimativa", undefined, expect.objectContaining({ etapas: [expect.objectContaining({ produtoCatalogoId: "catalogo", quantidade: "2" })] })));
+  tela.rerender(<ResumoCustoModelo etapas={etapas} propriedadeId={7} completo />);
+  await waitFor(() => expect(m.req).toHaveBeenCalledWith("/modelos/estimativa", 7, expect.not.objectContaining({ propriedadeId: expect.anything() })));
 });

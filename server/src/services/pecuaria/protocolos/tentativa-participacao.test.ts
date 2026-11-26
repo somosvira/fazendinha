@@ -25,8 +25,8 @@ const t = {
   tarefaId: null,
 };
 describe("vínculo factual externo", () => {
-  it("aceita IA e TE explicitamente compatíveis sem inferir tentativa pelo calendário", () => {
-    expect(() => validarTentativaExterna(p, t, 1)).not.toThrow();
+  it("aceita IA, TE e cobertura observada por vínculo explícito sem inferir pelo calendário", () => {
+    for (const tipo of ["IA", "TE", "COBERTURA"]) expect(() => validarTentativaExterna(p, { ...t, tipo }, 1)).not.toThrow();
     expect(() =>
       validarTentativaExterna(
         { ...p, protocolo: { ...p.protocolo, finalidade: "TETF" } },
@@ -39,7 +39,6 @@ describe("vínculo factual externo", () => {
     { ...t, animalId: "outro" },
     { ...t, propriedadeId: 2 },
     { ...t, status: "ANULADO" },
-    { ...t, tipo: "TE" },
     { ...t, tarefaId: "tarefa" },
     { ...t, data: d("2025-12-31") },
   ])("recusa fato incompatível %j", (tentativa) =>

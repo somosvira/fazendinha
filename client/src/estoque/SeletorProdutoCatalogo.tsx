@@ -24,7 +24,7 @@ const detalheMeu = (p: ProdutoDTO) => [p.apresentacao, p.fabricante?.nome].filte
  * Escolher um item do catálogo não abre diálogo: quem usa o seletor preenche a linha e envia `produtoCatalogoId`.
  * Combobox com lista (ARIA 1.2): foco permanece no campo, setas navegam, Enter escolhe, Esc fecha.
  */
-export function SeletorProdutoCatalogo({ id, rotulo, value, onChange, uso, somenteMeus = false, obrigatorio = false, disabled = false, invalido = false, propriedadeId, limite = 10, debounceMs = 250, placeholder = "Buscar produto", descricaoId, onCadastrado }: {
+export function SeletorProdutoCatalogo({ id, rotulo, value, onChange, uso, somenteMeus = false, obrigatorio = false, disabled = false, invalido = false, propriedadeId, limite = 10, debounceMs = 250, placeholder = "Buscar produto", descricaoId, onCadastrado, permitirCadastro = true, limpavel = true }: {
   id?: string; rotulo: string; value: ProdutoEscolhido | null; onChange: (valor: ProdutoEscolhido | null) => void;
   uso?: UsoProduto;
   /** Oculta o grupo Catálogo: para fluxos cujo contrato não aceita `produtoCatalogoId`. */
@@ -33,6 +33,10 @@ export function SeletorProdutoCatalogo({ id, rotulo, value, onChange, uso, somen
   placeholder?: string; descricaoId?: string;
   /** Chamado depois de cadastrar um produto novo pelo seletor (o produto já vem escolhido). */
   onCadastrado?: (produto: ProdutoDTO) => void;
+  /** O cadastro imediato pode ser desabilitado em fluxos que só permitem adoção ao salvar. */
+  permitirCadastro?: boolean;
+  /** Mostra a ação de limpar a escolha já preenchida. */
+  limpavel?: boolean;
 }) {
   const gerado = useId();
   const campoId = id ?? `produto-${gerado}`;
@@ -94,6 +98,7 @@ export function SeletorProdutoCatalogo({ id, rotulo, value, onChange, uso, somen
     else if (e.key === "Tab" && aberto) fechar();
   };
 
+  const podeLimpar = limpavel && !!value && !obrigatorio && !disabled;
   const mostrado = aberto && digitando ? texto : aberto && !texto ? "" : value ? nomeEscolhido(value) : "";
   const grupos = [
     { grupo: "meus" as const, titulo: "Meus produtos" },
@@ -107,16 +112,16 @@ export function SeletorProdutoCatalogo({ id, rotulo, value, onChange, uso, somen
         disabled={disabled} placeholder={value ? nomeEscolhido(value) : placeholder} value={mostrado} title={value ? nomeEscolhido(value) : undefined}
         onFocus={() => { if (!disabled && !devolvendoFoco.current) setAberto(true); }} onClick={() => { if (!disabled) setAberto(true); }}
         onChange={(e) => { setTexto(e.target.value); setDigitando(true); setAberto(true); }} onKeyDown={teclado}
-        className="mt-1.5 block w-full rounded-lg border border-border bg-card py-2.5 pl-3 pr-16 font-normal disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 aria-[invalid=true]:border-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" />
+        className={`mt-1.5 block w-full rounded-lg border border-border bg-card py-2.5 pl-3 ${limpavel ? "pr-16" : "pr-9"} font-normal disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 aria-[invalid=true]:border-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`} />
       <span className="absolute inset-y-0 right-1 flex items-center gap-0.5 pt-1.5">
-        {value && !obrigatorio && !disabled && <button type="button" aria-label={`Limpar ${rotulo.toLocaleLowerCase("pt-BR")}`} onClick={() => { onChange(null); fechar(); focarCampo(); }} className="inline-flex size-8 items-center justify-center rounded-md text-ink-3 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><X size={15} aria-hidden /></button>}
+        {podeLimpar && <button type="button" aria-label={`Limpar ${rotulo.toLocaleLowerCase("pt-BR")}`} onClick={() => { onChange(null); fechar(); focarCampo(); }} className="inline-flex size-8 items-center justify-center rounded-md text-ink-3 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><X size={15} aria-hidden /></button>}
         <ChevronDown size={16} aria-hidden className="mr-2 text-ink-3" />
       </span>
     </div>
     {aberto && <div className="absolute left-0 right-0 top-full z-[1300] mt-1 max-h-[min(22rem,60dvh)] overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg">
       {estado.fase === "carregando" && <p role="status" className="px-3 py-3 text-sm text-ink-3">Buscando produtos…</p>}
       {estado.fase === "erro" && <div role="alert" className="grid gap-2 px-3 py-3 text-sm"><p className="text-destructive">{estado.mensagem}</p><div><Button type="button" secondary onClick={() => setTentativa((n) => n + 1)}>Tentar novamente</Button></div></div>}
-      {semResultado && <div className="grid gap-2 px-3 py-3 text-sm"><p role="status">{termo ? `Nenhum produto encontrado para “${termo}”.` : "Nenhum produto encontrado."}</p><div><Button type="button" secondary onClick={() => setCadastrando(true)}><Plus size={15} aria-hidden />Cadastrar produto</Button></div></div>}
+      {semResultado && <div className="grid gap-2 px-3 py-3 text-sm"><p role="status">{termo ? `Nenhum produto encontrado para “${termo}”.` : "Nenhum produto encontrado."}</p>{permitirCadastro && <div><Button type="button" secondary onClick={() => setCadastrando(true)}><Plus size={15} aria-hidden />Cadastrar produto</Button></div>}</div>}
       <div id={listaId} role="listbox" aria-label={rotulo} hidden={!grupos.length}>
         {grupos.map((g) => <div key={g.grupo} role="group" aria-labelledby={`${campoId}-grupo-${g.grupo}`}>
           <div id={`${campoId}-grupo-${g.grupo}`} className="sticky top-0 border-b border-border bg-popover px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ink-3">{g.titulo}</div>

@@ -59,7 +59,7 @@ Produto manual (sem `produtoCatalogoId`) não herda nada; `fabricanteId` e `clas
    - Campos gravados: `nome`, `unidade` (sugerida pelo catálogo ou escolhida na linha), `categoriaId`, usos sanitário/nutricional/genético do catálogo, `produtoCatalogoId`. Herdáveis ficam null.
    - Se `nome` colidir com outro `Produto` sem vínculo, a operação falha com conflito que identifica o produto existente; a interface oferece usá-lo. Não há fusão automática.
 4. Operação cancelada ou com erro não cria produto (mesma transação).
-5. Itens do catálogo só são aceitos em compra de estoque, inventário inicial e bonificação, na aplicação sanitária com origem "Incluso no serviço" fora de fluxos de tarefa (tarefa, visita, IATF e execução de protocolo usam só Meus produtos) e no movimento manual de estoque; os demais tipos de operação e fluxos rejeitam `produtoCatalogoId` com erro de validação. Quando o item não traz categoria sugerida, a aplicação sanitária exige a escolha de uma categoria ativa. Uma adoção concorrente sob o ajuste de estoque Serializable pode responder 409; a pessoa tenta salvar de novo.
+5. O catálogo pode ser usado em compra de estoque, inventário inicial, bonificação, movimento manual de estoque, aplicação sanitária com origem **Incluso no serviço** fora de fluxos de tarefa e planejamento de aplicação ou inserção no **cadastro de modelos reprodutivos**. Para o modelo, `planoAplicacao` recebe um ID de produto da fazenda ou do catálogo. O salvamento resolve o catálogo dentro da transação da versão, valida o uso sanitário, a categoria ativa e a unidade da dose, e guarda o ID de Produto na estrutura publicada. Consultas e estimativas do modelo são leituras. Tarefas, visitas e atendimento de protocolos continuam aceitando apenas Meus produtos. A aplicação sanitária e o cadastro reprodutivo exigem categoria ativa quando o catálogo não oferece sugestão. Uma adoção concorrente pode retornar 409 para nova tentativa.
 
 ### Categoria financeira sugerida
 
@@ -81,7 +81,7 @@ Evoluções futuras do catálogo exigem migration própria, revisão das referê
 - **Cadastrar produto**: ação no seletor e na tela de Produtos, com o formulário atual (`FormProduto`).
 - **Ficha do produto adotado**: campos herdáveis com indicação de origem e ação Restaurar; princípios ativos somente leitura; campos da fazenda editáveis como hoje.
 - **Tela de Produtos (Estoque)**: lista só Meus produtos. Busca no catálogo apenas pelo seletor e pela aba única de consulta "Catálogo" (`/estoque?aba=catalogo`), somente leitura, com produto, fabricante, classificação, uso e situação na fazenda. Fabricantes, classificações e princípios ativos não têm abas próprias; seguem como filtros de Produtos. Links antigos `?aba=fabricantes|classificacoes-tecnicas|principios-ativos` abrem o Catálogo.
-- Estados: carregando, erro com Tentar novamente, busca sem resultado (oferecer Cadastrar produto), conflito de nome na adoção, item do catálogo inativo já adotado.
+- Estados: carregando, erro com Tentar novamente, busca sem resultado, conflito de nome na adoção, item do catálogo inativo já adotado. Fluxos com cadastro avulso oferecem **Cadastrar produto** na busca vazia. No cadastro de modelos reprodutivos, o seletor permite escolher produtos existentes ou itens do catálogo para adoção na gravação da versão.
 
 ## API
 
