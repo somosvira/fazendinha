@@ -7,8 +7,8 @@ type PaginaOpcoes = ResultadoBuscavel<EscolhaCatalogoProtocolo> & { pagina: numb
 
 /** Consulta das opções de um cadastro de protocolo (produto, material, exame ou tipo de aplicação) para o `SelectBuscavel`. */
 export const opcoesProtocolo = (f: { opcao: OpcaoCatalogoProtocolo; origem: "SANITARIO" | "REPRODUTIVO"; tipoTentativa?: "IA" | "TE"; propriedadeId?: number }) =>
-  ({ busca, selecionadoId }: ConsultaBuscavel) =>
-    reqProtocolo<PaginaOpcoes>(`/cadastros/opcoes${consultaProtocolo({ opcao: f.opcao, origem: f.origem, tipoTentativa: f.tipoTentativa, pagina: 1, busca, selecionadoId })}`, f.propriedadeId);
+  ({ busca, selecionadoId, pagina = 1 }: ConsultaBuscavel & { pagina?: number }) =>
+    reqProtocolo<PaginaOpcoes>(`/cadastros/opcoes${consultaProtocolo({ opcao: f.opcao, origem: f.origem, tipoTentativa: f.tipoTentativa, pagina, busca, selecionadoId })}`, f.propriedadeId);
 
 /** Via e orientação de uso do produto escolhido, mostradas abaixo do campo de produto. */
 export const detalheProdutoSanitario = (produto: EscolhaCatalogoProtocolo) => {

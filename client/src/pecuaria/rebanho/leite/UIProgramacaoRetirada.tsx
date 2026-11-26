@@ -1,3 +1,4 @@
+import { SeletorProdutoLocal } from "../../../estoque/SeletorProdutoLocal";
 import "./programacao-retirada.css";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { AjudaCampo } from "@/components/Dica";
@@ -422,18 +423,7 @@ function ConfigurarRetirada({
               <>
                 <label>
                   Produto de leite
-                  <SelectCampo disabled={salvando}
-                    required
-                    value={produto}
-                    onValueChange={setProduto}
-                  >
-                    <option value="">Selecione</option>
-                    {produtos.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome}
-                      </option>
-                    ))}
-                  </SelectCampo>
+                  <SeletorProdutoLocal rotulo="Produto de leite" disabled={salvando} obrigatorio valor={produto} opcoes={produtos} onChange={setProduto} />
                 </label>
                 {erroProdutos && (
                   <p role="alert">

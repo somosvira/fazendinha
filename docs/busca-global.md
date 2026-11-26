@@ -112,3 +112,5 @@ abre o modal exato em Estoque → Catálogo usando `referenciaCatalogo`, mantend
 a busca `buscaCatalogo` e o escopo ativo. O gate é o de Estoque (Financeiro ou
 Pecuária). Produtos sem dados oficiais vinculados continuam disponíveis na consulta
 do Catálogo e exibem o motivo da pendência. Não geram resultado do tipo referência oficial apenas por possuírem pesquisa pendente ou links a conferir. Referências parciais são identificadas como tais no contexto do resultado e abrem o modal exato com seus campos e pendências.
+
+A busca global de produtos abre a ficha exata do Produto da fazenda. Referências de catálogo entram na fonte de medicamentos somente quando possuem orientação de bula; outras referências são consultáveis pelo seletor interno de produtos. O modal de seleção não possui rota própria.

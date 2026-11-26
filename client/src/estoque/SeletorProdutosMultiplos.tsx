@@ -1,0 +1,16 @@
+import { useRef, useState, type RefObject } from "react";
+import { ChevronDown } from "lucide-react";
+import { DialogoSelecaoProdutos } from "./DialogoSelecaoProdutos";
+import { Button } from "../financeiro/financeiro-ui";
+
+type Opcao = { id: string; nome: string; produtoEstoqueId?: string | null; unidade?: string };
+/** Multi-seleção sobre a fonte e os IDs fornecidos pelo fluxo, sem adoção. */
+export function SeletorProdutosMultiplos({ opcoes, valor, onChange, rotulo = "Selecionar medicamentos", corresponde, abertoInicial = false, onFechar, retornoFoco, detalheOpcao }: { opcoes: Opcao[]; valor: string[]; onChange: (ids: string[]) => void; rotulo?: string; corresponde?: (nome: string, busca: string) => boolean; abertoInicial?: boolean; onFechar?: () => void; retornoFoco?: RefObject<HTMLButtonElement>; detalheOpcao?: (opcao: Opcao) => string | undefined }) {
+  const [aberto, setAberto] = useState(abertoInicial), [busca, setBusca] = useState(""), [pagina, setPagina] = useState(1), [aba, setAba] = useState<"meus" | "catalogo">(() => opcoes.some(p => p.produtoEstoqueId === p.id) ? "meus" : "catalogo"), [rascunho, setRascunho] = useState<string[]>(() => valor);
+  const gatilho = useRef<HTMLButtonElement>(null);
+  const itens = opcoes.filter(p => (p.produtoEstoqueId === p.id ? "meus" : "catalogo") === aba && (corresponde ? corresponde(p.nome, busca) : p.nome.toLocaleLowerCase("pt-BR").includes(busca.trim().toLocaleLowerCase("pt-BR"))));
+  const totalPaginas = Math.max(1, Math.ceil(itens.length / 10)), paginaAtual = Math.min(pagina, totalPaginas);
+  return <><button type="button" ref={gatilho} aria-haspopup="dialog" aria-expanded={aberto} onClick={() => { setRascunho(valor); setBusca(""); setPagina(1); setAberto(true); }} className={abertoInicial ? "sr-only" : "flex min-h-11 w-full items-center justify-between rounded-lg border border-border bg-card px-3 text-left"}>{rotulo}<ChevronDown size={16}/></button>
+    <DialogoSelecaoProdutos aberto={aberto} onAberto={v => { setAberto(v); if (!v) onFechar?.(); }} gatilho={retornoFoco ?? gatilho} titulo={rotulo} contexto="Marque os medicamentos e confirme a seleção." busca={busca} onBusca={v => { setBusca(v); setPagina(1); }} aba={aba} onAba={v => { setAba(v); setPagina(1); }} mostrarAbas paginacao={{ pagina: paginaAtual, total: itens.length, porPagina: 10, onPagina: setPagina }} acoes={<><Button secondary onClick={() => { setAberto(false); onFechar?.(); }}>Cancelar</Button><Button onClick={() => { onChange(rascunho); setAberto(false); onFechar?.(); }}>Confirmar seleção ({rascunho.length})</Button></>}>
+      <div className="divide-y divide-border rounded-lg border border-border">{itens.slice((paginaAtual - 1) * 10, paginaAtual * 10).map(p => <label key={p.id} className={`flex items-center gap-3 p-3 text-sm ${rascunho.includes(p.id) ? "bg-primary/10" : ""}`}><input type="checkbox" className="accent-primary" checked={rascunho.includes(p.id)} onChange={e => setRascunho(atuais => e.target.checked ? [...atuais, p.id] : atuais.filter(id => id !== p.id))}/><span>{p.nome} {detalheOpcao?.(p) ? <small>· {detalheOpcao(p)}</small> : p.unidade && <small>· {p.unidade}</small>}</span></label>)}{!itens.length && <p className="p-4">Nenhum medicamento encontrado.</p>}</div></DialogoSelecaoProdutos></>;
+}

@@ -119,6 +119,20 @@ export async function buscarProdutos(input: BuscaProdutos) {
   const uso = input.uso ? { [USO_CAMPO[input.uso]]: true } : {};
   const meusWhere: Prisma.ProdutoWhereInput = { ativo: true, ...uso, ...inicioDePalavra("nome", input.q ?? "", { insensitive: true }) };
   const catalogoWhere: Prisma.ProdutoCatalogoWhereInput = { ativo: true, produtoDaFazenda: { is: null }, ...uso, ...filtroBusca(input.q) };
+  if (input.origem) {
+    const porPagina = input.porPagina ?? 10;
+    return prisma.$transaction(async (tx) => {
+      const total = input.origem === "meus" ? await tx.produto.count({ where: meusWhere }) : await tx.produtoCatalogo.count({ where: catalogoWhere });
+      const pagina = Math.min(input.pagina ?? 1, Math.max(1, Math.ceil(total / porPagina)));
+      const skip = (pagina - 1) * porPagina;
+      if (input.origem === "meus") {
+        const itens = await tx.produto.findMany({ where: meusWhere, include: includeProduto, orderBy: [{ nome: "asc" }, { id: "asc" }], skip, take: porPagina });
+        return { itens: itens.map(produtoDTO), total, pagina, porPagina };
+      }
+      const [itens, categorias] = await Promise.all([tx.produtoCatalogo.findMany({ where: catalogoWhere, include: includeResumo, orderBy: ordemCatalogo, skip, take: porPagina }), categoriasComUso(tx)]);
+      return { itens: itens.map(i => resumoCatalogo(i, categorias)), total, pagina, porPagina };
+    }, { isolationLevel: "RepeatableRead" });
+  }
   const [meus, catalogo, categorias] = await Promise.all([
     prisma.produto.findMany({ where: meusWhere, include: includeProduto, orderBy: [{ nome: "asc" }, { id: "asc" }], take: input.limite }),
     prisma.produtoCatalogo.findMany({ where: catalogoWhere, include: includeResumo, orderBy: ordemCatalogo, take: input.limite }),

@@ -16,6 +16,9 @@ export const buscaProdutosSchema = z.object({
   q: z.string().trim().max(160).default(""),
   uso: usoQuerySchema.optional(),
   limite: z.coerce.number().int().min(1).max(50).default(10),
+  origem: z.enum(["meus", "catalogo"]).optional(),
+  pagina: z.coerce.number().int().positive().optional(),
+  porPagina: z.coerce.number().int().min(1).max(50).optional(),
 }).strict();
 export type BuscaProdutos = z.infer<typeof buscaProdutosSchema>;
 

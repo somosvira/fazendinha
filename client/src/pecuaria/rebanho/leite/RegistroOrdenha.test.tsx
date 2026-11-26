@@ -59,7 +59,9 @@ for (const existente of [false, true]) it(`confirma parcela ${existente ? "edita
   abrir(existente ? "s1" : "novo");
   fireEvent.click(await screen.findByRole("button", { name: "Conferir entrada no estoque" }));
   await waitFor(() => expect((screen.getByLabelText("Produto da parcela 1") as HTMLSelectElement).disabled).toBe(false));
-  fireEvent.change(screen.getByLabelText("Produto da parcela 1"), { target: { value: "p1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Produto da parcela 1" }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Leite interno/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar seleção" }));
   fireEvent.change(screen.getByLabelText("Motivo da natureza"), { target: { value: "Natureza e segregação conferidas" } });
   fireEvent.click(screen.getByLabelText("Conferi a segregação física, os animais, os produtos e a natureza de cada parcela."));
   fireEvent.click(screen.getByRole("button", { name: "Confirmar parcelas" }));
@@ -114,7 +116,9 @@ it("salva, reabre e confirma primeira ordenha própria sem convertê-la em decla
   fireEvent.click(screen.getByRole("button", { name: "Concluir conferência" }));
   fireEvent.click(screen.getByRole("button", { name: "Conferir entrada no estoque" }));
   await waitFor(() => expect((screen.getByLabelText("Produto da parcela 1") as HTMLSelectElement).disabled).toBe(false));
-  fireEvent.change(screen.getByLabelText("Produto da parcela 1"), { target: { value: "p1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Produto da parcela 1" }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Leite interno/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar seleção" }));
   fireEvent.change(screen.getByLabelText("Motivo da natureza"), { target: { value: "Primeira ordenha após parto conferida" } });
   fireEvent.click(screen.getByLabelText("Conferi a segregação física, os animais, os produtos e a natureza de cada parcela."));
   fireEvent.click(screen.getByRole("button", { name: "Confirmar parcelas" }));

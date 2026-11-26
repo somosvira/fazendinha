@@ -1,3 +1,4 @@
+import { SeletorProdutoLocal } from "../../../estoque/SeletorProdutoLocal";
 import { DatePicker } from "../../../components/DatePicker";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -405,18 +406,7 @@ export function OperacoesComerciaisLeite({
                 <div className="leite-form-inline">
                   <label>
                     Produto de leite
-                    <SelectCampo disabled={ocupado}
-                      required
-                      value={produto}
-                      onValueChange={setProduto}
-                    >
-                      <option value="">Selecione</option>
-                      {cadastros?.produtos.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nome}
-                        </option>
-                      ))}
-                    </SelectCampo>
+                    <SeletorProdutoLocal rotulo="Produto de leite" disabled={ocupado} obrigatorio valor={produto} opcoes={cadastros?.produtos ?? []} onChange={setProduto} />
                   </label>
                   <label>
                     Data real da retirada

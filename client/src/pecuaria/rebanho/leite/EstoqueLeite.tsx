@@ -1,3 +1,4 @@
+import { SeletorProdutoLocal } from "../../../estoque/SeletorProdutoLocal";
 import { DatePicker } from "../../../components/DatePicker";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
@@ -138,21 +139,7 @@ function DetalheEstoqueLeite({
       <div className="leite-form-inline">
         <label>
           Produto de leite
-          <SelectCampo
-            value={produto}
-            disabled={ocupado}
-            onValueChange={(valor) => {
-              setProduto(valor);
-              setAviso("");
-            }}
-          >
-            <option value="">Selecione o produto</option>
-            {produtos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </SelectCampo>
+          <SeletorProdutoLocal rotulo="Produto de leite" valor={produto} disabled={ocupado} opcoes={produtos} onChange={valor => { setProduto(valor); setAviso(""); }} />
         </label>
         <label>
           Dia da produção / retirada

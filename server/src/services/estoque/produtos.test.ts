@@ -2,21 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../pecuaria/sanidade/alertas/avaliador.js",()=>({marcarReavaliacaoDestinoTx:vi.fn()}));
 
 const mocks = vi.hoisted(() => ({
-  protocoloIatfCount: vi.fn(),
+  protocoloIatfCount: vi.fn(), referenciaFindUnique: vi.fn(),
   produtoCreate: vi.fn(), produtoFindUnique: vi.fn(), produtoUpdate: vi.fn(), produtoFindMany: vi.fn(),
   parceiroFindMany: vi.fn(), centroCustoFindMany: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(), itemFindFirst: vi.fn(),
   movimentoCount: vi.fn(), itemOperacaoCount: vi.fn(), operacaoAgricolaCount: vi.fn(),
-  itemDietaCount: vi.fn().mockResolvedValue(0), categoriaFindUnique: vi.fn(),
+  itemDietaCount: vi.fn().mockResolvedValue(0), categoriaFindUnique: vi.fn(), categoriaFindFirst: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => {
   const tx = {
-    $executeRaw: vi.fn().mockResolvedValue(0),
+    $executeRaw: vi.fn().mockResolvedValue(0), $queryRaw: vi.fn().mockResolvedValue([]),
     protocoloIatf: {count:mocks.protocoloIatfCount},
     materialGenetico: { count: vi.fn().mockResolvedValue(0) },
     aplicacaoProduto: { count: vi.fn().mockResolvedValue(0) },
     etapaProtocolo: { count: vi.fn().mockResolvedValue(0) },
     itemFechamentoConsumo: { count: vi.fn().mockResolvedValue(0) },
+    produtoCatalogo: { findUnique: mocks.referenciaFindUnique },
     produto: { create: mocks.produtoCreate, findUnique: mocks.produtoFindUnique, update: mocks.produtoUpdate },
     parceiro: { findMany: mocks.parceiroFindMany },
     centroCusto: { findMany: mocks.centroCustoFindMany },
@@ -25,7 +26,7 @@ vi.mock("../../db.js", () => {
     itemOperacao: { count: mocks.itemOperacaoCount },
     operacaoAgricola: { count: mocks.operacaoAgricolaCount },
     itemDieta: { count: mocks.itemDietaCount },
-    categoria: { findUnique: mocks.categoriaFindUnique },
+    categoria: { findUnique: mocks.categoriaFindUnique, findFirst: mocks.categoriaFindFirst },
   };
   mocks.transaction.mockImplementation(async (fn: (db: unknown) => unknown) => fn(tx));
   return { prisma: { produto: { findMany: mocks.produtoFindMany }, itemOperacao: { findFirst: mocks.itemFindFirst }, $transaction: mocks.transaction } };
@@ -51,6 +52,7 @@ describe("cadastro de produtos (estoque)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.protocoloIatfCount.mockResolvedValue(0);
+    mocks.categoriaFindFirst.mockResolvedValue({ id: uid(3) });
     mocks.produtoCreate.mockImplementation(async ({ data }) => ({ ...base, ...data, fornecedores: [], centrosCusto: [] }));
     mocks.produtoFindUnique.mockResolvedValue({ ...base, fornecedores: [], centrosCusto: [] });
     mocks.produtoUpdate.mockImplementation(async ({ data }) => ({
@@ -155,6 +157,19 @@ describe("cadastro de produtos (estoque)", () => {
     expect(mocks.produtoCreate).not.toHaveBeenCalled();
   });
 
+  it("recusa referência já adotada sem alterar o produto existente", async () => {
+    mocks.referenciaFindUnique.mockResolvedValue({ id: uid(50), ativo: true, nome: "Ração", apresentacao: null });
+    mocks.produtoFindUnique.mockResolvedValue({ id: uid(51), nome: "Existente" });
+    await expect(criarProduto(input({ produtoCatalogoId: uid(50) }), 9)).rejects.toMatchObject({ code: "CONFLITO", campo: "produtoCatalogoId" });
+    expect(mocks.produtoCreate).not.toHaveBeenCalled(); expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+  it("recusa referência inativa e categoria inativa antes de escrever", async () => {
+    mocks.referenciaFindUnique.mockResolvedValue({ id: uid(50), ativo: false });
+    await expect(criarProduto(input({ produtoCatalogoId: uid(50) }), 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "produtoCatalogoId" });
+    mocks.categoriaFindFirst.mockResolvedValue(null);
+    await expect(criarProduto(input(), 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "categoriaId" });
+    expect(mocks.produtoCreate).not.toHaveBeenCalled();
+  });
   it("exige categoria em todo produto no create", async () => {
     await expect(criarProduto(input({ categoriaId: null as unknown as string }), 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "categoriaId", message: "Produto precisa de uma categoria" });
     expect(mocks.produtoCreate).not.toHaveBeenCalled();
@@ -289,6 +304,7 @@ describe("produto adotado do catálogo (herança)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.protocoloIatfCount.mockResolvedValue(0);
+    mocks.categoriaFindFirst.mockResolvedValue({ id: uid(3) });
     mocks.produtoFindUnique.mockResolvedValue(adotado);
     mocks.produtoUpdate.mockImplementation(async ({ data }) => ({ ...adotado, ...data, fornecedores: [], centrosCusto: [] }));
   });

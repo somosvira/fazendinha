@@ -6,7 +6,7 @@ import { ReconciliarOrigem } from "./ReconciliarOrigem";
 import { reqSanidade, SanidadeApiError, type AplicacaoSanitaria } from "./api";
 import { listarProdutos } from "../../../estoque/api";
 import { listarPartidasNutricionais } from "../nutricao/api";
-vi.mock("../../../financeiro/financeiro-ui", () => ({ Button: ({ secondary: _s, ...p }: Record<string, unknown>) => <button {...p} />, ErrorBox: ({ erro }: { erro: string | null }) => erro && <p>{erro}</p> }));
+vi.mock("../../../financeiro/financeiro-ui", async original => ({ ...await original<typeof import("../../../financeiro/financeiro-ui")>(), Button: ({ secondary: _s, ...p }: Record<string, unknown>) => <button {...p} />, ErrorBox: ({ erro }: { erro: string | null }) => erro && <p>{erro}</p> }));
 vi.mock("../../../financeiro/PainelCadastro", () => ({ classeInput: "", PainelCadastro: ({ children, rodape }: { children: React.ReactNode; rodape: React.ReactNode }) => <div>{children}{rodape}</div>, CampoFormulario: ({ id, rotulo, erro, children }: { id: string; rotulo: string; erro?: string; children: (p: object) => React.ReactNode }) => <label>{rotulo}{children({ id, "aria-label": rotulo })}{erro && <span>{erro}</span>}</label> }));
 vi.mock("../../../estoque/api", () => ({ listarProdutos: vi.fn().mockResolvedValue([{ id: "p1", nome: "Nome cadastrado", unidade: "ML", usoSanitario: true }, { id: "p2", nome: "Não sanitário", unidade: "ML", usoSanitario: false }, { id: "p3", nome: "Outra unidade", unidade: "KG", usoSanitario: true }]) }));
 vi.mock("../nutricao/api", () => ({ listarPartidasNutricionais: vi.fn().mockResolvedValue([]) }));
@@ -15,9 +15,10 @@ const aplicacao = { id: "a1", nomeProdutoAplicado: "Nome livre antigo", dose: "2
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(reqSanidade).mockResolvedValue({}); });
 afterEach(cleanup);
 async function preencher() {
-  await screen.findByRole("option", { hidden: true,  name: "Nome cadastrado" });
   await alterarControle(screen.getByLabelText("Origem localizada"), { target: { value: "BAIXA_ESTOQUE" } });
-  await alterarControle(screen.getByLabelText("Produto correspondente"), { target: { value: "p1" } });
+  fireEvent.click(await screen.findByRole("button", { name: "Produto correspondente" }));
+  fireEvent.click(await screen.findByRole("radio", { name: "Nome cadastrado" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar seleção" }));
   await alterarControle(screen.getByLabelText("Motivo e evidência da reconciliação"), { target: { value: "Nota e bula conferidas" } });
 }
 it("oferece nomes distintos sanitários compatíveis e exige equivalência explícita", async () => {
@@ -37,13 +38,13 @@ it("localiza erro da API e conserva medicamento, ciência e motivo", async () =>
   render(<ReconciliarOrigem aplicacao={aplicacao} propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await preencher(); fireEvent.click(screen.getByRole("switch")); fireEvent.submit(document.getElementById("reconciliar-origem")!);
   await waitFor(() => expect(screen.getAllByText("Confira a evidência do medicamento.")).toHaveLength(1));
-  expect(screen.getByLabelText("Produto correspondente")).toHaveProperty("value", "p1");
+  expect(screen.getByRole("button", { name: "Produto correspondente" }).textContent).toContain("Nome cadastrado");
   expect(screen.getByRole("switch")).toHaveProperty("checked", true);
   expect(screen.getByLabelText("Motivo e evidência da reconciliação")).toHaveProperty("value", "Nota e bula conferidas");
 });
 it("mantém o Produto já vinculado bloqueado", async () => {
   render(<ReconciliarOrigem aplicacao={{ ...aplicacao, produtoId: "p1" }} propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  await screen.findByRole("option", { hidden: true,  name: "Nome cadastrado" });
+  await waitFor(() => expect(listarProdutos).toHaveBeenCalled());
   expect(screen.getByLabelText("Produto correspondente")).toHaveProperty("disabled", true);
   expect(screen.queryByRole("switch")).toBeNull();
 });

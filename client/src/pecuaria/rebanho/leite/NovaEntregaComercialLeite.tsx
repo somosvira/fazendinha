@@ -1,3 +1,4 @@
+import { SeletorProdutoLocal } from "../../../estoque/SeletorProdutoLocal";
 import { DatePicker } from "../../../components/DatePicker";
 import { Button } from "@/components/ui/button";
 import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
@@ -293,25 +294,7 @@ export function NovaEntregaComercialLeite({
                 <div className="leite-form-inline">
                   <label>
                     Produto de leite
-                    <SelectCampo
-                      required
-                      value={produto}
-                      onValueChange={(valor) => setProduto(valor)}
-                    >
-                      <option value="">Selecione</option>
-                      {(config.produtosCadastro ?? config.produtos)
-                        .filter(
-                          (p) =>
-                            p.ativo !== false &&
-                            p.unidade === "L" &&
-                            !p.rastrearPartidas,
-                        )
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.nome}
-                          </option>
-                        ))}
-                    </SelectCampo>
+                    <SeletorProdutoLocal rotulo="Produto de leite" obrigatorio valor={produto} opcoes={(config.produtosCadastro ?? config.produtos).filter(p => p.ativo !== false && p.unidade === "L" && !p.rastrearPartidas)} onChange={setProduto} />
                   </label>
                   <label>
                     Data da retirada

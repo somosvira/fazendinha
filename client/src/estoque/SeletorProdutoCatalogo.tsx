@@ -1,138 +1,66 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { ChevronDown, Plus, X } from "lucide-react";
-import { Button } from "../financeiro/financeiro-ui";
+import { ChevronDown, Plus } from "lucide-react";
+import { obterReferenciaCatalogo } from "./catalogos-api";
 import { FormProduto } from "../financeiro/FormProduto";
-import { buscarProdutosUnificado, type BuscaProdutosDTO, type ItemCatalogoBusca, type ProdutoDTO, type UsoProduto } from "./api";
+import { useEffect, useId, useRef, useState } from "react";
+import { DialogoSelecaoProdutos } from "./DialogoSelecaoProdutos";
+import { Button } from "../financeiro/financeiro-ui";
+import { buscarPaginaProdutos, type ItemCatalogoBusca, type ProdutoDTO, type UsoProduto } from "./api";
 import type { UnidadeMedida } from "../lib/unidades";
+
+export type ProdutoLocal = Pick<ProdutoDTO, "id" | "nome"> & Partial<ProdutoDTO>;
 
 /** Produto da fazenda ("Meus produtos") ou item do catálogo ainda não adotado (docs/produtos.md, Adoção e Interface). */
 export type ProdutoEscolhido =
   | { tipo: "produto"; produtoId: string; nome: string; produto?: ProdutoDTO }
-  | { tipo: "catalogo"; produtoCatalogoId: string; nomeCompleto: string; conteudoEmbalagem?: string | null; rotuloEmbalagem?: string | null; unidadeSugerida: UnidadeMedida; categoriaSugeridaId: string | null; fabricante?: string | null };
+  | { tipo: "catalogo"; produtoCatalogoId: string; nomeCompleto: string; conteudoEmbalagem?: string | null; rotuloEmbalagem?: string | null; unidadeSugerida: UnidadeMedida; categoriaSugeridaId: string | null; fabricante?: string | null; item?: ItemCatalogoBusca };
 
-export const escolherProduto = (produto: Pick<ProdutoDTO, "id" | "nome">): ProdutoEscolhido => ({ tipo: "produto", produtoId: produto.id, nome: produto.nome, produto: produto as ProdutoDTO });
-export const escolherCatalogo = (item: ItemCatalogoBusca): ProdutoEscolhido => ({ tipo: "catalogo", produtoCatalogoId: item.id, nomeCompleto: item.nomeCompleto, unidadeSugerida: item.unidadeSugerida, categoriaSugeridaId: item.categoriaSugeridaId, conteudoEmbalagem: item.conteudoEmbalagem, rotuloEmbalagem: item.rotuloEmbalagem, fabricante: item.fabricante?.nome ?? null });
+export const escolherProduto = (produto: ProdutoLocal): ProdutoEscolhido => ({ tipo: "produto", produtoId: produto.id, nome: produto.nome, ...(produto.unidade ? { produto: { ...produto, unidade: produto.unidade } } : {}) });
+export const escolherCatalogo = (item: ItemCatalogoBusca): ProdutoEscolhido => ({ tipo: "catalogo", produtoCatalogoId: item.id, nomeCompleto: item.nomeCompleto, unidadeSugerida: item.unidadeSugerida, categoriaSugeridaId: item.categoriaSugeridaId, conteudoEmbalagem: item.conteudoEmbalagem, rotuloEmbalagem: item.rotuloEmbalagem, fabricante: item.fabricante?.nome ?? null, item });
 export const nomeEscolhido = (v: ProdutoEscolhido) => (v.tipo === "produto" ? v.nome : v.nomeCompleto);
 
-type Linha = { chave: string; grupo: "meus" | "catalogo"; escolha: ProdutoEscolhido; titulo: string; detalhe: string };
-type Estado = { fase: "carregando" } | { fase: "erro"; mensagem: string } | { fase: "pronto"; dados: BuscaProdutosDTO };
-
-const detalheMeu = (p: ProdutoDTO) => [p.apresentacao, p.fabricante?.nome].filter(Boolean).join(" · ");
-
-/**
- * Seletor unificado de produto: busca em "Meus produtos" e no "Catálogo" ao mesmo tempo.
- * Escolher um item do catálogo não abre diálogo: quem usa o seletor preenche a linha e envia `produtoCatalogoId`.
- * Combobox com lista (ARIA 1.2): foco permanece no campo, setas navegam, Enter escolhe, Esc fecha.
- */
-export function SeletorProdutoCatalogo({ id, rotulo, value, onChange, uso, somenteMeus = false, obrigatorio = false, disabled = false, invalido = false, propriedadeId, limite = 10, debounceMs = 250, placeholder = "Buscar produto", descricaoId, onCadastrado }: {
+export function SeletorProdutoCatalogo({ id, rotulo, value, onChange, uso, somenteMeus = false, somenteCatalogo = false, obrigatorio = false, disabled = false, invalido = false, propriedadeId, placeholder = "Selecionar produto", descricaoId, onCadastrado, permitirCadastro = false, contexto, produtosPermitidos }: {
   id?: string; rotulo: string; value: ProdutoEscolhido | null; onChange: (valor: ProdutoEscolhido | null) => void;
-  uso?: UsoProduto;
-  /** Oculta o grupo Catálogo: para fluxos cujo contrato não aceita `produtoCatalogoId`. */
-  somenteMeus?: boolean;
-  obrigatorio?: boolean; disabled?: boolean; invalido?: boolean; propriedadeId?: number; limite?: number; debounceMs?: number;
-  placeholder?: string; descricaoId?: string;
-  /** Chamado depois de cadastrar um produto novo pelo seletor (o produto já vem escolhido). */
-  onCadastrado?: (produto: ProdutoDTO) => void;
+  contexto?: string; produtosPermitidos?: ProdutoLocal[]; uso?: UsoProduto; somenteMeus?: boolean; somenteCatalogo?: boolean; obrigatorio?: boolean; disabled?: boolean; invalido?: boolean; propriedadeId?: number; placeholder?: string; descricaoId?: string; permitirCadastro?: boolean; onCadastrado?: (produto: ProdutoDTO) => void;
 }) {
-  const gerado = useId();
-  const campoId = id ?? `produto-${gerado}`;
-  const listaId = `${campoId}-lista`;
-  const raiz = useRef<HTMLDivElement>(null);
-  const campo = useRef<HTMLInputElement>(null);
-  const [aberto, setAberto] = useState(false);
-  const [texto, setTexto] = useState("");
-  const [digitando, setDigitando] = useState(false);
-  const [termo, setTermo] = useState("");
-  const [tentativa, setTentativa] = useState(0);
-  const [estado, setEstado] = useState<Estado>({ fase: "carregando" });
-  const [ativo, setAtivo] = useState(0);
+  const gerado = useId(), campoId = id ?? `produto-${gerado}`;
+  const gatilho = useRef<HTMLButtonElement>(null);
+  const [erroObrigatorio, setErroObrigatorio] = useState(false);
   const [cadastrando, setCadastrando] = useState(false);
-  const devolvendoFoco = useRef(false);
-
-  // Termo da busca: imediato ao abrir, adiado enquanto a pessoa digita.
+  const [itemDetalhe, setItemDetalhe] = useState<{ apresentacao?: string | null; fabricante?: { nome: string } | null; classificacaoTecnica?: { nome: string } | null } | null>(null);
+  const [aberto, setAberto] = useState(false), [busca, setBusca] = useState(""), [pagina, setPagina] = useState(1);
+  const [aba, setAba] = useState<"meus" | "catalogo">(somenteCatalogo ? "catalogo" : "meus");
+  const [selecionado, setSelecionado] = useState<ProdutoEscolhido | null>(null);
+  const [dados, setDados] = useState<{ itens: (ProdutoLocal | ItemCatalogoBusca)[]; total: number; pagina: number; porPagina: number } | null>(null);
+  const [erro, setErro] = useState(""), [tentativa, setTentativa] = useState(0), [carregando, setCarregando] = useState(false);
   useEffect(() => {
     if (!aberto) return;
-    const t = window.setTimeout(() => setTermo(texto.trim()), digitando ? debounceMs : 0);
-    return () => window.clearTimeout(t);
-  }, [aberto, texto, digitando, debounceMs]);
-
+    const controle = new AbortController(); setCarregando(true); setErro("");
+    if (aba === "meus" && produtosPermitidos) {
+      const itens = produtosPermitidos.filter(p => p.nome.toLocaleLowerCase("pt-BR").includes(busca.trim().toLocaleLowerCase("pt-BR")));
+      const paginaEfetiva = Math.min(pagina, Math.max(1, Math.ceil(itens.length / 10)));
+      setDados({ itens: itens.slice((paginaEfetiva - 1) * 10, paginaEfetiva * 10), total: itens.length, pagina: paginaEfetiva, porPagina: 10 }); setCarregando(false); return () => controle.abort();
+    }
+    const timer = window.setTimeout(() => buscarPaginaProdutos({ q: busca || undefined, uso, origem: aba, pagina, porPagina: 10 }, { propriedadeId, signal: controle.signal }).then(d => { if (!controle.signal.aborted) setDados(d); }).catch(e => { if (!controle.signal.aborted) setErro(e instanceof Error ? e.message : String(e)); }).finally(() => { if (!controle.signal.aborted) setCarregando(false); }), 200);
+    return () => { clearTimeout(timer); controle.abort(); };
+  }, [aberto, busca, aba, pagina, uso, propriedadeId, tentativa, produtosPermitidos]);
   useEffect(() => {
-    if (!aberto) return;
-    const controle = new AbortController();
-    setEstado({ fase: "carregando" });
-    buscarProdutosUnificado({ q: termo || undefined, uso, limite }, { propriedadeId, signal: controle.signal })
-      .then((dados) => { if (!controle.signal.aborted) { setEstado({ fase: "pronto", dados }); setAtivo(0); } })
-      .catch((e: unknown) => { if (!controle.signal.aborted) setEstado({ fase: "erro", mensagem: e instanceof Error ? e.message : String(e) }); });
-    return () => controle.abort();
-  }, [aberto, termo, uso, limite, propriedadeId, tentativa]);
-
-  const linhas = useMemo<Linha[]>(() => {
-    if (estado.fase !== "pronto") return [];
-    return [
-      ...(estado.dados.meus ?? []).map((p): Linha => ({ chave: `p-${p.id}`, grupo: "meus", escolha: escolherProduto(p), titulo: p.nome, detalhe: detalheMeu(p) })),
-      ...(somenteMeus ? [] : estado.dados.catalogo ?? []).map((i): Linha => ({ chave: `c-${i.id}`, grupo: "catalogo", escolha: escolherCatalogo(i), titulo: i.nomeCompleto, detalhe: i.fabricante?.nome ?? "" })),
-    ];
-  }, [estado, somenteMeus]);
-  const semResultado = estado.fase === "pronto" && linhas.length === 0;
-  const opcaoId = (i: number) => `${campoId}-opcao-${i}`;
-
-  const fechar = useCallback(() => { setAberto(false); setDigitando(false); setTexto(""); setTermo(""); }, []);
-  /** Devolve o foco ao campo depois de escolher/limpar sem reabrir a lista. */
-  const focarCampo = () => { devolvendoFoco.current = true; campo.current?.focus(); devolvendoFoco.current = false; };
-  const escolher = (linha: Linha) => { onChange(linha.escolha); fechar(); focarCampo(); };
-
-  const teclado = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      if (!aberto) { setAberto(true); return; }
-      if (!linhas.length) return;
-      setAtivo((a) => (e.key === "ArrowDown" ? (a + 1) % linhas.length : (a - 1 + linhas.length) % linhas.length));
-    } else if (e.key === "Home" && aberto && linhas.length) { e.preventDefault(); setAtivo(0); }
-    else if (e.key === "End" && aberto && linhas.length) { e.preventDefault(); setAtivo(linhas.length - 1); }
-    else if (e.key === "Enter" && aberto) { e.preventDefault(); const linha = linhas[ativo]; if (linha) escolher(linha); }
-    else if (e.key === "Escape" && aberto) { e.stopPropagation(); fechar(); }
-    else if (e.key === "Tab" && aberto) fechar();
-  };
-
-  const mostrado = aberto && digitando ? texto : aberto && !texto ? "" : value ? nomeEscolhido(value) : "";
-  const grupos = [
-    { grupo: "meus" as const, titulo: "Meus produtos" },
-    { grupo: "catalogo" as const, titulo: "Catálogo" },
-  ].map((g) => ({ ...g, itens: linhas.map((l, indice) => ({ l, indice })).filter(({ l }) => l.grupo === g.grupo) })).filter((g) => g.itens.length);
-
-  return <div ref={raiz} className="relative min-w-0" onBlur={(e) => { if (!raiz.current?.contains(e.relatedTarget as Node | null)) fechar(); }}>
-    <div className="relative">
-      <input ref={campo} id={campoId} type="text" role="combobox" autoComplete="off" aria-label={rotulo} aria-expanded={aberto} aria-controls={listaId} aria-autocomplete="list" aria-haspopup="listbox"
-        aria-activedescendant={aberto && linhas.length ? opcaoId(ativo) : undefined} aria-invalid={invalido || undefined} aria-required={obrigatorio || undefined} aria-describedby={descricaoId}
-        disabled={disabled} placeholder={value ? nomeEscolhido(value) : placeholder} value={mostrado} title={value ? nomeEscolhido(value) : undefined}
-        onFocus={() => { if (!disabled && !devolvendoFoco.current) setAberto(true); }} onClick={() => { if (!disabled) setAberto(true); }}
-        onChange={(e) => { setTexto(e.target.value); setDigitando(true); setAberto(true); }} onKeyDown={teclado}
-        className="mt-1.5 block w-full rounded-lg border border-border bg-card py-2.5 pl-3 pr-16 font-normal disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 aria-[invalid=true]:border-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" />
-      <span className="absolute inset-y-0 right-1 flex items-center gap-0.5 pt-1.5">
-        {value && !obrigatorio && !disabled && <button type="button" aria-label={`Limpar ${rotulo.toLocaleLowerCase("pt-BR")}`} onClick={() => { onChange(null); fechar(); focarCampo(); }} className="inline-flex size-8 items-center justify-center rounded-md text-ink-3 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><X size={15} aria-hidden /></button>}
-        <ChevronDown size={16} aria-hidden className="mr-2 text-ink-3" />
-      </span>
-    </div>
-    {aberto && <div className="absolute left-0 right-0 top-full z-[1300] mt-1 max-h-[min(22rem,60dvh)] overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg">
-      {estado.fase === "carregando" && <p role="status" className="px-3 py-3 text-sm text-ink-3">Buscando produtos…</p>}
-      {estado.fase === "erro" && <div role="alert" className="grid gap-2 px-3 py-3 text-sm"><p className="text-destructive">{estado.mensagem}</p><div><Button type="button" secondary onClick={() => setTentativa((n) => n + 1)}>Tentar novamente</Button></div></div>}
-      {semResultado && <div className="grid gap-2 px-3 py-3 text-sm"><p role="status">{termo ? `Nenhum produto encontrado para “${termo}”.` : "Nenhum produto encontrado."}</p><div><Button type="button" secondary onClick={() => setCadastrando(true)}><Plus size={15} aria-hidden />Cadastrar produto</Button></div></div>}
-      <div id={listaId} role="listbox" aria-label={rotulo} hidden={!grupos.length}>
-        {grupos.map((g) => <div key={g.grupo} role="group" aria-labelledby={`${campoId}-grupo-${g.grupo}`}>
-          <div id={`${campoId}-grupo-${g.grupo}`} className="sticky top-0 border-b border-border bg-popover px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ink-3">{g.titulo}</div>
-          {g.itens.map(({ l, indice }) => {
-            const escolhida = !!value && (l.escolha.tipo === "produto" ? value.tipo === "produto" && value.produtoId === l.escolha.produtoId : value.tipo === "catalogo" && value.produtoCatalogoId === l.escolha.produtoCatalogoId);
-            return <div key={l.chave} id={opcaoId(indice)} role="option" aria-selected={escolhida} data-ativo={indice === ativo || undefined}
-              onMouseDown={(e) => e.preventDefault()} onClick={() => escolher(l)} onMouseMove={() => setAtivo(indice)}
-              className={`cursor-pointer break-words px-3 py-2 text-sm ${indice === ativo ? "bg-accent text-accent-foreground" : ""} ${escolhida ? "font-semibold" : ""}`}>
-              <span className="block">{l.titulo}</span>
-              {l.detalhe && <span className="block text-xs font-normal text-ink-3">{l.detalhe}</span>}
-            </div>;
-          })}
-        </div>)}
-      </div>
-    </div>}
-    {cadastrando && <FormProduto produto={null} onFechar={() => setCadastrando(false)}
-      onSalvo={(salvo) => { setCadastrando(false); onChange(escolherProduto(salvo)); onCadastrado?.(salvo); fechar(); }} />}
-  </div>;
+    if (!aberto || value?.tipo !== "catalogo" || value.item || itemDetalhe) return;
+    let vivo = true;
+    obterReferenciaCatalogo(value.produtoCatalogoId).then(item => { if (vivo) setItemDetalhe(item); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [aberto, value, itemDetalhe]);
+  const abrir = () => { setSelecionado(value); setItemDetalhe(value?.tipo === "produto" ? value.produto ?? null : value?.item ?? null); setDados(null); setBusca(""); setPagina(1); setAba(somenteCatalogo || value?.tipo === "catalogo" ? "catalogo" : "meus"); setAberto(true); };
+  return <>
+    <button ref={gatilho} type="button" id={campoId} aria-label={rotulo} aria-haspopup="dialog" aria-expanded={aberto} aria-invalid={invalido || (erroObrigatorio && !value) || undefined} aria-required={obrigatorio || undefined} aria-describedby={[descricaoId, erroObrigatorio && !value ? `${campoId}-obrigatorio` : null].filter(Boolean).join(" ") || undefined} disabled={disabled} onClick={abrir} className="mt-1.5 flex min-h-11 w-full items-center justify-between rounded-lg border border-border bg-card px-3 text-left font-normal disabled:opacity-60"><span>{value ? nomeEscolhido(value) : placeholder}</span><ChevronDown size={16} aria-hidden /></button>
+    {obrigatorio && <input aria-hidden="true" tabIndex={-1} className="sr-only" required disabled={disabled} value={value ? nomeEscolhido(value) : ""} onChange={() => {}} onInvalid={e => { e.preventDefault(); setErroObrigatorio(true); gatilho.current?.focus(); }} />}
+    {erroObrigatorio && !value && <p id={`${campoId}-obrigatorio`} role="alert" className="text-xs text-destructive">Selecione um produto.</p>}
+    <DialogoSelecaoProdutos aberto={aberto && !cadastrando} onAberto={setAberto} gatilho={gatilho} titulo="Selecionar produto" contexto={contexto || (somenteCatalogo ? "Referência do catálogo" : rotulo)} busca={busca} onBusca={v => { setBusca(v); setPagina(1); setSelecionado(null); setItemDetalhe(null); setDados(null); }} aba={aba} onAba={a => { setAba(a); setPagina(1); setSelecionado(null); setItemDetalhe(null); setDados(null); }} mostrarAbas={!somenteMeus && !somenteCatalogo} paginacao={dados && !carregando ? { pagina: dados.pagina, total: dados.total, porPagina: dados.porPagina, onPagina: p => { setPagina(p); setDados(null); setSelecionado(null); setItemDetalhe(null); } } : undefined} resumo={selecionado && <div className="mx-5 shrink-0 rounded-lg bg-muted p-3 text-sm"><strong>{nomeEscolhido(selecionado)}</strong><dl className="mt-2 grid gap-2 sm:grid-cols-3">{[["Apresentação", itemDetalhe?.apresentacao], ["Fabricante", itemDetalhe?.fabricante?.nome], ["Classificação", itemDetalhe?.classificacaoTecnica?.nome]].map(([rotulo, valor]) => <div key={rotulo}><dt className="text-xs text-ink-3">{rotulo}</dt><dd>{itemDetalhe ? valor || "Não informado" : "Detalhes indisponíveis"}</dd></div>)}</dl></div>} acoes={<><Button secondary onClick={() => setAberto(false)}>Cancelar</Button>{value && !obrigatorio && <Button secondary onClick={() => { onChange(null); setAberto(false); }}>Limpar seleção</Button>}<Button disabled={!selecionado} onClick={() => { const igual = value && selecionado && (value.tipo === "produto" ? selecionado.tipo === "produto" && value.produtoId === selecionado.produtoId : selecionado.tipo === "catalogo" && value.produtoCatalogoId === selecionado.produtoCatalogoId); if (!igual) onChange(selecionado); setErroObrigatorio(false); setAberto(false); }}>Confirmar seleção</Button></>}>
+      {carregando ? <p role="status">Buscando produtos…</p> : erro ? <div role="alert">{erro} <Button secondary onClick={() => setTentativa(n => n + 1)}>Tentar novamente</Button></div> : <div role="radiogroup" aria-label="Produtos encontrados" className="divide-y divide-border rounded-lg border border-border">{dados?.itens.map(item => {
+        const escolha = aba === "meus" ? escolherProduto(item as ProdutoLocal) : escolherCatalogo(item as ItemCatalogoBusca);
+        const marcado = selecionado && (escolha.tipo === "produto" ? selecionado.tipo === "produto" && selecionado.produtoId === escolha.produtoId : selecionado.tipo === "catalogo" && selecionado.produtoCatalogoId === escolha.produtoCatalogoId);
+        return <label key={item.id} className={`flex cursor-pointer items-start gap-3 p-3 text-sm ${marcado ? "bg-primary/10 text-primary" : ""}`}><input className="accent-primary" type="radio" name={`${campoId}-escolha`} checked={!!marcado} onChange={() => { setSelecionado(escolha); setItemDetalhe(item); }} /><span><strong className="block">{aba === "catalogo" ? (item as ItemCatalogoBusca).nome : nomeEscolhido(escolha)}</strong><span className="text-ink-3">{[item.apresentacao, item.fabricante?.nome].filter(Boolean).join(" · ")}</span></span></label>;
+      })}{dados?.itens.length === 0 && <p className="p-4 text-sm">Nenhum produto encontrado.{permitirCadastro && <Button secondary onClick={() => setCadastrando(true)}><Plus size={15} />Cadastrar produto</Button>}</p>}</div>}
+    </DialogoSelecaoProdutos>
+    {cadastrando && <FormProduto produto={null} onFechar={() => setCadastrando(false)} onSalvo={p => { setCadastrando(false); setAberto(false); onChange(escolherProduto(p)); onCadastrado?.(p); }} />}
+  </>;
 }

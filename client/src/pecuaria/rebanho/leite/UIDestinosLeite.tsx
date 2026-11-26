@@ -1,3 +1,4 @@
+import { SeletorProdutoLocal } from "../../../estoque/SeletorProdutoLocal";
 import { DatePicker } from "../../../components/DatePicker";
 import { Plus } from "lucide-react";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
@@ -536,18 +537,7 @@ function FormularioDestino({
         <div className="leite-form-inline">
           <label>
             Produto de origem
-            <SelectCampo disabled={salvando}
-              required
-              value={rascunho.produto}
-              onValueChange={(valor) => mudar({ produto: valor, origem: null })}
-            >
-              <option value="">Selecione</option>
-              {produtos.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
-            </SelectCampo>
+            <SeletorProdutoLocal rotulo="Produto de origem" disabled={salvando} obrigatorio valor={rascunho.produto} opcoes={produtos} onChange={valor => mudar({ produto: valor, origem: null })} />
           </label>
           <label>
             Natureza declarada

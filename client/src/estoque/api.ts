@@ -98,6 +98,7 @@ export function useSaldos(f?: { centroCustoId?: string; propriedadeId?: number }
 export type ProdutoDTO = Produto;
 export type UsoProduto = "genetico" | "sanitario" | "nutricional";
 export interface ProdutoInput {
+  produtoCatalogoId?: string;
   codigoReferencia?: string | null; apresentacao?: string | null; observacao?: string | null; conservacao?: string | null; fabricanteId?: string | null; classificacaoTecnicaId?: string | null;
   usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean; rastrearPartidas?: boolean;
   nome: string; unidade: UnidadeMedida;
@@ -123,6 +124,8 @@ export type ItemCatalogoBusca = {
 export type BuscaProdutosDTO = { meus: ProdutoDTO[]; catalogo: ItemCatalogoBusca[] };
 export const buscarProdutosUnificado = (f: { q?: string; uso?: UsoProduto; limite?: number }, opcoes?: { propriedadeId?: number; signal?: AbortSignal }) =>
   req<BuscaProdutosDTO>(`/estoque/produtos/busca${qs(f)}`, { signal: opcoes?.signal }, opcoes?.propriedadeId);
+export const buscarPaginaProdutos = (f: { q?: string; uso?: UsoProduto; origem: "meus" | "catalogo"; pagina: number; porPagina: number }, opcoes?: { propriedadeId?: number; signal?: AbortSignal }) =>
+  req<{ itens: (ProdutoDTO | ItemCatalogoBusca)[]; total: number; pagina: number; porPagina: number }>(`/estoque/produtos/busca${qs(f)}`, { signal: opcoes?.signal }, opcoes?.propriedadeId);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: string, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/estoque/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 

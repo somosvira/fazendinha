@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   listarCategorias: vi.fn(),
   listarCentrosCusto: vi.fn(),
   listarTiposAplicacaoSanitarios: vi.fn(),
+  buscarPaginaProdutos: vi.fn(),
   criarProduto: vi.fn(),
   editarProduto: vi.fn(),
 }));
@@ -20,6 +21,7 @@ vi.mock("../estoque/api", async (importOriginal) => ({
   listarCategorias: mocks.listarCategorias,
   listarCentrosCusto: mocks.listarCentrosCusto,
   listarTiposAplicacaoSanitarios: mocks.listarTiposAplicacaoSanitarios,
+  buscarPaginaProdutos: mocks.buscarPaginaProdutos,
   criarProduto: mocks.criarProduto,
   editarProduto: mocks.editarProduto,
 }));
@@ -350,4 +352,23 @@ describe("produto adotado do catálogo", () => {
     expect(screen.getByText("Alterado pela fazenda")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Restaurar/ })).toBeNull();
   });
+});
+
+it("referência preenche herança e mantém complementos editados até salvar", async () => {
+  const referencia = { id: uid(500), nome: "Referência", nomeCompleto: "Referência (frasco)", apresentacao: "frasco", fabricante: { id: uid(501), nome: "Fabricante" }, classificacaoTecnica: null, unidadeSugerida: "ML", categoriaSugeridaId: null, usoGenetico: false, usoSanitario: false, usoNutricional: false };
+  mocks.buscarPaginaProdutos.mockResolvedValue({ itens: [referencia], total: 1, pagina: 1, porPagina: 10 });
+  mocks.criarProduto.mockClear().mockResolvedValue(produtoCriado);
+  render(<FormProduto produto={null} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+  await alterarControle(screen.getByLabelText("Categoria"), { target: { value: uid(11) } });
+  await alterarControle(screen.getByLabelText("Unidade"), { target: { value: "KG" } });
+  await alterarControle(screen.getByLabelText("Código de referência"), { target: { value: "PRÓPRIO" } });
+  fireEvent.click(screen.getByRole("button", { name: "Referência do catálogo" }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Referência/ }));
+  expect(mocks.criarProduto).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar seleção" }));
+  expect((screen.getByLabelText("Nome do produto") as HTMLInputElement).value).toBe("Referência (frasco)");
+  expect(screen.getAllByText("Do catálogo").length).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
+  await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ produtoCatalogoId: uid(500), unidade: "KG", codigoReferencia: "PRÓPRIO" })));
+  expect(mocks.criarProduto.mock.calls[0][0]).not.toHaveProperty("fabricanteId");
 });

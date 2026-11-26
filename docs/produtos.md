@@ -1,6 +1,6 @@
 # Produtos: catálogo do sistema e produtos da fazenda
 
-**Contrato proposto — 09/11/2026. Implementação em andamento no PR #366.** Substitui a versão de 08/11/2026 (importação por fazenda e composição versionada).
+Contrato do catálogo e dos produtos da fazenda.
 
 O Fazendinha traz um **catálogo de produtos** pronto, igual para todas as instalações. O usuário busca e usa os itens do catálogo sem cadastrá-los. Um **produto da fazenda** (`Produto`) só é criado quando o item é usado numa operação salva, ou quando o usuário cadastra um produto que não está no catálogo. Só o produto da fazenda tem estoque, custo, fornecedores, perfis e demais funções operacionais.
 
@@ -79,8 +79,8 @@ O deploy de STG e produção executa apenas migrations (ver [DEPLOY.md](../DEPLO
 
 ## Interface
 
-- **Seletor de produto**: grupos "Meus produtos" e "Catálogo", com apresentação e fabricante na linha. Escolher item do catálogo preenche a linha como qualquer produto; nenhum diálogo extra.
-- **Cadastrar produto**: ação no seletor e na tela de Produtos, com o formulário atual (`FormProduto`).
+- **Seletor de produto**: um campo abre modal centralizado com abas "Meus produtos" e "Catálogo" quando o fluxo aceita ambas. A busca permanece ao trocar de aba; seleção requer confirmação e apresenta apresentação, fabricante e classificação. Cancelar preserva o valor anterior. A consulta é paginada e o catálogo inclui somente referências ativas ainda não adotadas. Os fluxos que aceitam apenas Produtos usam a mesma apresentação sobre suas próprias listas ou consultas, sem ampliar os itens elegíveis. No tablet sanitário a multisseleção usa a fonte própria, mantém os IDs de referência e só aplica a escolha ao confirmar.
+- **Cadastrar produto**: o formulário `FormProduto` aceita referência opcional ainda não adotada ou cadastro manual. Escolher referência não escreve; ao salvar, complementos e perfis são validados e gravados atomicamente, com auditoria. Referência já adotada ou adoção concorrente produz conflito sem sobrescrever o produto existente.
 - **Ficha do produto adotado**: campos herdáveis com indicação de origem e ação Restaurar; princípios ativos somente leitura; campos da fazenda editáveis como hoje.
 - **Tela de Produtos (Estoque)**: lista só Meus produtos. Busca no catálogo apenas pelo seletor e pela aba única de consulta "Catálogo" (`/estoque?aba=catalogo`), somente leitura, com produto, fabricante, classificação, uso e situação na fazenda. Fabricantes, classificações e princípios ativos não têm abas próprias; seguem como filtros de Produtos. Links antigos `?aba=fabricantes|classificacoes-tecnicas|principios-ativos` abrem o Catálogo.
 - Estados: carregando, erro com Tentar novamente, busca sem resultado (oferecer Cadastrar produto), conflito de nome na adoção, item do catálogo inativo já adotado.
@@ -90,6 +90,7 @@ O deploy de STG e produção executa apenas migrations (ver [DEPLOY.md](../DEPLO
 | Operação | Contrato |
 |---|---|
 | `GET /api/estoque/produtos/busca?q=&uso=&limite=` | `{ meus, catalogo }`, cada grupo até `limite` (padrão 10, máximo 50). `meus`: produtos ativos no formato do cadastro, com a mesma busca por nome de `GET /estoque/produtos`. `catalogo`: itens ativos não adotados, por nome normalizado ou fabricante, com `nomeCompleto`, `apresentacao`, `fabricante`, `unidadeSugerida` e `categoriaSugeridaId` |
+| `GET /api/estoque/produtos/busca?origem=meus\|catalogo&q=&uso=&pagina=&porPagina=` | Consulta paginada por origem, com total; preserva os filtros de uso e somente referências não adotadas. |
 | `GET /api/estoque/catalogo?busca=&pagina=&porPagina=` | Consulta paginada (padrão 20, máximo 50) dos itens ativos; cada item indica o `produtoId` que o adotou |
 | `GET /api/estoque/catalogo/:id` | Item, ativo ou não, com fabricante, classificação e princípios ativos em ordem |
 | Operações que recebem `produtoCatalogoId` | Item de operação financeira (categoria da própria linha; unidade da linha quando reconhecida), aplicação sanitária (individual e coletiva) e ajuste manual de estoque. Aplicação e ajuste aceitam `categoriaId` opcional, só junto de `produtoCatalogoId`, para a categoria do Produto adotado. Nunca `produtoId` e `produtoCatalogoId` juntos; o retorno traz o `produtoId` efetivo. Conflito de nome responde 409 com `produtoExistente: { id, nome }`. Os demais fluxos recebem só `produtoId` |

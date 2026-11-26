@@ -1,3 +1,4 @@
+import { SeletorProdutoLocal } from "../../../estoque/SeletorProdutoLocal";
 import { CalendarDays, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -186,14 +187,7 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
         {erro && <p role="alert">{erro}</p>}{aviso && <p role="status">{aviso}</p>}
         <label>
           {interna ? "Produto de leite" : "Produto para descarte"}
-          <SelectCampo disabled={ocupado} value={produto} onValueChange={(valor) => setProduto(valor)}>
-            <option value="">Selecione o produto</option>
-            {produtos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </SelectCampo>
+          <SeletorProdutoLocal rotulo={interna ? "Produto de leite" : "Produto para descarte"} disabled={ocupado} valor={produto} opcoes={produtos} onChange={setProduto} />
         </label>
 
       {produto && (

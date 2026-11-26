@@ -1,3 +1,4 @@
+import { SeletorProdutoRemoto } from "../../../estoque/SeletorProdutoRemoto";
 import { usePropriedades } from "../../../api/propriedades";
 import "./programar-protocolo.css";
 import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
@@ -909,7 +910,7 @@ export function PlanoEtapa({
           Informe os parâmetros definidos pelo responsável. Planejar não aplica
           nem consome estoque.
         </p>
-        <SelectBuscavel buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO", propriedadeId })} detalhe={detalheProdutoSanitario} rotulo="Produto planejado" valor={p?.produtoId ?? ""} onChange={(produtoId, produto) => produtoId ? alterar({ produtoId, dose: produtoId === p?.produtoId ? p.dose : "", unidadeDose: produtoId === p?.produtoId ? p.unidadeDose : (produto?.unidade ?? "ML") as UnidadeMedida, via: produtoId === p?.produtoId ? p.via : produto?.perfilSanitario?.viaPadrao ?? null, tipoAplicacaoId: produtoId === p?.produtoId ? p.tipoAplicacaoId : produto?.perfilSanitario?.tipoAplicacaoId ?? null }) : onChange({ ...etapa, planoAplicacao: undefined })}/>
+        <SeletorProdutoRemoto detalhe={detalheProdutoSanitario} chaveEscopo={propriedadeId} buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO", propriedadeId })} rotulo="Produto planejado" valor={p?.produtoId ?? ""} onChange={(produtoId, produto) => produtoId ? alterar({ produtoId, dose: produtoId === p?.produtoId ? p.dose : "", unidadeDose: produtoId === p?.produtoId ? p.unidadeDose : (produto?.unidade ?? "ML") as UnidadeMedida, via: produtoId === p?.produtoId ? p.via : produto?.perfilSanitario?.viaPadrao ?? null, tipoAplicacaoId: produtoId === p?.produtoId ? p.tipoAplicacaoId : produto?.perfilSanitario?.tipoAplicacaoId ?? null }) : onChange({ ...etapa, planoAplicacao: undefined })}/>
         <label>
           Dose planejada
           <input

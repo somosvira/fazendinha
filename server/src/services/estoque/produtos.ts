@@ -146,7 +146,13 @@ export async function listarProdutosCadastro() {
 export async function criarProduto(input: ProdutoInput, usuarioId?: number | null) {
   try {
     return await prisma.$transaction((tx) => criarProdutoTx(tx, input, usuarioId));
-  } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome" }); }
+  } catch (erro) {
+    if (input.produtoCatalogoId && erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2002") {
+      const existente = await prisma.produto.findUnique({ where: { produtoCatalogoId: input.produtoCatalogoId }, select: { id: true } });
+      if (existente) throw new FinanceiroError("CONFLITO", "Esta referência já foi adotada. Consulte o produto existente.", "produtoCatalogoId");
+    }
+    traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome", produtoCatalogoId: "Esta referência já foi adotada. Consulte o produto existente." });
+  }
 }
 
 async function validarTipoAplicacaoPerfil(tx: Prisma.TransactionClient, tipoAplicacaoId: string | null | undefined, anterior?: string | null) {
@@ -172,11 +178,20 @@ function validarCarenciasPerfil(
 
 /** Cria o produto dentro de uma transação já aberta (ex.: material genético cria o produto junto). */
 export async function criarProdutoTx(tx: Prisma.TransactionClient, input: ProdutoInput, usuarioId?: number | null) {
-  const { fornecedorIds = [], centroCustoIds = [], perfilSanitario, perfilNutricional, produto } = separarRelacoes(input);
-  await validarCatalogosProduto(tx, produto);
-  if (produto.categoriaId == null) {
-    throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
+  const { produtoCatalogoId, ...campos } = input;
+  const { fornecedorIds = [], centroCustoIds = [], perfilSanitario, perfilNutricional, produto } = separarRelacoes(campos);
+  let nomeAlterado = false;
+  if (produtoCatalogoId) {
+    await tx.$queryRaw`SELECT "id" FROM public."ProdutoCatalogo" WHERE "id" = ${produtoCatalogoId}::uuid FOR SHARE`;
+    const referencia = await tx.produtoCatalogo.findUnique({ where: { id: produtoCatalogoId } });
+    if (!referencia?.ativo) throw new FinanceiroError("VALIDACAO", "Selecione uma referência ativa do catálogo", "produtoCatalogoId");
+    if (await tx.produto.findUnique({ where: { produtoCatalogoId } })) throw new FinanceiroError("CONFLITO", "Esta referência já foi adotada. Consulte o produto existente.", "produtoCatalogoId");
+    nomeAlterado = input.nome !== nomeCompletoCatalogo(referencia);
   }
+  if (produto.categoriaId == null) throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
+  if (produto.categoriaId) await tx.$queryRaw`SELECT "id" FROM public."Categoria" WHERE "id" = ${produto.categoriaId} FOR SHARE`;
+  if (!await tx.categoria.findFirst({ where: { id: produto.categoriaId, ativo: true }, select: { id: true } })) throw new FinanceiroError("VALIDACAO", "Selecione uma categoria ativa", "categoriaId");
+  await validarCatalogosProduto(tx, produto);
   if (produto.usoSanitario) validarCarenciasPerfil(perfilSanitario);
   await validarFornecedores(tx, fornecedorIds, new Set());
   await validarCentrosCusto(tx, centroCustoIds, new Set());
@@ -186,6 +201,7 @@ export async function criarProdutoTx(tx: Prisma.TransactionClient, input: Produt
   const criado = await tx.produto.create({
     data: {
       ...produto,
+      ...(produtoCatalogoId ? { produtoCatalogoId, nomeAlterado } : {}),
       nome: input.nome, unidade: input.unidade,
       ...(perfilSanitario ? { perfilSanitarioProduto: { create: perfilSanitario } } : {}),
       ...(perfilNutricional ? { perfilNutricionalProduto: { create: perfilNutricional } } : {}),
