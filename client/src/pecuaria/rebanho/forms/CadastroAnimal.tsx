@@ -1,3 +1,4 @@
+import { AjudaCampo } from "../../../components/Dica";
 // Cadastro de animal compartilhado: usado pela página "Novo animal" (NovoAnimal.tsx) e pelo modal
 // "Adicionar animal" da compra de animais (financeiro/FormOperacao.tsx). Os dois mostram os MESMOS
 // campos, com a MESMA validação; a diferença é só quem grava (a API do Rebanho, ou a operação, que
@@ -112,6 +113,7 @@ export function useCadastroAnimal(opcoes: OpcoesCadastroAnimal = {}) {
   const [herdada, setHerdada] = useState<ComposicaoSugerida | null>(null);
   const [carregandoHerdanca, setCarregandoHerdanca] = useState(false);
   const [erroHerdanca, setErroHerdanca] = useState<string | null>(null);
+  const [revisaoHerdanca, setRevisaoHerdanca] = useState(0);
 
   const [erros, setErros] = useState<ErrosCadastroAnimal>(opcoes.errosIniciais ?? {});
   const { mae, pai, dataNascimento, composicao, destinoManual, loteId, sexo, partosAntesDaEntrada } = form;
@@ -133,7 +135,7 @@ export function useCadastroAnimal(opcoes: OpcoesCadastroAnimal = {}) {
       .catch((falha) => { if (ativo) setErroHerdanca(falha instanceof Error ? falha.message : String(falha)); })
       .finally(() => { if (ativo) setCarregandoHerdanca(false); });
     return () => { ativo = false; };
-  }, [mae.tipo, mae.tipo !== "NENHUM" ? mae.id : "", pai.tipo, pai.tipo !== "NENHUM" ? pai.id : "", dataNascimento]);
+  }, [mae.tipo, mae.tipo !== "NENHUM" ? mae.id : "", pai.tipo, pai.tipo !== "NENHUM" ? pai.id : "", dataNascimento, revisaoHerdanca]);
 
   const alterarPropriedade = (valor: string) => { setPropriedadeId(valor); alterar({ loteId: "", destinoManual: false }); loteSugerido.current = ""; };
   // papel reprodutivo e partos só fazem sentido para fêmea (R1) — trocar para macho zera os dois
@@ -205,8 +207,8 @@ export function useCadastroAnimal(opcoes: OpcoesCadastroAnimal = {}) {
 
   return {
     prefixo, personalizado, sitioFixo, catalogos, erroCatalogos, erroCategorias, categoriasCarregando,
-    form, alterar, alterarSexo, propriedadeId, alterarPropriedade,
-    herdada, carregandoHerdanca, erroHerdanca, itensHerdados, limiteInformavel,
+    form, alterar, resetarForm: setForm, alterarSexo, propriedadeId, alterarPropriedade,
+    herdada, carregandoHerdanca, erroHerdanca, tentarHerdanca: () => setRevisaoHerdanca(v => v + 1), itensHerdados, limiteInformavel,
     lotesDoSitio, sugestaoBezerreiro, sugereBezerreiro, aguardandoDestino, categoriaPrevista,
     erros, setErros, validar, montarPayload, rotuloComposicao, irParaPrimeiroErro,
   };
@@ -244,7 +246,7 @@ export function CadastroAnimalCampos({ cadastro }: { cadastro: CadastroAnimal })
       <TituloSecao icone={<CalendarDays size={20} className="text-primary" aria-hidden/>}>Datas</TituloSecao>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div><CampoFormulario id={id("data-nascimento")} rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <DatePicker {...p} required max={hojeIso} value={form.dataNascimento} onChange={(valor) => alterar({ dataNascimento: valor })} className="mt-1.5" />}</CampoFormulario>
-          <label className="mt-2 flex items-center gap-2 text-sm"><input id={id("nascimento-estimado")} type="checkbox" checked={form.nascimentoEstimado} onChange={(e) => alterar({ nascimentoEstimado: e.target.checked })} />Nascimento estimado</label>
+          <label className="mt-2 flex items-center gap-2 text-sm"><input id={id("nascimento-estimado")} type="checkbox" checked={form.nascimentoEstimado} onChange={(e) => alterar({ nascimentoEstimado: e.target.checked })} />Nascimento estimado <AjudaCampo rotulo="Ajuda: Nascimento estimado" texto="Marque quando a data de nascimento for aproximada." /></label>
         </div>
         <CampoFormulario id={id("data-entrada")} rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada}>{(p) => <DatePicker {...p} required max={hojeIso} value={form.dataEntrada} onChange={(valor) => alterar({ dataEntrada: valor })} className="mt-1.5" />}</CampoFormulario>
         {sexo === "F" && <CampoFormulario id={id("partos")} rotulo="Partos antes da entrada" ajuda="Define a categoria (novilha vira vaca a partir de 1 parto).">{(p) => <input {...p} type="number" min={0} step={1} value={form.partosAntesDaEntrada} onChange={(e) => alterar({ partosAntesDaEntrada: e.target.value })} className={classeInput} />}</CampoFormulario>}
@@ -257,8 +259,8 @@ export function CadastroAnimalCampos({ cadastro }: { cadastro: CadastroAnimal })
         <CampoGenitor rotulo="Pai" sexo="M" valor={form.pai} onChange={(valor) => alterar({ pai: valor })} erro={erros.pai} idBase={personalizado ? id("genitor") : undefined} propriedadeId={cadastro.propriedadeId ? Number(cadastro.propriedadeId) : undefined} compacto />
       </div>
     <div id={id("composicao-secao")} tabIndex={-1} className="mt-5 border-t border-border pt-5 outline-none">
-      <div className="flex flex-wrap items-center justify-between gap-2"><TituloSecao icone={<Dna size={20} className="text-primary" aria-hidden/>}>Composição racial</TituloSecao><button type="button" aria-expanded={editandoComposicao} className="min-h-11 text-sm font-semibold text-mast" onClick={() => setEditandoComposicao(v => !v)}>{editandoComposicao ? "Fechar edição" : "Editar composição"}</button></div>
-      {cadastro.carregandoHerdanca ? <p role="status">Calculando a parcela herdada…</p> : cadastro.erroHerdanca ? <p role="alert" className="text-destructive">Não foi possível calcular a composição: {cadastro.erroHerdanca}</p> : genitorIncompleto(form.mae) || genitorIncompleto(form.pai) || !form.dataNascimento ? <p role="status">Complete os genitores e a data de nascimento para calcular a composição.</p> : composicaoInvalida ? <p role="status">Complete ou corrija as linhas para calcular o resumo da composição.</p> : <>
+      <div className="flex flex-wrap items-center justify-between gap-2"><TituloSecao icone={<Dna size={20} className="text-primary" aria-hidden/>}>Composição racial</TituloSecao>{!cadastro.carregandoHerdanca && !cadastro.erroHerdanca && cadastro.limiteInformavel > 0 && !genitorIncompleto(form.mae) && !genitorIncompleto(form.pai) && !!form.dataNascimento && <button type="button" aria-expanded={editandoComposicao} className="min-h-11 text-sm font-semibold text-mast" onClick={() => setEditandoComposicao(v => !v)}>{editandoComposicao ? "Fechar edição" : "Editar composição"}</button>}</div>
+      {cadastro.carregandoHerdanca ? <p role="status">Calculando a parcela herdada…</p> : cadastro.erroHerdanca ? <div role="alert" className="text-destructive">Não foi possível calcular a composição: {cadastro.erroHerdanca} <button type="button" className="font-semibold underline" onClick={cadastro.tentarHerdanca}>Tentar novamente</button></div> : genitorIncompleto(form.mae) || genitorIncompleto(form.pai) || !form.dataNascimento ? <p role="status">Complete os genitores e a data de nascimento para calcular a composição.</p> : composicaoInvalida ? <p role="status">Complete ou corrija as linhas para calcular o resumo da composição.</p> : <>
         <div className="flex flex-wrap justify-between gap-2 text-sm" aria-label="Resumo da composição racial">
           <span>{64 - cadastro.limiteInformavel}/64 calculados pela filiação{cadastro.herdada?.rotulo ? ` · ${cadastro.herdada.rotulo}` : ""}</span>
           <span>{somaFracoes(form.composicao)}/64 informados</span>
@@ -282,14 +284,14 @@ export function CadastroAnimalCampos({ cadastro }: { cadastro: CadastroAnimal })
           : <CampoFormulario id={id("propriedade")} rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <SelectCampo {...p} required value={cadastro.propriedadeId} onValueChange={(valorSelecionado) => cadastro.alterarPropriedade(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{catalogos.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</SelectCampo>}</CampoFormulario>}
         <CampoFormulario id={id("lote")} rotulo="Lote" erro={erros.loteId} ajuda={!cadastro.propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <SelectCampo {...p} disabled={!cadastro.propriedadeId} value={cadastro.aguardandoDestino ? "__escolher__" : form.loteId || "__sem_lote__"} onValueChange={(valorSelecionado) => { if (!valorSelecionado) return; alterar({ destinoManual: true, loteId: valorSelecionado === "__sem_lote__" ? "" : valorSelecionado }); }} className={classeInput}>{cadastro.aguardandoDestino && <option value="__escolher__" disabled>Escolha o lote de destino</option>}<option value="__sem_lote__">Sem lote</option>{cadastro.lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</SelectCampo>}</CampoFormulario>
         <CampoFormulario id={id("aptidao")} rotulo="Finalidade" obrigatorio>{(p) => <SelectCampo {...p} required value={form.aptidao} onValueChange={(valorSelecionado) => alterar({ aptidao: valorSelecionado as Aptidao })} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option><option value="REPRODUCAO">Reprodução</option></SelectCampo>}</CampoFormulario>
-        {sexo === "F" && <CampoFormulario id={id("papel")} rotulo="Papel reprodutivo">{(p) => <SelectCampo {...p} value={form.papelReprodutivo} onValueChange={(valorSelecionado) => alterar({ papelReprodutivo: valorSelecionado as PapelReprodutivo })} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo>}</CampoFormulario>}
+        {sexo === "F" && <CampoFormulario id={id("papel")} rotulo="Papel reprodutivo" ajuda="Indica se a fêmea atua como doadora ou receptora; é independente da finalidade.">{(p) => <SelectCampo {...p} value={form.papelReprodutivo} onValueChange={(valorSelecionado) => alterar({ papelReprodutivo: valorSelecionado as PapelReprodutivo })} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo>}</CampoFormulario>}
       </div>
       {cadastro.erroCategorias && <p role="alert" className="text-sm text-ink-3">{cadastro.erroCategorias}</p>}
       <AjudaDestinoBezerreiro sugestao={cadastro.sugestaoBezerreiro} loteId={form.loteId} elegivel={cadastro.sugereBezerreiro}/>
     </section>
     <section className="grid gap-4 md:grid-cols-2">
-      <CampoFormulario id={id("peso")} rotulo="Peso de entrada (kg)">{(p) => <input {...p} type="number" min="0.01" step="0.01" className={`${classeInput} max-w-xs`} value={form.pesoEntradaKg} onChange={(e) => alterar({ pesoEntradaKg: e.target.value })} />}</CampoFormulario>
-      <CampoFormulario id={id("ecc")} rotulo="Escore corporal (ECC) opcional" erro={erros.eccEntrada}>{(p) => <input {...p} inputMode="decimal" placeholder="1 a 5" className={classeInput} value={form.eccEntrada ?? ""} onChange={e => alterar({ eccEntrada: e.target.value })} />}</CampoFormulario>
+      <CampoFormulario id={id("peso")} rotulo="Peso de entrada (kg)" ajuda="Peso medido na entrada da fazenda; é independente do peso pago na compra.">{(p) => <input {...p} type="number" min="0.01" step="0.01" className={classeInput} value={form.pesoEntradaKg} onChange={(e) => alterar({ pesoEntradaKg: e.target.value })} />}</CampoFormulario>
+      <CampoFormulario id={id("ecc")} rotulo="Escore de condição corporal (ECC) opcional" erro={erros.eccEntrada}>{(p) => <input {...p} inputMode="decimal" placeholder="1 a 5" className={classeInput} value={form.eccEntrada ?? ""} onChange={e => alterar({ eccEntrada: e.target.value })} />}</CampoFormulario>
     </section>
     <section>
     <CampoFormulario id={id("observacao")} rotulo="Observação">{(p) => <textarea {...p} maxLength={500} className={classeInput} value={form.observacao} onChange={(e) => alterar({ observacao: e.target.value })} />}</CampoFormulario>

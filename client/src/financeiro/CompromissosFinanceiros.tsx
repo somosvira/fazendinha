@@ -1,3 +1,4 @@
+import { limparCachePendenteContexto } from "./cacheCadastroAnimal";
 import { useOrdenacaoTabela } from "./OrdenarConsulta";
 import "./compromissos-consulta.css";
 import { useFiltrosTabelaLocal } from "./useFiltrosTabelaLocal";
@@ -124,7 +125,7 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
   const selecionarCard = (tipo: "PAGAR" | "RECEBER" | "VENCIDOS") => { selecionarTipo(tipo === "VENCIDOS" ? [] : [tipo]); setStatus(["PENDENTE", "PARCIAL"]); setSoVencidos(tipo === "VENCIDOS"); setPagina(1); };
   const resumoTotal = <div className="compromissos-totais">{tiposExibidos.map(tipo => <div key={tipo}><span>{tipo === "PAGAR" ? "Total a pagar" : "Total a receber"}</span><strong>{brl(totais[tipo])}</strong></div>)}</div>;
 
-  const criarCompromisso = (tipo: "PAGAR" | "RECEBER") => { abrirRotaNovaOperacao(tipo); onNav("lancar"); };
+  const criarCompromisso = (tipo: "PAGAR" | "RECEBER") => { limparCachePendenteContexto(); abrirRotaNovaOperacao(tipo); onNav("lancar"); };
   const verRascunhoAtual = () => {
     setNovoCompromissoPendente(null);
     abrirRotaNovaOperacao();

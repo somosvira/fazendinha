@@ -1,7 +1,6 @@
-import { contemSql, tabelaSql } from "../../../test/sql-baseline.js";
-import { readFileSync } from "node:fs";
+import { baselineSql, contemSql, tabelaSql } from "../../../test/sql-baseline.js";
 import { describe, expect, it } from "vitest";
-const sql = readFileSync(new URL("../../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
+const sql = baselineSql;
 describe("contrato estrutural da migration de parcelas; não comprova execução SQL", () => {
   it("mantém dados antigos sem backfill e admite recipiente livre explicitamente identificado", () => {
     expect(tabelaSql('MedicaoGeralLeite')).toMatch(/"tanqueId" text,/);

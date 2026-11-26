@@ -7,7 +7,8 @@ vi.mock('pg', () => ({ default: { Client: class {
 } } }));
 vi.mock('node:fs/promises', () => ({ readFile: mocks.readFile, readdir: mocks.readdir, writeFile: mocks.writeFile, mkdir: vi.fn(), rename: vi.fn() }));
 import { abrirContexto } from './contexto.js';
-const sql = 'CREATE TABLE exemplo(id int);', nome = '20261025000000_base_unificada';
+import { MIGRATIONS_LEGADAS } from './migrations-legadas.js';
+const sql = 'CREATE TABLE exemplo(id int);', nome = '20261124170000_base_unificada';
 const checksum = createHash('sha256').update(sql).digest('hex');
 beforeEach(() => {
   vi.clearAllMocks(); vi.stubEnv('DATABASE_URL', 'postgresql://local:local@localhost/fazendinha_seedatev3'); vi.stubEnv('DIRECT_URL', ''); vi.stubEnv('NODE_ENV', 'test'); vi.stubEnv('STORAGE_NAMESPACE', 'test');
@@ -25,7 +26,7 @@ beforeEach(() => {
   });
 });
 afterEach(() => vi.unstubAllEnvs());
-const incremento = '20261029000000_incremento';
+const incremento = '20261125100000_incremento';
 const sqlIncremento = 'ALTER TABLE exemplo ADD COLUMN nome text;';
 const checksumIncremento = createHash('sha256').update(sqlIncremento).digest('hex');
 const aplicada = (migration_name = nome, hash = checksum) => ({ migration_name, checksum: hash, finished_at: new Date('2026-10-24T12:00:00Z'), rolled_back_at: null as Date | null });
@@ -89,8 +90,23 @@ describe('preflight sem alterações e sem conexão operacional', () => {
     expect(mocks.end).toHaveBeenCalledOnce();
   });
   it('recusa segunda baseline mesmo quando posterior à canônica', async () => {
-    mocks.readdir.mockResolvedValue([nome, '20261030000000_outra_baseline']);
+    mocks.readdir.mockResolvedValue([nome, '20261126100000_outra_baseline']);
     await expect(abrirContexto('preflight')).rejects.toThrow('uma baseline');
+    expect(mocks.writeFile).not.toHaveBeenCalled();
+  });
+  it('preserva manifesto legado somente com cadeia histórica completa e nova conferidas', async () => {
+    const antigo = '20261025000000_base_unificada';
+    const manifesto = { versao: 1, banco: 'fazendinha_seedatev3', identidade: 'localhost:5432:123:fazendinha_seedatev3:2026-10-24T12:00:00.000Z', baseline: { nome: antigo, checksum: MIGRATIONS_LEGADAS[antigo] }, fuso: 'America/Sao_Paulo', dataBase: '2026-10-23', ids: {}, etapas: [], acoes: [], criadoEm: '2026-10-24T12:00:00.000Z' };
+    const leitura = mocks.readFile.getMockImplementation()!;
+    mocks.readFile.mockImplementation(async (path: URL | string) => String(path).endsWith('manifesto.json') ? JSON.stringify(manifesto) : leitura(path));
+    const original = mocks.query.getMockImplementation()!;
+    const historico = Object.entries(MIGRATIONS_LEGADAS).map(([n, h]) => aplicada(n, h));
+    mocks.query.mockImplementation(async (consulta: string) => consulta.includes('_prisma_migrations') ? { rows: [...historico, aplicada()] } : original(consulta));
+    const aberto = await abrirContexto('verificar');
+    expect(aberto.contexto.manifesto).toEqual(manifesto);
+    await aberto.fechar();
+    mocks.query.mockImplementation(async (consulta: string) => consulta.includes('_prisma_migrations') ? { rows: [...historico.slice(0, -1), aplicada()] } : original(consulta));
+    await expect(abrirContexto('verificar')).rejects.toThrow(/cadeia de migrations/i);
     expect(mocks.writeFile).not.toHaveBeenCalled();
   });
   it('usa sessão PostgreSQL somente leitura e não salva manifesto ausente', async () => {
@@ -101,7 +117,7 @@ describe('preflight sem alterações e sem conexão operacional', () => {
     expect(mocks.writeFile).not.toHaveBeenCalled(); await aberto.fechar(); expect(mocks.end).toHaveBeenCalledOnce();
   });
   it('aceita migration aditiva aplicada sem mudar a identidade da baseline', async () => {
-    const adicional = '20261028180000_alertas_sanitarios';
+    const adicional = '20261125110000_alertas_sanitarios';
     mocks.readdir.mockResolvedValue([adicional, nome, 'migration_lock.toml']);
     const original = mocks.query.getMockImplementation()!;
     mocks.query.mockImplementation(async (consulta: string) => consulta.includes('_prisma_migrations')
@@ -120,7 +136,7 @@ describe('preflight sem alterações e sem conexão operacional', () => {
     await expect(abrirContexto('preflight')).rejects.toThrow('uma baseline'); expect(mocks.end).toHaveBeenCalledOnce();
   });
   it.each(['não aplicada', 'checksum divergente', 'incompleta', 'desconhecida', 'duplicada'])('recusa migration aditiva %s sem escrever', async caso => {
-    const adicional = '20261028180000_alertas_sanitarios';
+    const adicional = '20261125110000_alertas_sanitarios';
     mocks.readdir.mockResolvedValue([nome, adicional, 'migration_lock.toml']);
     const baseline = { migration_name: nome, checksum, finished_at: new Date('2026-10-24T12:00:00Z'), rolled_back_at: null };
     const aplicada = { migration_name: caso === 'desconhecida' ? '20261029000000_desconhecida' : adicional, checksum: caso === 'checksum divergente' ? 'f'.repeat(64) : checksum, finished_at: caso === 'incompleta' ? null : new Date('2026-10-28T12:00:00Z'), rolled_back_at: null };

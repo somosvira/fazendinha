@@ -71,10 +71,10 @@ export type OcorrenciaRetencaoInput =
   | { acao: "VINCULAR"; ocorrenciaId: string }
   | { acao: "CRIAR"; doencaId: string; inicio: string; observacao?: string | null; impacto?: ConfirmacaoImpacto }
   | { acao: "DESVINCULAR"; ocorrenciaId: string; motivo: string };
-export type DadosEscoreParto = { data: string; valor: number; escalaMin: number; escalaMax: number; escalaDescricao?: string | null; responsavel?: string | null };
+export type DadosEscoreParto = { data?: string; valor: number; escalaMin?: number; escalaMax?: number; escalaDescricao?: string | null; responsavel?: string | null };
 export type EscorePartoInput =
   | ({ acao: "REGISTRAR" } & DadosEscoreParto)
-  | ({ acao: "SUBSTITUIR"; exameId: string; motivo: string } & DadosEscoreParto)
+  | ({ acao: "SUBSTITUIR"; exameId: string; motivo: string; data: string } & DadosEscoreParto)
   | { acao: "ANULAR"; exameId: string; motivo: string };
 export type CamposParto = {
   desfecho?: "NASCIMENTO" | "ABORTO" | null;
@@ -119,7 +119,7 @@ export type FatoReprodutivo = CamposParto & {
   ocorrenciasRetencaoPlacenta?: Array<{ id: string; animalId: string; inicio: string; fim: string | null; status: string; doenca: { id: string; nome: string } }>;
   examesPosParto?: Array<{ id: string; data: string; status: string; resultados: Array<{ campo: string; valor: string | number | boolean }> }>;
   pesosMatriz?: Array<{ id: string; pesagemId: string; data: string; pesoKg: number | string; sujeito?: string }>;
-  exame?: { id: string; finalidades: string[]; finalidadePrincipal: string | null; realizacao: string; responsavel: string | null; formatoSnapshot: { nome?: string; campos?: import("../sanidade/CamposExame").CampoExame[] }; resultados: Array<{ campo:string; valor:string | number | boolean; unidade:string | null }> } | null;
+  exame?: { id: string; tipoExameId?: string; finalidades: string[]; finalidadePrincipal: string | null; realizacao: string; responsavel: string | null; formatoSnapshot: { nome?: string; campos?: import("../sanidade/CamposExame").CampoExame[] }; resultados: Array<{ campo:string; valor:string | number | boolean; unidade:string | null }> } | null;
   id: string;
   animalId: string;
   data: string;

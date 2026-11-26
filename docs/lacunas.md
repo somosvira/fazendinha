@@ -1,39 +1,25 @@
-# Lacunas e limites atuais
+# Questões de produto e levantamentos anteriores
 
-Base da análise: código da `main` em `b63931e4`, que integra Reprodução/consultas e Produção V5. Este documento reúne limitações verificáveis e perguntas de evolução; não cria roadmap aprovado nem indica falha de produção observada. Remover um plano antigo não significa aprovar todas as suas propostas.
+## Questões para decisão
 
-## Limitações identificadas no código
+As [decisões de negócio](decisoes-de-negocio.md#direção-de-produto-confirmada) registram o que a fazenda já definiu. As questões abaixo ficaram em aberto.
 
-| Tema | Estado atual e evidência | Consequência / decisão necessária |
-|---|---|---|
-| Atendimento por exceção multiação | `protocolos/execucao.schemas.ts` aceita somente v1, até cem tarefas de animais distintos; `execucao.ts` exige mesma ação/contexto | A proposta de envelope v2 por momento inteiro não está entregue; definir contrato, limites e validação antes de implementá-la. A coordenação da visita já existente é outro caminho |
-| Nunca lactou | `SEM_LACTACAO` existe no tipo, mas `contexto-animal.calc.ts` retorna NAO_INFORMADA quando falta evidência | Não rotular novilha sem histórico como nunca lactante sem fonte explícita |
-| Idade gestacional de TE na ficha | Contexto individual mantém idade embrionária pendente | Não converter dias desde transferência em idade gestacional exata; distinguir das regras analíticas dos indicadores |
-| Custo/L por natureza | `leite/custos.ts` e `custos.calc.ts` conservam pendência NATUREZA_SEM_VINCULO | Falta vínculo monetário dos componentes à natureza física; não ratear automaticamente pelo volume |
-| Controle individual periódico | Fonte GERAL admite controles individuais, sem interpolação | Não há produção individual completa entre aferições nem custo/L individual demonstrado nesses períodos |
-| Saldo atual por tanque | Tanque é evidência da parcela na ordenha; consulta de estoque é por produto/origem/sítio | Não há rastreio completo de transferências/misturas/posição atual por tanque |
-| Natureza restrita do leite | COLOSTRO/NAO_COMERCIAL são terminais no contrato vigente | Eventual liberação/reclassificação exigiria novo fluxo explícito e evidência; expiração de carência não basta |
-| Custo produtivo da origem | Apuração exige valor documentado; não deriva automaticamente do preço de venda/indicador | Decidir cobertura de custos e fonte comprovada; não chamar custo direto parcial de custo total da fazenda |
-| Qualidade e negociação | Formatos manuais/versionados; sem média automática ou faixas universais de preço | Equivalência de parâmetros/unidades e fórmula contratual precisam de especificação própria |
-| Importação histórica de leite | `leite/previa.ts` confere; não executa carga operacional automática | Faltam lote real conferido, unidades, corte e reconciliação com estoque/vendas; não repor saldo de leite já vendido |
-| IDEAGRI sanitário/nutricional | Carga inicial Rebanho/Genética e ferramenta técnica V4 existem; V3 histórica permanece sem entrega completa | Mapeamento/validação próprios; sem sincronização contínua presumida |
-| Liquidação com abatimento | Pagamento menor conserva pendente; desconto comercial pertence à compra | Abatimento posterior requer fato e regra próprios |
-| Rentabilidade integral | Caixa, compras, custo direto registrado e custo/L com cobertura têm contratos distintos | Depreciação, mão de obra própria e despesas gerais não atribuídas não viram custo total ou lucro automaticamente |
-| Assistente em todos os eixos | Registro de ferramentas atual concentra leitura financeira e ajuda | Estoque/Pecuária precisam de ferramentas autorizadas próprias; não estão disponíveis só porque há chat |
-| Formulário de devolução de animais | Correção de devolução com animais só pela API | Implementar a correção pela interface, no padrão da correção de compra |
-| Venda de animais vinculada à operação | `BaixaAnimal` do tipo `VENDA` não tem vínculo com operação financeira | Próximo passo: mesmo padrão da compra (um item por animal, baixa e estorno) |
-| Valor de compra do animal fora da Pecuária | Custos da Pecuária e variável de compra no builder de relatórios não consideram o valor de compra do animal | Exige decisão sobre compra cancelada e corrigida antes da implementação |
-| Devolução e compromisso em aberto | Devolução não abate o compromisso a pagar em aberto da compra | Depende da lacuna Liquidação com abatimento |
-| Cadastro em lote na compra de animais | Hoje o modal cadastra um animal por vez | Próximo passo: "Adicionar vários" com dados comuns e lista de brincos, com mockup próprio |
+| Tema | Exemplo da decisão que falta |
+|---|---|
+| Devolução maior que a dívida | Se faltam R$ 500 para quitar a compra e a devolução vale R$ 800, R$ 500 abatem o saldo. Como tratar os R$ 300 restantes? A mesma dúvida vale para uma compra já quitada. [Devolução atual](../client/src/financeiro/DevolucaoAnimais.tsx) |
+| Cadastro de animais comprados | Ao comprar dez cabeças do mesmo fornecedor, faz falta informar os dados comuns uma vez e preencher os dez brincos juntos? Hoje já é possível repartir o **preço** do lote entre os animais. [Compra](../client/src/financeiro/FormOperacao.compraAnimais.test.tsx) |
+| Correção de uma devolução | Se a devolução já foi registrada e depois cancelada por erro no valor, a pessoa precisa abrir a devolução cancelada e fazer a correção pela tela? A ficha hoje oferece essa ação para a compra de animais cancelada. [Ficha da operação](../client/src/financeiro/OperacaoFinanceiraDetalhe.tsx) |
+| Custo de aquisição | Uma bezerra comprada por R$ 2.000 acumula R$ 500 em manejo. Em qual consulta a fazenda quer ver os R$ 2.500, com a aquisição identificada separadamente? [Custos da Pecuária](../server/src/services/pecuaria/custos/) |
+| Venda e baixa do animal | Quando a fazenda vende uma cabeça, quer registrar uma única vez a saída do rebanho, o comprador, o preço e a condição de recebimento? [Rebanho](../server/src/services/pecuaria/rebanho/) e [Financeiro](../server/src/services/financeiro/operacoes.ts) |
+| Ações diferentes no mesmo manejo | Uma confirmação em lote já atende a mesma ação da mesma programação para vários animais. O documento antigo propôs reunir ações diferentes na mesma confirmação. Falta um caso de campo em que isso faça diferença. [Execução de protocolos](../server/src/services/pecuaria/protocolos/execucao.ts) |
 
-## Perguntas de produto, sem implementação nesta revisão
+A definição de saldo por tanque permanece em aberto. Custo e margem da produção, bonificações por qualidade, importação histórica e tratamento de registros atrasados ficam para a implementação das respectivas rotinas. O [levantamento da origem dos dados](pecuaria/leite-ideagri-referencia.md) conserva a proposta histórica de corte para futura conferência.
 
-- Precisamos de observação estruturada de cio/anestro ou basta exame/observação? Qual evidência, responsável e encerramento definiriam o rótulo?
-- Como comprovar “nunca lactou” e distinguir desconhecimento de ausência histórica documentada?
-- O custo desejado é direto registrado, custo completo da atividade ou margem? Qual fonte cobre cada componente e como evitar dupla contagem?
-- É necessário rastrear posição atual do leite por tanque, incluindo mistura, limpeza e transferência? A identificação na ordenha não cobre esse processo.
-- Qual política deve orientar preenchimento atrasado, fechamento nutricional pendente e conferência de qualidade? Hoje ausência de registro não cria diagnóstico/alerta arbitrário.
-- Quais decisões do antigo mockup de atendimento por exceção continuam desejadas após a operação real? A proposta deve ser reavaliada contra o executor atual, sem reabrir automaticamente todo o plano.
+**Um caso diferente na Nutrição.** A palavra “recomendado” para baixa automática também aparece na [tela de configuração](../client/src/pecuaria/rebanho/nutricao/ConfiguracaoNutricao.tsx). O manual explica os modos e seus efeitos. Decidir se a fazenda endossa a recomendação afeta o texto da própria interface.
+
+## Levantamento anterior
+
+O [inventário da revisão anterior](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/lacunas.md) registra verificações da base `b63931e4`, inclusive a cobertura do assistente naquela data. Para interpretar a idade gestacional após TE, consulte o [manual de Reprodução](guia/05-pecuaria-reproducao.md). Para entender a cobertura entre controles individuais, consulte o [manual de Produção](guia/06-pecuaria-producao.md).
 
 ## Validações que não se inferem do merge
 
@@ -42,7 +28,3 @@ Publicação em Workers/Neon, baseline efetivamente aplicada em cada ambiente, R
 Concorrência PostgreSQL deve identificar os comandos e disputas exercitados; um teste estrutural SQL, uma transação revertida ou uma chamada sequencial não comprova todos os interleavings. A substituição histórica autorizada da base demonstrativa não autoriza reset ou nova carga nesta tarefa.
 
 Roteiros V3/V4/V5 e evidências visuais históricas permanecem preservados. Seus resultados pertencem aos cenários/data originais; nenhuma marcação foi aprovada ou reiniciada pela atualização documental. Bases antigas de QA não devem ser recriadas para preencher a documentação.
-
-## Divergências documentais corrigidas
-
-Produção/qualidade V5 deixaram de ser descritas como futuras ou ausentes. A finalidade histórica LEITE passou a ser descrita como guarda implementada. Referências à antiga cadeia SQL foram identificadas como históricas e o deploy passou a apontar a baseline vigente. A navegação e a ficha passaram a incluir Leite/Produção. Instruções de seed V3/V4 separadas foram substituídas pela entrada única vigente. Planos concluídos/relatos redundantes foram retirados; pendências reais foram mantidas aqui e nos contratos.

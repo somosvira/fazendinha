@@ -9,6 +9,6 @@ Skill de revisão e implementação de interfaces, instalada localmente em `impe
 - Licença e avisos do upstream preservados em `impeccable/LICENSE` e `impeccable/NOTICE.md`.
 - Instalação: helper `install-skill-from-github.py`, origem e revisão acima, destino `.agents/skills`.
 
-Use `$impeccable` com o comando desejado. O launcher fica em `impeccable/scripts/impeccable`; no WSL, execute com `sh`. Em tarefas do frontend, o diretório de trabalho é `client/`; o launcher resolve a referência a partir da pasta da skill. Na primeira execução ele pode obter o binário versionado para o cache do usuário, fora do código da aplicação.
+Para mockups, siga a [escolha de ferramentas por ambiente](../../AGENTS.md#ferramentas-para-definir-e-criar-mockups). Para consultar a cópia versionada da Impeccable, execute o launcher desta pasta a partir de `client/`, onde ficam as orientações de produto e design. No WSL, use `sh`. A primeira execução pode obter o binário versionado para o cache do usuário.
 
 `AGENTS.md`, contratos de domínio, permissões e escopo do pedido continuam prevalecendo. Uma avaliação não autoriza mudanças na interface, no banco ou em ambientes. Não foram habilitados hooks, extensões ou atualização automática.

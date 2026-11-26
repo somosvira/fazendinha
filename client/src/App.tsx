@@ -1,3 +1,4 @@
+import { limparCachePendenteContexto } from "./financeiro/cacheCadastroAnimal";
 import { abrirNovoAnimal, contextoRebanhoAtual, validarRetornoRebanho } from "./pecuaria/rebanho/lib/navegacao";
 import "./components/consulta-operacional.css";
 import { usaDesignOperacional } from "./lib/designOperacional";
@@ -287,6 +288,7 @@ export function App() {
   const abrirRascunhoAtivo = () => {
     void executarComGuardaNavegacao(() => {
       setDeepLinkFiltros(null);
+      if (rascunhoAtivo.conhecido && !rascunhoAtivo.rascunho && !rascunhoAtivo.recuperacao && !rascunhoAtivo.editando) limparCachePendenteContexto();
       abrirRotaNovaOperacao();
       setTab("lancar");
     });

@@ -5,9 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import "../lib/controles.fixture"; // define ResizeObserver e scrollIntoView para o Radix
 import { FormOperacao } from "./FormOperacao";
+import { setSessao, clearSessao } from "../lib/auth";
 import { setPropriedadeAtiva } from "../propriedadeScope";
 import type { ConfiguracoesFinanceiras, RascunhoOperacao } from "./novo-api";
 import { limparRascunhoAtivo } from "./rascunhoAtivo";
+import { descartarTrabalhoAtivo } from "./descarteTrabalhoAtivo";
 import { brl, hoje } from "./financeiro-ui";
 import { uid } from "../lib/uid.fixture";
 import { cadastrarAnimal, listarCategorias, listarGenitores, obterCatalogos, preverComposicaoAnimal } from "../pecuaria/rebanho/api";
@@ -40,6 +42,7 @@ const catalogos: Catalogos = {
 
 beforeEach(() => {
   limparRascunhoAtivo();
+  sessionStorage.clear();
   setPropriedadeAtiva(1);
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(listarPropriedades).mockResolvedValue([{ id: 1, nome: "Sítio Sede", apelido: null, cidade: null, uf: null, principal: true, ativo: true, ordem: 0 }]);
@@ -49,7 +52,7 @@ beforeEach(() => {
   vi.mocked(preverComposicaoAnimal).mockResolvedValue(null);
   vi.mocked(consultarBezerreiro).mockResolvedValue({ perfis: [] });
 });
-afterEach(() => { limparRascunhoAtivo(); setPropriedadeAtiva(null); cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { clearSessao(); sessionStorage.clear(); limparRascunhoAtivo(); setPropriedadeAtiva(null); cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const DATA = hoje();
 
@@ -115,6 +118,88 @@ async function adicionarAnimal(brinco: string) {
 }
 
 describe("compra de animais: tela", () => {
+  it("preserva rascunho do modal ao fechar e Limpar restaura somente o formulário aberto", async () => {
+    setSessao("teste", { id: 7, nome: "Ana", email: "ana@example.test", papel: "proprietario", status: "ATIVO", dono: true, abas: [], areas: ["financeiro", "pecuaria"], flags: ["lancar", "verValores"] });
+    simularApi(); montar(rascunhoCom({ animais: [animalForm(1, "101")] }));
+    const modal = await abrirModal();
+    fireEvent.change(within(modal).getByLabelText("Brinco"), { target: { value: "222" } });
+    await waitFor(() => expect([...Array(sessionStorage.length)].map((_, i) => sessionStorage.key(i)).some(chave => chave?.includes(":novo"))).toBe(true));
+    fireEvent.click(within(modal).getByRole("button", { name: "Cancelar" }));
+    const reaberto = await abrirModal();
+    expect((within(reaberto).getByLabelText("Brinco") as HTMLInputElement).value).toBe("222");
+    fireEvent.click(within(reaberto).getByRole("button", { name: "Limpar" }));
+    expect((within(reaberto).getByLabelText("Brinco") as HTMLInputElement).value).toBe("");
+    expect(screen.getByRole("list", { name: "Animais da compra", hidden: true }).textContent).toContain("101");
+  });
+
+  it("remove cache ao voltar manualmente ao valor inicial", async () => {
+    setSessao("teste", { id: 7, nome: "Ana", email: "ana@example.test", papel: "proprietario", status: "ATIVO", dono: true, abas: [], areas: ["financeiro", "pecuaria"], flags: ["lancar", "verValores"] });
+    simularApi(); montar(rascunhoCom({}));
+    const modal = await abrirModal(); const brinco = within(modal).getByLabelText("Brinco") as HTMLInputElement;
+    fireEvent.change(brinco, { target: { value: "222" } });
+    await waitFor(() => expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes(":novo"))).toBe(true));
+    fireEvent.change(brinco, { target: { value: "" } });
+    await waitFor(() => expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes(":novo"))).toBe(false));
+  });
+
+  it("descarte espera primeiro PUT e limpa a identidade remota migrada", async () => {
+    setSessao("teste", { id: 7, nome: "Ana", email: "ana@example.test", papel: "proprietario", status: "ATIVO", dono: true, abas: [], areas: ["financeiro", "pecuaria"], flags: ["lancar", "verValores"] });
+    simularApi(); const anterior = globalThis.fetch;
+    let liberar!: (v: Response) => void; const pendente = new Promise<Response>(resolve => { liberar = resolve; });
+    const fetchTeste = vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") return pendente;
+      if (String(url).endsWith("/financeiro/operacoes/rascunho") && init?.method === "DELETE") return Promise.resolve(new Response("{}", { status: 200 }));
+      return anterior(url, init);
+    }); vi.stubGlobal("fetch", fetchTeste);
+    montar(); const modal = await abrirModal();
+    fireEvent.change(within(modal).getByLabelText("Brinco"), { target: { value: "222" } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Cancelar" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra de teste" } });
+    await waitFor(() => expect(fetchTeste.mock.calls.some(([url, init]) => String(url).endsWith("/rascunho") && init?.method === "PUT")).toBe(true), { timeout: 3000 });
+    const descarte = descartarTrabalhoAtivo("operacao", async () => { throw new Error("editor ausente"); });
+    liberar(new Response(JSON.stringify({ id: "draft-1", dados: {}, versao: 1, documentos: [] }), { status: 200, headers: { "content-type": "application/json" } }));
+    await descarte;
+    expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes("animal-compra"))).toBe(false);
+  });
+
+  it("confirmação aguarda PUT inicial e limpa cache migrado", async () => {
+    setSessao("teste", { id: 7, nome: "Ana", email: "ana@example.test", papel: "proprietario", status: "ATIVO", dono: true, abas: [], areas: ["financeiro", "pecuaria"], flags: ["lancar", "verValores"] });
+    simularApi(); const anterior = globalThis.fetch;
+    let liberar!: (v: Response) => void; const pendente = new Promise<Response>(resolve => { liberar = resolve; });
+    const fetchTeste = vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).endsWith("/rascunho") && init?.method === "PUT") return pendente;
+      if (String(url).endsWith("/rascunho/confirmacao")) return Promise.resolve(new Response(JSON.stringify({ id: "operacao", numero: 12 }), { status: 200, headers: { "content-type": "application/json" } }));
+      return anterior(url, init);
+    }); vi.stubGlobal("fetch", fetchTeste);
+    const onSalvo = vi.fn(); montar({ ...rascunhoCom({ animais: [animalForm(1, "101", { preco: "4500" })] }), id: "" }, onSalvo);
+    const modal = await abrirModal(); fireEvent.change(within(modal).getByLabelText("Brinco"), { target: { value: "222" } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes(":pendente:novo"))).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await waitFor(() => expect(fetchTeste.mock.calls.some(([url, init]) => String(url).endsWith("/rascunho") && init?.method === "PUT")).toBe(true));
+    liberar(new Response(JSON.stringify({ id: "draft-1", dados: {}, versao: 1, documentos: [] }), { status: 200, headers: { "content-type": "application/json" } }));
+    await waitFor(() => expect(onSalvo).toHaveBeenCalled());
+    expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes("animal-compra"))).toBe(false);
+  });
+
+  it("vincula cache quando o sítio único carrega durante primeiro PUT", async () => {
+    setSessao("teste", { id: 7, nome: "Ana", email: "ana@example.test", papel: "proprietario", status: "ATIVO", dono: true, abas: [], areas: ["financeiro", "pecuaria"], flags: ["lancar", "verValores"] });
+    setPropriedadeAtiva(null);
+    let liberarSitios!: (itens: never) => void; vi.mocked(listarPropriedades).mockReturnValue(new Promise(resolve => { liberarSitios = resolve; }));
+    simularApi(); const anterior = globalThis.fetch;
+    let liberarPut!: (v: Response) => void; const pendente = new Promise<Response>(resolve => { liberarPut = resolve; });
+    const fetchTeste = vi.fn((url: RequestInfo | URL, init?: RequestInit) => String(url).endsWith("/rascunho") && init?.method === "PUT" ? pendente : anterior(url, init)); vi.stubGlobal("fetch", fetchTeste);
+    montar(); fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra" } });
+    await waitFor(() => expect(fetchTeste.mock.calls.some(([url, init]) => String(url).endsWith("/rascunho") && init?.method === "PUT")).toBe(true), { timeout: 3000 });
+    liberarSitios([{ id: 1, nome: "Sítio Sede", apelido: null, cidade: null, uf: null, principal: true, ativo: true, ordem: 0 }] as never);
+    const modal = await abrirModal(); fireEvent.change(within(modal).getByLabelText("Brinco"), { target: { value: "222" } });
+    await waitFor(() => expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes(":pendente:novo"))).toBe(true));
+    liberarPut(new Response(JSON.stringify({ id: "draft-1", dados: {}, versao: 1, documentos: [] }), { status: 200, headers: { "content-type": "application/json" } }));
+    await waitFor(() => expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes(":draft:draft-1:novo"))).toBe(true));
+    fireEvent.click(within(modal).getByRole("button", { name: "Cancelar" }));
+    const reaberto = await abrirModal(); expect((within(reaberto).getByLabelText("Brinco") as HTMLInputElement).value).toBe("222");
+  });
+
   it("oferece Compra de animais no tipo e começa sem item em branco", async () => {
     simularApi();
     montar();
@@ -166,13 +251,13 @@ describe("compra de animais: tela", () => {
     simularApi(); montar();
     const dialogo = await abrirModal();
     fireEvent.change(within(dialogo).getByLabelText("Brinco"), { target: { value: "ECC101" } });
-    fireEvent.change(within(dialogo).getByLabelText("Escore corporal (ECC) opcional"), { target: { value: "3,25" } });
+    fireEvent.change(within(dialogo).getByLabelText("Escore de condição corporal (ECC) opcional"), { target: { value: "3,25" } });
     fireEvent.click(within(dialogo).getByRole("button", { name: "Adicionar à compra" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(cadastrarAnimal).not.toHaveBeenCalled();
     fireEvent.click(screen.getByLabelText("Editar animal ECC101"));
     const edicao = await screen.findByRole("dialog", { name: "Editar animal ECC101" });
-    expect((await within(edicao).findByLabelText("Escore corporal (ECC) opcional") as HTMLInputElement).value).toBe("3,25");
+    expect((await within(edicao).findByLabelText("Escore de condição corporal (ECC) opcional") as HTMLInputElement).value).toBe("3,25");
   });
 
   it("recusa brinco repetido na mesma compra", async () => {

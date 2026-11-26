@@ -5,6 +5,7 @@ import pg from 'pg';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { verificarReferenciasPg } from './referencias.js';
+import { MIGRATIONS_LEGADAS } from './migrations-legadas.js';
 
 export const VERSAO = 1;
 export const BANCO = 'fazendinha_seedatev3';
@@ -107,7 +108,7 @@ export async function abrirContexto(modo: ModoSeed = 'executar', interromperApos
     if (!trava.rows[0]?.livre) throw new Error('Outra execução da seed única está em andamento.');
     const pastas = (await readdir(new URL('../migrations/', import.meta.url))).filter(n => /^\d/.test(n)).sort();
     // A identidade do manifesto continua ancorada na baseline, nunca na última evolução.
-    const nome = '20261025000000_base_unificada';
+    const nome = '20261124170000_base_unificada';
     if (pastas[0] !== nome || pastas.filter(n => /_(?:baseline|base_unificada)(?:_|$)/.test(n)).length !== 1) {
       throw new Error('Seed única exige uma baseline canônica inicial, seguida apenas de migrations incrementais.');
     }
@@ -117,23 +118,33 @@ export async function abrirContexto(modo: ModoSeed = 'executar', interromperApos
     const migrations = await cliente.query<{ migration_name: string; checksum: string; finished_at: Date | null; rolled_back_at: Date | null }>('SELECT migration_name, checksum, finished_at, rolled_back_at FROM public._prisma_migrations');
     const ativas = migrations.rows.filter(m => !m.rolled_back_at);
     const nomesAtivos = new Set(ativas.map(m => m.migration_name));
-    if (ativas.length !== arquivos.size || nomesAtivos.size !== ativas.length
-      || ativas.some(m => !m.finished_at || arquivos.get(m.migration_name) !== m.checksum)) {
+    const temNova = nomesAtivos.has(nome);
+    const temLegada = nomesAtivos.has('20261025000000_base_unificada');
+    const esperadas = new Map<string, string>();
+    if (temNova) for (const [n, hash] of arquivos) esperadas.set(n, hash);
+    if (temLegada) for (const [n, hash] of Object.entries(MIGRATIONS_LEGADAS)) esperadas.set(n, hash);
+    if ((!temNova && !temLegada) || ativas.length !== esperadas.size || nomesAtivos.size !== ativas.length
+      || ativas.some(m => !m.finished_at || esperadas.get(m.migration_name) !== m.checksum)) {
       throw new Error('Baseline aplicada ou cadeia de migrations ausente, desconhecida, divergente ou incompleta.');
     }
-    const baseline = ativas.find(m => m.migration_name === nome)!;
+    let manifestoExistente: Manifesto | undefined;
+    try { manifestoExistente = schemaManifesto.parse(JSON.parse(await readFile(`${diretorio}/manifesto.json`, 'utf8'))); }
+    catch (erro) { if (!(erro instanceof Error && 'code' in erro && erro.code === 'ENOENT')) throw erro; }
+    const nomeAncora = manifestoExistente?.baseline.nome ?? nome;
+    if (![nome, '20261025000000_base_unificada'].includes(nomeAncora)) throw new Error('Manifesto pertence a outra instância ou baseline.');
+    const baseline = ativas.find(m => m.migration_name === nomeAncora);
+    if (!baseline || !esperadas.has(nomeAncora)) throw new Error('Manifesto pertence a outra instância ou baseline.');
     const db = await cliente.query<{ identidade: string }>("SELECT oid::text || ':' || current_database() AS identidade FROM pg_database WHERE datname=current_database()");
     const identidade = `${url.hostname}:${url.port || '5432'}:${db.rows[0].identidade}:${baseline.finished_at!.toISOString()}`;
-    let manifesto: Manifesto;
-    try { manifesto = schemaManifesto.parse(JSON.parse(await readFile(`${diretorio}/manifesto.json`, 'utf8'))); }
-    catch (erro) {
-      if (!(erro instanceof Error && 'code' in erro && erro.code === 'ENOENT')) throw erro;
+    let manifesto = manifestoExistente;
+    if (!manifesto) {
       if (modo === 'verificar') throw new Error('Manifesto da seed única inexistente.');
+      if (!temNova) throw new Error('Seed nova exige baseline atual aplicada.');
       const fatos = await cliente.query<{ total: string }>(`SELECT (SELECT count(*) FROM public."Operacao") + (SELECT count(*) FROM pecuaria."Animal") + (SELECT count(*) FROM public."Usuario") + (SELECT count(*) FROM public."Produto") + (SELECT count(*) FROM public."Parceiro") + (SELECT count(*) FROM public."ContaFinanceira") + (SELECT count(*) FROM public."Propriedade" WHERE nome <> 'Propriedade principal') AS total`);
       if (fatos.rows[0].total !== '0') throw new Error('Banco contém fatos ou usuários sem manifesto da seed única. Preserve os dados e prepare a substituição separadamente.');
       manifesto = { versao: VERSAO, banco: BANCO, identidade, baseline: { nome, checksum }, fuso: 'America/Sao_Paulo', dataBase: hojeBrasil(), ids: {}, etapas: [], acoes: [], criadoEm: new Date().toISOString() };
     }
-    if (manifesto.identidade !== identidade || manifesto.baseline.nome !== nome || manifesto.baseline.checksum !== checksum) throw new Error('Manifesto pertence a outra instância ou baseline.');
+    if (manifesto.identidade !== identidade || manifesto.baseline.checksum !== esperadas.get(nomeAncora)) throw new Error('Manifesto pertence a outra instância ou baseline.');
     await verificarReferenciasPg(cliente, manifesto);
     const contexto = new ContextoSeed(manifesto, modo !== 'executar', interromperApos);
     return { contexto, cliente, fechar: async () => { await cliente.end(); } };

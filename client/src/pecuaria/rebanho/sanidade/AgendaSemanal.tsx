@@ -1,3 +1,4 @@
+import { nomeExame } from "./nomeExame";
 import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
@@ -7,7 +8,7 @@ import { consultaRodadas, type PaginaSanitaria } from "./rodadas-api";
 import { dataSanitaria, nomeAnimalSanitario } from "./rotulos";
 import { EstadoSanitario, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
 
-export type TarefaVisual = { id: string; etapaId: string; previstaPara: string; situacao: string; rodada?: { id: string; nome: string } | null; parametros: { tipo: string; tipoAplicacaoNomeSnapshot?: string; tipoExameNomeSnapshot?: string; produtoNomeSnapshot?: string }; execucao: { animalId: string; animal?: { id: string; brinco: string; nome: string | null }; rodada?: { id: string; nome: string } | null; protocolo: { nome: string; versao: number } } };
+export type TarefaVisual = { id: string; etapaId: string; previstaPara: string; situacao: string; rodada?: { id: string; nome: string } | null; parametros: { tipo: string; tipoAplicacaoNomeSnapshot?: string; tipoExameNomeSnapshot?: string; tipoExameId?: string; produtoNomeSnapshot?: string }; execucao: { animalId: string; animal?: { id: string; brinco: string; nome: string | null }; rodada?: { id: string; nome: string } | null; protocolo: { nome: string; versao: number } } };
 export const hojeSanidade = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 export function somarDiasSanitarios(data: string, dias: number) { const d = new Date(`${data}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + dias); return d.toISOString().slice(0, 10); }
 export function inicioSemanaSanitaria(data: string) { const dia = new Date(`${data}T12:00:00Z`).getUTCDay(); return somarDiasSanitarios(data, -(dia === 0 ? 6 : dia - 1)); }
@@ -17,7 +18,7 @@ export function agruparTarefasVisuais<T extends TarefaVisual>(itens: T[]) {
     const rodada = t.execucao.rodada ?? t.rodada;
     // Etapa separa procedimentos distintos do mesmo ciclo e dia; sem ciclo, a versão também participa da chave.
     const chave = JSON.stringify([t.previstaPara.slice(0, 10), rodada?.id ?? [t.execucao.protocolo.nome, t.execucao.protocolo.versao], t.etapaId]);
-    const grupo = grupos.get(chave) ?? { chave, nome: t.parametros.tipoAplicacaoNomeSnapshot ?? t.parametros.tipoExameNomeSnapshot ?? (t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame"), ciclo: rodada?.nome ?? `${t.execucao.protocolo.nome} · sem ciclo`, data: t.previstaPara.slice(0, 10), itens: [] };
+    const grupo = grupos.get(chave) ?? { chave, nome: t.parametros.tipoAplicacaoNomeSnapshot ?? (t.parametros.tipoExameNomeSnapshot ? nomeExame(t.parametros.tipoExameId, t.parametros.tipoExameNomeSnapshot) : undefined) ?? (t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame"), ciclo: rodada?.nome ?? `${t.execucao.protocolo.nome} · sem ciclo`, data: t.previstaPara.slice(0, 10), itens: [] };
     grupo.itens.push(t); grupos.set(chave, grupo);
   }
   return [...grupos.values()];

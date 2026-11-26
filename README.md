@@ -9,14 +9,14 @@ O deploy usa exclusivamente **Cloudflare Workers**, servindo interface e API no 
 - **Financeiro:** operações e rascunhos, compromissos, liquidações, contas/extratos, transferências, estornos, documentos, relatórios e cadastros gerenciais.
 - **Estoque:** produtos, usos genético/sanitário/nutricional, saldos por sítio, lotes do produto com validade, ajustes, transferências, perdas e rastreabilidade.
 - **Pecuária — Rebanho, Reprodução, Sanidade e Nutrição:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade, nutrição, reprodução, visitas veterinárias e IATF.
-- **Produção de leite V5:** produção geral por parcela/recipiente e controle individual, origens e destinos do leite, qualidade versionada, coletas antes do preço, comercialização e custos com cobertura. Aplicação das migrations e homologação do ambiente permanecem necessárias; consulte o [contrato](docs/pecuaria/leite.md).
+- **Produção de leite V5:** produção geral por parcela/recipiente e controle individual, origens e destinos do leite, qualidade versionada, coletas antes do preço, comercialização e custos com cobertura. Aplicação das migrations e homologação do ambiente permanecem necessárias; consulte o [capítulo de Produção](docs/guia/06-pecuaria-producao.md).
 - **Administração:** sítios, usuários, sessões e permissões por área/ação.
 
-Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção e qualidade do leite V5 estão integradas à base operacional, com contratos próprios e vínculos à Reprodução. Laboratório/FIV continuam fora do escopo. A página [IA Terrano](docs/assistente-consulta.md) reúne conversa, leitura financeira, ajuda, pesagem com confirmação e Radar diário; perguntas livres e síntese IA exigem configuração OpenAI. [Metas](docs/metas.md) tem página própria na sidebar, independente da IA, com medições, gráficos e etapas. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
+Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção e qualidade do leite V5 estão integradas à base operacional, com vínculos à Reprodução. Laboratório/FIV continuam fora do escopo. A página [IA Terrano](docs/assistente-consulta.md) reúne conversa, leitura financeira, ajuda, pesagem com confirmação e Radar diário; perguntas livres e síntese IA exigem configuração OpenAI. [Metas](docs/metas.md) tem página própria na sidebar, independente da IA, com medições, gráficos e etapas. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
 
 ## Entender o produto
 
-O [manual por eixos](docs/guia/README.md) explica Financeiro (Operações e Estoque) e Pecuária (Rebanho, Reprodução, Produção, Sanidade e Nutrição). Abra o [HTML navegável](docs/guia/index.html) para ler o ciclo da vaca, estados simultâneos, exemplos, diagramas e lacunas. O [system design](docs/system-design.md) descreve a integração e o [modelo de estados do animal](docs/pecuaria/estados-animal.md) identifica fatos, transições e desconhecimento.
+O [manual por eixos](docs/guia/README.md) explica Financeiro (Operações e Estoque) e Pecuária (Rebanho, Reprodução, Produção, Sanidade e Nutrição). Abra o [HTML navegável](docs/guia/index.html) para ler o ciclo da vaca, estados simultâneos, exemplos e o percurso do leite. O [system design](docs/system-design.md) descreve a integração e o [modelo de estados do animal](docs/pecuaria/estados-animal.md) identifica fatos, transições e desconhecimento.
 
 ## Desenvolvimento local
 
@@ -68,8 +68,8 @@ O setup de testes fornece configurações inertes de R2. O único banco local é
 
 ## Contexto para contribuir
 
-Para organização, hierarquia e simplificação das telas, comece pelo [README do frontend](client/README.md), apoiado na [pesquisa de interfaces agro](docs/design/pesquisa-interfaces-agro.md). O guia distingue a direção proposta da interface já implementada e define a revisão de espaçamento, entrada direta, telas estreitas e modais.
+Para mudanças de interface, comece pelo [fluxo de agentes](AGENTS.md#fluxo-de-alterações-visuais), pelo [produto](client/PRODUCT.md) e pelo [design](client/DESIGN.md).
 
-Comece por [AGENTS.md](AGENTS.md) e pelo [índice da documentação](docs/README.md). [CLAUDE.md](CLAUDE.md) encaminha o Claude Code às mesmas regras. Documentos de features novas devem distinguir proposta, implementação e validação, e atualizar o contrato vigente quando concluídos.
+Comece por [AGENTS.md](AGENTS.md) e pelo [índice da documentação](docs/README.md). [CLAUDE.md](CLAUDE.md) encaminha o Claude Code às mesmas regras. As referências de domínio registram regras e efeitos relevantes. Consulte a evidência de cada decisão ao reutilizá-la.
 
 Software proprietário.

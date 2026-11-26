@@ -111,7 +111,7 @@ describe("NovoAnimal", () => {
     await montar();
     fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "ECC1" } });
     await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
-    const ecc = screen.getByLabelText("Escore corporal (ECC) opcional");
+    const ecc = screen.getByLabelText("Escore de condição corporal (ECC) opcional");
     fireEvent.change(ecc, { target: { value: "6" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
     expect(screen.getByText("Informe um ECC entre 1 e 5")).toBeTruthy();
@@ -132,6 +132,24 @@ describe("NovoAnimal", () => {
     expect(screen.getByLabelText("Papel reprodutivo").textContent).toContain("Doadora");
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
     await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({ aptidao: "REPRODUCAO", papelReprodutivo: "DOADORA", sexo: "F" })));
+  });
+
+  it("permite repetir prévia de filiação sem perder parcela manual", async () => {
+    vi.mocked(listarGenitores).mockImplementation(filtros => Promise.resolve(filtros?.sexo === "M" ? [{ id: "pai-1", sexo: "M", nome: "Touro", codigo: null, fornecedor: null, fornecedorId: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "", filhos: 0 }] : []));
+    vi.mocked(preverComposicaoAnimal).mockRejectedValueOnce(new Error("rede indisponível")).mockResolvedValueOnce({ itens: [{ racaId: "raca-1", sigla: "NE", fracao64: 32 }], rotulo: "1/2 NE" });
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: "Editar composição" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Adicionar raça" }));
+    await alterarControle(screen.getByLabelText("Raça"), { target: { value: "raca-1" } });
+    fireEvent.change(screen.getByLabelText("Fração (/64)"), { target: { value: "16" } });
+    fireEvent.click(screen.getByRole("button", { name: /Pai.*Selecionar pai/ }));
+    const seletor = screen.getByRole("dialog", { name: "Selecionar pai" });
+    fireEvent.click(within(seletor).getByRole("button", { name: "Genitores externos" }));
+    fireEvent.click(await within(seletor).findByRole("radio", { name: /Touro/ }));
+    fireEvent.click(within(seletor).getByRole("button", { name: "Usar como pai" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Tentar novamente" }));
+    expect(await screen.findByText("16/64 informados")).toBeTruthy();
+    expect((screen.getByLabelText("Fração (/64)") as HTMLInputElement).value).toBe("16");
   });
 
   it("conserva parcela manual ao confirmar genitor e exige revisão se exceder", async () => {
