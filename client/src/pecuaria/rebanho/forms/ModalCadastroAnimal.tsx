@@ -6,7 +6,7 @@ import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
 export function ModalCadastroAnimal({ titulo, contexto, onFechar, salvando = false, rodape, children }: {
   titulo: string; contexto?: string; onFechar: () => void; salvando?: boolean; rodape: ReactNode; children: ReactNode;
 }) {
-  return <DialogFinanceiro titulo={titulo} eyebrow={contexto} onClose={() => { if (!salvando) onFechar(); }} className="modal-cadastro-animal max-w-4xl bg-white" rodape={rodape}>
+  return <DialogFinanceiro titulo={titulo} eyebrow={contexto} onClose={() => { if (!salvando) onFechar(); }} className="modal-cadastro-animal fin-cadastro-dialog max-w-4xl bg-white" rodape={rodape}>
     {children}
   </DialogFinanceiro>;
 }

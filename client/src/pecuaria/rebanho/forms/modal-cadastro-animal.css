@@ -2,6 +2,8 @@
 :root:has(:is(.financeiro-content, .pecuaria-content)) .modal-cadastro-animal .fin-dialogo-cabecalho,
 :root:has(:is(.financeiro-content, .pecuaria-content)) .modal-cadastro-animal .fin-dialogo-rodape { background: #fff; }
 
+.modal-cadastro-animal { overflow: clip; }
+
 @media (min-width: 768px) {
   .cadastro-animal-identificacao > * { grid-column: span 2; }
   .cadastro-animal-identificacao > :nth-child(n+4) { grid-column: span 3; }
