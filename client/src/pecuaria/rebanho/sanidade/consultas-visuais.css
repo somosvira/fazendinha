@@ -18,3 +18,6 @@
 
 .san-exame-fatos .consulta-escala { margin-top:0; }
 
+
+/* Escala do escore dentro da célula Resultado da tabela de exames (antes só no cartão). */
+.san-exame-escala .consulta-escala { margin-top: 0; }

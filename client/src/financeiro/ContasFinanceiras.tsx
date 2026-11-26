@@ -27,6 +27,7 @@ import { FluxoContasFinanceiras } from "./FluxoContasFinanceiras";
 import { infoReversao } from "./lib/reversao";
 import { TIPO_CONTA } from "./FormConta";
 import { ICONES_TABELA } from "@/components/iconesTabela";
+import { DistribuicaoSaldos } from "./DistribuicaoSaldos";
 
 type AbaContas = "contas" | "extrato" | "analise";
 function abaDaUrl(): AbaContas {
@@ -194,6 +195,8 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
         { chave: "saldo", titulo: "Saldo atual", alinhamento: "direita", larguraMinima: 150, celula: c => <strong data-fin-tom={Number(c.saldoAtual) < 0 ? "alerta" : "neutro"} className="fin-valor whitespace-nowrap">{brl(c.saldoAtual)}</strong> },
       ]} />}<Paginacao ocultarControlesPaginaUnica pagina={paginaAtualContas} totalPaginas={totalPaginasContas} total={contasFiltradas.length} porPagina={15} rotulo="Paginação das contas" substantivo="contas" idSelect="pagina-contas" onPagina={setPaginaContas} /></> : <Empty>Nenhuma conta encontrada para os filtros selecionados.</Empty>}<div className="contas-resumo-consulta"><span>Saldo da consulta · {contasFiltradas.length} {contasFiltradas.length === 1 ? "conta" : "contas"}</span><strong>{brl(somarSaldos(contasFiltradas))}</strong></div></Panel>
       </section>
+      {/* Participação de cada conta no saldo geral: gráfico, não substituído pela tabela (fica fixo, sem alternador). */}
+      <DistribuicaoSaldos contas={contasDoSaldo} onAbrir={id => navegar(id)} />
         </TabsContent>
         <TabsContent value="analise" forceMount hidden={aba !== "analise"}>
       <section className="min-w-0" aria-label="Fluxo consolidado">

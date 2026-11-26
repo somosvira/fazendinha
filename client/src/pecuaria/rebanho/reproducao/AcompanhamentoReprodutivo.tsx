@@ -19,6 +19,7 @@ import { dataValida } from "./periodo-consulta";
 import { navegarPara } from "../../../router";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
 import { ICONES_TABELA } from "../../../components/iconesTabela";
+import { CalendarioAgenda } from "./CalendarioAgenda";
 const origens: Record<string, string> = {
   DIAGNOSTICO_PENDENTE: "Diagnóstico pendente",
   TENTATIVA: "Diagnóstico pendente",
@@ -228,6 +229,9 @@ export function AcompanhamentoReprodutivo({
           <>
             {propriedadeId != null && <LembretesAutomaticos propriedadeId={propriedadeId} data={diaAgenda || hoje()} />}
             <div className="repro-consulta-titulo"><div><h2>Próximas atividades  <span>{retornos.length} acompanhamentos</span></h2><p>Datas registradas, sem presumir resultado clínico.</p></div></div>
+            {/* Calendário do mês ao lado da lista: escolher um dia filtra a tabela (a #421 mantém calendários). */}
+            <div className="repro-agenda-grade"><section aria-label="Lista de próximas atividades" className="min-w-0">
+            {diaAgenda && <div className="mb-4 flex flex-wrap items-center gap-3"><strong>{dataBR(diaAgenda)}</strong><Button variant="outline" onClick={() => { setDiaAgenda(""); setPagina(1); }}>Ver todos os dias</Button></div>}
             {<TabelaFinanceira icone={ICONES_TABELA.agenda} filtrosColunas={consulta.colunas}
               rotulo="Agenda reprodutiva"
               itens={retornos.slice((atual - 1) * 10, atual * 10)}
@@ -297,6 +301,7 @@ export function AcompanhamentoReprodutivo({
               rotulo="acompanhamentos"
               idSelect="pagina-agenda-reprodutiva"
             />
+            </section><CalendarioAgenda itens={retornosPeriodo} dataSelecionada={diaAgenda} onSelecionarData={d => { setDiaAgenda(d); setPagina(1); }} dataDe={referenciaRetorno} chaveDe={r => `${r.animalId}:${r.origem}:${r.origemId}`} render={r => <div><strong>{origens[r.origem] ?? "Acompanhamento"}</strong><p>{animais.find(a => a.animalId === r.animalId)?.brinco ?? "Animal não identificado"}</p><LinkReproducao botao href={destino(r)} sitio={propriedadeId}>Abrir origem</LinkReproducao></div>}/></div>
           </>
         )}
         {podeLancar && (
