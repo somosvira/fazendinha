@@ -54,13 +54,13 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
   // Cartão e tabela oferecem as mesmas ações: o nome abre a composição; ficam a secundária e a principal.
   const acoesReceita = (d: Dieta) => podeLancar && <>
     <Button secondary onClick={() => abrir(d.publicadaEm ? "versao" : "editar", d.id)}>{d.publicadaEm ? "Nova versão" : "Editar rascunho"}</Button>
-    {d.publicadaEm ? <LinkNutricional className="nutricao-botao" href={rotaOperacaoNutricional("atribuir", undefined, undefined, d.id)}>Atribuir a lote</LinkNutricional> : <Button onClick={() => abrir("publicar", d.id)}>Publicar</Button>}
+    {d.publicadaEm ? <LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("atribuir", undefined, undefined, d.id)}>Atribuir a lote</LinkNutricional> : <Button secondary onClick={() => abrir("publicar", d.id)}>Publicar</Button>}
   </>;
   const nomeReceita = (d: Dieta) => <button type="button" className="nutricao-receita-nome" onClick={() => abrir("detalhe", d.id)}>{d.nome}</button>;
   const receitas = consulta.dados?.filter((d) => d.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")) && (!situacao || (situacao === "publicadas") === !!d.publicadaEm)) ?? [];
   return <div className="nutricao-receitas nutricao-conteudo"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} estrutura="cartoes" label="Carregando receitas de dieta…" />
     {url.form && !consulta.carregando && !consulta.erro && url.form !== "nova" && !dieta && <p role="alert">Receita não encontrada. <Button secondary onClick={() => abrir()}>Voltar às receitas</Button></p>}
-    {consulta.dados && <><BarraConsulta criterios={situacao ? [{ id: "situacao", rotulo: situacao === "publicadas" ? "Publicadas" : "Rascunhos", limpar: () => atualizar({ situacaoReceita: "" }) }] : []} edicaoFiltros={edicaoSituacao} adicionais={<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação" value={edicaoSituacao.rascunho.situacao} onValueChange={v => edicaoSituacao.editar("situacao", v)}><option value="">Todas</option><option value="publicadas">Publicadas</option><option value="rascunhos">Rascunhos</option></SelectCampo></CampoFiltro>} acao={podeLancar ? <Button onClick={() => abrir("nova")}><Plus size={18} aria-hidden />Nova receita</Button> : undefined}><BuscaLista rotulo="Buscar receita" valor={busca} onChange={valor => atualizar({ buscaReceita: valor })} placeholder="Buscar receita pelo nome" /></BarraConsulta>
+    {consulta.dados && <Panel className="overflow-hidden"><BarraConsulta criterios={situacao ? [{ id: "situacao", rotulo: situacao === "publicadas" ? "Publicadas" : "Rascunhos", limpar: () => atualizar({ situacaoReceita: "" }) }] : []} edicaoFiltros={edicaoSituacao} adicionais={<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação" value={edicaoSituacao.rascunho.situacao} onValueChange={v => edicaoSituacao.editar("situacao", v)}><option value="">Todas</option><option value="publicadas">Publicadas</option><option value="rascunhos">Rascunhos</option></SelectCampo></CampoFiltro>} acao={podeLancar ? <Button onClick={() => abrir("nova")}><Plus size={18} aria-hidden />Nova receita</Button> : undefined}><BuscaLista rotulo="Buscar receita" valor={busca} onChange={valor => atualizar({ buscaReceita: valor })} placeholder="Buscar receita pelo nome" /></BarraConsulta>
       {!receitas.length ? <Empty>{consulta.dados.length ? "Nenhuma receita corresponde aos filtros." : "Nenhuma receita cadastrada."}</Empty> : <TabelaFinanceira icone={ICONES_TABELA.dieta} rotulo="Receitas de dieta" itens={receitas} chaveDe={(d) => d.id} colunas={[
         { chave: "receita", titulo: "Receita", principal: true, larguraFlexivel: true, celula: (d) => nomeReceita(d) },
         { chave: "versao", titulo: "Versão", larguraMinima: 80, celula: (d) => `v${d.versao}` },
@@ -71,8 +71,7 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
         { chave: "uso", titulo: "Uso vigente", larguraMinima: 200, celula: (d) => d.lotesEmUso?.length ? <span className="grid gap-1">{d.lotesEmUso.map((l) => <LinkNutricional key={l.id} href={rotaNutricao({ loteId: l.id })}>{l.nome} · {l.propriedade.nome}</LinkNutricional>)}</span> : "Sem uso vigente" },
         { chave: "acoes", titulo: "Ações", acoes: true, celula: (d) => <div className="flex flex-col items-stretch gap-2">{acoesReceita(d)}</div> },
       ]} />}
-
-    </>}
+    </Panel>}
   </div>;
 }
 /** Soma por unidade: receitas podem misturar KG, L e outras unidades sem somá-las entre si. */

@@ -60,8 +60,7 @@ export function ConsultasComerciaisLeite({ tipo, podeLancar = false }: { tipo: "
         { chave: "litros", titulo: "Retirado (L)", alinhamento: "direita", larguraMinima: 110, celula: r => formatarLitros(r.quantidadeLitros !== undefined ? Number(r.quantidadeLitros) : r.fechamento ? Number(r.fechamento.volumeReconhecido) : null) },
         { chave: "situacao", titulo: "Preço", larguraMinima: 150, celula: r => <Pill tone={r.situacao === "PRECO_PENDENTE" ? "amber" : "green"}>{r.situacao === "PRECO_PENDENTE" ? "Preço pendente" : "Preço definido"}</Pill> },
         { chave: "detalhe", titulo: "Ação", larguraMinima: 180, acoes: true, celula: r => <Button variant="outline" asChild><a href={`/pecuaria/leite?leiteSecao=vendas&operacaoLeiteId=${encodeURIComponent(r.comercialId)}&operacoesDe=${r.inicio}&operacoesAte=${r.fim}`}>Abrir operação e coletas</a></Button> },
-      ]} />}
-      <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de coletas" substantivo="coletas" idSelect="pagina-coletas-leite" onPagina={setPagina} />
+      ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de coletas" substantivo="coletas" idSelect="pagina-coletas-leite" onPagina={setPagina} />} />}
     </>}
     <DialogComercialLeite titulo="Registrar retirada" aberto={registrar} onFechar={() => { setRegistrar(false); setRevisao(r => r + 1); }}>
       <p>Escolha uma operação aberta do período para registrar a coleta sem preço.</p>

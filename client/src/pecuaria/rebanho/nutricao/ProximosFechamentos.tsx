@@ -34,16 +34,16 @@ export function ProximosFechamentos({ podeLancar, somentePendentes = false, lote
   if (somentePendentes && consulta.dados && !linhas.length) return null;
   const lotes = (n: number) => `${n} ${n === 1 ? "lote" : "lotes"}`;
   const acao = (l: SituacaoLote) => !podeLancar ? null : l.dias ? <LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("consumo", l.resumo.lote.id)}>Fechar período</LinkNutricional> : l.diarios?.dias ? <BotaoProcessarDias situacao={l} onProcessado={() => void consulta.carregar()} /> : null;
-  return <section className="nutricao-proximos" aria-labelledby={somentePendentes ? "alerta-a-fechar" : "proximos-fechamentos"}>
-    <header className="nutricao-proximos-cabecalho">
+  return <Panel className="nutricao-proximos overflow-hidden"><section aria-labelledby={somentePendentes ? "alerta-a-fechar" : "proximos-fechamentos"}>
+    <header className="nutricao-proximos-cabecalho dietas-lista-cabecalho">
       <div className="nutricao-proximos-titulo"><h2 id={somentePendentes ? "alerta-a-fechar" : "proximos-fechamentos"}>{somentePendentes ? "Consumo a fechar" : "Próximos fechamentos"}</h2></div>
       {consulta.dados && <dl className="nutricao-proximos-numeros">
         <div data-pendente={pendentes > 0 || undefined}><dt>Períodos a fechar</dt><dd>{pendentes ? lotes(pendentes) : "Em dia"}</dd></div>
         <div data-pendente={aProcessar > 0 || undefined}><dt>Dias a processar</dt><dd>{aProcessar ? lotes(aProcessar) : "Em dia"}</dd></div>
       </dl>}
     </header>
-    {consulta.carregando ? <EsqueletoTabela label="Carregando próximos fechamentos" colunas={4} linhas={3} /> : consulta.erro ? <p role="alert" className="nutricao-aviso">{consulta.erro}</p> : !linhas.length ? <Panel><Empty>Nenhum lote com dieta vigente. <LinkNutricional href={rotaNutricao({ aba: "lotes" })}>Atribuir uma dieta</LinkNutricional></Empty></Panel> :
-      <Panel className="overflow-hidden"><TabelaFinanceira icone={ICONES_TABELA.fechamento} rotulo={somentePendentes ? "Lotes com consumo a fechar" : "Próximos fechamentos por lote"} itens={linhas} chaveDe={l => l.resumo.lote.id} colunas={[
+    {consulta.carregando ? <EsqueletoTabela label="Carregando próximos fechamentos" colunas={4} linhas={3} /> : consulta.erro ? <p role="alert" className="nutricao-aviso">{consulta.erro}</p> : !linhas.length ? <Empty>Nenhum lote com dieta vigente. <LinkNutricional href={rotaNutricao({ aba: "lotes" })}>Atribuir uma dieta</LinkNutricional></Empty> :
+      <TabelaFinanceira icone={ICONES_TABELA.fechamento} rotulo={somentePendentes ? "Lotes com consumo a fechar" : "Próximos fechamentos por lote"} itens={linhas} chaveDe={l => l.resumo.lote.id} colunas={[
         { chave: "lote", titulo: "Lote", principal: true, celula: l => <><LinkNutricional href={rotaNutricao({ aba: "lotes", loteId: l.resumo.lote.id })}>{l.resumo.lote.nome}</LinkNutricional><p className="nutricao-secundario">{l.resumo.lote.propriedade.nome}</p></> },
         { chave: "dieta", titulo: "Dieta vigente", celula: l => <>{l.resumo.vigente!.dieta.nome}<p className="nutricao-secundario">v{l.resumo.vigente!.dieta.versao} desde {formatarDataBR(l.resumo.vigente!.desde)}</p></> },
         { chave: "ultimo", titulo: "Fechado até", celula: l => l.ultimoFim ? formatarDataBR(l.ultimoFim) : <span className="nutricao-secundario">Nenhum fechamento</span> },
@@ -54,6 +54,6 @@ export function ProximosFechamentos({ podeLancar, somentePendentes = false, lote
           {l.adocao && <p className="nutricao-secundario" title={l.configuracaoAdocao ? `${MODELOS[l.configuracaoAdocao.modelo].texto} Conferência no dia ${l.configuracaoAdocao.diaConferencia}.` : undefined}>{l.configuracaoAdocao ? MODELOS[l.configuracaoAdocao.modelo].rotulo : "Fechamento configurado"} a partir de {formatarDataBR(l.adocao).slice(0, 5)}</p>}
         </> },
         ...(podeLancar ? [{ chave: "acao", titulo: "Ação", acoes: true, celula: acao }] : []),
-      ]} /></Panel>}
-  </section>;
+      ]} />}
+  </section></Panel>;
 }

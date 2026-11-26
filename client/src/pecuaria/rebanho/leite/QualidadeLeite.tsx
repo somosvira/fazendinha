@@ -197,8 +197,8 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
             { chave: "formato", titulo: "Formato", celula: a => a.formatoSnapshot.nome },
             { chave: "situacao", titulo: "Situação", celula: a => a.status === "ANULADO" ? "Anulada" : a.realizacao === "COLETA_REGISTRADA" ? "Aguardando resultado" : "Resultado informado" },
             { chave: "acoes", titulo: "Ações", acoes: true, celula: a => <Button variant="outline" onClick={() => { setSelecionada(a); setNova(false); }}>Abrir amostra</Button> },
-          ]} />
-          <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(amostras.total / 20))} total={amostras.total} porPagina={20} rotulo="Paginação das amostras" substantivo="amostras" idSelect="pagina-amostras-leite" onPagina={setPagina} /></>}
+          ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(amostras.total / 20))} total={amostras.total} porPagina={20} rotulo="Paginação das amostras" substantivo="amostras" idSelect="pagina-amostras-leite" onPagina={setPagina} />} />
+          </>}
         </>
       )}
       {selecionada && (

@@ -86,8 +86,7 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
         { chave: "valor", titulo: "Total comercial", alinhamento: "direita", celula: v => !podeFinanceiro ? "Restrito" : v.valorTotal === null ? "Preço pendente" : Number(v.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) },
         { chave: "situacao", titulo: "Situação", larguraMinima: 130, celula: v => <Pill tone={v.situacao === "ABERTA" ? "amber" : v.situacao === "CANCELADA" ? "red" : "green"}>{situacoes[v.situacao] ?? v.situacao}</Pill> },
         { chave: "acao", titulo: "Ação", acoes: true, larguraMinima: 150, celula: v => <Button variant="outline" onClick={() => abrir(v)}>Abrir operação</Button> },
-      ]} />
-      <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de vendas" substantivo="vendas" idSelect="pagina-vendas-leite" onPagina={setPagina} />
+      ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de vendas" substantivo="vendas" idSelect="pagina-vendas-leite" onPagina={setPagina} />} />
     </>}
     <DialogComercialLeite titulo={nova ? "Nova operação por período" : "Detalhe da operação"} aberto={!!selecionada || nova} onFechar={fecharDetalhe}>
       <OperacoesComerciaisLeite key={nova ? "nova" : selecionada!} integrado operacaoId={selecionada} iniciarNova={nova} podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} onMudou={id => { setRevisao(r => r + 1); setSelecionada(id); setNova(false); const url = new URL(location.href); url.searchParams.delete("novaOperacaoLeite"); if (id) url.searchParams.set("operacaoLeiteId", id); history.replaceState(null,"",url); }} />

@@ -45,7 +45,9 @@
 }
 
 /* Consultas do leite: leitura compacta e os mesmos fatos em cartões e tabela. */
-.leite-lista-consulta { min-width: 0; }
+/* A tabela padrão não tem contorno próprio: o contorno é da superfície que a contém.
+ * No Leite a lista fica solta na página, então esta caixa faz esse papel. */
+.leite-lista-consulta { min-width: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
 .leite-lista-opcoes { display: flex; justify-content: flex-end; margin: 0 0 14px; }
 
 .leite-grafico-producao { margin: 0; padding: 8px 0 18px; border-bottom: 1px solid var(--border); min-width: 0; }

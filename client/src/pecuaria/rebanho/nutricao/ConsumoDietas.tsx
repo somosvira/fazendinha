@@ -29,9 +29,9 @@ export function ConsumoDietas({ cobertura, verValores, sitios }: { cobertura: Ma
   const variosSitios = new Set(itens.map(i => i.propriedadeId)).size > 1;
   const custoMes = itens.reduce((s, i) => s + (i.custoMes ?? 0), 0);
   return <Panel>
-    <div className="nutricao-card-cabecalho consumo-cabecalho">
-      <div className="consumo-cabecalho-titulo"><h2 className="h3">Consumo das dietas</h2></div>
-      {verValores && custoMes > 0 && <div className="consumo-custo-previsto"><span>Custo previsto no mês</span><strong>{custoTexto(custoMes.toFixed(2))}</strong></div>}
+    <div className="dietas-lista-cabecalho consumo-cabecalho">
+      <h2>Consumo das dietas</h2>
+      {verValores && custoMes > 0 && <p className="consumo-custo-previsto"><span>Custo previsto no mês</span><strong>{custoTexto(custoMes.toFixed(2))}</strong></p>}
     </div>
     {<TabelaFinanceira icone={ICONES_TABELA.consumo} rotulo="Consumo diário das dietas vigentes" itens={itens} chaveDe={i => `${i.propriedadeId}:${i.produtoId}`} colunas={[
       { chave: "produto", titulo: "Ingrediente", principal: true, celula: (i: Item) => <><LinkInterno area="estoque" href={hrefProdutoEstoque(i.produtoId)}>{i.nome}</LinkInterno>{variosSitios && <p className="nutricao-secundario">{sitios.get(i.propriedadeId)}</p>}</> },

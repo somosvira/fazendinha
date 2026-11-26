@@ -513,8 +513,7 @@ export function EstoqueLeite({ podeLancar, podeFinanceiro }: { podeLancar: boole
         { chave: "comercial", titulo: "Comercial", alinhamento: "direita", celula: i => litrosResumo(i.comercial.quantidadeLitros) },
         { chave: "valor", titulo: "Valor", alinhamento: "direita", celula: i => i.estadoValor === "OCULTO" ? "Restrito" : i.valorTotal === null ? "Sem valor" : Number(i.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) },
         { chave: "acao", titulo: "Ações", celula: i => <Button variant="outline" onClick={() => setSelecionado(i)}>Ver origens</Button> },
-      ]} />
-      <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação do estoque de leite" substantivo="produtos" idSelect="pagina-estoque-leite" onPagina={setPagina} />
+      ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação do estoque de leite" substantivo="produtos" idSelect="pagina-estoque-leite" onPagina={setPagina} />} />
     </>}
     <Dialog open={!!selecionado || confirmacao} onOpenChange={v => { if (!v) { setSelecionado(null); setConfirmacao(false); setRevisao(r => r + 1); } }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>{confirmacao ? "Confirmar produção individual" : "Origens e operações"}</DialogTitle></DialogHeader>{(selecionado || confirmacao) && <DetalheEstoqueLeite key={selecionado?.produtoId ?? "confirmar"} produtoInicial={selecionado?.produtoId ?? ""} podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />}</DialogContent></Dialog>
   </section>;

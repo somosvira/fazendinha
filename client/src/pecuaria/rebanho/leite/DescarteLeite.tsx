@@ -290,9 +290,8 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
             { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },
             { chave: "situacao", titulo: "Situação", celula: d => d.status === "CONFIRMADO" ? "Confirmado" : "Estornado" },
             { chave: "acoes", titulo: "Ações", acoes: true, celula: d => <div className="leite-consulta-acoes"><DialogConsultaLeite titulo={interna ? "Ver retirada" : "Ver descarte"}><p>Motivo: {d.motivo}</p><p>Saldo da origem: {formatarLitros(d.saldoOrigemAntes)} → {formatarLitros(d.saldoOrigemDepois)}</p><p>Versão {d.versao}</p>{d.motivoEstorno && <p>Motivo do estorno: {d.motivoEstorno}</p>}</DialogConsultaLeite>{podeLancar && d.status === "CONFIRMADO" && <Button variant="outline" aria-label={`Corrigir ${interna ? "retirada" : "descarte"} de ${d.data}`} onClick={() => { setEstorno(d); setMotivoEstorno(""); }}>Corrigir</Button>}</div> },
-          ]} />
+          ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(lista.total / lista.tamanho))} total={lista.total} porPagina={lista.tamanho} rotulo={interna ? "Paginação das retiradas internas" : "Paginação dos descartes"} substantivo={interna ? "retiradas" : "descartes"} idSelect={interna ? "pagina-retiradas-internas-leite" : "pagina-descartes-leite"} onPagina={setPagina} />} />
 
-          <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(lista.total / lista.tamanho))} total={lista.total} porPagina={lista.tamanho} rotulo={interna ? "Paginação das retiradas internas" : "Paginação dos descartes"} substantivo={interna ? "retiradas" : "descartes"} idSelect={interna ? "pagina-retiradas-internas-leite" : "pagina-descartes-leite"} onPagina={setPagina} />
         </div>
       )}
       {estorno && (

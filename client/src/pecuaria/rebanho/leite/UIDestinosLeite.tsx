@@ -221,11 +221,10 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
                         </Button>
                       )}
 </div> },
-          ]} />
+          ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(historico.total / historico.porPagina))} total={historico.total} porPagina={historico.porPagina} rotulo="Paginação dos destinos" substantivo="fornecimentos" idSelect="pagina-destinos-leite" onPagina={setPagina} />} />
           {!historico.itens.length && (
             <Empty>Nenhum destino registrado no período.</Empty>
           )}
-          <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(historico.total / historico.porPagina))} total={historico.total} porPagina={historico.porPagina} rotulo="Paginação dos destinos" substantivo="fornecimentos" idSelect="pagina-destinos-leite" onPagina={setPagina} />
         </>
       )}
       {podeLancar && estorno && (
