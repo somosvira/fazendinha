@@ -1,3 +1,4 @@
+import { camposExameParaExibicao, nomeExame } from "../sanidade/nomeExame";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../../components/ui/button";
 import { PageHeader, ErrorBox, Empty } from "../../../financeiro/financeiro-ui";
@@ -125,7 +126,7 @@ export function CatalogoAvaliacaoConfig({
     };
   }, [propriedadeId]);
   const tipo = tipos.find((t) => t.id === tipoExameId);
-  const campos = (tipo?.campos ?? []).filter(
+  const campos = camposExameParaExibicao(tipo?.id, tipo?.campos ?? []).filter(
     (c) => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo),
   );
   function abrir() {
@@ -222,7 +223,7 @@ export function CatalogoAvaliacaoConfig({
           </h2>
           <p>
             Formato:{" "}
-            {tipos.find((t) => t.id === catalogo.tipoExameId)?.nome ??
+            {(tipos.find((t) => t.id === catalogo.tipoExameId) ? nomeExame(catalogo.tipoExameId, tipos.find((t) => t.id === catalogo.tipoExameId)?.nome) : undefined) ??
               "Versão de exame preservada"}
           </p>
           <h3 className="font-semibold">Itens disponíveis</h3>
@@ -305,7 +306,7 @@ export function CatalogoAvaliacaoConfig({
                   <option value="">Selecione um formato ativo</option>
                   {tipos.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.nome}
+                      {nomeExame(t.id, t.nome)}
                     </option>
                   ))}
                 </SelectCampo>

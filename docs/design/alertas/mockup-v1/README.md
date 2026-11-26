@@ -27,7 +27,7 @@ O banner explicativo sobre origens futuras e o texto de transcrição antes da a
 
 O agrupamento considera sítio, produto e identidade do cuidado; doses, programações ou campanhas diferentes conservam identidades próprias. Cada participante mantém motivo, data, situação e detalhe individual. Cuidados, necessidades individuais e animais distintos são contagens diferentes. A campanha fictícia de raiva com 561 animais é independente das janelas do calendário transcrito.
 
-Os gatilhos sanitários iniciais propostos são **idade e data fixa**; peso não gera alerta. Os exemplos de outras origens demonstram evoluções futuras e não ampliam esse escopo. Consulte o [plano funcional](../../../pecuaria/plano-alertas-sanitarios.md).
+Os gatilhos sanitários iniciais propostos são **idade e data fixa**; peso não gera alerta. Os exemplos de outras origens demonstram evoluções futuras e não ampliam esse escopo. Consulte o [plano funcional](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/plano-alertas-sanitarios.md).
 
 A [transcrição da fonte](calendario-fonte.md) preserva atividades, públicos e meses. O documento não informa ano ou dias de execução: 2026 é contexto de simulação. Marcações em todos os meses são janelas de programação, sem presumir aplicação mensal no mesmo animal. Produtos, indicação e elegibilidade não foram validados; as regras da agenda continuam desativadas. A prévia **Simular alerta deste evento** mantém público a selecionar e reutiliza o mesmo evento/mês em memória.
 
@@ -35,7 +35,7 @@ A [transcrição da fonte](calendario-fonte.md) preserva atividades, públicos e
 
 O refinamento acompanha os padrões vivos de [BarraConsulta](../../../../client/src/financeiro/BarraConsulta.tsx), [PainelFiltros](../../../../client/src/financeiro/PainelFiltros.tsx) e [VisualizacaoConsulta](../../../../client/src/components/VisualizacaoConsulta.tsx): busca e ações na barra, modal centralizado com aplicação explícita dos filtros e alternância entre cartões e tabela. O HTML estático reproduz esses padrões; não importa os componentes React nem implementa sua persistência de preferências.
 
-Foram preservados o verde `#006f68`, o fundo `#f7f8fa`, a lateral `#dce8e5` e as fontes locais DM Sans/Manrope do mockup, em continuidade com os [tokens compartilhados](../../../../client/src/styles/cooperativa-theme.css). Esta revisão local não define uma nova identidade ou altera os documentos globais de design.
+Foram preservados o verde `#006f68`, o fundo `#f7f8fa`, a lateral `#dce8e5` e as fontes locais DM Sans/Manrope usadas naquela revisão. A implementação segue a [tipografia compartilhada](../../../../client/DESIGN.md#typography). Esta revisão local não define uma nova identidade ou altera os documentos globais de design.
 
 Fontes do artefato: [index.html](index.html), [mockup.css](mockup.css), [consultas.js](consultas.js), [grupos.js](grupos.js), [agenda.js](agenda.js) e [mockup.js](mockup.js). A navegação usa fragmentos `#`; os participantes recebem contexto em `#cuidado/<chave>?estado=…&lote=…&busca=…&tipo=…`.
 

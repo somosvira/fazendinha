@@ -1,3 +1,4 @@
+import { nomeExame } from "../sanidade/nomeExame";
 import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
@@ -174,7 +175,7 @@ export function EditorRegrasAcompanhamentoModelo({
                 <option value="">Não especificado</option>
                 {tipos.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.nome}
+                    {nomeExame(t.id, t.nome)}
                   </option>
                 ))}
               </SelectCampo>

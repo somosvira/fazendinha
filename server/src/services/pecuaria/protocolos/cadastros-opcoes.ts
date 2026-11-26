@@ -1,3 +1,5 @@
+import { buscaNomeExameOficial } from "../sanidade/nome-exame.js";
+import { TIPO_EXAME_ESCORE_CORPORAL } from "../reproducao/escore-corporal.calc.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../../db.js";
@@ -20,7 +22,7 @@ export async function listarOpcoesCadastro(entrada:unknown){const f=opcoesCadast
   return pagina(()=>tx.tipoAplicacaoSanitaria.count({where}),(skip,take)=>tx.tipoAplicacaoSanitaria.findMany({where,skip,take,orderBy:[{nome:"asc"},{id:"asc"}],select:{id:true,nome:true,ativo:true}}));
  }
  if(f.opcao==="TIPO_EXAME"){
-  const where:Prisma.TipoExameWhereInput={...id,...ativo,...nome,contexto:{in:[f.origem,"COMPARTILHADO"]},...(f.origem==="REPRODUTIVO"?{tipoResultado:"MULTIPLO"}:{})};
+  const where:Prisma.TipoExameWhereInput={...id,...ativo,...(buscaNomeExameOficial(f.busca) ? { OR: [...(nome.OR ?? []), { id: TIPO_EXAME_ESCORE_CORPORAL }] } : nome),contexto:{in:[f.origem,"COMPARTILHADO"]},...(f.origem==="REPRODUTIVO"?{tipoResultado:"MULTIPLO"}:{})};
   return pagina(()=>tx.tipoExame.count({where}),async(skip,take)=>(await tx.tipoExame.findMany({where,skip,take,orderBy:[{nome:"asc"},{id:"asc"}],select:{id:true,nome:true,ativo:true,contexto:true,tipoResultado:true,unidade:true,opcoes:true,campos:true,versaoFormato:true}})).map(e=>({...e,formatoExameHash:hashFormatoExame(e)})));
  }
  const where:Prisma.MaterialGeneticoWhereInput={...id,...(f.tipoTentativa?{tipo:f.tipoTentativa==="IA"?"SEMEN":"EMBRIAO"}:{}),produto:{...ativo,usoGenetico:true,...nome}};

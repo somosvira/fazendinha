@@ -1,3 +1,4 @@
+import { nomeExame } from "./nomeExame";
 import { useState } from "react";
 import { ResultadoVisualExame } from "./ResultadoVisualExame";
 import { FlaskConical, Syringe, Milk, Beef } from "lucide-react";
@@ -12,13 +13,13 @@ import { EstadoSanitario, PrazoCarencia } from "./IndicadoresSanitarios";
 import "./consultas-visuais.css";
 
 type Props<T> = Parameters<typeof TabelaFinanceira<T>>[0];
-type ExameVisual = ExameResultado & { data: string; status: string; tipoExame: { nome: string } };
+type ExameVisual = ExameResultado & { data: string; status: string; tipoExame: { id?: string; nome: string }; tipoExameId?: string };
 export function ConsultaExames<T extends ExameVisual>({ nomeAnimal, abas, ...props }: Props<T> & { nomeAnimal: (e: T) => string; abas?: React.ReactNode }) {
   const visual = useVisualizacaoConsulta("visualExames", "sanidade");
   return <><div className="consulta-visual-barra sanidade-agenda-visoes">{abas ?? <span />}<AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos exames" /></div>{visual.modo === "tabela" ? <TabelaFinanceira icone={FlaskConical} {...props} visualizacao="tabela" /> : <div className="consulta-entidades san-exames-cartoes">{props.itens.map(e => {
     const resultado = resultadoExameSanitario(e);
     const pendente = resultado === "Aguardando resultado";
-    return <CartaoConsulta className="san-exame-cartao" key={props.chaveDe(e)} icon={FlaskConical} titulo={nomeAnimal(e)} detalhe={e.tipoExame.nome} onAbrir={() => props.onAbrir?.(e)} status={<EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : pendente ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : pendente ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario>} acoes={props.colunas.find(c => c.chave === "acoes")?.celula(e)}><div className="consulta-fatos san-exame-fatos"><FatoConsulta rotulo="Coleta">{dataSanitaria(e.data)}</FatoConsulta><FatoConsulta rotulo="Resultado"><ResultadoVisualExame exame={e} onAbrirCompleto={props.onAbrir ? () => props.onAbrir?.(e) : undefined} /></FatoConsulta></div></CartaoConsulta>;
+    return <CartaoConsulta className="san-exame-cartao" key={props.chaveDe(e)} icon={FlaskConical} titulo={nomeAnimal(e)} detalhe={nomeExame(e.tipoExameId ?? e.tipoExame.id, e.tipoExame.nome)} onAbrir={() => props.onAbrir?.(e)} status={<EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : pendente ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : pendente ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario>} acoes={props.colunas.find(c => c.chave === "acoes")?.celula(e)}><div className="consulta-fatos san-exame-fatos"><FatoConsulta rotulo="Coleta">{dataSanitaria(e.data)}</FatoConsulta><FatoConsulta rotulo="Resultado"><ResultadoVisualExame exame={e} onAbrirCompleto={props.onAbrir ? () => props.onAbrir?.(e) : undefined} /></FatoConsulta></div></CartaoConsulta>;
   })}{!props.itens.length && <Empty>Nenhum exame nesta consulta.</Empty>}</div>}</>;
 }
 export function ConsultaAplicacoes(props: Props<AplicacaoSanitaria>) {

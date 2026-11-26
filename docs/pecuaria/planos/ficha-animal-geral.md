@@ -1,5 +1,9 @@
 # Plano de implementação — ficha do animal
 
+> Registro histórico desta entrega. A decisão posterior mantém desmama e castração **no Bezerreiro e na ficha individual do bezerro**. Os comentários abaixo sobre transferir ou remover comandos pertencem à proposta da época. Consulte as [decisões de negócio](../../decisoes-de-negocio.md#direção-de-produto-confirmada).
+
+Registro das rodadas da ficha. Para novas alterações, consulte a [composição vigente](../../../client/DESIGN.md#overview) e o [fluxo de agentes](../../../AGENTS.md#fluxo-de-alterações-visuais). Modelos, estimativas, ferramentas e capturas abaixo pertencem às respectivas rodadas.
+
 Atualização da base: o PR #346 integrou Alertas e Bezerreiro em `staging`. A ficha preserva agora a aba contextual de acompanhamento quando há histórico comprovado. Isso não comprova a conclusão da realocação dos comandos de desmama/castração (tarefa B); os registros abaixo descrevem a base anterior à integração.
 
 Status: reorganização original integrada em staging; rodada v8 implementada localmente na branch `codex/etiquetas-ficha-animal`, com validação local concluída. A integração B com Bezerreiro permanece uma dependência separada, não executada nesta rodada. Consumo real de tokens não aferido. Sem publicação ou deploy desta rodada.
@@ -8,7 +12,7 @@ Status: reorganização original integrada em staging; rodada v8 implementada lo
 
 Reorganizar os componentes existentes, sem redesign: unir Resumo, Cadastro e Histórico em **Geral**, na ordem **Identificação → Filiação e composição racial → Peso → Histórico e auditoria**. Manter Produção, Reprodução, Sanidade e Nutrição, com a elegibilidade já vigente. Desmama e castração saem dos controles de Geral e passam à operação do Bezerreiro; seus fatos continuam no histórico do animal.
 
-Este documento consolida as decisões atuais e substitui propostas anteriores conflitantes: não haverá Cadastro como segunda aba; ela será o primeiro conteúdo de Geral. Não haverá bloco Manejo dentro de Peso. A restrição a textos recolhíveis tem uma exceção explícita: os cabeçalhos dos quatro componentes pais de Geral recolhem seu conteúdo. Nos filhos de Peso não haverá recolhimento independente.
+Este documento registrou as decisões daquela rodada e substituiu propostas anteriores conflitantes: não haverá Cadastro como segunda aba; ela será o primeiro conteúdo de Geral. Não haverá bloco Manejo dentro de Peso. A restrição a textos recolhíveis tem uma exceção explícita: os cabeçalhos dos quatro componentes pais de Geral recolhem seu conteúdo. Nos filhos de Peso não haverá recolhimento independente.
 
 ## Evidências e dependências
 
@@ -20,19 +24,19 @@ Este documento consolida as decisões atuais e substitui propostas anteriores co
 - `ReproducaoIndividual.tsx` já mostra tentativas com a referência do ciclo. `AcoesReprodutivas.tsx` contém gestação/lactação e vínculos de crias. Contagem de partos segue o contrato de Reprodução, não `array.length` de uma página.
 - O PR #343 (`codex/responsividade-densidade-ui` → `staging`) estava aberto na inspeção. O mockup importou componentes desse checkout, cuja versão já mudou durante a revisão. Reconciliar seu diff antes de implementar; não incorporar incidentalmente alterações desse PR.
 - **Bezerreiro não está implementado na árvore de `staging` inspecionada.** Há implementação separada em `codex/bezerreiro-correcoes` (inspeção local em `8cf51d62`). `AcompanhamentoBezerreiro.tsx` avisa que a saída não registra desmama nem movimentação. A existência do módulo em outro checkout não prova a existência dos dois comandos nem sua integração em STG. Não fazer merge dessa branch como efeito colateral.
-- Contratos relacionados: [Pecuária](../README.md), [Reprodução](../reproducao.md), [Produção](../leite.md), [estados](../estados-animal.md), [busca global](../../busca-global.md), [frontend](../../../client/README.md) e [desenvolvimento](../../desenvolvimento.md). A baseline SQL e migrations posteriores permanecem intactas; não há migration pressuposta para esta reorganização.
+- Referências da proposta: [Pecuária](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/README.md), [Reprodução](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/reproducao.md), [Produção](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite.md), [estados](../estados-animal.md), [busca global](../../busca-global.md), [design](../../../client/DESIGN.md) e [desenvolvimento](../../desenvolvimento.md). A baseline SQL e migrations posteriores permanecem intactas; não há migration pressuposta para esta reorganização.
 
 ### Referência visual e divergências conhecidas
 
 Mockup local v4: `http://127.0.0.1:41879/v4/`. Não é endereço compartilhável fora da máquina e não integra a aplicação. Artefato local: `/Users/montes/.codex/visualizations/2026/10/30/01a18edd-2347-74f3-b6ab-cff6ebbce1bc/ficha-geral/`; fonte em `fonte-v2`, capturas em `v4`. Valores anteriores, autores e alguns estados são demonstrativos: nunca copiar para fixtures operacionais ou dados reais.
 
-A referência foi atualizada para `v5/` nesta execução e comparada com a aplicação por Astra/high. Capturas reais estão no mesmo artefato local em `implementacao/`, incluindo desktop, móvel e modais. A v4 ainda contém Manejo e GMD separado da curva. As decisões posteriores neste plano prevalecem: retirar Manejo, renomear pai para Peso e reunir GMD/curva. A tarefa T1 deve atualizar a referência e apresentá-la antes de escrever a interface da aplicação, conforme AGENTS.md. A skill `impeccable` foi usada nas revisões; `frontend-design` não estava disponível na sessão. Procurar novamente no início de T1 e registrar a indisponibilidade se persistir, sem declarar revisão inexistente.
+A referência foi atualizada para `v5/` nesta execução e comparada com a aplicação por Astra/high. Capturas reais estão no mesmo artefato local em `implementacao/`, incluindo desktop, móvel e modais. A v4 ainda contém Manejo e GMD separado da curva. As decisões posteriores neste plano prevalecem: retirar Manejo, renomear pai para Peso e reunir GMD/curva. A tarefa T1 deve atualizar a referência e apresentá-la antes de escrever a interface da aplicação, conforme AGENTS.md. A skill `impeccable` foi usada nas revisões; `frontend-design` não estava disponível na sessão.
 
 ## Especificação de interface
 
 ### Navegação e composição
 
-1. Abas na ordem Geral, Produção, Reprodução, Sanidade, Nutrição; preservar condicionais por animal e permissões. Usar a aparência de fichário já implementada em `SubTabs`/`abas.css`, sem inventar outra.
+1. Abas na ordem Geral, Produção, Reprodução, Sanidade, Nutrição; preservar condicionais por animal e permissões. A decisão foi reutilizar `SubTabs` e `abas.css`; o componente compartilhado hoje identifica a seleção por sublinhado.
 2. `#geral` será o destino canônico. Links antigos `#resumo`, `#cadastro`, `#historico` e `#auditoria` devem abrir Geral e revelar/posicionar a seção correspondente. Preservar `retorno`, sítio, filtros, preferência `visualHistoricoAnimal`, voltar/avançar e navegação por teclado. Não desmontar formulários com rascunhos ao recolher ou trocar abas.
 3. Quatro cartões pais separados, com ícone, título de 16 px e ações contextualizadas. O título é um botão semântico com chevron, `aria-expanded`, `aria-controls`, foco e Enter/Espaço; abre inicialmente. Ações vizinhas não alternam o recolhimento. Link profundo revela a seção mesmo que esteja recolhida. Não aplicar o comportamento a todos os cartões do sistema.
 4. Peso recolhe o conjunto completo; Evolução do peso e Últimas pesagens não têm controles de recolhimento. Histórico mantém título, alternância visual/tabela, busca, datas, filtros e registros dentro do mesmo componente.
@@ -205,7 +209,7 @@ Rodada v6 concluída: 98 testes em oito arquivos passaram (SubTabs, DetalheAnima
 Decisão aprovada para implementação futura: opção A ajustada do mockup `http://127.0.0.1:41879/headers/`. Esta seção registra o desenho aprovado; não declara a implementação concluída nem altera o status das etapas anteriores.
 
 - Ordem: brinco → nome, quando informado → lote. Brinco sem formato de etiqueta.
-- Tipografia: brinco **20 px / peso 750**, nome **18 px / peso 600**, lote **16 px / peso 500**; mesma família Manrope, altura de linha de 24 px e alinhamento pela linha de base. A experiência de três textos em 18 px foi revertida a pedido do usuário.
+- Tipografia: brinco **20 px / peso 750**, nome **18 px / peso 600**, lote **16 px / peso 500**; Manrope no mockup da época (a ficha atual herda Public Sans), altura de linha de 24 px e alinhamento pela linha de base. A experiência de três textos em 18 px foi revertida a pedido do usuário.
 - Lote separado por divisória discreta e com cor secundária. Nome ausente não deve gerar placeholder ou espaço vazio.
 - Etiquetas abaixo da identificação, com intervalo de 8 px. Imagem de bovino de 72 × 72 px; identificação e etiquetas contidas na altura da imagem no desktop. Botão Mais ações à direita.
 - Preservar as regras vigentes de dados, permissões e etiquetas; esta aprovação trata da composição do cabeçalho.

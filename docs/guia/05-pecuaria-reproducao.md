@@ -1,8 +1,8 @@
 # Pecuária · Reprodução
 
-## Três ciclos que precisam ser separados
+## Como acompanhar tentativas, gestação e produção
 
-O **ciclo estral biológico** é o intervalo entre cios. Em bovinos, a referência média é cerca de 21 dias, com variação; envolve desenvolvimento folicular, cio/ovulação e fase lútea. Se houver concepção e manutenção da gestação, o animal segue gestante; se não houver, pode retornar à ciclicidade. A gestação tem duração aproximada de nove meses, variável por raça e indivíduo. Essas referências explicam a biologia; não são uma agenda clínica automática do app. Fonte: [FDA — ciclo estral bovino](https://www.fda.gov/animal-veterinary/product-safety-information/cattle-estrous-cycle-and-fda-approved-animal-drugs-control-and-synchronize-estrus-resource-producers).
+Ao consultar uma tentativa, use a data do procedimento. Para consultar gestação, procure o diagnóstico e as avaliações vinculadas.
 
 O **ciclo operacional de tentativas** do aplicativo agrupa tentativas desde o último parto válido, ou desde a referência inicial. Pode conter várias tentativas e vários ciclos estrais. Aborto e natimorto registrados como parto iniciam outro ciclo operacional; uma perda gestacional que não é parto não o reinicia automaticamente.
 
@@ -23,16 +23,16 @@ O **ciclo produtivo** acompanha início/encerramento de lactação e medições.
 | Parto | Nascimento/desfecho da gestação | Um parto e os resultados de cada cria | Encerra gestação e reinicia tentativas; lactação depende de registro |
 | Pós-parto | Recuperação e acompanhamento | Ocorrências, tratamentos e exame de aptidão | Vazia não significa imediatamente apta |
 
-No pós-parto, retorno à atividade reprodutiva depende das condições do animal; o simples decurso do calendário não comprova recuperação ou aptidão. Referência de contexto: [Oregon State University — função reprodutiva bovina](https://extension.oregonstate.edu/catalog/basics-reproductive-function-beef-cows). Prazos de espera, diagnóstico e reconfirmação do software precisam de política explícita, sem copiar médias biológicas como prescrição.
+No pós-parto, consulte a avaliação de aptidão e a política do sítio ao preparar o próximo atendimento.
 
 ## Situação reprodutiva
 
 | Estado | Evidência e motivo | Próxima ação possível |
 |---|---|---|
-| `DESCONHECIDA` | Não há conclusão válida suficiente; encerramento sem desfecho comprovado também pode exigir esclarecimento | Completar história ou avaliar |
-| `VAZIA` | Conclusão negativa ou encerramento comprovado por parto/perda | Conferir aptidão; não inseminar só pelo rótulo |
-| `AGUARDANDO_DIAGNOSTICO` | Existe tentativa válida mais recente sem desfecho conclusivo que a substitua | Atender a demanda diagnóstica |
-| `GESTANTE` | Gestação confirmada válida, com acompanhamento preservado | Acompanhar, reconfirmar, registrar desfecho |
+| Desconhecida | Não há conclusão válida suficiente; encerramento sem desfecho comprovado também pode exigir esclarecimento | Completar história ou avaliar |
+| Vazia | Conclusão negativa ou encerramento comprovado por parto/perda | Conferir aptidão; não inseminar só pelo rótulo |
+| Aguardando diagnóstico | Existe tentativa válida mais recente sem desfecho conclusivo que a substitua | Atender a demanda diagnóstica |
+| Gestante | Gestação confirmada válida, com acompanhamento preservado | Acompanhar, reconfirmar, registrar desfecho |
 
 O cálculo considera fatos válidos até a referência, cronologia e prioridade das evidências. Gestação operacional aberta não é desfeita por um cadastro inicial posterior. Inconclusivo e “aguardar” não equivalem a negativo. Anulação de uma evidência exige reavaliar seus dependentes.
 
@@ -48,7 +48,7 @@ Parto, inclusive aborto ou natimorto, inicia novo ciclo e exige novo exame. Apó
 
 ### Avisos e acompanhamento
 
-Idade e peso, inclusive percentual de peso adulto, são parâmetros configuráveis para avisar que a avaliação está devida. Não são mínimos obrigatórios de aptidão e não substituem o exame. **ECC** é um valor acompanhado por data e escala, com gráfico junto ao peso na ficha; não gera avisos nem condiciona aptidão nesta etapa.
+Idade e peso, inclusive percentual de peso adulto, são parâmetros configuráveis para avisar que a avaliação está devida. Não são mínimos obrigatórios de aptidão e não substituem o exame. O **Escore de condição corporal (ECC)** é uma observação com data e valor. A ficha separa as curvas por escala informada e inclui no histórico as avaliações que têm só o valor.
 
 Contador de partos igual a zero não prova que a fêmea nunca pariu. Quando houver evidência, registre a **Classe na data do registro** em **Situação inicial**: Novilha ou Vaca, com **Evidência ou referência**. O padrão **Não determinada** conserva a lacuna. Essa declaração não cria parto nem comprova aptidão.
 
@@ -60,7 +60,7 @@ Os registros antigos de situação inicial APTA e decisões individuais são pre
 
 IA usa material de sêmen; TE usa embrião e conserva doadora e receptora com papéis distintos. Cobertura observada registra o evento conhecido. Exposição de touro a um lote registra intervalo e participantes históricos; não comprova data exata de concepção nem paternidade automática.
 
-O material pode vir do estoque, de Serviço ou de origem documentada, conforme o contrato. Fato, consumo, custo e vínculos são confirmados de forma coordenada. A tentativa conserva um snapshot genético; editar o cadastro do material não reescreve o que foi utilizado.
+O material pode vir do estoque, de Serviço ou de origem documentada, conforme a origem registrada. Fato, consumo, custo e vínculos são confirmados de forma coordenada. A tentativa preserva os dados genéticos informados naquele dia; editar o cadastro do material não reescreve o que foi utilizado.
 
 Uma tentativa anulada não devolve automaticamente uma dose utilizada. A correção distingue devolução por erro de lançamento, material consumido e material descartado. O custo de um Serviço não é duplicado pelo vínculo com a tentativa.
 
@@ -70,17 +70,21 @@ O diagnóstico positivo cria ou confirma a gestação conforme o fluxo. Reconfir
 
 Perda precisa de explicação e pode ter causa desconhecida, suspeita ou confirmada. A autoria do lançamento não significa responsabilidade pela perda. Um negativo depois de positivo exige tratar a perda ou corrigir o diagnóstico; não pode apagar silenciosamente a gestação.
 
-Aborto é um desfecho de parto no contrato atual e participa da análise de perdas sem duplicação. Natimorto é identificado no nascimento e não gera animal ativo. Morte depois de nascimento vivo usa a baixa normal da cria. Gêmeos são várias crias de um único parto.
+Aborto é um desfecho de parto na contagem do sistema e participa da análise de perdas sem duplicação. Natimorto é identificado no nascimento e não gera animal ativo. Morte depois de nascimento vivo usa a baixa normal da cria. Gêmeos são várias crias de um único parto.
 
-Parto e criação de animais vivos são atômicos. Uma cria sem brinco definitivo permanece identificada provisoriamente. Filiação respeita genética/gestação; peso pode ser informado e vinculado. Início da lactação é explícito; aborto não abre lactação por suposição.
+Ao confirmar o parto, confira também as crias vivas registradas junto com ele. Uma cria sem brinco definitivo permanece identificada provisoriamente. Filiação respeita genética/gestação; peso pode ser informado e vinculado. Início da lactação é explícito; aborto não abre lactação por suposição.
+
+Em **Registrar parto**, abra **Parto e crias** ou **Pós-parto** para preencher cada seção; ao abrir uma, a outra é recolhida e conserva o que foi preenchido. Em **Parto e crias**, **Observações do parto** e **Brinco** são opcionais para um nascimento. Para aborto, informe uma explicação de pelo menos cinco caracteres. O campo **Responsável pelo parto** identifica quem acompanhou o fato. A autoria identifica quem fez o lançamento.
+
+Em **Pós-parto**, ative **Registrar ECC da matriz** para preencher **Valor do escore**. O Terrano usa a data do parto. Para lançar uma avaliação feita depois, abra o detalhe do parto, selecione **Registrar escore de condição corporal (ECC)** e informe o valor e a data real, igual ou posterior à do parto. Cada parto pode ter um ECC vigente. Use a correção do parto e informe o motivo para substituir ou anular a avaliação.
 
 ## Lactação e contadores
 
-`LACTANTE` exige lactação vigente única com evidência válida. `SECA` exige encerramento comprovado sem lactação posterior vigente nem parto posterior sem resolução. Sem evidência suficiente, usa-se `NAO_INFORMADA`. Na interface, a Situação de lactação apresenta Lactante, Seca ou Não informada. O código legado `SEM_LACTACAO` também aparece como Não informada: ausência de lactação registrada não comprova secagem.
+Lactante exige lactação vigente única com evidência válida. Seca exige encerramento comprovado sem lactação posterior vigente nem parto posterior sem resolução. Sem evidência suficiente, usa-se Não informada. Na interface, a Situação de lactação apresenta Lactante, Seca ou Não informada. Se faltar histórico, procure a evidência na ficha antes de concluir que houve secagem.
 
 DEL conta dias desde o início da lactação, com D0 no início. Fica nulo após o encerramento, inclusive no dia da secagem. Dias pós-parto usa o parto; dias desde tentativa usa a tentativa do ciclo; dias desde confirmação usa o diagnóstico. São relógios distintos.
 
-No formulário **Encerrar lactação**, peso é opcional: escolha **Não informar peso**, **Registrar pesagem** ou **Reutilizar pesagem existente**. A mesma pesagem fica no histórico do animal e na lactação encerrada. Depois, é possível acrescentar, corrigir, substituir ou retirar o vínculo com motivo e histórico. Registrar peso isoladamente não encerra lactação. Data e localização precisam corresponder ao encerramento comprovado; reutilizar conserva tipo, origem e precisão. Reabrir a lactação revoga o vínculo ativo, preservando a pesagem. Na conciliação dos 100 pesos de secagem identificados no IDEAGRI, falta de evidência deixa a associação pendente, sem inventar lactação ou data. Código disponível não indica que esses dados já foram carregados.
+No formulário **Encerrar lactação**, peso é opcional: escolha **Não informar peso**, **Registrar pesagem** ou **Reutilizar pesagem existente**. A mesma pesagem fica no histórico do animal e na lactação encerrada. Depois, é possível acrescentar, corrigir, substituir ou retirar o vínculo com motivo e histórico. Registrar peso isoladamente não encerra lactação. Data e localização precisam corresponder ao encerramento comprovado; reutilizar conserva tipo, origem e precisão. Reabrir a lactação revoga o vínculo ativo, preservando a pesagem.
 
 Idade gestacional desde IA/cobertura vinculada é uma referência operacional. TE precisa considerar idade embrionária; o contexto atual conserva essa pendência em vez de tratar a data da transferência como fecundação exata. A análise de indicadores possui suas regras próprias de deslocamento, que não completam a ficha individual automaticamente.
 
@@ -88,15 +92,20 @@ Idade gestacional desde IA/cobertura vinculada é uma referência operacional. T
 
 Protocolo é uma versão de planejamento. Momentos agrupam ações; participação liga animal e versão; tarefa representa o que deve ser realizado. Programação reúne participações num contexto coletivo. A mesma base atende sanitário/reprodutivo e individual/coletivo.
 
-Aplicação, exame, tentativa, avaliação, manejo e retirada de dispositivo usam os executores comuns. A confirmação revalida a prévia e é idempotente: repetir o mesmo pedido não cria outro fato. Adiar ou não atender não administra produto, não insemina e não diagnostica.
+### Criar ou derivar um modelo
+
+1. Em **Configurações → Pecuária → Reprodução → Protocolos reprodutivos**, abra **Novo protocolo**. Em **Identificação**, comece do zero ou escolha a versão de um protocolo-base. A nova versão herda a estrutura da base. Animais, atendimentos e consumos ficam vinculados à versão de origem.
+2. Em IATF e TETF, escolha se a tentativa entra no protocolo ou será registrada separadamente. A tentativa planejada pode ser IA, TE ou cobertura observada e encerra as ações de preparo. DG e reconfirmação são opcionais e independentes. Ao incluí-los, informe os dias corridos após a tentativa registrada ou após o primeiro DG positivo válido, respectivamente. Os prazos podem ser alterados voltando à **Identificação**.
+3. Em **Etapas**, use **Adicionar etapa** para configurar o dia e os procedimentos. Clique na etapa para editar seus dados ou no lápis para editar o procedimento. O quadro organiza as etapas por dia. Se uma etapa herdada tem intervalos distintos, sua posição é definida pelo menor intervalo previsto. Etapas pendentes e acompanhamentos que dependem de um evento aparecem ao final. Consulte no resumo a soma das quantidades por produto e unidade. A retirada de dispositivo fica fora desse total.
+4. Em **Conferência**, revise identificação, calendário e quantidades e escolha **Salvar protocolo**. Salvar publica a versão do modelo. O estoque é movimentado pelos registros de consumo no atendimento.
+
+Aplicação, exame, tentativa, avaliação, manejo e retirada de dispositivo são registrados no atendimento. Confira a prévia e veja quais tarefas ficaram concluídas. Adiar ou não atender não administra produto, não insemina e não diagnostica.
 
 Na consulta histórica, **Sem tentativa vinculada** descreve a ausência de vínculo registrado com a participação. **IA não prevista neste modelo histórico** depende das etapas da versão, sem dedução pelo nome do protocolo: um modelo com TE ou somente preparação não fica incompleto por não ter IA. Etapas e fatos avulsos posteriores permanecem separados; datas próximas não atribuem vínculo nem sucesso ao protocolo. O acesso à ficha preserva o contexto de retorno e permite consultar os mesmos fatos.
 
-O executor HTTP comum atual aceita versão 1, até cem tarefas de animais distintos da mesma ação/contexto. A proposta antiga de atendimento por exceção de um momento inteiro com várias ações não está integralmente implementada. Visitas têm coordenação transacional própria entre grupos; isso não significa que o endpoint comum aceite um envelope v2.
-
 ## Visitas, demandas e retorno
 
-Agenda do dia reúne demandas previstas; Seleção livre permite escolher animais por critérios. Ambos chegam à preparação, revisão, impressão e atendimento. A lista impressa é planejamento, não prova de realização. Transcrever o campo deve criar os mesmos fatos consultáveis na ficha/protocolo.
+Agenda do dia reúne demandas previstas; Seleção livre permite escolher animais por critérios. Ambos chegam à preparação, revisão, impressão e atendimento. A lista impressa é planejamento, não prova de realização. Após transcrever o atendimento de campo, confira o resultado na ficha ou no protocolo.
 
 Políticas de acompanhamento definem DG após tentativa e reconfirmações após positivo. Uma demanda conserva âncora, regra e previsão. Inconclusivo pode concluir uma tarefa executada e manter a demanda clínica pendente. Demandas originadas por protocolo sem prazo comprovado mostram “Sem data definida”.
 
@@ -106,12 +115,4 @@ Anular a evidência de origem pode reabrir uma pendência e bloquear sua resolu�
 
 As consultas de partos e indicadores usam período e sítio explícitos. Taxas precisam de numerador, denominador e cobertura coerentes; contagem de tentativas não é contagem de animais únicos. Base elegível considera o histórico, PEV, políticas e pendências, não apenas o status atual.
 
-A metodologia V2 de indicadores conserva estimativas declaradas e diagnósticos abertos separados dos resultados conhecidos. Não presuma que uma vaca sem diagnóstico está vazia para melhorar artificialmente o denominador. Perdas posteriores não apagam concepções comprovadas. Emissões preservadas conservam a metodologia e as fontes usadas.
-
-## Implementação e verificações
-
-Rotas em `server/src/routes/pecuaria/reproducao.ts`, `visitas.ts` e `protocolos-operacao.ts`; serviços em `server/src/services/pecuaria/reproducao/` e `protocolos/`. `regras.calc.ts`, `contexto-animal.calc.ts`, `elegibilidade.calc.ts` e `indicadores.calc.ts` separam os cálculos da persistência.
-
-TentativaReprodutiva, GestacaoAnimal, PartoAnimal, CriaParto, LactacaoAnimal, RestricaoReprodutiva, PoliticaElegibilidadeReprodutiva, VinculoPoliticaCiclo e DemandaAcompanhamentoReprodutivo conservam fatos e decisões. ExameAnimal/InterpretacaoReprodutiva são a base comum de avaliação; views antigas não recebem escrita paralela.
-
-Testes próximos desses cálculos e integrações verificam cronologia, intervalos, estados, custos e efeitos. Referências completas: [Reprodução](../pecuaria/reproducao.md), [Protocolos](../pecuaria/protocolos-exames.md) e [estados do animal](../pecuaria/estados-animal.md).
+A consulta de indicadores conserva estimativas declaradas e diagnósticos abertos separados dos resultados conhecidos. Não presuma que uma vaca sem diagnóstico está vazia para melhorar artificialmente o denominador. Perdas posteriores não apagam concepções comprovadas. Emissões preservadas conservam a metodologia e as fontes usadas.

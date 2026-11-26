@@ -1,8 +1,8 @@
 # Base documental de protocolos
 
-[Entrada navegável](index.html) · [Registro da ampliação](../../protocolos-exames.md) · [Contrato vigente](../../protocolos-exames.md)
+[Entrada navegável](index.html) · [Registro da ampliação](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/protocolos-exames.md)
 
-Materiais de apoio do núcleo comum de protocolos. A implementação do núcleo comum está integrada à main; o contrato operacional registra o comportamento implementado e seus limites. Os diagramas e capturas preservam suas datas; a estrutura atual deve ser conferida na baseline V5.
+Materiais de apoio do núcleo comum de protocolos. Os diagramas e capturas registram o núcleo comum na data de cada entrega.
 
 | Material | Fonte e alcance |
 |---|---|
@@ -11,7 +11,7 @@ Materiais de apoio do núcleo comum de protocolos. A implementação do núcleo 
 | [Catálogo SQL](db/schema.json) | Apenas metadados: colunas, constraints, índices, triggers e suas funções. Nenhum registro de animal, usuário ou atendimento. |
 | [Mockup aprovado](mockup/index.html#turma) | Referência conceitual simulada do coletivo reprodutivo. Não comprova a aparência das telas implementadas; inspeção real focal executada; contextos individuais seguem pendentes. |
 | [Ações e atendimentos: explicação e mockups](acoes-e-atendimentos.html) | Referência conceitual aprovada de 21/10/2026: ações por animal, registro individual/coletivo, consumo, pendências e gestação. Simulação em memória, com listas de até dez itens; não executa os serviços reais nem comprova a entrega da ampliação. |
-| [Registro local de ações e atendimentos](../../protocolos-exames.md) | Ampliação implementada localmente, decisões incorporadas ao contrato e evidências técnicas separadas dos gates humanos pendentes. |
+| [Registro local de ações e atendimentos](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/protocolos-exames.md) | Ampliação implementada localmente, decisões incorporadas ao contrato e evidências técnicas separadas dos gates humanos pendentes. |
 | [Gerador do diagrama](gerar-diagrama.py) | Constrói `db/index.html` a partir do catálogo versionado; não conecta ao banco. |
 
 ## Uso local
@@ -34,7 +34,7 @@ Na [simulação de ações e atendimentos](acoes-e-atendimentos.html), escolha u
 - Ao mudar a estrutura, aplicar/revisar migrations pelo processo normal e obter um novo catálogo autorizado em somente leitura, com o mesmo formato de `schema.json`. Revisar metadados antes de versionar; não exportar dados operacionais ou segredos.
 - Regenerar com `python3 docs/pecuaria/artefatos/protocolos/gerar-diagrama.py`. Atualizar posicionamento, setas, explicações e data da inspeção se o número de colunas, relações ou regras mudar. O gerador reproduz o documento, não verifica automaticamente a semântica do desenho.
 - `db/index.html` incorpora o catálogo para funcionar offline; manter o JSON e o HTML sincronizados pelo gerador. Nomes antigos de índices podem permanecer após renomear tabelas e não provam duplicação de entidades.
-- Na entrega de mudanças, atualizar `protocolos-exames.md`, os contratos afetados e estes materiais. Incorporar decisões vigentes ao contrato; manter o registro local de entrega factual, sem reintroduzir o plano temporário ou derivar requisitos de exemplos ilustrativos.
+- Para consultar ou alterar o comportamento atual, confira o [núcleo de protocolos](../../../../server/src/services/pecuaria/protocolos/).
 
 ## Validação desta publicação
 
