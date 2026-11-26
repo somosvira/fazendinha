@@ -1,6 +1,6 @@
 # Proposta visual para as outras abas do Leite
 
-Estado: proposta aprovada pelo usuário; implementação operacional descrita em `docs/pecuaria/leite.md` e `docs/pecuaria/leite-qualidade.md`. Este arquivo continua sendo apenas o protótipo estático.
+Estado: proposta aprovada pelo usuário; implementação operacional descrita em [documento da época](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite.md) e [documento da época](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite-qualidade.md). Este arquivo continua sendo apenas o protótipo estático.
 
 Abrir com o servidor local: `/mockups/leite-abas/index.html`.
 

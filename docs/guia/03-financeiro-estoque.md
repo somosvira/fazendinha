@@ -15,7 +15,7 @@ Saldo físico responde “quanto existe”; valor do saldo responde “qual valo
 5. Consuma pelo fluxo que originou o uso: aplicação, reprodução, fechamento de dieta ou destino leiteiro.
 6. Para diferença de contagem, perda ou transferência, use o comando específico com motivo.
 
-Uma aplicação não deve ser acompanhada de uma saída manual extra. Sua confirmação já produz o movimento vinculado quando a origem é estoque. Compra direta/documentada tem contrato próprio e não autoriza fabricar uma entrada fictícia para depois consumi-la.
+Uma aplicação não deve ser acompanhada de uma saída manual extra. Sua confirmação já produz o movimento vinculado quando a origem é estoque. Quando o material já veio de compra direta, identifique essa origem no lançamento.
 
 ## Movimentos e rastreabilidade
 
@@ -28,7 +28,7 @@ Uma aplicação não deve ser acompanhada de uma saída manual extra. Sua confir
 | Ajuste de contagem | Diferença documentada | Não substitui comprovação de preço nem corrige todos os fatos passados |
 | Estorno | Movimento inverso | Mantém original e vínculos; depende da disponibilidade e dos consumidores |
 
-O saldo deve considerar corretamente o original e a reversão. Filtrar indiscriminadamente apenas registros confirmados pode eliminar uma ponta e produzir um saldo falso.
+Ao investigar uma diferença de saldo, consulte o movimento original e o eventual estorno.
 
 ## Partidas e validade
 
@@ -46,9 +46,9 @@ O total monetário é autoritativo; o custo unitário arredondado é apresentaç
 
 Saldo histórico sem preço não recebe custo inventado. A abertura documentada exige quantidade correspondente, valor, referência, evidência, motivo e conferência de versão. Não cria compra, pagamento ou custo histórico novo. Quantidade zero, custo zero comprovado e custo desconhecido são diferentes.
 
-## A exceção leiteira da V5
+## Como conferir o estoque de leite
 
-Leite pode entrar fisicamente com custo produtivo ainda pendente, pelo método restrito `LEITE_FIFO_V1`. Essa exceção exige origem leiteira e alocações comprovadas; não relaxa a regra para os demais produtos.
+Leite pode entrar fisicamente com custo produtivo ainda pendente, quando há uma origem leiteira comprovada. Essa exceção exige origem leiteira e alocações comprovadas; não relaxa a regra para os demais produtos.
 
 Produzir 1.000 L, vender 600 L, fornecer 100 L e guardar 300 L conserva a quantidade. Uma apuração documentada posterior de R$ 1.500 atribui R$ 900 à venda, R$ 150 ao fornecimento e R$ 450 ao saldo. Não lança outra despesa ou recebimento. Histórico e versões da apuração permanecem consultáveis.
 
@@ -67,9 +67,3 @@ Estoque Leite é um recorte da mesma base. Ordenhas ainda sem confirmação apar
 Não existe motor geral de recálculo retroativo do estoque. Entrada com consumidores, período fechado e classificação restritiva exigem regularização explícita. Corrigir um lançamento não pode devolver material que foi realmente utilizado ou descartado.
 
 O produto leiteiro atual deve ser ativo, em litros, sem rastreio por partida e dedicado ao percurso leiteiro. Misturar métodos/históricos ou usar transferência/ajuste genérico para resolver um saldo leiteiro não reconciliado não é um percurso suportado automaticamente.
-
-## Implementação e verificações
-
-Rotas: `server/src/routes/estoque.ts`; serviços: `server/src/services/estoque/estoque.ts` e `valorizacao.ts`; consumo pecuário: `server/src/services/pecuaria/consumo.ts`. Produto, MovimentoEstoque, PartidaProduto, AlocacaoPartidaEstoque, BaseValorizacaoEstoque e ParcelaValorizacaoEstoque ficam no schema `public`; origens/alocações lácteas ficam em `pecuaria` e apontam para os mesmos movimentos.
-
-Testes de valorização, perdas, transferências, integrações pecuárias e conservação leiteira acompanham os serviços. SQL protege compatibilidade, somas e histórico. Referências: [Financeiro/Estoque](../financeiro-rebuild-contrato.md) e [estoque do leite](../pecuaria/leite-decisoes-estoque.md).
