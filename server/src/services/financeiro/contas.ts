@@ -1,3 +1,4 @@
+import { travarContasSaldo } from "./saldo-negativo.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import type { z } from "zod";
@@ -74,6 +75,7 @@ export async function atualizarConta(
 ) {
   try {
     return await prisma.$transaction(async (tx) => {
+      await travarContasSaldo(tx, [id], propriedadeId);
       const anterior = await tx.contaFinanceira.findFirst({ where: { id, propriedadeId } });
       if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
       // Um cadastro antigo incompleto ainda pode ser desativado ou renomeado.

@@ -1,3 +1,4 @@
+import { exigirBancoIntegracaoPecuaria } from "../../lib/banco-pecuaria-integration.fixture.js";
 import { limparMovimentosValorizadosFixture } from "../../test/estoque-valorizado.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
@@ -15,6 +16,7 @@ const produtosCriados: string[] = [];
 const categoriasCriadas: string[] = [];
 
 async function fixture() {
+  exigirBancoIntegracaoPecuaria();
   const sufixo = crypto.randomUUID();
   const propriedadeId = (await prisma.propriedade.create({ data: { nome: `Concorrência ${sufixo}` } })).id;
   const outraPropriedadeId = (await prisma.propriedade.create({ data: { nome: `Outro escopo ${sufixo}` } })).id;
@@ -56,6 +58,11 @@ function entrada(f: Awaited<ReturnType<typeof fixture>>, condicao: "A_VISTA" | "
 afterAll(async () => {
   if (!propriedadesCriadas.length) return;
   const propriedadeId = { in: propriedadesCriadas };
+  const operacoes = await prisma.operacao.findMany({ where: { propriedadeId }, select: { id: true } });
+  const transacoes = await prisma.transacaoFinanceira.findMany({ where: { propriedadeId }, select: { id: true } });
+  const compromissos = await prisma.compromissoFinanceiro.findMany({ where: { operacao: { propriedadeId } }, select: { id: true } });
+  const contas = await prisma.contaFinanceira.findMany({ where: { propriedadeId }, select: { id: true } });
+  await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: [...operacoes, ...transacoes, ...compromissos, ...contas].map(x => x.id) } } });
   await prisma.liquidacao.deleteMany({ where: { transacao: { propriedadeId } } });
   await prisma.movimentoConta.deleteMany({ where: { transacao: { propriedadeId } } });
   await prisma.transacaoFinanceira.deleteMany({ where: { propriedadeId } });
@@ -72,6 +79,38 @@ afterAll(async () => {
 });
 
 describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {
+  it("exige nova ciência após movimento concorrente e preserva o reenvio idempotente", async () => {
+    const f = await fixture();
+    const dados = { ...entrada(f, "A_VISTA"), chave: crypto.randomUUID() };
+    dados.itens[0].valorUnitario = 110;
+    const ciencia = { origem: "direta" as const };
+    const aviso = await criarOperacao(dados, ciencia).catch(e => e);
+    expect(aviso).toMatchObject({ code: "SALDO_NEGATIVO", saldoNegativo: { saldoAtual: "1000.00", valorPagamento: "1100.00", saldoProjetado: "-100.00" } });
+    const outro = { ...entrada(f, "A_VISTA"), chave: crypto.randomUUID() };
+    await criarOperacao(outro);
+    const atualizado = await criarOperacao(dados, { ...ciencia, token: aviso.saldoNegativo.token }).catch(e => e);
+    expect(atualizado).toMatchObject({ code: "SALDO_NEGATIVO", saldoNegativo: { saldoAtual: "900.00", saldoProjetado: "-200.00" } });
+    const salva = await criarOperacao(dados, { ...ciencia, token: atualizado.saldoNegativo.token });
+    const repetida = await criarOperacao(dados, ciencia);
+    expect(repetida.id).toBe(salva.id);
+    expect(await prisma.transacaoFinanceira.count({ where: { operacaoId: salva.id } })).toBe(1);
+  });
+
+  it("serializa pagamentos concorrentes antes da projeção", async () => {
+    const f = await fixture();
+    const dados = entrada(f, "A_VISTA");
+    dados.itens[0].valorUnitario = 70;
+    const outroProduto = await prisma.produto.create({ data: { nome: `Produto paralelo ${crypto.randomUUID()}`, unidade: "KG" } });
+    produtosCriados.push(outroProduto.id);
+    const dadosParalelos = { ...dados, itens: [{ ...dados.itens[0], produtoId: outroProduto.id }] };
+    const resultados = await Promise.allSettled([
+      criarOperacao({ ...dados, chave: crypto.randomUUID() }, { origem: "direta" }),
+      criarOperacao({ ...dadosParalelos, chave: crypto.randomUUID() }, { origem: "direta" }),
+    ]);
+    expect(resultados.filter(r => r.status === "fulfilled")).toHaveLength(1);
+    expect(resultados.filter(r => r.status === "rejected")).toEqual([expect.objectContaining({ reason: expect.objectContaining({ code: "SALDO_NEGATIVO", saldoNegativo: expect.objectContaining({ saldoAtual: "300.00", saldoProjetado: "-400.00" }) }) })]);
+  });
+
   it("rejeita liquidação fora do sítio sem gravar e aceita no sítio do fato", async () => {
     const f = await fixture();
     const operacao = await criarOperacao(entrada(f, "A_PRAZO"));

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../db.js", () => {
   const tx = {
+    $executeRaw: vi.fn().mockResolvedValue(0),
     contaFinanceira: { findFirst: mocks.findFirst, update: mocks.update, create: mocks.create },
     movimentoConta: { count: mocks.count, findMany: mocks.movimentosFindMany },
     auditoriaFinanceira: { create: mocks.auditoria },
