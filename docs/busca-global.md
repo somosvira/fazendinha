@@ -66,7 +66,9 @@ Testes de servidor cobrem entrada, seleção prévia de fontes autorizadas, par�
 
 A revisão visual de Animais/ficha/ordenhas/filas mantém o catálogo, os gates e os destinos existentes. O registro geral de ordenha continua consumindo `leiteModo=registro`, `registroId`, data operacional e ordenha; sua apresentação é modal, sem perder o período da consulta no retorno. Em Animais, a linha abre a ficha exata. O contexto adicional da lista pertence à leitura da consulta e não cria outra fonte de busca.
 
-O acabamento operacional geral conserva os destinos da busca. A seleção por `usuario` em Acessos abre o editor em modal; receitas, operações nutricionais e protocolos continuam consumindo suas URLs antes de apresentar o modal. Trocar a apresentação não autoriza abrir outro registro nem remover o retorno da consulta. Filtros e parâmetros persistentes continuam sujeitos aos testes de navegação existentes.
+O acabamento operacional geral conserva os destinos da busca. A seleção por `usuario` em Acessos abre o editor em modal. Receitas, operações nutricionais e protocolos consomem os parâmetros de suas URLs. O resultado **Modelos de protocolos reprodutivos** abre a consulta de Configurações; a rota dedicada do builder conserva parâmetros de edição, derivação e retorno em todas as fases. Procedimentos continuam sendo acessados pela versão do modelo. Filtros e parâmetros persistentes ficam cobertos pelos testes de navegação.
+
+Os prazos opcionais de DG e reconfirmação aparecem no contexto da versão do protocolo e, após a adesão, da participação e do acompanhamento. A busca localiza a versão e os registros principais. Esses destinos apresentam a referência factual e o prazo conforme as permissões e o sítio da consulta.
 
 A reformulação da composição operacional preserva as URLs, fontes e gates da busca. Cabeçalhos integrados do Leite, agrupamento das visitas, seleção superior dos relatórios e cartões de Sítios são apresentações dos mesmos destinos. O histórico dos cadastros é consultado em modal sob demanda; não há novo tipo de registro pesquisável introduzido por essa apresentação.
 

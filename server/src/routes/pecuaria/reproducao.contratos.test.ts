@@ -3,12 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exigeArea } from "../../middleware/permissao.js";
 import { uid } from "../../lib/uid.fixture.js";
 
-const mocks = vi.hoisted(() => ({ catalogo:vi.fn(), criarCatalogo:vi.fn(), obterContexto:vi.fn(), previaAvaliacao:vi.fn(), leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), agenda: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn(), manejoAptidao: vi.fn(), pesoSecagem: vi.fn(), encerrarLactacao: vi.fn() }));
+const mocks = vi.hoisted(() => ({ catalogo:vi.fn(), criarCatalogo:vi.fn(), obterContexto:vi.fn(), previaAvaliacao:vi.fn(), leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), sugestoes: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), agenda: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn(), manejoAptidao: vi.fn(), pesoSecagem: vi.fn(), encerrarLactacao: vi.fn() }));
 vi.mock("../../services/pecuaria/reproducao/avaliacao-contextual.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/avaliacao-contextual.js")>(), catalogoAvaliacao:mocks.catalogo, criarCatalogoAvaliacao:mocks.criarCatalogo, obterAvaliacaoContextual:mocks.obterContexto }));
 vi.mock("../../services/pecuaria/reproducao/manejo-aptidao.js", () => ({ consultarManejoAptidao: mocks.manejoAptidao }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(), painelReproducao: mocks.painel, criarTentativa: mocks.tentativa, criarAvaliacao: mocks.avaliacao, previaAvaliacaoContextual: mocks.previaAvaliacao, encerrarLactacao: mocks.encerrarLactacao }));
-vi.mock("../../services/pecuaria/reproducao/visitas.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/visitas.js")>(), detalheVisita: mocks.detalheVisita, confirmarAtividade: mocks.confirmar, tarefaParticipanteVisita: mocks.tarefaVisita }));
+vi.mock("../../services/pecuaria/reproducao/visitas.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/visitas.js")>(), detalheVisita: mocks.detalheVisita, sugestoesVisita: mocks.sugestoes, confirmarAtividade: mocks.confirmar, tarefaParticipanteVisita: mocks.tarefaVisita }));
 vi.mock("../../services/pecuaria/reproducao/iatf.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/iatf.js")>(), listarProgramacoes: mocks.programacoes, criarProgramacao: mocks.programar, iniciarParticipante: mocks.iniciar, reprogramarTarefa: mocks.reprogramar, executarTarefa: mocks.executar }));
 vi.mock("../../services/pecuaria/reproducao/planner.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/planner.js")>(), consultarAgenda: mocks.agenda, previaGrupoPlanner: mocks.previaPlanner }));
 vi.mock("../../services/pecuaria/reproducao/emissoes-relatorios.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/emissoes-relatorios.js")>(), criarEmissaoReprodutiva: mocks.emitir, obterEmissaoReprodutiva: mocks.obterEmissao }));
@@ -250,4 +250,84 @@ it("consulta filas de aptidão no sítio autorizado, sem exigir lançamento e co
   expect(resposta.status).toBe(200);
   expect(mocks.manejoAptidao).toHaveBeenCalledWith(2, "2026-10-29");
   expect((await app().request("/reproducao/filas-aptidao?data=invalida")).status).toBe(422);
+});
+
+it.each([
+  ["lista", "/reproducao/programacoes", undefined],
+  ["detalhe", `/reproducao/programacoes/${uid(4)}`, uid(4)],
+  ["participações", `/reproducao/participacoes?animalId=${uid(2)}`, undefined],
+] as const)("%s protege referências financeiras do modelo e mantém dados operacionais", async (_nome, caminho, programacaoId) => {
+  const referencia = { servico: { valorUnitario: "123.45", unidade: "POR_ATENDIMENTO", origem: "Tabela", data: "2026-01-01" } };
+  const registro = { id: uid(4), propriedadeId: 2, protocolo: { id: uid(5), etapas: [{ nome: "Aplicação", planoAplicacao: { dose: "2", unidadeDose: "ML" }, referenciasCusto: referencia }] }, participantes: [{ animalId: uid(2), tarefas: [{ planejadoSnapshot: { etapa: { referenciasCusto: referencia, nome: "Dose" } }, realizadoSnapshot: { resultado: "POSITIVO", valorServicoAtribuido: "30" } }] }] };
+  mocks.programacoes.mockResolvedValue([registro]);
+  for (const [u, financeiro] of [[usuario, false], [usuarioFinanceiro, true]] as const) {
+    const resposta = await app(u).request(caminho);
+    expect(resposta.status).toBe(200);
+    const corpo = await resposta.json();
+    const item = programacaoId ? corpo : corpo[0];
+    expect(item).toMatchObject({ id: uid(4), protocolo: { etapas: [{ nome: "Aplicação", planoAplicacao: { dose: "2", unidadeDose: "ML" } }] }, participantes: [{ animalId: uid(2), tarefas: [{ planejadoSnapshot: { etapa: { nome: "Dose" } }, realizadoSnapshot: { resultado: "POSITIVO", valorServicoAtribuido: "30" } }] }] });
+    expect(JSON.stringify(item).includes("123.45")).toBe(financeiro);
+    expect("referenciasCusto" in item.protocolo.etapas[0]).toBe(financeiro);
+    expect("referenciasCusto" in item.participantes[0].tarefas[0].planejadoSnapshot.etapa).toBe(financeiro);
+  }
+  if (_nome === "participações") expect(mocks.programacoes).toHaveBeenCalledWith(2, undefined, uid(2));
+  else if (programacaoId) expect(mocks.programacoes).toHaveBeenCalledWith(2, programacaoId);
+  else expect(mocks.programacoes).toHaveBeenCalledWith(2);
+});
+
+it("protege o planejamento de tarefa reprodutiva na visita sem alterar a sanitária", async () => {
+  const tarefa = { id: uid(5), planejadoSnapshot: { etapa: { nome: "Aplicação", referenciasCusto: { servico: { valorUnitario: "123.45" } } } }, quantidade: "2" };
+  const caminho = `/visitas/${uid(1)}/participantes/${uid(2)}/tarefa`;
+  for (const origem of ["REPRODUTIVA", "SANITARIA"] as const) for (const [u, podeVer] of [[usuario, false], [usuarioFinanceiro, true]] as const) {
+    mocks.tarefaVisita.mockResolvedValue({ origem, tarefa });
+    const resposta = await app(u).request(caminho);
+    expect(resposta.status).toBe(200);
+    const corpo = await resposta.json();
+    expect(corpo.tarefa).toMatchObject({ id: uid(5), quantidade: "2", planejadoSnapshot: { etapa: { nome: "Aplicação" } } });
+    expect(JSON.stringify(corpo).includes("123.45")).toBe(origem === "SANITARIA" || podeVer);
+  }
+});
+
+it.each([
+  ["reprogramação", "reprogramacao", { propriedadeId: 2, previstaEm: "2026-10-01", motivo: "Agenda revisada pela equipe" }, mocks.reprogramar],
+  ["execução", "execucao", { chave: uid(1), propriedadeId: 2, realizadaEm: "2026-10-01", dados: {} }, mocks.executar],
+] as const)("%s de tarefa reprodutiva protege referência e preserva snapshot", async (_descricao, acao, entrada, servico) => {
+  servico.mockResolvedValue({ id: uid(4), planejadoSnapshot: { etapa: { nome: "IA", referenciasCusto: { servico: { valorUnitario: "123.45" } } } } });
+  for (const [u, financeiro] of [[usuario, false], [usuarioFinanceiro, true]] as const) {
+    const resposta = await app(u).request(`/reproducao/tarefas-iatf/${uid(4)}/${acao}`, { method: "POST", headers: json, body: JSON.stringify(entrada) });
+    expect(resposta.status).toBe(200);
+    const corpo = await resposta.json();
+    expect(corpo).toMatchObject({ id: uid(4), planejadoSnapshot: { etapa: { nome: "IA" } } });
+    expect(JSON.stringify(corpo).includes("123.45")).toBe(financeiro);
+  }
+});
+
+it("visita oculta apenas a referência do snapshot reprodutivo para quem não vê valores", async () => {
+  const referencia = { servico: { valorUnitario: "123.45" } };
+  const tarefaPlanejada = (origem: string) => ({ origem, tarefa: { planejadoSnapshot: { etapa: { nome: "Dose", referenciasCusto: referencia } } } });
+  mocks.detalheVisita.mockResolvedValue({ atividades: [{ participantes: [{ snapshot: { tarefaPlanejada: tarefaPlanejada("REPRODUTIVA") } }, { snapshot: { tarefaPlanejada: tarefaPlanejada("SANITARIA") } }] }] });
+  for (const [u, autorizado] of [[usuario, false], [usuarioFinanceiro, true]] as const) {
+    const resposta = await app(u).request(`/visitas/${uid(5)}`);
+    expect(resposta.status).toBe(200);
+    const itens = (await resposta.json()).atividades[0].participantes;
+    const repro = itens[0].snapshot.tarefaPlanejada.tarefa.planejadoSnapshot.etapa;
+    const sanitaria = itens[1].snapshot.tarefaPlanejada.tarefa.planejadoSnapshot.etapa;
+    expect(repro.nome).toBe("Dose");
+    expect("referenciasCusto" in repro).toBe(autorizado);
+    expect(sanitaria.referenciasCusto).toEqual(referencia);
+  }
+});
+
+it("sugestões da visita protegem versões e tarefas reprodutivas sem ocultar a parte sanitária", async () => {
+  const referencia = { servico: { valorUnitario: "123.45" } };
+  mocks.sugestoes.mockResolvedValue({ protocolosIatf: [{ etapas: [{ referenciasCusto: referencia }] }], tarefasIatf: [{ planejadoSnapshot: { etapa: { referenciasCusto: referencia, nome: "IA" } } }], protocolosSanitarios: [{ etapas: [{ referenciasCusto: referencia }] }] });
+  for (const [u, autorizado] of [[usuario, false], [usuarioFinanceiro, true]] as const) {
+    const resposta = await app(u).request("/visitas/sugestoes?data=2026-10-01");
+    expect(resposta.status).toBe(200);
+    const corpo = await resposta.json();
+    expect("referenciasCusto" in corpo.protocolosIatf[0].etapas[0]).toBe(autorizado);
+    expect("referenciasCusto" in corpo.tarefasIatf[0].planejadoSnapshot.etapa).toBe(autorizado);
+    expect(corpo.tarefasIatf[0].planejadoSnapshot.etapa.nome).toBe("IA");
+    expect(corpo.protocolosSanitarios[0].etapas[0].referenciasCusto).toEqual(referencia);
+  }
 });

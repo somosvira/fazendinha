@@ -96,7 +96,7 @@ export function FormReproducao({
   painel: PainelReprodutivo;
   animalInicial?: string;
   propriedadeId?: number;
-  tentativaInicial?: { tipo: "IA" | "TE"; materialId: string; quantidade: number };
+  tentativaInicial?: { tipo: "IA" | "TE" | "COBERTURA"; materialId?: string; quantidade?: number };
   demandaInicial?:{id:string;tentativaId:string|null;gestacaoId:string|null};
   inline?: boolean;
   /** Atendimento complexo em página própria, preservando o formulário clínico. */
@@ -676,6 +676,7 @@ export function FormReproducao({
               (v) => {
                 setTipo(v);
                 setMaterialId("");
+                if (v === "COBERTURA" && origem === "ESTOQUE") setOrigem("DOCUMENTADA");
               },
               [
                 ["IA", "Inseminação artificial"],
@@ -685,7 +686,7 @@ export function FormReproducao({
             )}
             {seletor("origem", "Origem do material", origem, v => { setOrigem(v); }, [
               ["DOCUMENTADA", "Origem documentada"],
-              ["ESTOQUE", "Estoque do sítio"],
+              ...(tipo === "COBERTURA" ? [] : [["ESTOQUE", "Estoque do sítio"]] as [string, string][]),
               ["SERVICO", "Material incluído no Serviço"],
             ])}
             {tipo !== "COBERTURA" &&

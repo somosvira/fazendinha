@@ -86,11 +86,14 @@ it("avaliação não preseleciona positivo e exige resultado de cada animal", as
   await screen.findByRole("button", { name: "Confirmar conjunto" });
   expect((vi.mocked(reqProtocolo).mock.calls[0][2] as EntradaClinica).itens[0]).toMatchObject({ resultado: "INCONCLUSIVO", formatoExameHash: formato.formatoExameHash });
 });
-it("cobertura documentada usa reprodutor sem forçar material ou baixa de estoque", async () => {
-  const t = { ...tarefas[0], tarefaOrigem: { ...tarefas[0].tarefaOrigem, tipo: "TENTATIVA" } };
+it.each([false, true])("cobertura documentada usa reprodutor sem baixa de estoque (planejada: %s)", async planejada => {
+  const t: TarefaOperacional = { ...tarefas[0], tarefaOrigem: { ...tarefas[0].tarefaOrigem, tipo: "TENTATIVA",
+    ...(planejada && { planejadoSnapshot: { etapa: { nome: "Cobertura observada", tipo: "TENTATIVA", tentativaTipo: "COBERTURA", intervalo: 0, unidade: "DIAS" }, previstaEm: "2026-10-21", previsaoOriginal: "2026-10-21", inicioReferencia: "2026-10-21" } }),
+  } };
   render(<EditorExecucaoClinica tarefas={[t]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   mudarCampo(screen.getByLabelText("Data do atendimento"), { target: { value: "2026-10-21" } });
-  mudarCampo(screen.getByLabelText("Tipo de tentativa"), { target: { value: "COBERTURA" } });
+  if (!planejada) mudarCampo(screen.getByLabelText("Tipo de tentativa"), { target: { value: "COBERTURA" } });
+  expect(screen.getByLabelText("Tipo de tentativa")).toHaveProperty("value", "COBERTURA");
   expect(screen.getByLabelText("Origem do material ou reprodutor")).toHaveProperty("value", "DOCUMENTADA");
   mudarCampo(screen.getByLabelText("Justificativa da origem documentada"), { target: { value: "Cobertura comprovada no manejo" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));

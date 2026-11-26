@@ -966,6 +966,8 @@ export function Transcricao({
   }
   const parametrosDaTarefaCarregados = (!preparar?.tarefaIatfId && !preparar?.tarefaSanitariaId) || !!tarefaPreparada;
   const planoAplicacao = tarefaPreparada?.planejadoSnapshot?.etapa.planoAplicacao;
+  const etapaPlanejada = tarefaPreparada?.planejadoSnapshot?.etapa;
+  const tentativaPlanejada = etapaPlanejada?.planoTentativa ?? (etapaPlanejada?.tentativaTipo ? { tipo: etapaPlanejada.tentativaTipo } : undefined);
   const parametrosAplicacao = tarefaPreparada?.tipo === "APLICACAO" ? {
     produtoId: planoAplicacao?.produtoId ?? tarefaPreparada.produtoId ?? "",
     dose: planoAplicacao?.dose ?? tarefaPreparada.dose ?? "",
@@ -1262,7 +1264,7 @@ export function Transcricao({
             painel={painel}
             animalInicial={preparar.animalId}
             propriedadeId={visita.propriedadeId}
-            tentativaInicial={tarefaPreparada.planejadoSnapshot?.etapa.planoTentativa}
+            tentativaInicial={tentativaPlanejada}
             tipoExameInicial={tarefaPreparada.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId}
             finalidadeInicial={tarefaPreparada.planejadoSnapshot?.etapa.planoAvaliacao?.tipo}
             onFechar={() => setPreparar(null)}

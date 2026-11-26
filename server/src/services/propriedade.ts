@@ -84,6 +84,12 @@ export async function resolverEscopoLeitura(c: Context): Promise<number | null> 
   return escopoPadraoLeitura();
 }
 
+/** Escopo do seletor global: somente o cabeçalho identifica sítio; ausência é Consolidado. */
+export function resolverEscopoSidebar(c: Context): number | null {
+  const raw = c.req.header("X-Propriedade-Id");
+  return raw == null || raw === "" ? null : parseEscopoIdHeader(raw);
+}
+
 // Garante a fundação em runtime, IDEMPOTENTE. Necessário porque prod aplica o
 // schema via `prisma db push`, que NÃO roda o SQL de seed/backfill da migration —
 // sem isto a tabela nasceria vazia e os propriedadeId ficariam NULL (a Fatia 1

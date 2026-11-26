@@ -7,7 +7,10 @@ import { diaIatf } from "../reproducao/horarios.calc.js";
 import { transacaoPecuaria } from "../transacao.js";
 import {
   criarDemandasDoFatoTx,
+  primeiroDiagnosticoPositivoTx,
   reconciliarDemandasAnimalTx,
+  reconciliarPrevisoesDiagnosticoTx,
+  reconciliarPrevisoesReconfirmacaoTx,
 } from "../reproducao/acompanhamento.js";
 import { hashDados, operacaoIdempotenteTx } from "../reproducao/operacoes.js";
 import { reconciliarAlertasReprodutivosAnimalTx } from "../reproducao/alertas/produtor.js";
@@ -82,18 +85,6 @@ export function validarTentativaExterna(
   if (t.status !== "VALIDO" || t.tarefaId)
     falhar(
       "Selecione uma tentativa válida registrada fora de uma tarefa",
-      "tentativaId",
-    );
-  if (
-    t.tipo !==
-    (p.protocolo.finalidade === "IATF"
-      ? "IA"
-      : p.protocolo.finalidade === "TETF"
-        ? "TE"
-        : null)
-  )
-    falhar(
-      "Tipo de tentativa incompatível com a finalidade do modelo",
       "tentativaId",
     );
   const dia = diaParticipacao;
@@ -241,6 +232,10 @@ export async function vincularTentativaParticipacao(
           undefined,
           participacaoId,
         );
+        // O primeiro DG pode ter sido registrado antes de o vínculo factual ser confirmado.
+        const gestacao = await tx.gestacaoAnimal.findFirst({where:{tentativaId:t.id,animalId:t.animalId,propriedadeId:input.propriedadeId,status:"VALIDO",encerradaEm:null}});
+        const primeiroDg = gestacao && await primeiroDiagnosticoPositivoTx(tx, t.animalId, gestacao.id, input.propriedadeId);
+        if (gestacao && primeiroDg) await criarDemandasDoFatoTx(tx,{gestacaoId:gestacao.id,animalId:t.animalId,propriedadeId:input.propriedadeId,data:primeiroDg.data,exameOrigemId:primeiroDg.id},usuarioId);
         await reconciliarDemandasAnimalTx(tx, t.animalId, usuarioId);
         await auditar(tx, {
           entidade: "VinculoTentativaParticipacao",
@@ -316,6 +311,8 @@ export async function revogarTentativaParticipacao(
           antes: v,
           depois: salva,
         });
+        await reconciliarPrevisoesDiagnosticoTx(tx, v.participacao.animalId, usuarioId);
+        await reconciliarPrevisoesReconfirmacaoTx(tx, v.participacao.animalId, usuarioId);
         await reconciliarAlertasReprodutivosAnimalTx(
           tx,
           v.participacao.animalId,
@@ -351,7 +348,7 @@ export async function listarTentativasCandidatas(
         animalId: p.animalId,
         propriedadeId,
         status: "VALIDO",
-        tipo: p.protocolo.finalidade === "IATF" ? "IA" : "TE",
+        tipo: { in: ["IA", "TE", "COBERTURA"] },
         tarefaId: null,
         vinculosProtocolo: { none: { estado: "ATUAL" } },
         participacoesExplicitas: { none: { revogadoEm: null } },

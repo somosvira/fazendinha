@@ -17,9 +17,9 @@ const meu = { id: "p1", nome: "Ivermectina 1%", unidade: "ML", apresentacao: "fr
 const catalogo = { id: "c1", nome: "Biomox 20% PS", apresentacao: "sachê 100 g", nomeCompleto: "Biomox 20% PS (sachê 100 g)", fabricante: { id: "f2", nome: "Vetbrands" }, classificacaoTecnica: null, unidadeSugerida: "G" as const, categoriaSugeridaId: "cat-1", usoSanitario: true, usoNutricional: false, usoGenetico: false };
 const resposta: BuscaProdutosDTO = { meus: [meu], catalogo: [catalogo] };
 
-function Montado({ inicial = null, uso, aoMudar, somenteMeus }: { inicial?: ProdutoEscolhido | null; uso?: "sanitario"; aoMudar?: (v: ProdutoEscolhido | null) => void; somenteMeus?: boolean }) {
+function Montado({ inicial = null, uso, aoMudar, somenteMeus, permitirCadastro, limpavel }: { inicial?: ProdutoEscolhido | null; uso?: "sanitario"; aoMudar?: (v: ProdutoEscolhido | null) => void; somenteMeus?: boolean; permitirCadastro?: boolean; limpavel?: boolean }) {
   const [valor, setValor] = useState<ProdutoEscolhido | null>(inicial);
-  return <SeletorProdutoCatalogo rotulo="Produto do item 1" value={valor} uso={uso} somenteMeus={somenteMeus} debounceMs={0} onChange={(v) => { setValor(v); aoMudar?.(v); }} />;
+  return <SeletorProdutoCatalogo rotulo="Produto do item 1" value={valor} uso={uso} somenteMeus={somenteMeus} permitirCadastro={permitirCadastro} limpavel={limpavel} debounceMs={0} onChange={(v) => { setValor(v); aoMudar?.(v); }} />;
 }
 const campo = () => screen.getByRole("combobox", { name: "Produto do item 1" });
 
@@ -116,6 +116,15 @@ describe("SeletorProdutoCatalogo", () => {
     expect(campo()).toHaveProperty("value", "Produto novo");
   });
 
+  it("permite ocultar o cadastro imediato no contexto do builder", async () => {
+    vi.mocked(buscarProdutosUnificado).mockResolvedValue({ meus: [], catalogo: [] });
+    render(<Montado permitirCadastro={false} />);
+    fireEvent.focus(campo());
+    expect(await screen.findByText("Nenhum produto encontrado.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Cadastrar produto" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("erro mostra a mensagem e 'Tentar novamente' refaz a busca", async () => {
     vi.mocked(buscarProdutosUnificado).mockRejectedValueOnce(new Error("Falha de conexão."));
     render(<Montado />);
@@ -134,4 +143,15 @@ describe("SeletorProdutoCatalogo", () => {
     expect(aoMudar).toHaveBeenCalledWith(null);
     expect(campo()).toHaveProperty("value", "");
   });
+});
+
+it("mantém a seleção acessível no modo que aceita somente escolhas", async () => {
+  const inicial = { tipo: "produto", produtoId: meu.id, nome: meu.nome } as const;
+  const aoMudar = vi.fn();
+  render(<Montado inicial={inicial} limpavel={false} aoMudar={aoMudar} />);
+  expect(campo()).toHaveProperty("value", meu.nome);
+  expect(screen.queryByRole("button", { name: /Limpar/ })).toBeNull();
+  fireEvent.focus(campo());
+  expect((await screen.findByRole("option", { name: /Ivermectina 1%/ })).getAttribute("aria-selected")).toBe("true");
+  expect(aoMudar).not.toHaveBeenCalled();
 });

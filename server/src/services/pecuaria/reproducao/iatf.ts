@@ -1,7 +1,9 @@
+import { resolverProdutoIdTx, prefixarCampoErro } from "../../estoque/produtos-catalogo.js";
 import { demandaDispensada } from "./agenda-demanda.calc.js";
 import { tipoAplicacaoLegadaId } from "../sanidade/desvios.js";
 import { conferirImpactosTx, aplicarImpactosTx } from "./impactos.js";
 import { snapshotPrazosAdesaoTx } from "./prazos-protocolo.js";
+import { ocultarDataPendenteDiagnostico, referenciaDiagnosticoPendente } from "./prazo-tarefa.calc.js";
 import { quantidadePadraoTentativa, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
 import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../protocolos/automacao.schemas.js";
 import { AvisoAptidaoProgramacao, conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
@@ -12,7 +14,7 @@ import { associarMomentosAcoesTx } from "../protocolos/momentos.js";
 import { impactosInicioLegado } from "../protocolos/inicio-legado.calc.js";
 import crypto from "node:crypto";
 import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
-import { garantirDemandaProtocoloTx, reconciliarDemandasAnimalTx, validarTiposPoliticaTx, criarDemandasDoFatoTx } from "./acompanhamento.js";
+import { garantirDemandaProtocoloTx, reconciliarDemandasAnimalTx, validarTiposPoliticaTx, criarDemandasDoFatoTx, referenciaGuiadaValidaTx } from "./acompanhamento.js";
 import { lerDataIatf, dataDisponibilidadeIatf, diaIatf, anteriorIatf, serializarDataIatf, type PrecisaoIatf } from "./horarios.calc.js";
 import { conferirFormatoReprodutivo } from "../exames/formatos.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
@@ -66,11 +68,25 @@ async function congelarEtapasTx(
   tx: Prisma.TransactionClient,
   etapas: EtapaIatf[],
   builder = false,
+  usuarioId: number | null = null,
 ) {
+  const resolvidas: EtapaIatf[] = [];
+  for (const [indice, etapa] of etapas.entries()) {
+    if (!etapa.planoAplicacao) { resolvidas.push(etapa); continue; }
+    const { produtoCatalogoId, categoriaId, ...plano } = etapa.planoAplicacao;
+    try {
+      if (produtoCatalogoId) {
+        const item = await tx.produtoCatalogo.findUnique({ where: { id: produtoCatalogoId }, select: { ativo: true, usoSanitario: true } });
+        if (!item?.ativo || !item.usoSanitario) throw new RebanhoError("VALIDACAO", "Selecione um item ativo de uso sanitário no catálogo", "produtoCatalogoId");
+      }
+      const produtoId = await resolverProdutoIdTx(tx, { produtoId: plano.produtoId, produtoCatalogoId, categoriaId }, usuarioId);
+      resolvidas.push({ ...etapa, planoAplicacao: { ...plano, produtoId } });
+    } catch (e) { throw prefixarCampoErro(e, `etapas.${indice}.planoAplicacao.`); }
+  }
   const materiais = await tx.materialGenetico.findMany({
     where: {
       id: {
-        in: etapas.flatMap((e) =>
+        in: resolvidas.flatMap((e) =>
           e.planoTentativa ? [e.planoTentativa.materialId] : [],
         ),
       },
@@ -78,24 +94,30 @@ async function congelarEtapasTx(
     include: { produto: true },
   });
   await travarUsosProduto(tx, [
-    ...etapas.flatMap((e) =>
-      e.planoAplicacao ? [e.planoAplicacao.produtoId] : [],
+    ...resolvidas.flatMap((e) =>
+      e.planoAplicacao?.produtoId ? [e.planoAplicacao.produtoId] : [],
     ),
     ...materiais.map((m) => m.produtoId),
   ]);
-  await travarTiposExame(tx, etapas.flatMap(e => e.planoAvaliacao ? [e.planoAvaliacao.tipoExameId ?? TIPO_EXAME_REPRODUTIVO] : e.planoExame ? [e.planoExame.tipoExameId] : []));
+  await travarTiposExame(tx, resolvidas.flatMap(e => e.planoAvaliacao ? [e.planoAvaliacao.tipoExameId ?? TIPO_EXAME_REPRODUTIVO] : e.planoExame ? [e.planoExame.tipoExameId] : []));
   const congeladas: EtapaFonte[] = [];
-  for (const [indice, original] of etapas.entries()) {
+  for (const [indice, original] of resolvidas.entries()) {
     let e = original;
+    // O novo builder usa a valorização de estoque; referências antigas de material
+    // permanecem na origem e não são congeladas na versão derivada.
+    if (builder && e.referenciasCusto?.material) {
+      const { material: _material, ...restantes } = e.referenciasCusto;
+      e = { ...e, referenciasCusto: Object.keys(restantes).length ? restantes : undefined };
+    }
     const referencias: Record<string, unknown> = {};
     if (e.planoAplicacao) {
       const p = await tx.produto.findUnique({
-        where: { id: e.planoAplicacao.produtoId }, include: { perfilSanitarioProduto: true },
+        where: { id: e.planoAplicacao.produtoId! }, include: { perfilSanitarioProduto: true },
       });
       if (!p?.ativo || !p.usoSanitario)
         erro(
           `Etapa ${indice + 1}: selecione Produto ativo de uso sanitário`,
-          "etapas",
+          `etapas.${indice}.planoAplicacao.produtoId`,
         );
       try {
         converterQuantidade(
@@ -106,11 +128,11 @@ async function congelarEtapasTx(
       } catch {
         erro(
           `Etapa ${indice + 1}: unidade da dose incompatível com Produto`,
-          "etapas",
+          `etapas.${indice}.planoAplicacao.unidadeDose`,
         );
       }
       validarReferenciasCusto(e.referenciasCusto, e.planoAplicacao.unidadeDose, true);
-      if (builder && e.planoAplicacao.unidadeDose !== p.unidade) erro(`Etapa ${indice + 1}: unidade deve ser herdada do produto`, "etapas");
+      if ((builder || etapas[indice].planoAplicacao?.produtoCatalogoId) && e.planoAplicacao.unidadeDose !== p.unidade) erro(`Etapa ${indice + 1}: unidade deve ser herdada do produto`, `etapas.${indice}.planoAplicacao.unidadeDose`);
       const classificacao = await resolverTipoAplicacaoCadastroTx(tx, e.planoAplicacao.tipoAplicacaoId, builder ? p.perfilSanitarioProduto?.tipoAplicacaoId : null, e.momento?.modoAtendimento === "AUTOMATIZADA", `etapas.${indice}.planoAplicacao.tipoAplicacaoId`);
       if (classificacao) e = { ...e, planoAplicacao: { ...e.planoAplicacao, tipoAplicacaoId: classificacao.id } };
       if (builder) e = { ...e, planoAplicacao: { ...e.planoAplicacao!, via: p.perfilSanitarioProduto?.viaPadrao ?? null, orientacaoUso: p.perfilSanitarioProduto?.orientacaoUso ?? null } };
@@ -186,15 +208,16 @@ export async function criarProtocolo(
   input: z.infer<typeof protocoloSchema>,
   usuarioId: number | null,
 ) {
-  input = protocoloSchema.parse(input);
+  input = protocoloSchema.parse(input.origemVersaoId ? { ...input, encerramentoGuiado: true } : input);
   return transacaoPecuaria(async (tx) => {
     const origem=input.origemVersaoId?await tx.protocolo.findFirst({where:{id:input.origemVersaoId,tipo:"REPRODUTIVO"}}):null;
     if(input.origemVersaoId&&!origem)erro("Versão de origem reprodutiva não encontrada", "origemVersaoId");
     if (origem && input.nome.trim() !== origem.nome) erro("Uma nova versão deve preservar o protocolo-base", "nome");
-    const etapas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null);
+    const etapas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null, usuarioId);
     if (input.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,input.configuracaoAcompanhamento);
+    const { encerramentoGuiado: _encerramentoGuiado, ...dadosProtocolo } = input;
     const p = await criarProtocoloReprodutivoTx(tx, {
-      data: { ...input, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : undefined, etapas: json(etapas), criadoPorId: usuarioId,...(origem?.referenciaTecnica?{referenciaTecnica:json({...origem.referenciaTecnica as Record<string,unknown>,protocoloOrigemId:origem.id})}:{}) },
+      data: { ...dadosProtocolo, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : undefined, etapas: json(etapas), criadoPorId: usuarioId,...(origem || input.encerramentoGuiado ? { referenciaTecnica: json({ ...(origem?.referenciaTecnica && typeof origem.referenciaTecnica === "object" && !Array.isArray(origem.referenciaTecnica) ? origem.referenciaTecnica : {}), ...(origem ? { protocoloOrigemId: origem.id } : {}), encerramentoGuiado: true }) } : {}) },
     });
     await auditar(tx, {
       entidade: "ProtocoloIatf",
@@ -219,9 +242,13 @@ function etapaSemReferencias(e: Prisma.JsonValue) {
   const { referencias: _referencias, ...etapa } = e;
   return etapa;
 }
+function referenciaTecnicaDoProtocolo(valor: Prisma.JsonValue | undefined) {
+  return valor && typeof valor === "object" && !Array.isArray(valor) ? valor : {};
+}
 async function publicarReprodutivoTx(tx: Prisma.TransactionClient, id: string, usuarioId: number | null) {
   await publicarVersaoTx(tx, id, "REPRODUTIVO", usuarioId, async p => {
-    const validado = protocoloSchema.parse({ nome: p.nome, versao: p.versao, publicado: true, finalidade: p.finalidade, modalidadeTentativa: p.modalidadeTentativa, modalidadeDiagnostico: p.modalidadeDiagnostico, configuracaoAcompanhamento: p.configuracaoAcompanhamento, etapas: p.etapas.map(e => etapaSemReferencias(e.configuracao)) });
+    const referencia = referenciaTecnicaDoProtocolo(p.referenciaTecnica);
+    const validado = protocoloSchema.parse({ nome: p.nome, versao: p.versao, publicado: true, ...(referencia.encerramentoGuiado === true ? { encerramentoGuiado: true } : {}), finalidade: p.finalidade, modalidadeTentativa: p.modalidadeTentativa, modalidadeDiagnostico: p.modalidadeDiagnostico, configuracaoAcompanhamento: p.configuracaoAcompanhamento, etapas: p.etapas.map(e => etapaSemReferencias(e.configuracao)) });
     if (validado.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,validado.configuracaoAcompanhamento);
     const congeladas = await congelarEtapasTx(tx, validado.etapas, validado.finalidade != null);
     const etapas = etapasReprodutivasDoContrato(json(congeladas));
@@ -230,17 +257,31 @@ async function publicarReprodutivoTx(tx: Prisma.TransactionClient, id: string, u
   const [contrato, meta] = await Promise.all([tx.protocoloIatf.findUniqueOrThrow({ where: { id } }), tx.protocolo.findUniqueOrThrow({ where: { id }, select: { finalidade: true, modalidadeTentativa: true, modalidadeDiagnostico: true, configuracaoAcompanhamento: true } })]);
   return { ...contrato, ...meta };
 }
-export async function editarProtocolo(id: string, input: z.infer<typeof protocoloSchema>, usuarioId: number | null) {
+export async function editarProtocolo(id: string, input: z.infer<typeof protocoloSchema>, usuarioId: number | null, podeVerValores = true) {
   return transacaoPecuaria(async tx => {
     const identidade = await resolverIdReprodutivoTx(tx, "protocolo", id);
     const antes = await carregarVersaoTx(tx, identidade, "REPRODUTIVO", true);
-    input = protocoloSchema.parse({ ...input, finalidade: input.finalidade ?? antes.finalidade, modalidadeTentativa: input.modalidadeTentativa ?? antes.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico ?? antes.modalidadeDiagnostico, configuracaoAcompanhamento: input.configuracaoAcompanhamento === undefined ? antes.configuracaoAcompanhamento : input.configuracaoAcompanhamento });
+    if (!podeVerValores && antes.etapas.some(e => e.configuracao && typeof e.configuracao === "object" && !Array.isArray(e.configuracao) && "referenciasCusto" in e.configuracao)) throw new RebanhoError("CONFLITO", "Esta versão contém referências financeiras protegidas; solicite a edição a um usuário com acesso a valores", "etapas");
+    const referenciaTecnica = referenciaTecnicaDoProtocolo(antes.referenciaTecnica);
+    input = protocoloSchema.parse({
+      ...input,
+      ...(referenciaTecnica.encerramentoGuiado === true ? { encerramentoGuiado: true } : {}),
+      finalidade: input.finalidade ?? antes.finalidade,
+      modalidadeTentativa: input.modalidadeTentativa === undefined ? antes.modalidadeTentativa : input.modalidadeTentativa,
+      modalidadeDiagnostico: input.modalidadeDiagnostico === undefined ? antes.modalidadeDiagnostico : input.modalidadeDiagnostico,
+      configuracaoAcompanhamento: input.configuracaoAcompanhamento === undefined ? antes.configuracaoAcompanhamento : input.configuracaoAcompanhamento,
+    });
     if (input.versao !== antes.versao) erro("A edição de um rascunho conserva o número da versão", "versao");
     if (input.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,input.configuracaoAcompanhamento);
-    const congeladas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null);
+    const congeladas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null, usuarioId);
     await tx.etapaProtocolo.deleteMany({ where: { protocoloId: identidade } });
     await tx.momentoProtocolo.deleteMany({ where: { protocoloId: identidade } });
-    await tx.protocolo.update({ where: { id: identidade, tipo: "REPRODUTIVO" }, data: { nome: input.nome, descricao: input.descricao, finalidade: input.finalidade, modalidadeTentativa: input.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : Prisma.DbNull, etapas: { deleteMany: {}, create: etapasReprodutivasDoContrato(json(congeladas)) } } });
+    await tx.protocolo.update({ where: { id: identidade, tipo: "REPRODUTIVO" }, data: {
+      nome: input.nome, descricao: input.descricao, finalidade: input.finalidade, modalidadeTentativa: input.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico,
+      configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : Prisma.DbNull,
+      ...(input.encerramentoGuiado ? { referenciaTecnica: json({ ...referenciaTecnica, encerramentoGuiado: true }) } : {}),
+      etapas: { deleteMany: {}, create: etapasReprodutivasDoContrato(json(congeladas)) },
+    } });
     await associarMomentosAcoesTx(tx, identidade, input.etapas);
     if (input.publicado) await publicarReprodutivoTx(tx, identidade, usuarioId);
     const depois = await tx.protocoloIatf.findUniqueOrThrow({ where: { id: identidade } });
@@ -658,6 +699,14 @@ export async function prepararExecucaoTarefaTx(
   else
     await conferirMatrizTx(tx, participante.animalId, input.propriedadeId, dia(data));
   const planoOriginal = tarefa.planejadoSnapshot as SnapshotIatf | null;
+  if (referenciaDiagnosticoPendente(planoOriginal?.etapa, tarefa.previsaoPendente)) erro("A avaliação aguarda o fato de referência antes do atendimento", "realizadaEm");
+  const referenciaGuiada = planoOriginal?.etapa.referenciaPrazoDiagnostico || planoOriginal?.etapa.referenciaPrazoReconfirmacao
+    ? await referenciaGuiadaValidaTx(tx, tarefa.id, participante.animalId, participante.id, input.propriedadeId, !!planoOriginal.etapa.referenciaPrazoReconfirmacao) : null;
+  if ((planoOriginal?.etapa.referenciaPrazoDiagnostico || planoOriginal?.etapa.referenciaPrazoReconfirmacao) && !referenciaGuiada) erro("A avaliação aguarda o fato de referência antes do atendimento", "realizadaEm");
+  if (referenciaGuiada && planoOriginal?.etapa.referenciaPrazoDiagnostico) {
+    if (data < diaIatf(referenciaGuiada.data, "DIA")) erro("O diagnóstico não pode anteceder a tentativa vinculada", "realizadaEm");
+    if (input.dados.tentativaId != null && input.dados.tentativaId !== referenciaGuiada.id) erro("A tentativa informada diverge da tentativa vinculada à participação", "tentativaId");
+  }
   // A referência operacional pode ser adiada sem reescrever o snapshot publicado.
   const plano = planoOriginal ? { ...planoOriginal, previstaEm: serializarDataIatf(tarefa.previstaEm, tarefa.precisaoTemporal),
     precisaoTemporal: tarefa.precisaoTemporal, previsaoPendente: tarefa.previsaoPendente } : null;
@@ -667,6 +716,7 @@ export async function prepararExecucaoTarefaTx(
   const dadosAcompanhamento: Record<string, unknown> = {};
   if (demanda) {
     if (demanda.estado !== "PENDENTE" || demandaDispensada(demanda)) erro("A demanda desta tarefa não está pendente operacionalmente; revise o acompanhamento", "demandaAcompanhamentoId");
+    if (referenciaGuiada && planoOriginal?.etapa.referenciaPrazoDiagnostico && (demanda.finalidade !== "DIAGNOSTICO" || demanda.tentativaId !== referenciaGuiada.id)) erro("A demanda diverge da tentativa vinculada à participação; revise o acompanhamento", "demandaAcompanhamentoId");
     Object.assign(dadosAcompanhamento, { demandaAcompanhamentoId: demanda.id, finalidade: demanda.finalidade, tentativaId: demanda.tentativaId, gestacaoId: demanda.gestacaoId });
     const regra = demanda.regraSnapshot as Record<string, unknown>;
     if (regra.tipoExameId) dadosAcompanhamento.tipoExameId = regra.tipoExameId;
@@ -677,6 +727,7 @@ export async function prepararExecucaoTarefaTx(
   const dados = {
     ...(tarefa.tipo === "AVALIACAO" ? { tipoExameId: plano?.etapa.planoAvaliacao?.tipoExameId ?? TIPO_EXAME_REPRODUTIVO } : {}),
     ...input.dados,
+    ...(referenciaGuiada && planoOriginal?.etapa.referenciaPrazoDiagnostico ? { tentativaId: referenciaGuiada.id } : {}),
     ...dadosAcompanhamento,
     chave: input.chave,
     animalId: participante.animalId,
@@ -1005,7 +1056,12 @@ export async function listarProgramacoes(
       .filter((a) => a.programacaoId === p.id)
       .map((a) => ({
         ...a,
-        tarefas: tarefas.filter((t) => t.participanteId === a.id),
+        tarefas: tarefas.filter(t => t.participanteId === a.id).map(t => {
+          const snapshot = t.planejadoSnapshot as SnapshotIatf | null;
+          return referenciaDiagnosticoPendente(snapshot?.etapa, t.previsaoPendente)
+            ? { ...t, previstaEm: null, previsaoOriginal: null, planejadoSnapshot: ocultarDataPendenteDiagnostico(t.planejadoSnapshot) }
+            : t;
+        }),
       })),
   }));
 }
