@@ -191,6 +191,7 @@ export type CadastrarAnimalInput = {
   papelReprodutivo?: PapelReprodutivo;
   composicao?: ComposicaoItemInput[];
   pesoEntradaKg?: number | null;
+  eccEntrada?: number | null;
 } & FiliacaoInput;
 
 export type CadastrarAnimalResultado = AnimalFicha & {

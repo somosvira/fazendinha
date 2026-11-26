@@ -1,3 +1,4 @@
+import { limparCachePendenteContexto } from "./cacheCadastroAnimal";
 import { ArremateSimulado } from "./ArremateSimulado";
 import { getPropriedadeAtiva } from "../propriedadeScope";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
@@ -141,6 +142,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
     setIniciandoNova(true); setErro(null);
     try {
       if (podeRascunho && (rascunho || recuperacao)) await enfileirarSalvamentoRascunho(() => descartarRascunhoOperacao());
+      limparCachePendenteContexto();
       abrirFormulario();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { setIniciandoNova(false); }

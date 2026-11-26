@@ -1,3 +1,4 @@
+import { registrarEccEntradaTx } from "./ecc-entrada.js";
 import { lerEscoreCorporal, TIPO_EXAME_ESCORE_CORPORAL } from "../reproducao/escore-corporal.calc.js";
 import { sincronizarLocalizacoesBezerreiroTx } from '../bezerreiro/localizacao.js';
 import { completarContextoCartoes } from "./contexto-cartao.js";
@@ -425,7 +426,11 @@ export async function cadastrarTx(
 }
 
 export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null, contextoTecnico?: { nascimentoHistorico: true }): Promise<AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> }> {
-  const { animal, avisos } = await transacaoPecuaria((tx) => cadastrarTx(tx, input, usuarioId, contextoTecnico));
+  const { animal, avisos } = await transacaoPecuaria(async (tx) => {
+    const resultado = await cadastrarTx(tx, input, usuarioId, contextoTecnico);
+    if (input.eccEntrada != null) await registrarEccEntradaTx(tx, { animalId: resultado.animal.id, propriedadeId: input.propriedadeId, data: input.dataEntrada, valor: input.eccEntrada }, usuarioId);
+    return resultado;
+  });
   return buscarFicha(animal.id, null).then((f) => ({ ...f, avisos }) as AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> });
 }
 

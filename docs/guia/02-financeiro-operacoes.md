@@ -39,7 +39,7 @@ Compra totalmente paga no ato não precisa criar compromisso para depois liquid�
 
 ## Comprar animais ou devolver cabeças
 
-Na compra de animais, informe o fornecedor e os animais que entraram. Confira o sítio, a identificação das cabeças e a condição de pagamento antes de confirmar. Ao usar **Valor do lote**, confira a parcela atribuída a cada cabeça.
+Na compra de animais, informe o fornecedor e os animais que entraram. Confira o sítio, a identificação das cabeças e a condição de pagamento antes de confirmar. Ao usar **Valor do lote**, confira a parcela atribuída a cada cabeça. O ECC opcional informado no cadastro de uma cabeça é registrado como exame de escala 1–5 na confirmação, na data de entrada; o rascunho não cria o exame.
 
 Se devolver parte da compra, abra a ficha da compra confirmada e escolha **Devolver cabeças**. Selecione os animais que saíram, confira quanto o fornecedor devolverá e informe se o valor já foi recebido ou se ficará a receber. A devolução registra a saída dessas cabeças e o crédito ou recebimento correspondente. Se a compra tiver saldo a pagar, confira esse compromisso separadamente.
 

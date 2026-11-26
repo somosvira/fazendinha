@@ -1,3 +1,5 @@
+import { limparCachePendenteContexto } from "./financeiro/cacheCadastroAnimal";
+import { abrirNovoAnimal, contextoRebanhoAtual, validarRetornoRebanho } from "./pecuaria/rebanho/lib/navegacao";
 import "./components/consulta-operacional.css";
 import { usaDesignOperacional } from "./lib/designOperacional";
 import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/descarteTrabalhoAtivo";
@@ -293,6 +295,7 @@ export function App() {
   const abrirRascunhoAtivo = () => {
     void executarComGuardaNavegacao(() => {
       setDeepLinkFiltros(null);
+      if (rascunhoAtivo.conhecido && !rascunhoAtivo.rascunho && !rascunhoAtivo.recuperacao && !rascunhoAtivo.editando) limparCachePendenteContexto();
       abrirRotaNovaOperacao();
       setTab("lancar");
     });
@@ -699,7 +702,8 @@ export function App() {
             const sitio = Number(destino.searchParams.get("propriedadeId"));
             if (Number.isInteger(sitio) && sitio > 0 && sitio <= 2147483647) { setPropriedadeAtiva(sitio); setPropAtiva(sitio); }
             setDeepLinkFiltros(null);
-            navegarPara(caminho);
+            if (caminho === "/pecuaria/rebanho/animais/novo" && validarRetornoRebanho(contextoRebanhoAtual())) abrirNovoAnimal();
+            else navegarPara(caminho);
           });
         }}
         podeVer={(t) => {

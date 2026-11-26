@@ -1,3 +1,4 @@
+import { registrarEccEntradaTx } from "../pecuaria/rebanho/ecc-entrada.js";
 // Efeito da compra e da devolução de animais dentro da transação da operação.
 // O animal é entidade do Rebanho: a operação só cadastra (compra), dá baixa (devolução/estorno)
 // ou reativa (correção/estorno da devolução) pelos executores do próprio Rebanho, e liga o item
@@ -78,6 +79,7 @@ async function baixasAtivasDosAnimais(tx: Prisma.TransactionClient, animalIds: s
 export async function prepararAnimaisTx(tx: Prisma.TransactionClient, ctx: ContextoAnimaisOperacao): Promise<(string | null)[]> {
   if (ctx.tipo === "COMPRA_ANIMAIS" && !ctx.corrigeOperacaoId) {
     const ids: (string | null)[] = [];
+    const exames: Array<{ indice: number; animalId: string; data: string; valor: number }> = [];
     for (const [indice, item] of ctx.itens.entries()) {
       if (!item.animal) { ids.push(null); continue; }
       const animal = item.animal;
@@ -85,7 +87,9 @@ export async function prepararAnimaisTx(tx: Prisma.TransactionClient, ctx: Conte
         ...animal, origem: "COMPRADO", propriedadeId: ctx.propriedadeId, dataEntrada: animal.dataEntrada ?? dia(ctx.data),
       }, autor(ctx.usuarioId)));
       ids.push(criado.id);
+      if (animal.eccEntrada != null) exames.push({ indice, animalId: criado.id, data: animal.dataEntrada ?? dia(ctx.data), valor: animal.eccEntrada });
     }
+    for (const exame of exames) await noItem(exame.indice, "animal", () => registrarEccEntradaTx(tx, { animalId: exame.animalId, propriedadeId: ctx.propriedadeId, data: exame.data, valor: exame.valor }, autor(ctx.usuarioId)));
     return ids;
   }
 

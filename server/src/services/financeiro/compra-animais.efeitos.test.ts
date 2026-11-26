@@ -1,9 +1,11 @@
 // Efeitos da devolução e do estorno sobre os animais, com um `tx` falso: confere a ordem das
 // validações, o campo apontado, o teto do valor devolvido e que as consultas são em lote.
 import { Prisma } from "@prisma/client";
+import { RebanhoError } from "../pecuaria/rebanho/regras.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const executores = vi.hoisted(() => ({ cadastrarTx: vi.fn(), registrarBaixaTx: vi.fn(), estornarBaixaTx: vi.fn() }));
+const executores = vi.hoisted(() => ({ cadastrarTx: vi.fn(), registrarBaixaTx: vi.fn(), estornarBaixaTx: vi.fn(), registrarEccEntradaTx: vi.fn() }));
+vi.mock("../pecuaria/rebanho/ecc-entrada.js", () => ({ registrarEccEntradaTx: executores.registrarEccEntradaTx }));
 vi.mock("../pecuaria/rebanho/animais.js", () => executores);
 import { concluirAnimaisTx, estornarAnimaisTx, prepararAnimaisTx, type ContextoAnimaisOperacao } from "./compra-animais.js";
 
@@ -108,4 +110,25 @@ describe("compra ativa e estorno — consultas em lote", () => {
     expect(executores.estornarBaixaTx).toHaveBeenCalledTimes(1);
     expect(executores.estornarBaixaTx).toHaveBeenCalledWith(tx, A, expect.anything(), null, true);
   });
+});
+
+it("registra exames somente após todos os cadastros e usa datas individuais ou da compra", async () => {
+  const { tx } = txFalso({});
+  executores.cadastrarTx.mockResolvedValueOnce({ animal: { id: A } }).mockResolvedValueOnce({ animal: { id: B } });
+  const ctx: ContextoAnimaisOperacao = { tipo: "COMPRA_ANIMAIS", propriedadeId: 1, usuarioId: 7, data: new Date("2026-11-10T00:00:00Z"), itens: [
+    { animal: { brinco: "A", eccEntrada: 3.25, dataEntrada: "2026-11-09" } as never }, { animal: { brinco: "B", eccEntrada: 4 } as never },
+  ] };
+  expect(await prepararAnimaisTx(tx, ctx)).toEqual([A, B]);
+  expect(executores.registrarEccEntradaTx).toHaveBeenNthCalledWith(1, tx, { animalId: A, propriedadeId: 1, data: "2026-11-09", valor: 3.25 }, 7);
+  expect(executores.registrarEccEntradaTx).toHaveBeenNthCalledWith(2, tx, { animalId: B, propriedadeId: 1, data: "2026-11-10", valor: 4 }, 7);
+  expect(executores.cadastrarTx.mock.invocationCallOrder[1]).toBeLessThan(executores.registrarEccEntradaTx.mock.invocationCallOrder[0]);
+});
+
+it("propaga falha do segundo ECC com campo do item após registrar o primeiro", async () => {
+  const { tx } = txFalso({});
+  executores.cadastrarTx.mockResolvedValueOnce({ animal: { id: A } }).mockResolvedValueOnce({ animal: { id: B } });
+  executores.registrarEccEntradaTx.mockResolvedValueOnce({}).mockRejectedValueOnce(new RebanhoError("CONFLITO", "formato inválido", "eccEntrada"));
+  const ctx: ContextoAnimaisOperacao = { tipo: "COMPRA_ANIMAIS", propriedadeId: 1, data: new Date("2026-11-10T00:00:00Z"), itens: [{ animal: { brinco: "A", eccEntrada: 3 } as never }, { animal: { brinco: "B", eccEntrada: 4 } as never }] };
+  await expect(prepararAnimaisTx(tx, ctx)).rejects.toMatchObject({ campo: "itens.1.animal.eccEntrada" });
+  expect(executores.registrarEccEntradaTx).toHaveBeenCalledTimes(2);
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { linkFichaAnimal, linkFichaLote, linkNovoAnimal, retornoRebanhoDaUrl, rotuloRetornoRebanho, validarRetornoRebanho } from "./navegacao";
+import { describe, expect, it, vi } from "vitest";
+import { abrirNovoAnimal, fecharNovoAnimal, linkFichaAnimal, linkFichaLote, linkNovoAnimal, retornoRebanhoDaUrl, rotuloRetornoRebanho, validarRetornoRebanho } from "./navegacao";
 
 const id = "06abc05c-9906-4c48-8f15-95f82beec207";
 
@@ -30,6 +30,28 @@ describe("contexto de retorno do Rebanho", () => {
     window.history.replaceState({}, "", `/pecuaria/rebanho/animais/${id}?retorno=https://externo.test`);
     expect(retornoRebanhoDaUrl()).toBe("/pecuaria/rebanho/animais");
     expect(retornoRebanhoDaUrl("/pecuaria/rebanho/lotes")).toBe("/pecuaria/rebanho/lotes");
+  });
+
+  it("fecha acesso direto substituindo a entrada, inclusive após voltar a ela", () => {
+    const url = linkNovoAnimal("/pecuaria/rebanho/animais?sexo=F");
+    window.history.replaceState(null, "", url);
+    const voltar = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    fecharNovoAnimal();
+    expect(voltar).not.toHaveBeenCalled();
+    expect(window.location.pathname + window.location.search).toBe("/pecuaria/rebanho/animais?sexo=F");
+    window.history.replaceState(null, "", url);
+    fecharNovoAnimal();
+    expect(voltar).not.toHaveBeenCalled();
+    voltar.mockRestore();
+  });
+
+  it("volta pelo histórico apenas para entrada marcada com retorno correspondente", () => {
+    window.history.replaceState(null, "", "/pecuaria/rebanho/animais?sexo=F");
+    abrirNovoAnimal();
+    const voltar = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    fecharNovoAnimal();
+    expect(voltar).toHaveBeenCalledOnce();
+    voltar.mockRestore();
   });
 
   it("identifica o destino para o rótulo da navegação", () => {

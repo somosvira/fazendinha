@@ -1,3 +1,4 @@
+import { AjudaCampo } from "../../../components/Dica";
 // Cadastro de animal compartilhado: usado pela página "Novo animal" (NovoAnimal.tsx) e pelo modal
 // "Adicionar animal" da compra de animais (financeiro/FormOperacao.tsx). Os dois mostram os MESMOS
 // campos, com a MESMA validação; a diferença é só quem grava (a API do Rebanho, ou a operação, que
@@ -31,7 +32,7 @@ export type FormAnimal = {
   loteId: string; destinoManual: boolean; aptidao: Aptidao; papelReprodutivo: PapelReprodutivo;
   /** Só a parcela informada; a herdada dos genitores é calculada pelo servidor. */
   composicao: ComposicaoItemInput[];
-  mae: ValorGenitor; pai: ValorGenitor; pesoEntradaKg: string;
+  mae: ValorGenitor; pai: ValorGenitor; pesoEntradaKg: string; eccEntrada?: string;
 };
 
 /** Corpo do cadastro sem os campos que a operação define (origem e sítio). */
@@ -42,7 +43,7 @@ export function formAnimalInicial(dataEntrada = hoje()): FormAnimal {
     brinco: "", nome: "", brincoEletronico: "", sisbov: "",
     sexo: "F", dataNascimento: hoje(), nascimentoEstimado: false, dataEntrada, partosAntesDaEntrada: "0",
     observacao: "", loteId: "", destinoManual: false, aptidao: "LEITE", papelReprodutivo: "NENHUM",
-    composicao: [], mae: { tipo: "NENHUM" }, pai: { tipo: "NENHUM" }, pesoEntradaKg: "",
+    composicao: [], mae: { tipo: "NENHUM" }, pai: { tipo: "NENHUM" }, pesoEntradaKg: "", eccEntrada: "",
   };
 }
 
@@ -70,8 +71,9 @@ function elementosDosCampos(prefixo: string, personalizado: boolean): [campo: st
     ["loteId", `${prefixo}-lote`],
     ["aptidao", `${prefixo}-aptidao`],
     ["papelReprodutivo", `${prefixo}-papel`],
-    ["composicao", personalizado ? `${prefixo}-composicao-raca-0` : "composicao-raca-0"],
+    ["composicao", `${prefixo}-composicao-secao`],
     ["pesoEntradaKg", `${prefixo}-peso`],
+    ["eccEntrada", `${prefixo}-ecc`],
     ["observacao", `${prefixo}-observacao`],
   ];
 }
@@ -111,6 +113,7 @@ export function useCadastroAnimal(opcoes: OpcoesCadastroAnimal = {}) {
   const [herdada, setHerdada] = useState<ComposicaoSugerida | null>(null);
   const [carregandoHerdanca, setCarregandoHerdanca] = useState(false);
   const [erroHerdanca, setErroHerdanca] = useState<string | null>(null);
+  const [revisaoHerdanca, setRevisaoHerdanca] = useState(0);
 
   const [erros, setErros] = useState<ErrosCadastroAnimal>(opcoes.errosIniciais ?? {});
   const { mae, pai, dataNascimento, composicao, destinoManual, loteId, sexo, partosAntesDaEntrada } = form;
@@ -118,17 +121,10 @@ export function useCadastroAnimal(opcoes: OpcoesCadastroAnimal = {}) {
   useEffect(() => { obterCatalogos().then(setCatalogos).catch((e) => setErroCatalogos(e instanceof Error ? e.message : String(e))); }, []);
   useEffect(() => { listarCategorias().then((r) => setCategorias(r.itens)).catch(() => setErroCategorias("Não foi possível consultar a categoria para sugerir o Bezerreiro. Escolha o lote manualmente.")).finally(() => setCategoriasCarregando(false)); }, []);
 
-  const chaveHeranca = (f: Pick<FormAnimal, "mae" | "pai" | "dataNascimento">) =>
-    JSON.stringify([f.mae.tipo, f.mae.tipo !== "NENHUM" ? f.mae.id : "", f.pai.tipo, f.pai.tipo !== "NENHUM" ? f.pai.id : "", f.dataNascimento]);
-  const herancaInicial = useRef(valorInicial ? chaveHeranca(valorInicial) : null);
   useEffect(() => {
-    // Na edição, a composição informada fica enquanto genitores e nascimento são os do animal salvo.
-    const manterComposicao = herancaInicial.current === chaveHeranca({ mae, pai, dataNascimento });
-    if (!manterComposicao) herancaInicial.current = null;
     if (mae.tipo === "NENHUM" && pai.tipo === "NENHUM") {
       setHerdada(null); setErroHerdanca(null); setCarregandoHerdanca(false); return;
     }
-    if (!manterComposicao) setForm((atual) => ({ ...atual, composicao: [] }));
     if ((mae.tipo !== "NENHUM" && !mae.id) || (pai.tipo !== "NENHUM" && !pai.id) || !dataNascimento) {
       setHerdada(null); setErroHerdanca(null); setCarregandoHerdanca(false); return;
     }
@@ -139,7 +135,7 @@ export function useCadastroAnimal(opcoes: OpcoesCadastroAnimal = {}) {
       .catch((falha) => { if (ativo) setErroHerdanca(falha instanceof Error ? falha.message : String(falha)); })
       .finally(() => { if (ativo) setCarregandoHerdanca(false); });
     return () => { ativo = false; };
-  }, [mae.tipo, mae.tipo !== "NENHUM" ? mae.id : "", pai.tipo, pai.tipo !== "NENHUM" ? pai.id : "", dataNascimento]);
+  }, [mae.tipo, mae.tipo !== "NENHUM" ? mae.id : "", pai.tipo, pai.tipo !== "NENHUM" ? pai.id : "", dataNascimento, revisaoHerdanca]);
 
   const alterarPropriedade = (valor: string) => { setPropriedadeId(valor); alterar({ loteId: "", destinoManual: false }); loteSugerido.current = ""; };
   // papel reprodutivo e partos só fazem sentido para fêmea (R1) — trocar para macho zera os dois
@@ -173,8 +169,9 @@ export function useCadastroAnimal(opcoes: OpcoesCadastroAnimal = {}) {
     else if (sugereBezerreiro && !destinoManual && sugestaoBezerreiro.carregando) novosErros.loteId = "Aguarde a sugestão ou escolha o lote manualmente.";
     else if (sugereBezerreiro && !destinoManual && sugestaoBezerreiro.perfis.length > 1 && !loteId) novosErros.loteId = "Escolha o lote de destino ou Sem lote.";
     if (composicao.some((item) => !item.racaId)) novosErros.composicao = "Selecione a raça em todas as linhas de composição";
-    else if (!composicaoValida(composicao) || somaComposicao > limiteInformavel) novosErros.composicao = `A parcela informada não pode passar de ${limiteInformavel}/64 e cada raça só pode aparecer uma vez`;
+    else if (!composicaoValida(composicao) || composicao.some(item => !Number.isInteger(item.fracao64)) || somaComposicao > limiteInformavel) novosErros.composicao = `A parcela informada não pode passar de ${limiteInformavel}/64 e cada raça só pode aparecer uma vez`;
     if (carregandoHerdanca || erroHerdanca) novosErros.composicao = erroHerdanca ?? "Aguarde o cálculo da composição pelos genitores";
+    if (form.eccEntrada?.trim() && (!Number.isFinite(Number(form.eccEntrada.replace(",", "."))) || Number(form.eccEntrada.replace(",", ".")) < 1 || Number(form.eccEntrada.replace(",", ".")) > 5)) novosErros.eccEntrada = "Informe um ECC entre 1 e 5";
     if (genitorIncompleto(mae)) novosErros.mae = mensagemGenitorIncompleto("Mãe", "F");
     if (genitorIncompleto(pai)) novosErros.pai = mensagemGenitorIncompleto("Pai", "M");
     return novosErros;
@@ -187,6 +184,7 @@ export function useCadastroAnimal(opcoes: OpcoesCadastroAnimal = {}) {
     observacao: form.observacao.trim() || null, loteId: loteId || null,
     aptidao: form.aptidao, papelReprodutivo: form.papelReprodutivo, composicao: composicaoTotal,
     pesoEntradaKg: form.pesoEntradaKg ? Number(form.pesoEntradaKg) : null,
+    ...(form.eccEntrada?.trim() ? { eccEntrada: Number(form.eccEntrada.replace(",", ".")) } : {}),
     ...valorGenitorParaCampos(mae, pai),
   });
 
@@ -209,8 +207,8 @@ export function useCadastroAnimal(opcoes: OpcoesCadastroAnimal = {}) {
 
   return {
     prefixo, personalizado, sitioFixo, catalogos, erroCatalogos, erroCategorias, categoriasCarregando,
-    form, alterar, alterarSexo, propriedadeId, alterarPropriedade,
-    herdada, carregandoHerdanca, erroHerdanca, itensHerdados, limiteInformavel,
+    form, alterar, resetarForm: setForm, alterarSexo, propriedadeId, alterarPropriedade,
+    herdada, carregandoHerdanca, erroHerdanca, tentarHerdanca: () => setRevisaoHerdanca(v => v + 1), itensHerdados, limiteInformavel,
     lotesDoSitio, sugestaoBezerreiro, sugereBezerreiro, aguardandoDestino, categoriaPrevista,
     erros, setErros, validar, montarPayload, rotuloComposicao, irParaPrimeiroErro,
   };
@@ -226,15 +224,17 @@ function TituloSecao({ icone, children }: { icone: ReactNode; children: ReactNod
  *  Peso de entrada e Observação. Não inclui formulário, erro geral nem botões — são de quem o abriga. */
 export function CadastroAnimalCampos({ cadastro }: { cadastro: CadastroAnimal }) {
   const { prefixo, personalizado, sitioFixo, catalogos, erros, form, alterar } = cadastro;
+  const [editandoComposicao, setEditandoComposicao] = useState(false);
   if (!catalogos) return null;
   const id = (sufixo: string) => `${prefixo}-${sufixo}`;
   const { sexo } = form;
   const hojeIso = hoje();
+  const composicaoInvalida = form.composicao.some(item => !item.racaId) || !composicaoValida(form.composicao) || form.composicao.some(item => !Number.isInteger(item.fracao64)) || somaFracoes(form.composicao) > cadastro.limiteInformavel;
 
   return <>
     <section>
       <TituloSecao icone={<Tag size={20} className="text-primary" aria-hidden/>}>Identificação</TituloSecao>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="cadastro-animal-identificacao grid gap-4 md:grid-cols-6">
         <CampoFormulario id={id("brinco")} rotulo="Brinco" obrigatorio erro={erros.brinco}>{(p) => <input {...p} required maxLength={40} value={form.brinco} onChange={(e) => alterar({ brinco: e.target.value })} className={classeInput} />}</CampoFormulario>
         <CampoFormulario id={id("nome")} rotulo="Nome">{(p) => <input {...p} maxLength={120} value={form.nome} onChange={(e) => alterar({ nome: e.target.value })} className={classeInput} />}</CampoFormulario>
         <CampoFormulario id={id("sexo")} rotulo="Sexo" obrigatorio>{(p) => <SelectCampo {...p} value={sexo} onValueChange={(valorSelecionado) => cadastro.alterarSexo(valorSelecionado as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></SelectCampo>}</CampoFormulario>
@@ -243,42 +243,58 @@ export function CadastroAnimalCampos({ cadastro }: { cadastro: CadastroAnimal })
       </div>
     </section>
     <section>
-      <TituloSecao icone={<CalendarDays size={20} className="text-primary" aria-hidden/>}>Datas e filiação</TituloSecao>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <TituloSecao icone={<CalendarDays size={20} className="text-primary" aria-hidden/>}>Datas</TituloSecao>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div><CampoFormulario id={id("data-nascimento")} rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <DatePicker {...p} required max={hojeIso} value={form.dataNascimento} onChange={(valor) => alterar({ dataNascimento: valor })} className="mt-1.5" />}</CampoFormulario>
-          <label className="mt-2 flex items-center gap-2 text-sm"><input id={id("nascimento-estimado")} type="checkbox" checked={form.nascimentoEstimado} onChange={(e) => alterar({ nascimentoEstimado: e.target.checked })} />Nascimento estimado</label>
+          <label className="mt-2 flex items-center gap-2 text-sm"><input id={id("nascimento-estimado")} type="checkbox" checked={form.nascimentoEstimado} onChange={(e) => alterar({ nascimentoEstimado: e.target.checked })} />Nascimento estimado <AjudaCampo rotulo="Ajuda: Nascimento estimado" texto="Marque quando a data de nascimento for aproximada." /></label>
         </div>
         <CampoFormulario id={id("data-entrada")} rotulo="Data de entrada" obrigatorio erro={erros.dataEntrada}>{(p) => <DatePicker {...p} required max={hojeIso} value={form.dataEntrada} onChange={(valor) => alterar({ dataEntrada: valor })} className="mt-1.5" />}</CampoFormulario>
         {sexo === "F" && <CampoFormulario id={id("partos")} rotulo="Partos antes da entrada" ajuda="Define a categoria (novilha vira vaca a partir de 1 parto).">{(p) => <input {...p} type="number" min={0} step={1} value={form.partosAntesDaEntrada} onChange={(e) => alterar({ partosAntesDaEntrada: e.target.value })} className={classeInput} />}</CampoFormulario>}
       </div>
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <CampoGenitor rotulo="Mãe" sexo="F" valor={form.mae} onChange={(valor) => alterar({ mae: valor })} erro={erros.mae} idBase={personalizado ? id("genitor") : undefined} />
-        <CampoGenitor rotulo="Pai" sexo="M" valor={form.pai} onChange={(valor) => alterar({ pai: valor })} erro={erros.pai} idBase={personalizado ? id("genitor") : undefined} />
+    </section>
+    <section>
+      <TituloSecao icone={<Dna size={20} className="text-primary" aria-hidden/>}>Genética</TituloSecao>
+      <div className="grid gap-2">
+        <CampoGenitor rotulo="Mãe" sexo="F" valor={form.mae} onChange={(valor) => alterar({ mae: valor })} erro={erros.mae} idBase={personalizado ? id("genitor") : undefined} propriedadeId={cadastro.propriedadeId ? Number(cadastro.propriedadeId) : undefined} compacto />
+        <CampoGenitor rotulo="Pai" sexo="M" valor={form.pai} onChange={(valor) => alterar({ pai: valor })} erro={erros.pai} idBase={personalizado ? id("genitor") : undefined} propriedadeId={cadastro.propriedadeId ? Number(cadastro.propriedadeId) : undefined} compacto />
       </div>
+    <div id={id("composicao-secao")} tabIndex={-1} className="mt-5 border-t border-border pt-5 outline-none">
+      <div className="flex flex-wrap items-center justify-between gap-2"><TituloSecao icone={<Dna size={20} className="text-primary" aria-hidden/>}>Composição racial</TituloSecao>{!cadastro.carregandoHerdanca && !cadastro.erroHerdanca && cadastro.limiteInformavel > 0 && !genitorIncompleto(form.mae) && !genitorIncompleto(form.pai) && !!form.dataNascimento && <button type="button" aria-expanded={editandoComposicao} className="min-h-11 text-sm font-semibold text-mast" onClick={() => setEditandoComposicao(v => !v)}>{editandoComposicao ? "Fechar edição" : "Editar composição"}</button>}</div>
+      {cadastro.carregandoHerdanca ? <p role="status">Calculando a parcela herdada…</p> : cadastro.erroHerdanca ? <div role="alert" className="text-destructive">Não foi possível calcular a composição: {cadastro.erroHerdanca} <button type="button" className="font-semibold underline" onClick={cadastro.tentarHerdanca}>Tentar novamente</button></div> : genitorIncompleto(form.mae) || genitorIncompleto(form.pai) || !form.dataNascimento ? <p role="status">Complete os genitores e a data de nascimento para calcular a composição.</p> : composicaoInvalida ? <p role="status">Complete ou corrija as linhas para calcular o resumo da composição.</p> : <>
+        <div className="flex flex-wrap justify-between gap-2 text-sm" aria-label="Resumo da composição racial">
+          <span>{64 - cadastro.limiteInformavel}/64 calculados pela filiação{cadastro.herdada?.rotulo ? ` · ${cadastro.herdada.rotulo}` : ""}</span>
+          <span>{somaFracoes(form.composicao)}/64 informados</span>
+          <span>{Math.max(0, cadastro.limiteInformavel - somaFracoes(form.composicao))}/64 sem informação</span>
+        </div>
+        <div aria-hidden="true" className="my-3 flex h-3 overflow-hidden rounded-full bg-gray-300">
+          <span className="bg-teal-700" style={{ width: `${(64 - cadastro.limiteInformavel) / 64 * 100}%` }} />
+          <span className="bg-teal-300" style={{ width: `${Math.min(cadastro.limiteInformavel, somaFracoes(form.composicao)) / 64 * 100}%` }} />
+        </div>
+      </>}
+      {editandoComposicao && !cadastro.carregandoHerdanca && !cadastro.erroHerdanca && !genitorIncompleto(form.mae) && !genitorIncompleto(form.pai) && !!form.dataNascimento && cadastro.limiteInformavel > 0 && <CampoComposicao racas={catalogos.racas} itens={form.composicao} onChange={(itens) => alterar({ composicao: itens })} limite64={cadastro.limiteInformavel} idBase={personalizado ? id("composicao") : undefined} />}
+      {!cadastro.carregandoHerdanca && !cadastro.erroHerdanca && cadastro.limiteInformavel === 0 && form.composicao.length > 0 && <div className="space-y-2"><p className="text-sm">A filiação calculada ocupa toda a composição. Remova a parcela informada para continuar.</p><button type="button" className="text-sm font-semibold text-mast underline" onClick={() => { alterar({ composicao: [] }); cadastro.setErros(atual => { const restantes = { ...atual }; delete restantes.composicao; return restantes; }); }}>Remover parcela informada</button></div>}
+      {erros.composicao && <p role="alert" className="text-sm text-destructive">{erros.composicao}</p>}
+    </div>
     </section>
     <section>
       <TituloSecao icone={<MapPin size={20} className="text-primary" aria-hidden/>}>Localização e finalidade</TituloSecao>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         {sitioFixo
           ? <CampoFormulario id={id("propriedade")} rotulo="Sítio" obrigatorio>{(p) => <SelectCampo {...p} disabled value={String(sitioFixo.id)} className={classeInput}><option value={String(sitioFixo.id)}>{sitioFixo.nome}</option></SelectCampo>}</CampoFormulario>
           : <CampoFormulario id={id("propriedade")} rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <SelectCampo {...p} required value={cadastro.propriedadeId} onValueChange={(valorSelecionado) => cadastro.alterarPropriedade(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{catalogos.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</SelectCampo>}</CampoFormulario>}
         <CampoFormulario id={id("lote")} rotulo="Lote" erro={erros.loteId} ajuda={!cadastro.propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <SelectCampo {...p} disabled={!cadastro.propriedadeId} value={cadastro.aguardandoDestino ? "__escolher__" : form.loteId || "__sem_lote__"} onValueChange={(valorSelecionado) => { if (!valorSelecionado) return; alterar({ destinoManual: true, loteId: valorSelecionado === "__sem_lote__" ? "" : valorSelecionado }); }} className={classeInput}>{cadastro.aguardandoDestino && <option value="__escolher__" disabled>Escolha o lote de destino</option>}<option value="__sem_lote__">Sem lote</option>{cadastro.lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</SelectCampo>}</CampoFormulario>
         <CampoFormulario id={id("aptidao")} rotulo="Finalidade" obrigatorio>{(p) => <SelectCampo {...p} required value={form.aptidao} onValueChange={(valorSelecionado) => alterar({ aptidao: valorSelecionado as Aptidao })} className={classeInput}><option value="LEITE">Leite</option><option value="CORTE">Corte</option><option value="REPRODUCAO">Reprodução</option></SelectCampo>}</CampoFormulario>
-        {sexo === "F" && <CampoFormulario id={id("papel")} rotulo="Papel reprodutivo">{(p) => <SelectCampo {...p} value={form.papelReprodutivo} onValueChange={(valorSelecionado) => alterar({ papelReprodutivo: valorSelecionado as PapelReprodutivo })} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo>}</CampoFormulario>}
+        {sexo === "F" && <CampoFormulario id={id("papel")} rotulo="Papel reprodutivo" ajuda="Indica se a fêmea atua como doadora ou receptora; é independente da finalidade.">{(p) => <SelectCampo {...p} value={form.papelReprodutivo} onValueChange={(valorSelecionado) => alterar({ papelReprodutivo: valorSelecionado as PapelReprodutivo })} className={classeInput}><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></SelectCampo>}</CampoFormulario>}
       </div>
       {cadastro.erroCategorias && <p role="alert" className="text-sm text-ink-3">{cadastro.erroCategorias}</p>}
       <AjudaDestinoBezerreiro sugestao={cadastro.sugestaoBezerreiro} loteId={form.loteId} elegivel={cadastro.sugereBezerreiro}/>
     </section>
-    <section>
-      <TituloSecao icone={<Dna size={20} className="text-primary" aria-hidden/>}>Composição racial</TituloSecao>
-      {cadastro.carregandoHerdanca && <p className="mb-3 text-sm text-ink-3">Calculando a parcela herdada…</p>}
-      {cadastro.erroHerdanca && <p role="alert" className="mb-3 text-sm text-destructive">{cadastro.erroHerdanca}</p>}
-      {cadastro.herdada && <p className="mb-3 text-sm text-ink-3">Parcela fixa dos genitores: {cadastro.herdada.rotulo} ({64 - cadastro.limiteInformavel}/64). {cadastro.limiteInformavel ? `Você pode informar até ${cadastro.limiteInformavel}/64 da parcela ainda desconhecida.` : "Composição completa; não há parcela para informar."}</p>}
-      {!cadastro.carregandoHerdanca && cadastro.limiteInformavel > 0 && <CampoComposicao racas={catalogos.racas} itens={form.composicao} onChange={(itens) => alterar({ composicao: itens })} erro={erros.composicao} limite64={cadastro.limiteInformavel} idBase={personalizado ? id("composicao") : undefined} />}
+    <section className="grid gap-4 md:grid-cols-2">
+      <CampoFormulario id={id("peso")} rotulo="Peso de entrada (kg)" ajuda="Peso medido na entrada da fazenda; é independente do peso pago na compra.">{(p) => <input {...p} type="number" min="0.01" step="0.01" className={classeInput} value={form.pesoEntradaKg} onChange={(e) => alterar({ pesoEntradaKg: e.target.value })} />}</CampoFormulario>
+      <CampoFormulario id={id("ecc")} rotulo="Escore de condição corporal (ECC) opcional" erro={erros.eccEntrada}>{(p) => <input {...p} inputMode="decimal" placeholder="1 a 5" className={classeInput} value={form.eccEntrada ?? ""} onChange={e => alterar({ eccEntrada: e.target.value })} />}</CampoFormulario>
     </section>
     <section>
-      <CampoFormulario id={id("peso")} rotulo="Peso de entrada (kg)">{(p) => <input {...p} type="number" min="0.01" step="0.01" className={`${classeInput} max-w-xs`} value={form.pesoEntradaKg} onChange={(e) => alterar({ pesoEntradaKg: e.target.value })} />}</CampoFormulario>
-    </section>
     <CampoFormulario id={id("observacao")} rotulo="Observação">{(p) => <textarea {...p} maxLength={500} className={classeInput} value={form.observacao} onChange={(e) => alterar({ observacao: e.target.value })} />}</CampoFormulario>
+    </section>
   </>;
 }
