@@ -97,6 +97,16 @@ describe("OperacaoFinanceiraDetalhe", () => {
     expect(within(historico).getByText("Pagamento #1")).toBeTruthy();
     expect(within(historico).getByText("Pix")).toBeTruthy();
   });
+  it("a linha inteira do item abre a ficha do produto; frete sem produto não é clicável", async () => {
+    obterOperacao.mockResolvedValue({ ...operacao, itens: [...operacao.itens, { id: uid(9), ordem: 2, descricao: "Frete", quantidade: "1", unidade: "un", valorUnitario: "50", valorTotal: "50", estocavel: false, produtoId: null }] });
+    window.history.replaceState(null, "", "/financeiro/operacoes/x");
+    render(<OperacaoFinanceiraDetalhe operacaoId={uid(6)} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+    const itens = await screen.findByRole("table", { name: "Itens da operação" });
+    const linhaFrete = within(itens).getByText("Frete").closest("tr")!;
+    expect(linhaFrete.getAttribute("tabindex")).toBeNull();
+    fireEvent.click(within(itens).getByText("30 kg").closest("tr")!);
+    expect(window.location.pathname).toBe(`/estoque/produtos/${uid(1)}`);
+  });
   it("compra de animais por cabeça mostra um único valor por animal, com acesso à ficha", async () => {
     obterOperacao.mockResolvedValue({ ...operacao, tipo: "COMPRA_ANIMAIS", transacoes: [], movimentosEstoque: [], itens: [
       { id: uid(3), ordem: 1, descricao: "Brinco 101", quantidade: "1", unidade: "cab", valorUnitario: "3000", valorTotal: "3000", estocavel: false, produtoId: null, animalId: uid(7) },
