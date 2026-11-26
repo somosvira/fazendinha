@@ -408,7 +408,13 @@ async function previaAdocaoTx(tx:Prisma.TransactionClient,input:PreviaAdocaoAcom
  if(tentativas.length!==input.tentativaIds.length||gestacoes.length!==input.gestacaoIds.length)erro("Fatos válidos não pertencem ao sítio escolhido; gestações devem estar abertas");
  const origens:Origem[]=tentativas.map(t=>({tentativaId:t.id,tipoTentativa:t.tipo,animalId:t.animalId,propriedadeId:input.propriedadeId,data:t.data}));
  for(const g of gestacoes){
-  const primeiro=await primeiroDiagnosticoPositivoTx(tx,g.animalId,g.id);
+  // A adoção administrativa de gestações legadas admite evidência positiva já registrada.
+  const primeiro = await tx.exameAnimal.findFirst({
+   where: { animalId: g.animalId, status: "VALIDO", realizacao: "REALIZADO", interpretacao: { gestacaoId: g.id },
+    resultados: { some: { campo: "CONCLUSAO_GESTACIONAL", vigente: true, valor: { equals: "POSITIVO" } } } },
+   orderBy: [{ data: "asc" }, { id: "asc" }],
+   select: { id: true, data: true },
+  });
   if(!primeiro)erro("Gestação sem primeiro DG positivo comprovado; reconcilie a evidência antes de adotar reconfirmações", "gestacaoIds");
   origens.push({gestacaoId:g.id,animalId:g.animalId,propriedadeId:input.propriedadeId,data:primeiro.data,exameOrigemId:primeiro.id});
  }

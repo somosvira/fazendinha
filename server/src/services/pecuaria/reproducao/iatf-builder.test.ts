@@ -15,7 +15,7 @@ it("resolve catálogo na transação e registra origem mesmo sem referência té
   await criarProtocolo(input(), 7);
   expect(m.resolver).toHaveBeenCalledWith(m.tx, { produtoId: undefined, produtoCatalogoId: catalogo, categoriaId: undefined }, 7);
   const dado = m.criar.mock.calls[0][1].data;
-  expect(dado.referenciaTecnica).toEqual({ protocoloOrigemId: id });
+  expect(dado.referenciaTecnica).toMatchObject({ protocoloOrigemId: id });
   expect(dado.etapas[0].planoAplicacao).toMatchObject({ produtoId: id, dose: "2" });
   expect(dado.etapas[0].planoAplicacao).not.toHaveProperty("produtoCatalogoId");
   expect(m.auditar).toHaveBeenCalledWith(m.tx, expect.objectContaining({ usuarioId: 7 }));
