@@ -1,4 +1,4 @@
-# Integração, estados e lacunas
+# Acompanhar um resultado até a origem
 
 ## Uma história atravessando os eixos
 
@@ -15,20 +15,18 @@ Cada ordenha mede leite; a confirmação cria origem física. A natureza e as ca
 | Que leite existe e qual sua natureza? | 10 L de colostro disponíveis | Origem, classificação e movimentos |
 | O que aconteceu com o dinheiro? | R$ 500 ainda a receber | Compromisso e liquidações |
 
-Uma resposta não substitui a outra. “Descarte” pode ser restrição reprodutiva da matriz, natureza não comercial do leite ou eliminação física, conforme o contexto. A documentação e os formulários precisam nomear o objeto.
+Uma resposta não substitui a outra. “Descarte” pode ser restrição reprodutiva da matriz, natureza não comercial do leite ou eliminação física, conforme o contexto. Confira se está olhando a ficha da matriz, a natureza da produção ou um movimento do estoque.
 
-## Modelo detalhado e desenho do sistema
+## Preparar e conferir um relatório
 
-O HTML inclui, na sequência, a matriz completa de estados, o system design e as lacunas. Em Markdown, consulte [estados do animal](../pecuaria/estados-animal.md), [system design](../system-design.md) e [lacunas](../lacunas.md). São fontes complementares: manual explica o uso, contrato fixa regras, código/SQL implementam e testes/evidências verificam cenários.
+Em **Pecuária → Relatórios**, escolha a consulta e o sítio. Defina o período e confira população, unidade e cobertura. No construtor, selecione a fonte, escolha as variáveis e ajuste a ordem das colunas. Verifique se o resultado ou a exportação cobre a página exibida ou o período inteiro. Um modelo salvo guarda a seleção de campos para uso posterior.
 
-## O que ainda precisa ser decidido ou comprovado
+Para recuperar exatamente o que foi emitido, abra a emissão no histórico. Para conhecer a posição atual depois de uma correção, faça uma nova consulta. Na produção de leite, uma retirada para Casa ou Funcionários tem destino próprio e pode ser conferida separadamente do descarte físico. A exibição de valores depende da sua permissão atual.
 
-As principais lacunas são atendimento protocolar multiação por momento, idade embrionária no contexto individual de TE, comprovação de nunca lactante, custo por natureza, produção individual entre controles, saldo atual por tanque e carga histórica de leite. Custo direto registrado não deve ser apresentado como rentabilidade integral.
-
-O código atual não entrega formulação automática de dieta, diagnóstico veterinário, laboratório/FIV, sincronização contínua IDEAGRI nem execução automática de todas as propostas dos mockups. Os números didáticos do guia não são recomendações clínicas ou dados da fazenda.
-
-## Como manter esta documentação
-
-Ao alterar uma regra, atualize seu contrato e o capítulo de usuário afetado. Ao criar um estado, defina fonte, data, transições, coexistência, evidência desconhecida e efeito nos demais eixos. Ao emitir um relatório, preserve o snapshot e sua metodologia. Ao concluir uma proposta, incorpore decisões ao contrato e retire o plano temporário.
-
-Regere o HTML pelos capítulos; não mantenha uma segunda cópia manual do conteúdo. A revisão documental verifica links, estrutura, diagramas e leitura do arquivo. Não concede aceite aos roteiros nem comprova deployment, banco ou operação rural.
+```mermaid
+flowchart TD
+ A[Ordenha medida] --> B[Entrada confirmada no estoque]
+ B --> C[Retirada para venda]
+ C --> D[Fechamento comercial]
+ D --> E[Recebimento registrado na conta]
+```

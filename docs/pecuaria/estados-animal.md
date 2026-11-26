@@ -43,7 +43,7 @@ O código prioriza gestação operacional aberta e, nos demais casos, a evidênc
 
 LACTANTE exige uma lactação vigente única e vínculo de parto válido quando existente. SECA exige encerramento comprovado, sem lactação vigente e sem parto posterior que torne aquela conclusão insuficiente. NAO_INFORMADA cobre ausência de história e situações sem evidência única/confiável.
 
-`SEM_LACTACAO` existe no tipo de contexto, mas o cálculo atual não o retorna por falta de histórico. Não apresentá-lo como status já inferido para todas as novilhas. Se for necessário comprovar “nunca lactou”, é preciso definir fonte/critério próprio e sua adoção; a ausência de registros não o comprova.
+`SEM_LACTACAO` existe no tipo de contexto, mas o cálculo atual não o retorna por falta de histórico. Não apresentá-lo como status já inferido para todas as novilhas. Em Produção de leite, a distinção entre “nunca lactou” e “histórico desconhecido” é uma decisão de produto. A primeira condição exige evidência própria.
 
 DEL é D0 no início da lactação e nulo após encerramento. Dias pós-parto, idade gestacional, dias desde tentativa e dias desde confirmação têm âncoras distintas. Uma transferência entre sítios não reinicia nenhum desses relógios.
 
@@ -70,7 +70,7 @@ Uma origem leiteira não comercial não vira comercial quando a vaca sai da car�
 
 “Em pós-parto”, “em PEV”, “em protocolo”, “aguardando DG” e “com custo pendente” respondem a perguntas diferentes. Pós-parto tem uma data; PEV depende da política; protocolo tem tarefas; DG depende de evidência; custo depende de cobertura. Fundi-los perde informação e gera transições erradas.
 
-Se for necessário destacar anestro, cio observado, pré-parto, histórico nunca lactante ou adequação nutricional, primeiro definir fato de origem, responsável, data, condição de encerramento e tratamento do desconhecido. Esses rótulos não estão sendo implementados nesta documentação. Os requisitos em aberto estão em [lacunas](../lacunas.md).
+O registro de cio observado é uma necessidade futura de Reprodução. Anestro, pré-parto e adequação nutricional são conceitos distintos, cada um com evidência própria. Consulte as [decisões de negócio](../decisoes-de-negocio.md#direção-de-produto-confirmada).
 
 ## Fontes da implementação
 

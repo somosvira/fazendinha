@@ -1,3 +1,4 @@
+import { nomeExameApresentacao } from "../sanidade/nome-exame.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError } from "../rebanho/regras.js";
@@ -5,7 +6,7 @@ import { consultaAcoesCadastroSchema } from "./cadastros.schemas.js";
 
 const procedimentoSelect = {
   id: true, nome: true, tipo: true, diaRelativo: true, unidadeIntervalo: true,
-  configuracao: true, dose: true, unidade: true, via: true, tipoAplicacaoNomeSnapshot: true,
+  configuracao: true, dose: true, unidade: true, via: true, tipoAplicacaoNomeSnapshot: true, tipoExameId: true,
   produto: { select: { nome: true } }, tipoExame: { select: { nome: true } },
   material: { select: { produto: { select: { nome: true, unidade: true } } } },
 } as const;
@@ -22,11 +23,12 @@ export function apresentarProcedimentoCadastro(e: Procedimento) {
     : e.tipo === "RETIRADA" ? "Retirada de dispositivo"
     : e.tipo === "TENTATIVA" ? (tipoTentativa === "TE" ? "Transferência de embrião" : tipoTentativa === "IA" ? "Inseminação artificial" : "Tentativa reprodutiva")
     : e.tipo === "EXAME" || e.tipo === "AVALIACAO" ? "Exame / diagnóstico" : "Manejo cadastrado";
+  const nomeExame = texto(exame.nome) ?? e.tipoExame?.nome ?? null;
   return { id: e.id, nome: e.nome, procedimento,
     intervalo: typeof c.intervalo === "number" ? c.intervalo : e.diaRelativo,
     unidadeIntervalo: texto(c.unidade) ?? e.unidadeIntervalo,
     referencia: e.tipo === "APLICACAO" ? texto(produto.nome) ?? texto(produtoSnapshot.nome) ?? e.produto?.nome ?? null
-      : e.tipo === "EXAME" || e.tipo === "AVALIACAO" ? texto(exame.nome) ?? e.tipoExame?.nome ?? null
+      : e.tipo === "EXAME" || e.tipo === "AVALIACAO" ? nomeExame ? nomeExameApresentacao(e.tipoExameId, nomeExame) : null
       : e.tipo === "TENTATIVA" ? texto(material.produtoNome) ?? texto(material.nome) ?? texto(objeto(material.produto).nome) ?? e.material?.produto.nome ?? null : null,
     definirMaterialNoAtendimento: e.tipo === "TENTATIVA" && !e.material && !Object.keys(tentativa).length,
     quantidade: e.tipo === "APLICACAO" ? texto(aplicacao.dose) ?? e.dose?.toString() ?? null

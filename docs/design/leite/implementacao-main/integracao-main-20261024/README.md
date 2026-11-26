@@ -8,4 +8,4 @@ As capturas mostram os componentes React com respostas ilustrativas de consulta,
 - [Produção em cartões no celular](producao-mobile.png)
 - [Abas no celular](abas-mobile.png)
 
-O comportamento vigente está no [contrato de leite](../../../../pecuaria/leite.md).
+O comportamento daquela entrega foi registrado no [contrato de leite](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite.md).

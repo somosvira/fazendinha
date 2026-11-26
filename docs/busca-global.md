@@ -64,7 +64,7 @@ Sempre que mudar páginas, registros, fluxos, URLs/filtros ou permissões, revis
 
 Testes de servidor cobrem entrada, seleção prévia de fontes autorizadas, parâmetros SQL, escopo e contrato dos destinos. Testes de cliente cobrem catálogo, busca assíncrona, filtro de tipo, seleção por teclado, falha/repetição, restauração por URL, recepção de links e guarda de navegação. Consultas locais de conferência são somente de leitura no `fazendinha_seedatev3`, sem habilitar flags de integração, criar fixtures, aplicar migrations ou alterar o manifesto da seed. Validação no navegador e testes automatizados são evidências distintas; nenhuma marca de homologação de domínio é aprovada por esta mudança.
 
-A revisão visual de Animais/ficha/ordenhas/filas mantém o catálogo, os gates e os destinos existentes. O registro geral de ordenha continua consumindo `leiteModo=registro`, `registroId`, data operacional e ordenha; sua apresentação é modal, sem perder o período da consulta no retorno. Os cartões abrem o animal exato, sem substituir a navegação por uma ficha ilustrativa. O contexto adicional do cartão é dado de leitura da lista, não nova fonte autônoma da busca.
+A revisão visual de Animais/ficha/ordenhas/filas mantém o catálogo, os gates e os destinos existentes. O registro geral de ordenha continua consumindo `leiteModo=registro`, `registroId`, data operacional e ordenha; sua apresentação é modal, sem perder o período da consulta no retorno. Em Animais, a linha abre a ficha exata. O contexto adicional da lista pertence à leitura da consulta e não cria outra fonte de busca.
 
 O acabamento operacional geral conserva os destinos da busca. A seleção por `usuario` em Acessos abre o editor em modal; receitas, operações nutricionais e protocolos continuam consumindo suas URLs antes de apresentar o modal. Trocar a apresentação não autoriza abrir outro registro nem remover o retorno da consulta. Filtros e parâmetros persistentes continuam sujeitos aos testes de navegação existentes.
 
@@ -72,7 +72,7 @@ A reformulação da composição operacional preserva as URLs, fontes e gates da
 
 A composição das consultas operacionais mantém os destinos existentes de políticas, exames, estoque e relatórios. A ação de resultado completo no cartão de exame abre o mesmo registro pelo handler de detalhe, sem criar uma nova entidade pesquisável. Formulários de nova versão em modal preservam a página de configuração alcançada pela busca. Alterações de espaçamento e resumo visual não modificam catálogo, fontes, gates ou parâmetros de navegação.
 
-A revisão de responsividade e densidade conserva o catálogo, as fontes, os gates e os destinos exatos. Sidebar, ações do catálogo de protocolos e cartões de animais usam os handlers anteriores; parâmetros de visualização, busca, paginação e retorno continuam reconhecidos. A retirada de medidas/datas dos cartões não remove campos pesquisáveis ou a informação da ficha e da tabela.
+A navegação a partir da busca conserva catálogo, fontes, gates e destinos exatos. Abrir a ficha usa a identidade do animal e preserva o contexto de retorno. A apresentação responsiva da lista mantém os campos pesquisáveis.
 
 A integração automática do Bezerreiro conserva a identidade do animal e os destinos de sua ficha. Participação é um intervalo contextual, não um segundo cadastro pesquisável; a regularização exige conferir lote e localização e não é executada pela busca. A página Bezerreiro permanece no catálogo sob o gate de Pecuária.
 
@@ -112,3 +112,5 @@ abre o modal exato em Estoque → Catálogo usando `referenciaCatalogo`, mantend
 a busca `buscaCatalogo` e o escopo ativo. O gate é o de Estoque (Financeiro ou
 Pecuária). Produtos sem dados oficiais vinculados continuam disponíveis na consulta
 do Catálogo e exibem o motivo da pendência. Não geram resultado do tipo referência oficial apenas por possuírem pesquisa pendente ou links a conferir. Referências parciais são identificadas como tais no contexto do resultado e abrem o modal exato com seus campos e pendências.
+
+O exame de ECC do tipo de sistema responde ao nome original do catálogo e a “Escore de condição corporal (ECC)”; o resultado abre o exame exato, sob os gates e escopo existentes. No catálogo de tipos, `cadastroId` opcional limita a lista ao tipo encontrado; editar a busca remove esse filtro e URLs anteriores continuam válidas.

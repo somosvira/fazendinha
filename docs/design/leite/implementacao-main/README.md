@@ -1,6 +1,6 @@
 # Interface V5 no padrão da main
 
-A estilização do mockup aprovado está aplicada aos componentes reais de `/pecuaria/leite`. A implementação reutiliza tokens do tema Cooperativa, fontes e shell da main; não cria um design system paralelo. O [contrato funcional](../../../pecuaria/leite.md#interface-de-produção) descreve navegação, URLs e estados preservados.
+A estilização do mockup aprovado está aplicada aos componentes reais de `/pecuaria/leite`. A implementação reutiliza tokens do tema Cooperativa, fontes e shell da main; não cria um design system paralelo. O [contrato funcional](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite.md) descreve navegação, URLs e estados preservados.
 
 ## Referência e diferenças funcionais
 

@@ -1,3 +1,4 @@
+import { nomeExame } from "./nomeExame";
 import { useState } from "react";
 import { Syringe, Milk, Beef } from "lucide-react";
 import { CartaoConsulta, FatoConsulta, LinhaTempoConsulta } from "@/components/ConsultaVisual";
@@ -11,7 +12,7 @@ import "./consultas-visuais.css";
 import { ICONES_TABELA } from "@/components/iconesTabela";
 
 type Props<T> = Parameters<typeof TabelaFinanceira<T>>[0];
-type ExameVisual = ExameResultado & { data: string; status: string; tipoExame: { nome: string } };
+type ExameVisual = ExameResultado & { data: string; status: string; tipoExame: { id?: string; nome: string }; tipoExameId?: string };
 export function ConsultaExames<T extends ExameVisual>({ nomeAnimal: _nomeAnimal, abas, ...props }: Props<T> & { nomeAnimal: (e: T) => string; abas?: React.ReactNode }) {
   return <>{abas && <div className="consulta-visual-barra sanidade-agenda-visoes">{abas}</div>}<TabelaFinanceira icone={ICONES_TABELA.exame} {...props} />{!props.itens.length && <Empty>Nenhum exame nesta consulta.</Empty>}</>;
 }

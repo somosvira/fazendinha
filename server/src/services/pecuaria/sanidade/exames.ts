@@ -117,7 +117,7 @@ export type ExameInput = OrigemAlertaAplicacao & { observacao?: string | null; f
 
 export type OrigemHistoricaExame = ContextoHistoricoAnimalInput & { bancoOrigem: string; chaveOrigem: string; snapshotOrigem?: unknown };
 
-export async function prepararExameTx(tx: Prisma.TransactionClient, input: ExameInput, usuarioId: number | null, previa = false, qualidadeLeite = false, historico?: OrigemHistoricaExame) {
+export async function prepararExameTx(tx: Prisma.TransactionClient, input: ExameInput, usuarioId: number | null, previa = false, qualidadeLeite = false, historico?: OrigemHistoricaExame, escorePartoValorUnico = false) {
     await travarAnimais(tx, [input.animalId]);
     const data = dia(input.data);
     if (historico) {
@@ -132,9 +132,10 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
     if (!tipo) throw new RebanhoError("VALIDACAO", "Tipo de exame não encontrado", "tipoExameId");
     if (tipo.formatoQualidadeLeite && !qualidadeLeite) throw new RebanhoError("CONFLITO", "Registre este formato pelo fluxo de qualidade do leite", "tipoExameId");
     if (input.formatoExameHash && input.formatoExameHash !== hashFormatoExame(tipo)) throw new RebanhoError("CONFLITO", "O formato do exame mudou. Atualize e confira os resultados", "tipoExameId");
-    const resultados = tipo.tipoResultado === "MULTIPLO" ? validarObservacoesExame(tipo.campos, input.resultados ?? [], (input.resultados?.length ?? 0) > 0) : [];
+    const campos = escorePartoValorUnico && tipo.id === TIPO_EXAME_ESCORE_CORPORAL && Array.isArray(tipo.campos) ? tipo.campos.filter(c => c && typeof c === "object" && !Array.isArray(c) && c.codigo === "ESCORE") : tipo.campos;
+    const resultados = tipo.tipoResultado === "MULTIPLO" ? validarObservacoesExame(campos, input.resultados ?? [], (input.resultados?.length ?? 0) > 0) : [];
     if (tipo.tipoResultado !== "MULTIPLO" && input.resultados?.length) throw new RebanhoError("VALIDACAO", "Este exame usa o resultado simples do formato histórico", "resultados");
-    if (tipo.id === TIPO_EXAME_ESCORE_CORPORAL && resultados.length) validarResultadosEscore(resultados);
+    if (tipo.id === TIPO_EXAME_ESCORE_CORPORAL && resultados.length && !escorePartoValorUnico) validarResultadosEscore(resultados);
     const preenchidos = [input.resultadoTexto, input.resultadoNumero, input.resultadoOpcao].filter((v) => v !== undefined && v !== null && v !== "");
     if (preenchidos.length > 0 && (tipo.tipoResultado === "MULTIPLO" || preenchidos.length !== 1 || (tipo.tipoResultado === "TEXTO" && !input.resultadoTexto?.trim())
       || (tipo.tipoResultado === "NUMERO" && input.resultadoNumero == null)
@@ -170,7 +171,7 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
       resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null,
       formatoSnapshot: { nome: tipo.nome, tipoResultado: tipo.tipoResultado, unidade: tipo.unidade, opcoes: tipo.opcoes },
       criadoPorId: usuarioId, realizacao: preenchidos.length || resultados.length ? "REALIZADO" : "COLETA_REGISTRADA",
-      ...(tipo.tipoResultado === "MULTIPLO" ? { formatoSnapshot: { nome: tipo.nome, tipoResultado: tipo.tipoResultado, versao: tipo.versaoFormato, campos: tipo.campos }, resultados: { create: resultados.map(r => ({ ...r, criadoPorId: usuarioId })) } } : {}),
+      ...(tipo.tipoResultado === "MULTIPLO" ? { formatoSnapshot: { nome: tipo.nome, tipoResultado: tipo.tipoResultado, versao: tipo.versaoFormato, campos }, resultados: { create: resultados.map(r => ({ ...r, criadoPorId: usuarioId })) } } : {}),
       responsavel: input.responsavel?.trim() || null, ocorrenciaId: input.ocorrenciaId ?? null,
       tarefaId: input.tarefaId ?? null, operacaoServicoId, ...(desvioProtocoloSnapshot ? { desvioProtocoloSnapshot } : {}) };
     return { dadosCriacao, desvioProtocoloSnapshot };
@@ -251,4 +252,13 @@ export async function obterHistoricoExame(id: string, propriedadeIds?: number[],
   const itens = auditorias.map((a) => ({ id: a.id, acao: a.acao, em: a.em.toISOString(), criadoEm: a.criadoEm.toISOString(),
     usuarioId: a.usuarioId, autor: a.usuario, motivo: motivoAuditoria(a.depois), antes: a.antes, depois: a.depois }));
   return { exameId: exame.id, itens, total, pagina, tamanho };
+}
+
+/** Via interna exclusiva para ECC numérico vinculado a parto; não altera o catálogo. */
+export async function registrarEscoreValorPartoTx(tx: Prisma.TransactionClient, input: ExameInput, usuarioId: number | null) {
+  if (input.tipoExameId !== TIPO_EXAME_ESCORE_CORPORAL || input.resultados?.length !== 1 || input.resultados[0].campo !== "ESCORE" || typeof input.resultados[0].valor !== "number" || !Number.isFinite(input.resultados[0].valor)) throw new RebanhoError("VALIDACAO", "Valor do escore inválido", "resultados");
+  const { dadosCriacao } = await prepararExameTx(tx, input, usuarioId, false, false, undefined, true);
+  const criado = await tx.exameAnimal.create({ data: dadosCriacao });
+  await auditar(tx, { entidade: "ExameAnimal", entidadeId: criado.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId, depois: criado });
+  return criado;
 }

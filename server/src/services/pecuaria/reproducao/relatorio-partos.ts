@@ -68,10 +68,10 @@ export async function obterPartoOperacional(id: string, propriedadeId: number) {
     const internos = idsInternos.length ? await tx.animal.findMany({ where: { id: { in: idsInternos } }, select: { id: true, brinco: true, nome: true } }) : [];
     const externos = idsExternos.length ? await tx.genitorExterno.findMany({ where: { id: { in: idsExternos } }, select: { id: true, nome: true, codigo: true } }) : [];
     const rotulo = (interno?: string | null, externo?: string | null) => interno ? internos.find(a => a.id === interno)?.brinco ?? "Identificação indisponível" : externo ? externos.find(a => a.id === externo)?.nome ?? "Genitor externo não identificado" : null;
-    const acompanhamentos = await tx.exameAnimal.findMany({ where: { partoPosPartoId: id, propriedadeId }, select: { id: true, data: true, realizacao: true, status: true, tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { id: "asc" }] });
+    const acompanhamentos = await tx.exameAnimal.findMany({ where: { partoPosPartoId: id, propriedadeId }, select: { id: true, data: true, realizacao: true, status: true, tipoExameId: true, tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { id: "asc" }] });
     return { ...parto, propriedadeId, status: origem.status,
       crias: parto.crias.map((c, index) => { const i = identidades[index]; return { ...c, filiacao: i.success ? { mae: rotulo(i.data.maeId, i.data.maeExternaId), pai: rotulo(i.data.paiId, i.data.paiExternoId), receptora: rotulo(i.data.receptoraId) } : { mae: null, pai: null, receptora: null } }; }),
-      acompanhamentos: acompanhamentos.map(e => ({ id: e.id, data: e.data.toISOString().slice(0, 10), tipo: e.tipoExame.nome, realizacao: e.realizacao, status: e.status })),
+      acompanhamentos: acompanhamentos.map(e => ({ id: e.id, data: e.data.toISOString().slice(0, 10), tipo: e.tipoExame.nome, tipoExameId: e.tipoExameId, realizacao: e.realizacao, status: e.status })),
     };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }

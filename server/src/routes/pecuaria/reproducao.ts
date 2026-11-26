@@ -20,7 +20,7 @@ import { consultarIndicadoresReprodutivos } from "../../services/pecuaria/reprod
 import { emitirRelatorioPartos, periodoRelatorioPartosSchema } from "../../services/pecuaria/reproducao/relatorio-partos.js";
 import * as colostro from "../../services/pecuaria/reproducao/colostro.js";
 import { fornecimentoColostroSchema, correcaoColostroSchema } from "../../services/pecuaria/reproducao/colostro.schemas.js";
-import { correcaoPartoAmpliadaSchema } from "../../services/pecuaria/reproducao/partos.schemas.js";
+import { adicionarEscorePartoSchema, correcaoPartoAmpliadaSchema } from "../../services/pecuaria/reproducao/partos.schemas.js";
 import * as exames from "../../services/pecuaria/sanidade/exames.js";
 import { camposExameSchema } from "../../services/pecuaria/exames/formatos.js";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
@@ -802,6 +802,14 @@ reproducaoRouter.post(
     }
   },
 );
+reproducaoRouter.post("/partos/:id/escore", validarV4(adicionarEscorePartoSchema), async c => {
+  try {
+    const b = c.req.valid("json");
+    const ator = usuarioV4(c);
+    if (!ator) return c.json({ error: "Sessão de usuário necessária para registrar escore", code: "SEM_PERMISSAO" }, 403);
+    return c.json(apresentarV4(c, await registros.adicionarEscoreParto(s.uuid.parse(c.req.param("id")), { ...b, propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId) }, ator)), 201);
+  } catch (e) { return falhaV4(c, e); }
+});
 reproducaoRouter.post(
   "/partos/:id/correcao",
   validarV4(correcaoPartoAmpliadaSchema),

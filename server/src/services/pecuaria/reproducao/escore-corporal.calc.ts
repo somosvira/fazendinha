@@ -2,7 +2,7 @@ import { RebanhoError } from "../rebanho/regras.js";
 export const TIPO_EXAME_ESCORE_CORPORAL = "b0841f3c-3f88-4c2d-9d0d-3ef33d49b841";
 export function validarEscalaEscore(valor: number, minimo: number, maximo: number) {
   if (![valor, minimo, maximo].every(Number.isFinite) || minimo >= maximo || valor < minimo || valor > maximo)
-    throw new RebanhoError("VALIDACAO", "Informe escala mínima menor que máxima e escore dentro dos limites declarados", "resultados");
+    throw new RebanhoError("VALIDACAO", "Informe escala mínima menor que máxima e valor do escore de condição corporal (ECC) dentro dos limites declarados", "resultados");
 }
 function numeroEscore(valor: unknown): number | null {
   if (typeof valor !== "number" && (typeof valor !== "string" || !valor.trim())) return null;
@@ -12,7 +12,7 @@ function numeroEscore(valor: unknown): number | null {
 export function validarResultadosEscore(resultados: readonly { campo: string; valor: unknown }[]) {
   const numero = (campo: string) => numeroEscore(resultados.find(r => r.campo === campo)?.valor);
   const [valor, minimo, maximo] = [numero("ESCORE"), numero("ESCALA_MIN"), numero("ESCALA_MAX")];
-  if (typeof valor !== "number" || typeof minimo !== "number" || typeof maximo !== "number") throw new RebanhoError("VALIDACAO", "ECC exige valor e escala numéricos", "resultados");
+  if (typeof valor !== "number" || typeof minimo !== "number" || typeof maximo !== "number") throw new RebanhoError("VALIDACAO", "Informe um valor e uma escala numéricos para o escore de condição corporal (ECC).", "resultados");
   validarEscalaEscore(valor, minimo, maximo);
 }
 export type EscoreCorporalFicha = { id: string; data: string; valor: number | null; escalaMin: number | null; escalaMax: number | null; responsavel: string | null };

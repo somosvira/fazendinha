@@ -58,10 +58,11 @@ it.each([false,true])("oculta escritas para leitor ou parto anulado (anulado=%s)
 });
 
 it("avaliação de escore conserva parto e sítio mesmo sem avaliações anteriores",async()=>{
- vi.mocked(reqV4).mockResolvedValue({...parto,acompanhamentos:[]});
+ vi.mocked(reqV4).mockResolvedValue({...parto,escoresMatriz:[],acompanhamentos:[]});
  render(<DetalheParto id="p" propriedadeId={1} podeLancar/>);
- fireEvent.click(await screen.findByRole("button",{name:"Registrar avaliação de escore"}));
- expect(screen.getByRole("dialog",{name:"Correção do parto"}).textContent).toContain("p · sítio 1 · complemento escore");
+ fireEvent.click(await screen.findByRole("button",{name:"Registrar escore de condição corporal (ECC)"}));
+ expect(screen.getByRole("dialog",{name:"Registrar escore de condição corporal (ECC)"}).textContent).toContain("V4-011");
+ expect(screen.getByLabelText("Valor do escore")).toBeTruthy();
  expect(vi.mocked(reqV4).mock.calls.every(c=>c[2]==="GET")).toBe(true);
 });
 
@@ -71,4 +72,20 @@ it("inicia retirada no bezerreiro conservando o parto e sem gravar produção",a
  expect(location.pathname).toBe("/pecuaria/bezerreiro");
  const params=new URLSearchParams(location.search);expect(params.get("aba")).toBe("colostragem");expect(params.get("partoId")).toBe("p");expect(params.get("propriedadeId")).toBe("1");expect(params.get("novaRetirada")).toBe("1");
  expect(vi.mocked(reqV4).mock.calls.every(c=>c[2]==="GET")).toBe(true);
+});
+
+it("registra ECC com vírgula e contexto do parto sem motivo", async () => {
+ vi.mocked(reqV4).mockResolvedValue({...parto,escoresMatriz:[]});
+ render(<DetalheParto id="p" propriedadeId={1} podeLancar/>);
+ fireEvent.click(await screen.findByRole("button",{name:"Registrar escore de condição corporal (ECC)"}));
+ fireEvent.change(screen.getByLabelText("Data real da avaliação"), {target:{value:"07/10/2026"}});
+ fireEvent.change(screen.getByLabelText("Valor do escore"), {target:{value:"3,5"}});
+ fireEvent.click(screen.getByRole("button",{name:"Registrar escore"}));
+ await waitFor(()=>expect(reqV4).toHaveBeenCalledWith("/reproducao/partos/p/escore",expect.objectContaining({propriedadeId:1,data:"2026-10-07",valor:3.5,chave:expect.any(String)}),"POST",1));
+});
+
+it("não oferece inclusão quando já existe ECC vigente", async () => {
+ vi.mocked(reqV4).mockResolvedValue(parto); render(<DetalheParto id="p" propriedadeId={1} podeLancar/>);
+ await screen.findByRole("heading", {name:"Parto de V4-011"});
+ expect(screen.queryByRole("button", {name:"Registrar escore de condição corporal (ECC)"})).toBeNull();
 });

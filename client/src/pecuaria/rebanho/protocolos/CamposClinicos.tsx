@@ -1,3 +1,4 @@
+import { camposExameParaExibicao } from "../sanidade/nomeExame";
 import { AvaliacaoContextualCampos, type DadosFormularioContextual } from "../reproducao/AvaliacaoContextualCampos";
 import { contextoAvaliacao } from "../reproducao/avaliacao-contextual-api";
 import { DatePicker } from "../../../components/DatePicker";
@@ -177,7 +178,7 @@ export function CamposAvaliacaoClinica({
           </label>
           {d.formato?.campos && (
             <CamposResultadoExame
-              campos={d.formato.campos.filter(
+              campos={camposExameParaExibicao(d.tipoExameId, d.formato.campos).filter(
                 (c) =>
                   !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo),
               )}

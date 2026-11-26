@@ -1,3 +1,4 @@
+import { camposExameParaExibicao } from "./nomeExame";
 import { useEffect, useState } from "react";
 import "./detalhe-sanitario.css";
 import { ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -18,7 +19,7 @@ function valorServico(valor: unknown): string {
 }
 const eventoServico = (acao: string) => acao === "PROCEDIMENTO_SERVICO" || acao === "RATEIO_SERVICO";
 const tituloEvento = (acao: string) => acao === "REGISTRO" ? "Coleta registrada" : acao === "ANULACAO" ? "Exame anulado" : acao === "PROCEDIMENTO_SERVICO" ? "Vínculo ao Serviço atualizado" : acao === "RATEIO_SERVICO" ? "Valor atribuído ao Serviço atualizado" : "Resultado atualizado";
-function valorHistorico(valor: unknown, formato: ExameResultado["formatoSnapshot"]): string {
+function valorHistorico(valor: unknown, formato: ExameResultado["formatoSnapshot"], tipoExameId?: unknown): string {
   if (!valor || typeof valor !== "object") return "Não registrado";
   const dado = valor as Record<string, unknown>;
   const formatoPreservado = dado.formatoSnapshot && typeof dado.formatoSnapshot === "object" ? dado.formatoSnapshot as ExameResultado["formatoSnapshot"] : formato;
@@ -26,7 +27,7 @@ function valorHistorico(valor: unknown, formato: ExameResultado["formatoSnapshot
     if (!Array.isArray(dado.resultados)) return dado.status === "ANULADO" ? "Anulado — resultado não registrado nesta alteração" : "Não registrado";
     const resultados = dado.resultados.flatMap(item => {
       if (!item || typeof item !== "object" || typeof item.campo !== "string" || !("valor" in item)) return [];
-      const campo = formatoPreservado.campos?.find(c => c.codigo === item.campo) ?? { codigo: item.campo };
+      const campo = camposExameParaExibicao(tipoExameId, formatoPreservado.campos ?? []).find(c => c.codigo === item.campo) ?? { codigo: item.campo };
       const valor = typeof item.valor === "boolean" ? item.valor ? "Sim" : "Não" : item.valor !== null && typeof item.valor === "object" ? JSON.stringify(item.valor) : item.valor == null ? "Não informado" : String(item.valor);
       return [`${nomeCampoExame(campo)}: ${valor}`];
     });
@@ -36,7 +37,7 @@ function valorHistorico(valor: unknown, formato: ExameResultado["formatoSnapshot
   const texto = (chave: string) => dado[chave] == null ? null : String(dado[chave]);
   return `${resultadoExameSanitario({ formatoSnapshot: formatoPreservado, resultadoNumero: texto("resultadoNumero"), resultadoTexto: texto("resultadoTexto"), resultadoOpcao: texto("resultadoOpcao") })}${dado.status === "ANULADO" ? " · Anulado" : ""}`;
 }
-export function HistoricoExame({ exameId, propriedadeId, formato }: { exameId: string; propriedadeId?: number; formato: ExameResultado["formatoSnapshot"] }) {
+export function HistoricoExame({ exameId, propriedadeId, formato, tipoExameId }: { exameId: string; propriedadeId?: number; tipoExameId?: unknown; formato: ExameResultado["formatoSnapshot"] }) {
   const [pagina, setPagina] = useState(1);
   const [dados, setDados] = useState<DadosHistorico | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -46,7 +47,7 @@ export function HistoricoExame({ exameId, propriedadeId, formato }: { exameId: s
     {erro ? <><ErrorBox erro={erro} /><Button variant="outline" onClick={() => setRetry((v) => v + 1)}>Tentar novamente</Button></> : !dados ? <EsqueletoLista label="Carregando histórico" /> : <>
       {dados.itens.map(a => <article key={a.id} className="sanitario-historico-evento">
         <header><h4>{tituloEvento(a.acao)}</h4><p>{a.autor?.nome ?? "Autor não registrado"} · {dataHoraSanitaria(a.criadoEm)}</p></header>
-        <dl className="sanitario-dados"><div><dt>Antes</dt><dd>{eventoServico(a.acao) ? valorServico(a.antes) : valorHistorico(a.antes, formato)}</dd></div><div><dt>Depois</dt><dd>{eventoServico(a.acao) ? valorServico(a.depois) : valorHistorico(a.depois, formato)}</dd></div></dl>
+        <dl className="sanitario-dados"><div><dt>Antes</dt><dd>{eventoServico(a.acao) ? valorServico(a.antes) : valorHistorico(a.antes, formato, tipoExameId)}</dd></div><div><dt>Depois</dt><dd>{eventoServico(a.acao) ? valorServico(a.depois) : valorHistorico(a.depois, formato, tipoExameId)}</dd></div></dl>
         <p className="sanitario-historico-motivo"><strong>Motivo:</strong> {a.motivo ?? "Não registrado"}</p>
       </article>)}
       {!dados.itens.length && <Empty>Nenhuma alteração registrada.</Empty>}

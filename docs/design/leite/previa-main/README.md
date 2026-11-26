@@ -2,11 +2,11 @@
 
 ## Referência da revisão de produto — 24/10/2026
 
-A [prévia de revisão de produto](revisao-produto/index.html#ordenhas) apresenta a reorganização dos 18 comentários, configuração de colostro e estoque compartilhado, conforme o [contrato vigente](../../../pecuaria/leite.md#interface-de-produção). A referência foi incorporada à V5; este arquivo conserva a prévia ilustrativa e sua proveniência, não representa a aplicação conectada. O contrato vigente distingue o que foi implementado.
+A [prévia de revisão de produto](revisao-produto/index.html#ordenhas) apresenta a reorganização dos 18 comentários, configuração de colostro e estoque compartilhado, conforme o [registro da época](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite.md). A referência foi incorporada à V5; este arquivo conserva a prévia ilustrativa e sua proveniência, não representa a aplicação conectada.
 
 Essa versão é independente e preserva os arquivos da prévia anterior abaixo. Dados e efeitos são ilustrativos, em memória; nenhuma chamada à API ou escrita no banco faz parte do protótipo. Os limites e fluxos da nova proposta ficam no [README próprio](revisao-produto/README.md).
 
-O Impeccable e as referências reais de Rebanho/Nutrição orientam esta rodada. A skill `frontend-design`, citada em `AGENTS.md`, não foi localizada na instalação atual; não se declara revisão por essa skill.
+O Impeccable e as referências reais de Rebanho/Nutrição orientam esta rodada. Naquela revisão, a skill `frontend-design` estava indisponível; não se declara revisão por essa skill.
 
 ## Prévia anterior
 
@@ -14,7 +14,7 @@ Mockup descartável e navegável. Não altera rotas, serviços, permissões ou d
 
 ## Comentários incorporados à prévia
 
-Os ajustes abaixo foram solicitados na revisão do navegador e estão demonstrados neste HTML. Após aprovação, foram incorporados ao código da V5 conforme o [contrato funcional](../../../pecuaria/leite.md). As [capturas dos componentes reais](../implementacao-main/ajustes-origens-tanques/README.md) usam fixtures; a execução das migrations, integração e homologação continuam separadas deste mockup.
+Os ajustes abaixo foram solicitados na revisão do navegador e estão demonstrados neste HTML. Após aprovação, foram incorporados ao código da V5 conforme o [contrato funcional](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite.md). As [capturas dos componentes reais](../implementacao-main/ajustes-origens-tanques/README.md) usam fixtures; a execução das migrations, integração e homologação continuam separadas deste mockup.
 
 - Aferições novas pré-selecionam animais com **finalidade Leite e DEL > 0 na data da ordenha**. DEL 0, ausência de evidência e outra finalidade ficam fora do critério. A seleção pode ser conferida em um painel próprio. Origens já salvas conservam seu snapshot e exigem edição explícita; não são recalculadas ao abrir a tela. Os dados de finalidade/parto desta demonstração são fictícios e não comprovam elegibilidade real.
 - O operador **escolhe o tanque** e vê somente o formulário correspondente. Uma ordenha pode usar um único tanque; os demais cadastrados são opções, não aferições obrigatórias. Trocar de tanque conserva seus rascunhos por data/ordenha/tanque. O resumo conta aferições salvas e não anuncia cobertura completa de todos os tanques.
@@ -40,7 +40,7 @@ A produção diária e mensal, as retiradas físicas, os resultados de qualidade
 
 O cenário inicial usa 23/10/2026, três ordenhas e controle individual mensal. Recarregar restaura todos os exemplos. As rotinas secundárias continuam resumidas ao recorte do protótipo.
 
-Referências funcionais: [contrato de leite](../../../pecuaria/leite.md), [qualidade](../../../pecuaria/leite-qualidade.md), [comercialização](../../../pecuaria/leite-comercial.md) e [relatórios](../../../pecuaria/leite-relatorios.md), comparados à interface atual da branch. Este HTML aproxima os fluxos para revisão; não é uma cópia executável dos componentes React nem comprova suas regras no servidor.
+Referências usadas na entrega: [contrato de leite](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite.md), [qualidade](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite-qualidade.md), [comercialização](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite-comercial.md) e [relatórios](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite-relatorios.md), comparados à interface atual da branch. Este HTML aproxima os fluxos para revisão; não é uma cópia executável dos componentes React nem comprova suas regras no servidor.
 
 ## Verificação
 

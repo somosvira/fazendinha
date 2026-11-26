@@ -1,6 +1,6 @@
 # Pesquisa de interfaces agro para o Terrano
 
-Pesquisa realizada em **30/10/2026** para orientar o [README do frontend](../../client/README.md). O foco é organização, hierarquia, legibilidade e trabalho operacional em pecuária de leite/corte, com referências complementares de gestão rural e financeiro.
+Pesquisa realizada em **30/10/2026** durante a revisão da interface. O foco é organização, hierarquia, legibilidade e trabalho operacional em pecuária de leite/corte, com referências complementares de gestão rural e financeiro.
 
 ## Escopo e força da evidência
 
@@ -73,7 +73,7 @@ Animal, lote, pesagem, tratamento, parto e produção são âncoras de navegaç�
 
 O setor também tem interfaces com fonte pequena, cores demais, menus profundos e formulários com dezenas de campos. A repetição em vários concorrentes não é prova de qualidade. Também não há base nesta pesquisa para afirmar uma preferência universal de produtores por tabela, mapa, cartão ou tema escuro.
 
-## Confronto com o Terrano atual
+## Comparação com as telas observadas em 30/10/2026
 
 | Superfície local observada | Achado | Consequência para a direção |
 |---|---|---|
@@ -92,10 +92,10 @@ Foram consultados chats disponíveis neste app, selecionados pelo vínculo com `
 
 | Chat | Diretriz identificada | Limite ou atualização |
 |---|---|---|
-| **Avaliar UI/UX do financeiro** | Retirar descrições pequenas e rodapés explicativos; organizar resultados antes de avisos/controles; evitar collapse nas seções centrais; equilibrar texto, gráfico e rótulo; preservar cartões/tabela | Essas decisões reaparecem em Leite, Reprodução, visitas e relatórios, portanto devem orientar a base compartilhada |
+| **Avaliar UI/UX do financeiro** | Retirar descrições pequenas e rodapés explicativos; organizar resultados antes de avisos/controles; evitar collapse nas seções centrais; equilibrar texto, gráfico e rótulo; preservar cartões/tabela | O alcance depende do fluxo. Em Geral da ficha animal, os quatro grupos preservam o recolhimento aprovado |
 | **Avaliar UI/UX do financeiro** | Unidades em cada medida; ajuda contextual no item; período com calendário; prévia de PDF por ícone; documento completo e visual; templates de filtros | Os detalhes não devem ser apagados: precisam de lugar apropriado. Os templates atuais têm persistência local, não compartilhamento automaticamente |
 | **Avaliar UI/UX do financeiro** — turnos anteriores também consultados | Grid para reduzir rolagem; reunir totais e gráfico do mesmo assunto; biblioteca shadcn nos controles; superfícies normais nos dropdowns; sidebar com identidade discreta | Houve exploração e revisão de cores ao longo da conversa. Não somar propostas antigas contraditórias nem remover títulos úteis com base em um comentário isolado; prevalecem a direção atual e os pedidos posteriores de simplificação |
-| **Corrigir componente de busca** | Busca deve encontrar registros e navegar para o destino exato; manutenção na mesma mudança; idade/peso compactos no cabeçalho; data separada; eliminar indicador repetido e aparência falsa de botão | Preservar o catálogo, limites e gates descritos no contrato da busca. O seletor de animais da referência não representa busca global |
+| **Corrigir componente de busca** | Busca deve encontrar registros e navegar para o destino exato; manutenção na mesma mudança; idade/peso compactos no cabeçalho; data separada; eliminar indicador repetido e aparência falsa de botão | Preservar o catálogo, limites e gates descritos no contrato da busca. Na ficha atual, idade fica em Identificação e pesagens em Peso. O seletor da referência tem finalidade distinta da busca global |
 | **Ampliar IA e criar bot WhatsApp** | Conversa com mais espaço; fontes discretas; distinguir ditado e conversa por voz; manter alternativas de entrada | O assistente ajuda no contexto; não deve virar requisito para encontrar dados e operar a interface. Não reativar o bot antigo pela revisão visual |
 | **Atualiza branch principal** | Peso de secagem opcional, sem duplicação; correção auditada; evidência e vínculo histórico preservados | A revisão visual não pode tornar peso obrigatório, automatizar encerramento ou esconder consequências das correções |
 
@@ -105,4 +105,4 @@ Histórico de conversa informa intenção; o estado disponível continua depende
 
 O Terrano não precisa escolher entre ser completo e ser simples. Precisa distinguir **o que o usuário precisa reconhecer agora**, **o que precisa consultar durante a tarefa** e **o que precisa conferir em detalhe**.
 
-As regras de aplicação e os critérios de aceite estão no [README do frontend](../../client/README.md), evitando dois guias normativos com recomendações duplicadas. Esta pesquisa registra as evidências que sustentam essa direção; não aprova uma interface, não altera contratos de domínio e não certifica os produtos comparados.
+Para novas propostas, siga o [produto](../../client/PRODUCT.md), o [design](../../client/DESIGN.md) e o [processo de aprovação](../../AGENTS.md#fluxo-de-alterações-visuais). Esta pesquisa registra as evidências que sustentam essa direção; não aprova uma interface, não altera contratos de domínio e não certifica os produtos comparados.
