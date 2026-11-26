@@ -2,7 +2,7 @@
 
 A página em `/gerencial` expõe informações já registradas: caixa realizado, nutrição, estoque atual, custos diretos por finalidade e acompanhamentos pendentes. A página inicial dos perfis continua a mesma. A entrega acrescenta interface, navegação, API de leitura e cálculos de apresentação. Não altera schema, migrations, regras financeiras, valorização de estoque ou gravação de fechamentos. Não cria despesas, pagamentos, consumos, parâmetros persistidos ou centros de custo.
 
-A produção V5 também oferece leitura de litros medidos e cobertura por dia/sítio, com ligação ao detalhe do período, pelo serviço leiteiro próprio. A ausência de folhas não comprova produção zero; consulte [relatórios de leite](pecuaria/leite-relatorios.md).
+A produção V5 também oferece leitura de litros medidos e cobertura por dia/sítio, com ligação ao detalhe do período, pelo serviço leiteiro próprio. A ausência de folhas não comprova produção zero; consulte [relatórios de leite](../server/src/services/pecuaria/leite/relatoriosleite.ts).
 
 ## Consulta e fontes existentes
 

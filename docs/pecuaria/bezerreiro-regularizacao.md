@@ -2,7 +2,7 @@
 
 Este procedimento adapta **somente a permanência atual comprovada** de animais que já ocupam um lote escolhido explicitamente para o Bezerreiro. Não reconstrói automaticamente intervalos históricos encerrados. O executor é a API autenticada do módulo; a ferramenta de prévia não abre conexão com o banco nem envia comandos.
 
-O contrato operacional permanece em [Bezerreiro](bezerreiro.md). `PerfilBezerreiro` é único por lote. Configurar um lote ocupado exige conferência explícita de suas localizações atuais e justificativa; não cria movimentações fictícias. A execução autorizada cria/reutiliza o perfil e regulariza as participações na mesma transação, sem fase alimentar presumida. Não usar SQL manual para contornar essa conferência.
+O contrato operacional permanece em [Bezerreiro](../guia/04-pecuaria-rebanho.md). `PerfilBezerreiro` é único por lote. Configurar um lote ocupado exige conferência explícita de suas localizações atuais e justificativa; não cria movimentações fictícias. A execução autorizada cria/reutiliza o perfil e regulariza as participações na mesma transação, sem fase alimentar presumida. Não usar SQL manual para contornar essa conferência.
 
 ## Entradas e proveniência
 

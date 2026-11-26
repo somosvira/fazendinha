@@ -1,8 +1,6 @@
-# O que o aplicativo organiza
+# Como usar o Fazendinha
 
-O Fazendinha, apresentado na interface com a marca Terrano, conecta o que aconteceu na fazenda ao rebanho, aos materiais e ao dinheiro. O ponto de partida é um fato identificado: uma compra, uma aplicação, um parto, uma ordenha ou um pagamento. Os saldos e estados são consequências desses fatos e de suas datas.
-
-Este guia descreve o código da V5 integrado à `main` em `b63931e4`. É uma explicação de produto apoiada em rotas, serviços, interface, schema, SQL e testes existentes. Não representa uma nova execução de todos os fluxos nem atesta o ambiente da fazenda. Exemplos numéricos são didáticos. As lacunas têm capítulo próprio; propostas não são funcionalidades disponíveis.
+Escolha a rotina pelo que aconteceu na fazenda. Comece identificando o sítio e a data do fato. Para investigar um indicador, faça o caminho inverso e abra os registros do período.
 
 ## Os dois grupos de leitura
 
@@ -16,14 +14,14 @@ Este guia descreve o código da V5 integrado à `main` em `b63931e4`. É uma exp
 | Pecuária | Sanidade | Quais ocorrências, exames, aplicações, tarefas e carências foram registrados? |
 | Pecuária | Nutrição | Qual dieta foi planejada, qual consumo foi confirmado e como foi atribuído? |
 
-Estoque aparece sob Financeiro neste guia para organizar a leitura, mas é uma base compartilhada. Reprodução, Sanidade e Nutrição usam os mesmos produtos e movimentos. Produção é acessada pelo item **Leite** do menu. Visitas e protocolos conectam diferentes eixos; Sítios e Contas/Acessos são serviços transversais.
+Estoque aparece sob Financeiro neste guia para organizar a leitura, mas é uma base compartilhada. Reprodução, Sanidade e Nutrição usam os mesmos produtos e movimentos. Produção é acessada pelo item **Leite** do menu. Uma visita ou um protocolo pode reunir atividades de mais de um módulo.
 
 ## Do acontecimento ao indicador
 
 1. Identifique o sítio, a data e o responsável pelo fato.
 2. Registre o objeto correto: compra, pagamento, movimentação, tentativa, exame, ordenha ou consumo.
 3. Confira a prévia quando o fluxo a oferece. Prévia e rascunho não confirmam efeitos.
-4. Confirme. O servidor valida permissão, contexto temporal, versões, dependências e disponibilidade.
+4. Confirme. Confira o resultado antes de fazer outro lançamento.
 5. Consulte o resultado e seus vínculos. O mesmo fato pode aparecer na ficha, no protocolo e na visita sem existir três vezes.
 6. Corrija pelo fluxo do domínio, com motivo. Anulação ou estorno preserva o original e trata os efeitos dependentes.
 
@@ -51,12 +49,4 @@ Consultas vivas refletem fatos atualmente válidos, inclusive correções retroa
 
 ## Acesso e trabalho diário
 
-A sessão identifica a pessoa. Área e ação autorizam consulta, lançamento, exportação e gestão de acessos. O servidor resolve o sítio e a visibilidade dos valores. Um funcionário pode registrar um fato operacional sem receber os documentos financeiros completos relacionados a ele. A política dos custos operacionais atribuídos da Pecuária é distinta do acesso a preço, receita e documentos do Financeiro.
-
-O assistente de consulta existente oferece ajuda e consultas financeiras de leitura. Não altera os fatos e não é um assistente operacional completo dos sete eixos. O bot anterior, `/ia` e WhatsApp permanecem suspensos. Agricultura, Cultivo, Equipe/Ponto e laboratório/FIV não são módulos operacionais atuais.
-
-## Fontes e uso deste guia
-
-Os capítulos seguem conceito → rotina → interface → regras/efeitos → implementação. Os contratos detalhados continuam no [índice técnico](../README.md). O [system design](../system-design.md) explica as relações entre os domínios. O [modelo de estados](../pecuaria/estados-animal.md) define a leitura temporal do animal. Para estudar possíveis evoluções, consulte [lacunas](../lacunas.md).
-
-O HTML é um documento local gerado destes capítulos, com navegação, busca, diagramas e exemplos. Não se conecta ao banco, não executa ações no aplicativo e não altera as marcações dos roteiros de homologação.
+A sessão identifica a pessoa. Área e ação autorizam consulta, lançamento, exportação e gestão de acessos. Escolha o sítio onde o fato ocorreu. O acesso da sua conta determina quais valores você pode consultar. Um funcionário pode registrar um fato operacional sem receber os documentos financeiros completos relacionados a ele. A política dos custos operacionais atribuídos da Pecuária é distinta do acesso a preço, receita e documentos do Financeiro.
