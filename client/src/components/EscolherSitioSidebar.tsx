@@ -9,26 +9,47 @@ import { EsqueletoCampo } from "./Esqueleto";
 
 const SELETOR_SIDEBAR = '[aria-label="Propriedade / sítio ativo"]';
 
+const MENU_CELULAR = 'button[aria-label="Abrir menu"]';
+const visivel = (el: HTMLElement | null | undefined): el is HTMLElement => !!el && el.getClientRects().length > 0;
+// Há um seletor na sidebar do desktop e outro no menu do celular: vale o que está à vista.
+const seletorVisivel = () => [...document.querySelectorAll<HTMLElement>(SELETOR_SIDEBAR)].find(el => visivel(el));
+
 /** Abre o seletor de sítio da sidebar (Radix abre no pointerdown). */
-function abrirSeletorDaSidebar() {
-  const gatilho = document.querySelector<HTMLElement>(SELETOR_SIDEBAR);
-  if (!gatilho) return;
+function abrirGatilho(gatilho: HTMLElement) {
   gatilho.focus();
   gatilho.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, button: 0, pointerType: "mouse" }));
 }
 
+/**
+ * No desktop o seletor está à vista; no celular a sidebar fica no menu ☰:
+ * abre o menu e, quando o seletor aparecer, abre o seletor.
+ */
+function abrirSeletorDaSidebar() {
+  const gatilho = seletorVisivel();
+  if (gatilho) { abrirGatilho(gatilho); return; }
+  const menu = document.querySelector<HTMLElement>(MENU_CELULAR);
+  if (!visivel(menu)) return;
+  menu.click();
+  // O menu desliza da esquerda: só abre o seletor quando ele parou dentro da tela,
+  // senão o clique cai durante a animação e o Radix fecha o seletor na hora.
+  let tentativas = 0, ultimoX = Number.NaN;
+  const esperar = () => {
+    const noMenu = seletorVisivel();
+    const x = noMenu ? noMenu.getBoundingClientRect().left : Number.NaN;
+    if (noMenu && x >= 0 && x === ultimoX) { abrirGatilho(noMenu); return; }
+    ultimoX = x;
+    if (++tentativas < 90) requestAnimationFrame(esperar);
+  };
+  requestAnimationFrame(esperar);
+}
+
 /** Aviso padrão quando a área exige um sítio e a sidebar está em Consolidado. */
 export function AvisoEscolherSitio() {
-  const [temSeletor, setTemSeletor] = useState(false);
-  useEffect(() => {
-    const gatilho = document.querySelector<HTMLElement>(SELETOR_SIDEBAR);
-    setTemSeletor(!!gatilho && gatilho.getClientRects().length > 0);
-  }, []);
   return <section className="escolher-sitio-sidebar" aria-label="Escolha do sítio">
     <span className="escolher-sitio-simbolo"><MapPin size={24} aria-hidden /></span>
     <h2>Escolha um sítio na barra lateral</h2>
     <p>Esta área mostra um sítio por vez.</p>
-    {temSeletor && <Button variant="outline" onClick={abrirSeletorDaSidebar}>Escolher sítio</Button>}
+    <Button variant="outline" onClick={abrirSeletorDaSidebar}>Escolher sítio</Button>
   </section>;
 }
 
@@ -72,7 +93,8 @@ export function ExigeSitioDoShell({ onSelecionar }: { onSelecionar?: (id: number
  * Consulta que exige um sítio, lendo sempre o escopo da sidebar.
  * Com um único sítio ativo, consulta esse sítio; com vários em Consolidado, orienta a escolha na sidebar.
  */
-export function ConsultaDoSitio({ children, cabecalho }: { children: (sitioId: number) => ReactNode; cabecalho?: ReactNode }) {
+/** `cabecalhoAviso` só aparece junto do aviso: a página sem sítio ainda diz onde a pessoa está e como voltar. */
+export function ConsultaDoSitio({ children, cabecalho, cabecalhoAviso }: { children: (sitioId: number) => ReactNode; cabecalho?: ReactNode; cabecalhoAviso?: ReactNode }) {
   const global = getPropriedadeAtiva();
   const { sitios, erro, tentarNovamente } = useSitiosAtivos(global == null);
   // Trocar o sítio na sidebar remonta a área: rascunhos e conferências do sítio anterior não sobrevivem.
@@ -83,6 +105,6 @@ export function ConsultaDoSitio({ children, cabecalho }: { children: (sitioId: n
     {sitios === null ? <EstadoSitios erro={erro} tentarNovamente={tentarNovamente} />
       : unico ? <div key={unico.id}>{children(unico.id)}</div>
       : !sitios.length ? <Empty>Nenhum sítio disponível para consulta.</Empty>
-      : <AvisoEscolherSitio />}
+      : <>{cabecalhoAviso}<AvisoEscolherSitio /></>}
   </div>;
 }

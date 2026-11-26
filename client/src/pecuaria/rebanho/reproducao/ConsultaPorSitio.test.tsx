@@ -51,3 +51,29 @@ it("trocar o sítio na sidebar descarta o estado da área do sítio anterior", (
   rerender(<ConsultaPorSitio>{id => <Rascunho id={id} />}</ConsultaPorSitio>);
   expect((screen.getByLabelText("Rascunho 8") as HTMLInputElement).value).toBe("");
 });
+it("mostra o cabeçalho próprio só junto do aviso de escolher sítio", async () => {
+  vi.mocked(listarPropriedades).mockResolvedValue([sitio(7, "Escola"), sitio(8, "Destino")]);
+  render(<ConsultaPorSitio cabecalhoAviso={<h1>Programar protocolo</h1>}>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
+  await screen.findByRole("heading", { name: "Escolha um sítio na barra lateral" });
+  expect(screen.getByRole("heading", { name: "Programar protocolo" })).toBeTruthy();
+});
+it("no celular, Escolher sítio abre o menu e depois o seletor que está à vista", async () => {
+  vi.mocked(listarPropriedades).mockResolvedValue([sitio(7, "Escola"), sitio(8, "Destino")]);
+  // jsdom não faz layout: marca como visível só o que recebe data-visivel.
+  const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (this: HTMLElement) { return (this.dataset.visivel ? [{}] : []) as unknown as DOMRectList; });
+  const abriuSeletor = vi.fn();
+  function Casca() {
+    const [aberto, setAberto] = useState(false);
+    return <>
+      <button aria-label="Propriedade / sítio ativo">desktop escondido</button>
+      <button aria-label="Abrir menu" data-visivel="1" onClick={() => setAberto(true)}>☰</button>
+      {aberto && <button aria-label="Propriedade / sítio ativo" data-visivel="1" onPointerDown={abriuSeletor}>no menu</button>}
+      <ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>
+    </>;
+  }
+  render(<Casca />);
+  fireEvent.click(await screen.findByRole("button", { name: "Escolher sítio" }));
+  await vi.waitFor(() => expect(abriuSeletor).toHaveBeenCalledTimes(1));
+  expect(screen.getByText("no menu")).toBeTruthy();
+  rects.mockRestore();
+});

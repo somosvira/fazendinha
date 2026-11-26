@@ -161,7 +161,7 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   if (caminho === "/pecuaria/reproducao/programacoes/nova") {
     const retorno = new URLSearchParams(consultaUrl).get("retorno");
     const voltar = () => navegarPara(retorno?.startsWith("/pecuaria/") ? retorno : urlConsultaComSitio("/pecuaria/reproducao?rotina=programacoes", propriedadeId ?? undefined));
-    return <PaginaFinanceira><ConsultaPorSitio>{sitioId => <ConteudoReproducao secao="programacoes" propriedadeId={sitioId} podeLancar={podeLancar} paginaProgramacao solicitarProgramacao onCancelarProgramacao={voltar}/>}</ConsultaPorSitio></PaginaFinanceira>;
+    return <PaginaFinanceira><ConsultaPorSitio cabecalhoAviso={<PageHeader titulo="Programar protocolo" acao={<Button secondary onClick={voltar}>Voltar</Button>}/>}>{sitioId => <ConteudoReproducao secao="programacoes" propriedadeId={sitioId} podeLancar={podeLancar} paginaProgramacao solicitarProgramacao onCancelarProgramacao={voltar}/>}</ConsultaPorSitio></PaginaFinanceira>;
   }
   const detalheRota = caminho.match(/^\/pecuaria\/reproducao\/(programacoes|partos)\/([^/]+)\/?$/);
   if(detalheRota) {
