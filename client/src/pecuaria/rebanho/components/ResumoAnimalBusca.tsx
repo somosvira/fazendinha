@@ -9,6 +9,7 @@ import { periodoProducao, useHistoricoProdutivo } from "../leite/consulta-produc
 import { resumirAfericoesIndividuais } from "../leite/producao-individual.calc";
 import type { AnimalFicha, AnimalResumo } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
+import { rotuloTipoPesoSecagem as rotuloTipoPesagem } from "../reproducao/peso-secagem";
 
 const REPRODUCAO: Record<string, string> = { GESTANTE: "Gestante", VAZIA: "Vazia", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "Aguardando diagnóstico" };
 const litros = (v: number | null | undefined) => v == null ? "—" : `${v.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} L`;
@@ -59,7 +60,7 @@ export function ResumoAnimalBusca({ animal, onVoltar, onVerMais }: { animal: Ani
     </dl>
     {erro ? <p role="alert" className="busca-animais-aviso">Não foi possível carregar o histórico deste animal. A ficha completa continua disponível.</p> : !ficha ? <p role="status" className="busca-animais-estado">Carregando histórico…</p> : <div className="busca-animal-historico">
       <section aria-label="Movimentações recentes"><h4>Movimentações recentes</h4>{localizacoes.length ? <ul>{localizacoes.map(l => <li key={l.id}><strong>{l.lote?.nome ?? "Sem lote"}</strong><span>{l.propriedade?.nome ?? ""}</span><time>{formatarDataBR(l.desde)}{l.ate ? ` a ${formatarDataBR(l.ate)}` : " · atual"}</time></li>)}</ul> : <p>Nenhuma movimentação registrada.</p>}</section>
-      <section aria-label="Pesagens recentes"><h4>Pesagens recentes</h4>{pesagens.length ? <ul>{pesagens.map(p => <li key={p.id}><strong>{p.pesoKg.toLocaleString("pt-BR")} kg</strong><span>{p.tipo}</span><time>{formatarDataBR(p.data)}</time></li>)}</ul> : <p>Nenhuma pesagem registrada.</p>}</section>
+      <section aria-label="Pesagens recentes"><h4>Pesagens recentes</h4>{pesagens.length ? <ul>{pesagens.map(p => <li key={p.id}><strong>{p.pesoKg.toLocaleString("pt-BR")} kg</strong><span>{rotuloTipoPesagem(p.tipo)}</span><time>{formatarDataBR(p.data)}</time></li>)}</ul> : <p>Nenhuma pesagem registrada.</p>}</section>
     </div>}
   </section>;
 }

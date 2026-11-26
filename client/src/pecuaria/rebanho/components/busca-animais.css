@@ -21,6 +21,9 @@
 .busca-animais-resultados tbody tr{cursor:pointer}
 .busca-animais-resultados tbody tr:nth-child(even){background:var(--muted)}
 .busca-animais-resultados tbody tr:is(:hover,[data-selecionado]){background:var(--fin-table-hover,#edf5f3)}
+/* A linha das setas precisa se distinguir das alternadas: fundo da cor primária e marca à esquerda. */
+.busca-animais-resultados tbody tr[data-selecionado]{background:color-mix(in srgb,var(--primary) 12%,var(--card))}
+.busca-animais-resultados tbody tr[data-selecionado]>td:first-child{box-shadow:inset 3px 0 0 var(--primary)}
 .busca-animais-resultados td:first-child{min-width:175px;max-width:260px;white-space:normal;overflow-wrap:anywhere}
 .busca-animais-resultados td button{padding:0;border:0;background:transparent;color:var(--primary);font:inherit;font-weight:650;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .busca-animais-resultados td button:disabled{cursor:default;color:var(--muted-foreground)}
