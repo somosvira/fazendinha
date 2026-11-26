@@ -3,7 +3,7 @@ import * as registros from '../../src/services/pecuaria/reproducao/registros.js'
 import * as iatf from '../../src/services/pecuaria/reproducao/iatf.js';
 import { tentativaSchema, avaliacaoSchema, partoSchema, protocoloSchema, programacaoSchema } from '../../src/services/pecuaria/reproducao/schemas.js';
 import { criarTipoExame } from '../../src/services/pecuaria/sanidade/exames.js';
-import { criarDoenca } from '../../src/services/pecuaria/sanidade/ocorrencias.js';
+import { registrarDoencaPadrao } from './catalogos.js';
 import { criarPoliticaElegibilidade, vincularPoliticaCiclo } from '../../src/services/pecuaria/reproducao/elegibilidade.js';
 import { registrarToqueAptidao } from '../../src/services/pecuaria/reproducao/toque-aptidao.js';
 import { FINALIDADE_APTIDAO } from '../../src/services/pecuaria/reproducao/toque-aptidao.calc.js';
@@ -30,7 +30,7 @@ async function catalogos(c: Contexto) {
     { codigo: 'SEXO_FETAL', rotulo: 'Sexo fetal', tipo: 'OPCAO', obrigatorio: false, opcoes: ['M', 'F'] },
     { codigo: 'ANOTACAO', rotulo: 'Observação', tipo: 'TEXTO', obrigatorio: false },
   ] }, uid, 'REPRODUTIVO'));
-  await c.registro('doenca:Retenção de placenta', id => prisma.doenca.findFirst({ where: id ? { id } : { nome: 'Retenção de placenta' } }), () => criarDoenca('Retenção de placenta', null, uid));
+  await registrarDoencaPadrao(c, 'Retenção de placenta');
   for (const sitio of ['Principal', 'Arrendado', 'Test']) {
     const propriedadeId = c.numero(`sitio:${sitio}`);
     await acaoPecuaria(c, `politica:elegibilidade:${sitio}`, () => criarPoliticaElegibilidade({ chave: chave(`politica:elegibilidade:${sitio}`), propriedadeId, vigenteDesde: c.dias(-700), parametros: {

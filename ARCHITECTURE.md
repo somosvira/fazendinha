@@ -27,7 +27,7 @@ O deploy usa exclusivamente Cloudflare Workers: interface e API compartilham o m
 
 O schema usa `public` para Financeiro/Estoque/Auth/Sítios e `pecuaria` para os fatos pecuários. IDs e relações seguem o schema, sem inferir um tipo global único de identificador. SQL das migrations acrescenta constraints, índices parciais e catálogos que o Prisma não representa integralmente. `migrate deploy` aplica a cadeia; `db push` não é equivalente.
 
-A estrutura versionada parte da baseline `20261025000000_base_unificada`, consolidada na V5. A cadeia anterior permanece no Git; nomes de migrations antigas em evidências são proveniência histórica, não arquivos a executar nesta árvore. Uma instalação com dados da cadeia anterior precisa de reconciliação própria, conforme [deploy](DEPLOY.md#banco-e-bootstrap). Evoluções usam migrations incrementais, sem reescrever a baseline aplicada. `RegistroChuva` não integra o modelo atual.
+A estrutura versionada parte da baseline `20261124170000_base_unificada`, consolidada na V5. A cadeia anterior permanece no Git; nomes de migrations antigas em evidências são proveniência histórica, não arquivos a executar nesta árvore. Uma instalação com dados da cadeia anterior precisa de reconciliação própria, conforme [deploy](DEPLOY.md#banco-e-bootstrap). Evoluções usam migrations incrementais, sem reescrever a baseline aplicada. `RegistroChuva` não integra o modelo atual.
 
 Nenhum entrypoint executa automaticamente os bootstraps de propriedade/dono. São comandos explícitos em `server/src/scripts/`. Aplicação de migrations em dev vem do script `dev` do servidor, não de `app.ts`.
 

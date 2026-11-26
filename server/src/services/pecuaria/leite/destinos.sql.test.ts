@@ -1,7 +1,6 @@
-import { contemSql, funcaoSql } from "../../../test/sql-baseline.js";
-import { readFileSync } from "node:fs";
+import { baselineSql, contemSql, funcaoSql } from "../../../test/sql-baseline.js";
 import { describe, expect, it } from "vitest";
-const sql = readFileSync(new URL("../../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
+const sql = baselineSql;
 const guarda = funcaoSql("proteger_fatos_destino_leite");
 describe("contrato SQL de imutabilidade dos destinos internos", () => {
   it("protege ambas as tabelas antes de update/delete, inclusive leite comum sem vínculo clínico", () => {
