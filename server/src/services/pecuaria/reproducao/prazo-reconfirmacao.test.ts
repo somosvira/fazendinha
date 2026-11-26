@@ -41,4 +41,16 @@ describe("tarefa de reconfirmação por primeiro DG positivo",()=>{
   expect(f.tx.demandaAcompanhamentoReprodutivo.update).not.toHaveBeenCalled();
   expect(f.tx.tarefaProtocolo.update.mock.calls.every(([v])=>v.data.previsaoPendente)).toBe(true);
  });
+ it("desvincula origem perdida e preserva data manual; ao recuperar, restaura vínculo sem reprogramar",async()=>{
+  const f=fixture("NEGATIVO");
+  Object.assign(f.tarefa,{demandaAcompanhamento:f.demanda,previsaoPendente:false,previsaoOriginal:dia("2026-02-21"),previstaPara:dia("2026-02-25")});
+  await reconciliarPrevisoesReconfirmacaoTx(f.tx as unknown as Prisma.TransactionClient,"a",3);
+  expect(f.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({tarefaId:null})}));
+  expect(f.tx.tarefaProtocolo.update).not.toHaveBeenCalled();
+  Object.assign(f.tarefa,{demandaAcompanhamento:null});
+  f.demanda.exameOrigem.resultados[0].valor="POSITIVO";
+  await reconciliarPrevisoesReconfirmacaoTx(f.tx as unknown as Prisma.TransactionClient,"a",3);
+  expect(f.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenLastCalledWith(expect.objectContaining({data:expect.objectContaining({tarefaId:"task"})}));
+  expect(f.tx.tarefaProtocolo.update).not.toHaveBeenCalled();
+ });
 });

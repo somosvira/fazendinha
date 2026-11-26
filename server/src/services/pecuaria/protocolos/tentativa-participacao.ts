@@ -7,6 +7,7 @@ import { diaIatf } from "../reproducao/horarios.calc.js";
 import { transacaoPecuaria } from "../transacao.js";
 import {
   criarDemandasDoFatoTx,
+  primeiroDiagnosticoPositivoTx,
   reconciliarDemandasAnimalTx,
   reconciliarPrevisoesDiagnosticoTx,
   reconciliarPrevisoesReconfirmacaoTx,
@@ -233,7 +234,7 @@ export async function vincularTentativaParticipacao(
         );
         // O primeiro DG pode ter sido registrado antes de o vínculo factual ser confirmado.
         const gestacao = await tx.gestacaoAnimal.findFirst({where:{tentativaId:t.id,animalId:t.animalId,propriedadeId:input.propriedadeId,status:"VALIDO",encerradaEm:null}});
-        const primeiroDg = gestacao && await tx.exameAnimal.findFirst({where:{animalId:t.animalId,propriedadeId:input.propriedadeId,status:"VALIDO",realizacao:"REALIZADO",finalidades:{has:"DIAGNOSTICO"},interpretacao:{gestacaoId:gestacao.id},resultados:{some:{campo:"CONCLUSAO_GESTACIONAL",vigente:true,valor:{equals:"POSITIVO"}}}},orderBy:[{data:"asc"},{criadoEm:"asc"},{id:"asc"}]});
+        const primeiroDg = gestacao && await primeiroDiagnosticoPositivoTx(tx, t.animalId, gestacao.id, input.propriedadeId);
         if (gestacao && primeiroDg) await criarDemandasDoFatoTx(tx,{gestacaoId:gestacao.id,animalId:t.animalId,propriedadeId:input.propriedadeId,data:primeiroDg.data,exameOrigemId:primeiroDg.id},usuarioId);
         await reconciliarDemandasAnimalTx(tx, t.animalId, usuarioId);
         await auditar(tx, {

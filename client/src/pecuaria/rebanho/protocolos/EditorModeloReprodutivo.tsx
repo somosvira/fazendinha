@@ -7,23 +7,43 @@ import { PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { listarCategorias } from "../../../estoque/api";
 import type { Categoria } from "../../../financeiro/novo-api";
 import { rotuloUnidade, type UnidadeMedida } from "../../../lib/unidades";
-import { getUsuario } from "../../../lib/auth";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { BuilderEtapasProtocolo, type CargaAcoesCadastro } from "./BuilderEtapasProtocolo";
-import { CamposReferenciasCusto } from "./CamposReferenciasCusto";
 import { momentoParaCadastro } from "./CamposMomentoAcao";
 import type { CadastroProtocoloMeta } from "./cadastros-api";
-import { etapaParaCadastro, PlanoEtapa, OrientacaoTemporalEtapa, type EtapaIatf } from "../reproducao/Iatf";
+import { etapaParaCadastro, PlanoEtapa, type EtapaIatf } from "../reproducao/Iatf";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-export function EditorModeloReprodutivo({ origemCadastro, cargaPersistida, etapas, setEtapas, setAcoesCompletas, acoesCompletas, indiceErroCadastro, erroCampo, sitioEfetivo, contratoNovo = true, podeRemover, prazoDg, prazoReconfirmacao, tituloQuadro, somenteLeitura }: {
+
+const nomesDeProcedimento = {
+  APLICACAO: "Aplicação de produto",
+  INSERCAO_DISPOSITIVO: "Inserção de dispositivo",
+  RETIRADA: "Retirada de dispositivo",
+  IA: "Inseminação",
+  TE: "Transferência de embrião",
+  COBERTURA: "Cobertura observada",
+  EXAME: "Exame / diagnóstico",
+  MANEJO: "Manejo legado",
+};
+
+function tipoDoProcedimento(acao: EtapaIatf): keyof typeof nomesDeProcedimento {
+  if (acao.tipo === "TENTATIVA") return acao.tentativaTipo ?? acao.planoTentativa?.tipo ?? "IA";
+  if (acao.tipo === "APLICACAO" && acao.subtipo === "INSERCAO_DISPOSITIVO") return "INSERCAO_DISPOSITIVO";
+  return acao.tipo === "AVALIACAO" ? "EXAME" : acao.tipo;
+}
+
+export function nomeProcedimentoReprodutivo(acao: EtapaIatf) {
+  return acao.nome.trim() || nomesDeProcedimento[tipoDoProcedimento(acao)];
+}
+
+const prazoDefinidoNaIdentificacao = (acao: EtapaIatf) => acao.referenciaPrazoDiagnostico || acao.referenciaPrazoReconfirmacao;
+
+export function EditorModeloReprodutivo({ origemCadastro, cargaPersistida, etapas, setEtapas, setAcoesCompletas, acoesCompletas, indiceErroCadastro, erroNoCalendario = false, onEncerrarEdicao, erroCampo, sitioEfetivo, contratoNovo = true, podeRemover, prazoDg, prazoReconfirmacao, tituloQuadro, somenteLeitura }: {
   origemCadastro: CadastroProtocoloMeta | null; cargaPersistida?: MutableRefObject<CargaAcoesCadastro | null>; etapas: EtapaIatf[]; setEtapas: Dispatch<SetStateAction<EtapaIatf[]>>;
-  setAcoesCompletas: (valor: boolean) => void; acoesCompletas: boolean; indiceErroCadastro: number | null; erroCampo: { indice: number; campo: string; mensagem: string } | null; sitioEfetivo?: number | null; contratoNovo?: boolean; podeRemover?: (indices: number[]) => boolean; prazoDg?: string; prazoReconfirmacao?: string; tituloQuadro?: string; somenteLeitura?: boolean;
+  onEncerrarEdicao?: () => void;
+  setAcoesCompletas: (valor: boolean) => void; acoesCompletas: boolean; indiceErroCadastro: number | null; erroNoCalendario?: boolean; erroCampo: { indice: number; campo: string; mensagem: string } | null; sitioEfetivo?: number | null; contratoNovo?: boolean; podeRemover?: (indices: number[]) => boolean; prazoDg?: string; prazoReconfirmacao?: string; tituloQuadro?: string; somenteLeitura?: boolean;
 }) {
   const idCampos = useId();
-  const usuario = getUsuario();
-  const podeVerValores = !usuario || usuario.dono || (usuario.areas.includes("financeiro") && usuario.flags.includes("verValores"));
   const [containerPopover, setContainerPopover] = useState<HTMLElement | null>(null);
-  const [referencias, setReferencias] = useState<number | null>(null);
   const [catalogo, setCatalogo] = useState<number | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [erroCategorias, setErroCategorias] = useState("");
@@ -131,20 +151,86 @@ export function EditorModeloReprodutivo({ origemCadastro, cargaPersistida, etapa
     }));
     setCatalogo(null);
   }
+  function campoNome(acao: EtapaIatf, indice: number) {
+    return <label>Nome do procedimento<input
+      className={classeInput}
+      maxLength={120}
+      placeholder={nomesDeProcedimento[tipoDoProcedimento(acao)]}
+      value={acao.nome}
+      onChange={e => {
+        const nome = e.target.value;
+        setEtapas(itens => itens.map((item, i) => i === indice ? { ...item, nome } : item));
+      }}
+    /></label>;
+  }
+
+  function alterarTipo(indice: number, valor: string) {
+    const tentativaTipo = valor === "IA" || valor === "TE" || valor === "COBERTURA" ? valor : undefined;
+    const tipo: EtapaIatf["tipo"] = valor === "INSERCAO_DISPOSITIVO" ? "APLICACAO" : tentativaTipo ? "TENTATIVA" : valor === "EXAME" ? "AVALIACAO" : valor as EtapaIatf["tipo"];
+    setEtapas(itens => itens.map((acao, i) => i === indice ? {
+      chaveEdicao: acao.chaveEdicao,
+      ordem: acao.ordem,
+      momento: acao.momento,
+      nome: acao.nome === nomesDeProcedimento[tipoDoProcedimento(acao)] ? "" : acao.nome,
+      intervalo: acao.intervalo,
+      unidade: acao.unidade,
+      orientacaoTemporal: acao.orientacaoTemporal,
+      tipo,
+      tentativaTipo,
+      ...(tipo === "APLICACAO" ? { subtipo: valor === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" } : {}),
+      referenciasCusto: acao.referenciasCusto ? { servico: acao.referenciasCusto.servico } : undefined,
+    } : acao));
+  }
+
+  function camposCalendario(referencia: EtapaIatf, indices: number[]) {
+    if (indices.some(i => prazoDefinidoNaIdentificacao(etapas[i]))) {
+      return <p>Prazo definido na identificação, a partir do registro correspondente.</p>;
+    }
+    const unidades = [...new Set(indices.map(i => etapas[i].unidade))];
+    const intervalosDistintos = indices.some(i => etapas[i].intervalo !== referencia.intervalo || etapas[i].unidade !== referencia.unidade);
+    return <fieldset disabled={!acoesCompletas} className="grid gap-3">
+      {intervalosDistintos && <p role="status" className="text-sm">Esta etapa tem intervalos individuais diferentes. Alterar um campo atualiza os procedimentos que usam essa unidade.</p>}
+      {unidades.map(unidade => {
+        const indicesDaUnidade = indices.filter(i => etapas[i].unidade === unidade);
+        const etapa = etapas[indicesDaUnidade[0]];
+        const rotulo = unidade === "HORAS" ? "Intervalo em horas" : "Dia da etapa";
+        return <label key={unidade}>
+          <span>{rotulo} <span aria-hidden="true">*</span></span>
+          <span className="quadro-dia-campo">
+            <span aria-hidden>{unidade === "HORAS" ? "H+" : "D+"}</span>
+            <input
+              data-calendario-protocolo
+              aria-label={rotulo}
+              className={classeInput}
+              required type="number" min={0} max={10000} step="any"
+              value={etapa.intervaloPendente ? "" : etapa.intervalo}
+              onChange={e => {
+                const valor = e.target.value;
+                setEtapas(itens => itens.map((acao, i) => indicesDaUnidade.includes(i) ? {
+                  ...acao, intervalo: valor === "" ? 0 : Number(valor), intervaloPendente: valor === "",
+                } : acao));
+              }}
+            />
+          </span>
+        </label>;
+      })}
+    </fieldset>;
+  }
+
   return <><BuilderEtapasProtocolo<EtapaIatf> permitirAutomacao editorEmModal podeRemover={podeRemover} tituloQuadro={tituloQuadro} quadroSomenteLeitura={somenteLeitura}
-                  quadro={item => ({ procedimento: item.referenciaPrazoReconfirmacao ? `${item.nome} · ${prazoReconfirmacao || "Prazo pendente"}${prazoReconfirmacao ? " dias após o primeiro DG positivo" : ""}` : item.referenciaPrazoDiagnostico ? `${item.nome} · ${prazoDg || "Prazo pendente"}${prazoDg ? " dias após a tentativa" : ""}` : item.nome, produto: item.tipo === "APLICACAO" && item.planoAplicacao?.produtoId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO" })} rotulo="Produto planejado" valor={item.planoAplicacao.produtoId} onChange={() => {}} /> : item.planoAplicacao?.nomeProduto ?? (item.tipo === "EXAME" && item.planoExame?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO" })} rotulo="Modelo de exame" valor={item.planoExame.tipoExameId} onChange={() => {}} /> : item.tipo === "AVALIACAO" && item.planoAvaliacao?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO" })} rotulo="Modelo de exame" valor={item.planoAvaliacao.tipoExameId} onChange={() => {}} /> : item.referenciaPrazoDiagnostico || item.referenciaPrazoReconfirmacao ? "Avaliação reprodutiva" : item.tipo === "TENTATIVA" ? item.tentativaTipo === "COBERTURA" ? "Reprodutor no atendimento" : "Material genético" : item.tipo === "RETIRADA" ? "Definido no atendimento" : "Pendente"), quantidade: item.tipo === "RETIRADA" ? "Não se aplica" : item.tipo === "APLICACAO" && item.planoAplicacao?.dose ? `${item.planoAplicacao.dose} ${rotuloUnidade(item.planoAplicacao.unidadeDose)}` : "Pendente" })}
-                  resumoEtapa={itens => ({ referencia: itens.every(item => item.referenciaPrazoReconfirmacao) ? `${prazoReconfirmacao || "Prazo pendente"}${prazoReconfirmacao ? " dias após o primeiro DG positivo" : ""}` : itens.every(item => item.referenciaPrazoDiagnostico) ? `${prazoDg || "Prazo pendente"}${prazoDg ? " dias após a tentativa" : ""}` : itens.some(item => item.referenciaPrazoDiagnostico) ? "Intervalos distintos" : itens.some(item => item.intervaloPendente) ? "Dia pendente" : itens.some(item => item.intervalo !== itens[0]?.intervalo || item.unidade !== itens[0]?.unidade) ? "Intervalos distintos" : `${itens[0]?.unidade === "HORAS" ? "H" : "D"}${new Intl.NumberFormat("pt-BR", { useGrouping: false, maximumFractionDigits: 20 }).format(itens[0]?.intervalo ?? 0)}`, procedimentos: itens.map(item => item.nome).join(" · ") })}
+                  abrirPeloCalendario={item => item.intervaloPendente === true || erroNoCalendario && indiceErroCadastro !== null && etapas[indiceErroCadastro] === item}
+                  onEncerrarEdicao={onEncerrarEdicao}
+                  motivoEdicaoBloqueada={item => prazoDefinidoNaIdentificacao(item) ? "Para alterar este acompanhamento, volte à Identificação." : undefined}
+                  quadro={item => ({ procedimento: nomeProcedimentoReprodutivo(item), produto: item.tipo === "APLICACAO" && item.planoAplicacao?.produtoId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO" })} rotulo="Produto planejado" valor={item.planoAplicacao.produtoId} onChange={() => {}} /> : item.planoAplicacao?.nomeProduto ?? (item.tipo === "EXAME" && item.planoExame?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO" })} rotulo="Modelo de exame" valor={item.planoExame.tipoExameId} onChange={() => {}} /> : item.tipo === "AVALIACAO" && item.planoAvaliacao?.tipoExameId ? <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO" })} rotulo="Modelo de exame" valor={item.planoAvaliacao.tipoExameId} onChange={() => {}} /> : item.referenciaPrazoDiagnostico || item.referenciaPrazoReconfirmacao ? "Avaliação reprodutiva" : item.tipo === "TENTATIVA" ? item.tentativaTipo === "COBERTURA" ? "Reprodutor no atendimento" : "Material genético" : item.tipo === "RETIRADA" ? "Definido no atendimento" : "Pendente"), quantidade: prazoDefinidoNaIdentificacao(item) ? "—" : item.tipo === "RETIRADA" ? "Não se aplica" : item.tipo === "APLICACAO" && item.planoAplicacao?.dose ? `${item.planoAplicacao.dose} ${rotuloUnidade(item.planoAplicacao.unidadeDose)}` : "Pendente" })}
+                  resumoEtapa={itens => ({ referencia: itens.every(item => item.referenciaPrazoReconfirmacao) ? `${prazoReconfirmacao || "Prazo pendente"}${prazoReconfirmacao ? " dias após o primeiro DG positivo" : ""}` : itens.every(item => item.referenciaPrazoDiagnostico) ? `${prazoDg || "Prazo pendente"}${prazoDg ? " dias após a tentativa" : ""}` : itens.some(prazoDefinidoNaIdentificacao) ? "Intervalos distintos" : itens.some(item => item.intervaloPendente) ? "Dia pendente" : itens.some(item => item.intervalo !== itens[0]?.intervalo || item.unidade !== itens[0]?.unidade) ? "Intervalos distintos" : `${itens[0]?.unidade === "HORAS" ? "H" : "D"}${new Intl.NumberFormat("pt-BR", { useGrouping: false, maximumFractionDigits: 20 }).format(itens[0]?.intervalo ?? 0)}`, procedimentos: itens.map(nomeProcedimentoReprodutivo).join(" · ") })}
                   origem={origemCadastro} cargaPersistida={cargaPersistida} itens={etapas} onChange={setEtapas} onCompletoChange={setAcoesCompletas}
                   indiceErro={indiceErroCadastro}
-                  criarAcao={(momento, referencia) => ({ chaveEdicao: crypto.randomUUID(), nome: "Aplicação de produto", tipo: "APLICACAO", intervalo: referencia?.intervalo ?? 0, unidade: referencia?.unidade ?? "DIAS", orientacaoTemporal: referencia?.orientacaoTemporal, momento: { ...momento } })}
+                  criarAcao={(momento, referencia) => ({ chaveEdicao: crypto.randomUUID(), nome: "", tipo: "APLICACAO", intervalo: referencia?.intervalo ?? 0, unidade: referencia?.unidade ?? "DIAS", orientacaoTemporal: referencia?.orientacaoTemporal, momento: { ...momento } })}
                   converter={e => ({ ...etapaParaCadastro(e), chaveEdicao: crypto.randomUUID(), tentativaTipo: e.tentativaTipo, ordem: e.ordem, ...(e.momento ? { momento: etapas.find(atual => atual.momento?.ordem === e.momento?.ordem)?.momento ?? momentoParaCadastro(e.momento) } : {}) })}
-                  renderizarCalendario={(t, indices) => t.referenciaPrazoDiagnostico || t.referenciaPrazoReconfirmacao ? <p>Prazo definido na identificação, a partir do registro correspondente.</p> : <fieldset disabled={!acoesCompletas} className="grid gap-3 sm:grid-cols-2">
-                    {indices.some(i => etapas[i].intervalo !== t.intervalo || etapas[i].unidade !== t.unidade) && <p role="status" className="text-sm sm:col-span-2">Esta etapa tem intervalos individuais diferentes. Alterar o calendário abaixo atualiza explicitamente todos os seus procedimentos.</p>}
-                    <label>Dia da etapa <span className="quadro-dia-campo"><span aria-hidden>{t.unidade === "HORAS" ? "H+" : "D+"}</span><input aria-label="Dia da etapa" className={classeInput} required type="number" min={0} max={10000} step="any" value={t.intervaloPendente ? "" : t.intervalo} onChange={e => { const valor = e.target.value; setEtapas(es => es.map((acao, i) => indices.includes(i) ? { ...acao, intervalo: valor === "" ? 0 : Number(valor), intervaloPendente: valor === "" } : acao)); }} /></span></label>
-                    <label>Unidade do intervalo<SelectCampo className={classeInput} value={t.unidade} onValueChange={(valor) => { const unidade = valor as "DIAS" | "HORAS"; setEtapas(es => es.map((acao, i) => indices.includes(i) ? { ...acao, unidade } : acao)); }}><option value="DIAS">Dias</option><option value="HORAS">Horas</option></SelectCampo></label>
-                    <div className="sm:col-span-2"><OrientacaoTemporalEtapa etapa={t} onChange={novo => setEtapas(es => es.map((acao, i) => indices.includes(i) ? { ...acao, orientacaoTemporal: novo.orientacaoTemporal } : acao))} /></div>
-                  </fieldset>}
-                  renderizarDetalhes={(t, i) => (t.referenciaPrazoReconfirmacao || t.referenciaPrazoDiagnostico) ? <p>{t.planoAvaliacao?.tipoExameId && t.planoAvaliacao.tipoExameId !== "b0400000-0000-4000-8000-000000000001" ? "Modelo de exame herdado · preservado nesta versão." : "Avaliação reprodutiva · prazo definido na identificação."}</p> : <div ref={setContainerPopover} className="grid gap-3"><label>Tipo de procedimento<SelectCampo disabled={podeRemover?.([i]) === false} className={classeInput} value={t.tipo === "APLICACAO" ? t.subtipo === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" : t.tipo === "TENTATIVA" ? t.tentativaTipo ?? t.planoTentativa?.tipo ?? "IA" : t.tipo === "AVALIACAO" ? "EXAME" : t.tipo} onValueChange={valor => { const tipo: EtapaIatf["tipo"] = valor === "INSERCAO_DISPOSITIVO" ? "APLICACAO" : valor === "IA" || valor === "TE" || valor === "COBERTURA" ? "TENTATIVA" : valor === "EXAME" ? "AVALIACAO" : valor as EtapaIatf["tipo"]; const nomes: Record<string,string> = { APLICACAO: "Aplicação de produto", INSERCAO_DISPOSITIVO: "Inserção de dispositivo", RETIRADA: "Retirada de dispositivo", IA: "Inseminação", TE: "Transferência de embrião", COBERTURA: "Cobertura observada", EXAME: "Exame / diagnóstico" }; setEtapas(es => es.map((acao,j) => j === i ? { chaveEdicao: acao.chaveEdicao, ordem: acao.ordem, momento: acao.momento, nome: nomes[valor] ?? acao.nome, intervalo: acao.intervalo, unidade: acao.unidade, orientacaoTemporal: acao.orientacaoTemporal, tipo, ...(valor === "IA" || valor === "TE" || valor === "COBERTURA" ? { tentativaTipo: valor } : {}), ...(tipo === "APLICACAO" ? { subtipo: valor === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" } : {}), referenciasCusto: acao.referenciasCusto ? { servico: acao.referenciasCusto.servico } : undefined } : acao)); }}><option value="APLICACAO">Aplicação de produto</option><option value="INSERCAO_DISPOSITIVO">Inserção de dispositivo</option><option value="RETIRADA">Retirada de dispositivo</option><option value="IA">Inseminação</option><option value="TE">Transferência de embrião</option><option value="COBERTURA">Cobertura observada</option><option value="EXAME">Exame / diagnóstico</option>{t.tipo === "MANEJO" && <option value="MANEJO">Manejo legado</option>}</SelectCampo></label>
+                  renderizarCalendario={camposCalendario}
+                  renderizarDetalhes={(t, i) => prazoDefinidoNaIdentificacao(t) ? <p>{t.planoAvaliacao?.tipoExameId && t.planoAvaliacao.tipoExameId !== "b0400000-0000-4000-8000-000000000001" ? "Modelo de exame herdado · preservado nesta versão." : "Avaliação reprodutiva · prazo definido na identificação."}</p> : <div ref={setContainerPopover} className="grid gap-3">
+                    {campoNome(t, i)}
+                    <label>Tipo de procedimento<SelectCampo disabled={podeRemover?.([i]) === false} className={classeInput} value={tipoDoProcedimento(t)} onValueChange={valor => alterarTipo(i, valor)}><option value="APLICACAO">Aplicação de produto</option><option value="INSERCAO_DISPOSITIVO">Inserção de dispositivo</option><option value="RETIRADA">Retirada de dispositivo</option><option value="IA">Inseminação</option><option value="TE">Transferência de embrião</option><option value="COBERTURA">Cobertura observada</option><option value="EXAME">Exame / diagnóstico</option>{t.tipo === "MANEJO" && <option value="MANEJO">Manejo legado</option>}</SelectCampo></label>
                     {(t.tipo === "AVALIACAO" || t.tipo === "EXAME") && podeRemover?.([i]) !== false && <label>Contexto do modelo de exame<SelectCampo className={classeInput} value={t.tipo === "AVALIACAO" ? "REPRODUTIVO" : "SANITARIO"} onValueChange={valor => {
                       const tipo = valor === "REPRODUTIVO" ? "AVALIACAO" : "EXAME";
                       setEtapas(itens => itens.map((acao, j) => j === i && acao.tipo !== tipo ? { ...acao, tipo, planoAvaliacao: undefined, planoExame: undefined } : acao));
@@ -155,25 +241,12 @@ export function EditorModeloReprodutivo({ origemCadastro, cargaPersistida, etapa
                       const mudouExame = novo.planoAvaliacao?.tipoExameId !== acao.planoAvaliacao?.tipoExameId;
                       return { ...novo, planoAvaliacao: { ...novo.planoAvaliacao, tipo: acao.planoAvaliacao?.tipo ?? "DIAGNOSTICO" }, exameDgAlterado: acao.referenciaPrazoDiagnostico && (acao.exameDgAlterado || mudouExame) };
                     }))} />}
-                    <details><summary>Opções do procedimento</summary><div className="grid gap-3 pt-2">
-                      <label>Nome do procedimento<input className={classeInput} required maxLength={120} value={t.nome} onChange={e => {
-                        const nome = e.target.value;
-                        setEtapas(itens => itens.map((acao, j) => j === i ? { ...acao, nome } : acao));
-                      }} /></label>
-                      {podeVerValores && <Button secondary type="button" onClick={() => setReferencias(i)}>Editar referência de serviço</Button>}
-                    </div></details>
                   </div>}
                   renderizarAcao={(t, i) => <div className="grid gap-3">
-                    <label>Tipo de procedimento<SelectCampo className={classeInput} value={t.tipo === "APLICACAO" ? t.subtipo === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" : t.tipo === "TENTATIVA" ? t.tentativaTipo ?? t.planoTentativa?.tipo ?? "IA" : t.tipo === "AVALIACAO" ? "EXAME" : t.tipo} onValueChange={(escolha) => {
-                      const valor = escolha;
-                      const tipo: EtapaIatf["tipo"] = valor === "INSERCAO_DISPOSITIVO" ? "APLICACAO" : valor === "IA" || valor === "TE" || valor === "COBERTURA" ? "TENTATIVA" : valor === "EXAME" ? "AVALIACAO" : valor as EtapaIatf["tipo"];
-                      const nomes: Record<string, string> = { APLICACAO: "Aplicação de produto", INSERCAO_DISPOSITIVO: "Inserção de dispositivo", RETIRADA: "Retirada de dispositivo", IA: "Inseminação", TE: "Transferência de embrião", COBERTURA: "Cobertura observada", EXAME: "Exame / diagnóstico" };
-                      setEtapas(es => es.map((acao, j) => j === i ? { chaveEdicao: acao.chaveEdicao, ordem: acao.ordem, momento: acao.momento, nome: nomes[valor] ?? acao.nome, intervalo: acao.intervalo, unidade: acao.unidade, orientacaoTemporal: acao.orientacaoTemporal, tipo, ...(valor === "IA" || valor === "TE" || valor === "COBERTURA" ? { tentativaTipo: valor } : {}), ...(tipo === "APLICACAO" ? { subtipo: valor === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" } : {}), referenciasCusto: acao.referenciasCusto ? { servico: acao.referenciasCusto.servico } : undefined } : acao));
-                    }}><option value="APLICACAO">Aplicação de produto</option><option value="INSERCAO_DISPOSITIVO">Inserção de dispositivo</option><option value="RETIRADA">Retirada de dispositivo</option><option value="IA">Inseminação</option><option value="TE">Transferência de embrião</option><option value="COBERTURA">Cobertura observada</option><option value="EXAME">Exame / diagnóstico</option>{t.tipo === "MANEJO" && <option value="MANEJO">Manejo legado (compatibilidade)</option>}</SelectCampo></label>
-                    <label>Nome do procedimento<input className={classeInput} required maxLength={120} value={t.nome} onChange={e => { const nome = e.target.value; setEtapas(es => es.map((acao, j) => j === i ? { ...acao, nome } : acao)); }} /></label>
+                    {campoNome(t, i)}
+                    <label>Tipo de procedimento<SelectCampo className={classeInput} value={tipoDoProcedimento(t)} onValueChange={valor => alterarTipo(i, valor)}><option value="APLICACAO">Aplicação de produto</option><option value="INSERCAO_DISPOSITIVO">Inserção de dispositivo</option><option value="RETIRADA">Retirada de dispositivo</option><option value="IA">Inseminação</option><option value="TE">Transferência de embrião</option><option value="COBERTURA">Cobertura observada</option><option value="EXAME">Exame / diagnóstico</option>{t.tipo === "MANEJO" && <option value="MANEJO">Manejo legado (compatibilidade)</option>}</SelectCampo></label>
                     {(t.tipo === "AVALIACAO" || t.tipo === "EXAME") && <label>Contexto do modelo de exame<SelectCampo className={classeInput} value={t.tipo === "AVALIACAO" ? "REPRODUTIVO" : "SANITARIO"} onValueChange={(valor) => setEtapas(es => es.map((acao, j) => j === i ? { ...acao, tipo: valor === "REPRODUTIVO" ? "AVALIACAO" : "EXAME", planoAvaliacao: undefined, planoExame: undefined } : acao))}><option value="REPRODUTIVO">Reprodutivo</option><option value="SANITARIO">Sanitário</option></SelectCampo></label>}
                     {t.tipo === "APLICACAO" ? camposAplicacao(t, i) : <PlanoEtapa propriedadeId={sitioEfetivo ?? undefined} etapa={t} contratoNovo={contratoNovo} tipoDefinido onChange={novo => setEtapas(es => es.map((acao, j) => j === i ? novo : acao))} />}
-                    {podeVerValores && <Button secondary type="button" onClick={() => setReferencias(i)}>Editar referência de serviço</Button>}
                   </div>}
-                />{referencias !== null && etapas[referencias] && <PainelCadastro aberto titulo="Referência de serviço" camada="sobreDetalhe" rascunhoPersistido onFechar={() => setReferencias(null)} rodape={<Button type="button" onClick={() => setReferencias(null)}>Concluir</Button>}><CamposReferenciasCusto direto valor={etapas[referencias].referenciasCusto} material={false} onChange={referenciasCusto => setEtapas(es => es.map((acao,j) => j === referencias ? { ...acao, referenciasCusto } : acao))} /></PainelCadastro>}{catalogo !== null && <PainelCadastro aberto titulo="Catálogo de produtos" camada="sobreDetalhe" rascunhoPersistido onFechar={() => setCatalogo(null)} rodape={<Button type="button" onClick={() => setCatalogo(null)}>Concluir</Button>}><p>O produto do catálogo será adotado ao salvar o protocolo.</p><SeletorProdutoCatalogo permitirCadastro={false} limpavel={false} rotulo="Produto planejado" uso="sanitario" value={escolhaCatalogo} onChange={escolherNoCatalogo} /></PainelCadastro>}</>;
+                />{catalogo !== null && <PainelCadastro aberto titulo="Catálogo de produtos" camada="sobreDetalhe" rascunhoPersistido onFechar={() => setCatalogo(null)} rodape={<Button type="button" onClick={() => setCatalogo(null)}>Concluir</Button>}><p>O produto do catálogo será adotado ao salvar o protocolo.</p><SeletorProdutoCatalogo permitirCadastro={false} limpavel={false} rotulo="Produto planejado" uso="sanitario" value={escolhaCatalogo} onChange={escolherNoCatalogo} /></PainelCadastro>}</>;
 }

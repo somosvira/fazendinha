@@ -239,7 +239,9 @@
 .cadastro-reprodutivo .cadastro-protocolo-resumo h2 { color:var(--primary); }
 .cadastro-reprodutivo .cadastro-protocolo-resumo h3 { margin-top:14px; }
 .cadastro-reprodutivo .cadastro-protocolo-resumo h3:not(:first-of-type) { border-top:1px solid var(--border); padding-top:14px; }
-.cadastro-reprodutivo-rodape { display:flex; justify-content:space-between; gap:12px; padding:14px 22px; border-top:1px solid var(--border); }
+.cadastro-reprodutivo-rodape { display:grid; gap:8px; padding:14px 22px; border-top:1px solid var(--border); }
+.cadastro-reprodutivo-rodape-acoes { display:flex; justify-content:space-between; gap:12px; }
+.cadastro-reprodutivo-rodape-erro { font-size:.875rem; }
 .quadro-protocolo-cabecalho { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
 .quadro-protocolo-cabecalho :is(h2,h3) { margin:0; }
 .cadastro-reprodutivo .cadastro-protocolo-editor .quadro-protocolo table { min-width:0; table-layout:fixed; }
@@ -250,6 +252,10 @@
 .cadastro-reprodutivo .quadro-protocolo-rolagem:not(.quadro-protocolo-leitura) thead th:last-child { width:66px; }
 .cadastro-conferencia-resumo:not(:has(> :nth-child(3))) { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .cadastro-reprodutivo .quadro-protocolo td:last-child button { min-width:34px; padding-inline:8px; }
+.quadro-editar-dados { width:100%; min-height:40px; padding:5px; border:1px solid var(--border); border-radius:6px; background:var(--card); color:inherit; text-align:start; overflow-wrap:anywhere; }
+.quadro-editar-dados:enabled { cursor:pointer; }
+.quadro-editar-dados:enabled:hover { border-color:var(--primary); background:var(--secondary); }
+.quadro-editar-dados:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
 .quadro-passos { padding:5px 3px 14px; margin-bottom:16px; }
 .quadro-dados-etapa { display:grid; gap:12px; }
 .quadro-dados-etapa > button { justify-self:start; }

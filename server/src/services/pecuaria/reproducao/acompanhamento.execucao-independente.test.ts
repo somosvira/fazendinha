@@ -128,6 +128,26 @@ describe("ocorrência de acompanhamento na execução real da tarefa e da visita
     await expect(executarTarefaTx(f.tx,tarefa2,{chave:uid(33),propriedadeId:7,realizadaEm:data,dados:{resultado:"RECONFIRMACAO",gestacaoId}},7)).rejects.toThrow("aguarda o fato de referência");
     expect(f.exames).toHaveLength(0);
   });
+  it.each(["referenciaPrazoDiagnostico", "referenciaPrazoReconfirmacao"])("recusa %s com data manual preservada após perda da tentativa", async marcador => {
+    const f=fixture();
+    Object.assign(f.tarefa,{previsaoPendente:false,planejadoSnapshot:{...f.tarefa.planejadoSnapshot,etapa:{...f.tarefa.planejadoSnapshot.etapa,[marcador]:true}}});
+    Object.assign(f.db.tentativaReprodutiva,{findFirst:vi.fn().mockResolvedValue(null)});
+    await expect(executarTarefaTx(f.tx,tarefa2,{chave:uid(34),propriedadeId:7,realizadaEm:data,dados:{resultado:"RECONFIRMACAO",gestacaoId}},7)).rejects.toThrow("aguarda o fato de referência");
+    expect(f.exames).toHaveLength(0);
+  });
+  it("recusa DG anterior ou divergente da tentativa factual da participação", async () => {
+    const f=fixture();
+    Object.assign(f.tarefa,{previsaoPendente:false,planejadoSnapshot:{...f.tarefa.planejadoSnapshot,etapa:{...f.tarefa.planejadoSnapshot.etapa,referenciaPrazoDiagnostico:true,planoAvaliacao:{tipo:"DIAGNOSTICO"}}}});
+    const tentativa={id:uid(40),animalId,status:"VALIDO",tipo:"IA",tarefaId:uid(41),data:dia("2026-01-26"),propriedadeId:7,tarefa:{execucaoId:uid(7)},participacoesExplicitas:[]};
+    Object.assign(f.db.tentativaReprodutiva,{findFirst:vi.fn().mockResolvedValue(tentativa)});
+    Object.assign(f.db.partoAnimal,{findFirst:vi.fn().mockResolvedValue(null)});
+    const entrada={chave:uid(42),propriedadeId:7,realizadaEm:data,dados:{resultado:"NEGATIVO"}};
+    await expect(executarTarefaTx(f.tx,tarefa2,entrada,7)).rejects.toThrow("não pode anteceder");
+    tentativa.data=dia("2026-01-20");
+    await expect(executarTarefaTx(f.tx,tarefa2,{...entrada,dados:{...entrada.dados,tentativaId:uid(43)}},7)).rejects.toThrow("diverge da tentativa");
+    await expect(executarTarefaTx(f.tx,tarefa2,entrada,7)).rejects.toThrow("A demanda diverge da tentativa");
+    expect(f.exames).toHaveLength(0);
+  });
   it("reconfirmação negativa exige encerramento documentado, sem criar perda", async () => {
     const f=fixture();
     const catalogo={id:uid(30),versao:1,tipoExameId:TIPO_EXAME_REPRODUTIVO,itens:[{codigo:"RECONF",rotulo:"Reconfirmação",tipo:"RECONFIRMACAO",contextos:["GESTACAO_CONHECIDA"]}],condutas:[]};

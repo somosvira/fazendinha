@@ -137,3 +137,24 @@ it("valida ordem guiada sem reinterpretar versões legadas", () => {
  expect(protocoloSchema.safeParse({...base,etapas:[tentativa,tentativa]}).success).toBe(false);
  expect(protocoloSchema.safeParse({...base,encerramentoGuiado:undefined,etapas:[tentativa,preparo]}).success).toBe(true);
 });
+
+it.each(["IA", "TE", "COBERTURA"])("exige regra de DG para a tentativa guiada %s e preserva regras herdadas", tipo => {
+ const regra=(publico:string)=>({finalidade:"DIAGNOSTICO",ocorrencia:1,publico,referencia:publico,intervalo:30,unidade:"DIAS",antecedencia:0,tolerancia:0,resolucao:"DIAGNOSTICO_CONCLUSIVO"});
+ const tentativa={nome:"Tentativa",tipo:"TENTATIVA",tentativaTipo:tipo,intervalo:2,unidade:"DIAS"};
+ const dg={nome:"DG",tipo:"AVALIACAO",intervalo:0,unidade:"DIAS",referenciaPrazoDiagnostico:true,planoAvaliacao:{tipo:"DIAGNOSTICO"}};
+ const base={...protocolo,publicado:true,encerramentoGuiado:true,finalidade:"IATF",modalidadeTentativa:"ETAPA",modalidadeDiagnostico:"PROTOCOLO",etapas:[tentativa,dg]};
+ const outro=tipo === "IA" ? "TE" : "IA";
+ expect(protocoloSchema.safeParse({...base,configuracaoAcompanhamento:{versao:2,efeito:"ALERTA",regras:[regra(outro)]}}).success).toBe(false);
+ expect(protocoloSchema.safeParse({...base,configuracaoAcompanhamento:{versao:2,efeito:"ALERTA",regras:[regra(outro),regra(tipo)]}}).success).toBe(true);
+ expect(protocoloSchema.safeParse({...base,modalidadeTentativa:"EXTERNA",etapas:[dg],configuracaoAcompanhamento:{versao:2,efeito:"ALERTA",regras:[regra(outro)]}}).success).toBe(true);
+});
+
+it("valida o formato do DG externo sem regravar a regra herdada de outra modalidade", () => {
+ const regra = (publico: "IA" | "TE") => ({ finalidade: "DIAGNOSTICO", ocorrencia: 1, publico, referencia: publico, intervalo: 30, unidade: "DIAS", antecedencia: 2, tolerancia: 1, resolucao: "DIAGNOSTICO_CONCLUSIVO" });
+ const dg = { nome: "DG externo à tentativa", tipo: "AVALIACAO", intervalo: 0, unidade: "DIAS", referenciaPrazoDiagnostico: true, planoAvaliacao: { tipo: "DIAGNOSTICO" } };
+ const dados = { ...protocolo, encerramentoGuiado: true, finalidade: "IATF", modalidadeTentativa: "EXTERNA", modalidadeDiagnostico: "PROTOCOLO", etapas: [dg] };
+ const regras = [{ ...regra("TE"), tipoExameId: id }, regra("IA")];
+ const configuracaoAcompanhamento = { versao: 2, efeito: "ALERTA", regras };
+ expect(protocoloSchema.parse({ ...dados, configuracaoAcompanhamento }).configuracaoAcompanhamento).toEqual(configuracaoAcompanhamento);
+ expect(protocoloSchema.safeParse({ ...dados, configuracaoAcompanhamento: { ...configuracaoAcompanhamento, regras: [regra("TE"), { ...regra("IA"), tipoExameId: id }] } }).success).toBe(false);
+});

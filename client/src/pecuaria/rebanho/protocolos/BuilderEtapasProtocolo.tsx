@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { AjudaCampo } from "../../../components/Dica";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro, classeInput } from "../../../financeiro/PainelCadastro";
@@ -16,6 +17,9 @@ export type BuilderEtapasProtocoloProps<T extends AcaoBuilderEtapas> = {
   tituloQuadro?: string;
   quadroSomenteLeitura?: boolean;
   podeRemover?: (indices: number[]) => boolean;
+  motivoEdicaoBloqueada?: (item: T) => string | undefined;
+  abrirPeloCalendario?: (item: T) => boolean;
+  onEncerrarEdicao?: () => void;
   permitirAutomacao?: boolean;
   editorEmModal?: boolean;
   resumoEtapa?: (itens: T[]) => { referencia: string; procedimentos: string };
@@ -48,7 +52,7 @@ function agrupar<T extends AcaoBuilderEtapas>(itens: T[]): Grupo<T>[] {
   return [...grupos.values()].sort((a, b) => (a.momento?.ordem ?? a.acoes[0].item.ordem ?? a.acoes[0].indice) - (b.momento?.ordem ?? b.acoes[0].item.ordem ?? b.acoes[0].indice));
 }
 
-export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuadro = "Etapas e procedimentos", quadroSomenteLeitura = false, podeRemover, permitirAutomacao = false, editorEmModal = false, resumoEtapa, quadro, origem, cargaPersistida, itens, onChange, converter, onCompletoChange, criarAcao, renderizarAcao, renderizarDetalhes, renderizarCalendario, indiceErro }: BuilderEtapasProtocoloProps<T>) {
+export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuadro = "Etapas e procedimentos", quadroSomenteLeitura = false, podeRemover, motivoEdicaoBloqueada, abrirPeloCalendario, onEncerrarEdicao, permitirAutomacao = false, editorEmModal = false, resumoEtapa, quadro, origem, cargaPersistida, itens, onChange, converter, onCompletoChange, criarAcao, renderizarAcao, renderizarDetalhes, renderizarCalendario, indiceErro }: BuilderEtapasProtocoloProps<T>) {
   const id = useId();
   const raiz = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLElement>(null);
@@ -64,6 +68,8 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuad
   const [acaoSelecionada, setAcaoSelecionada] = useState<number | null>(null);
   const antesDaEdicao = useRef<T[]>([]);
   const abrirEdicao = (passo: 0 | 1 = 1) => { antesDaEdicao.current = [...refs.current.itens]; setPassoModal(passo); setEdicaoAberta(true); };
+  const encerrarEdicao = () => { setEdicaoAberta(false); onEncerrarEdicao?.(); };
+  const cancelarEdicao = () => { onChange(antesDaEdicao.current); encerrarEdicao(); };
   const adicionarEtapa = useRef<HTMLButtonElement>(null);
   const refs = useRef({ itens, onChange, converter });
   refs.current = { itens, onChange, converter };
@@ -127,6 +133,7 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuad
   const [paginaEtapas, setPaginaEtapas] = useState(1);
   const [paginasAcoes, setPaginasAcoes] = useState<Record<string, number>>({});
   const grupo = grupos.find(g => g.chave === selecionada) ?? grupos[0];
+  const dadosDaEtapaBloqueados = grupo?.acoes.some(({ item }) => !!motivoEdicaoBloqueada?.(item));
   const acaoAtiva = grupo?.acoes.find(a => a.indice === acaoSelecionada)?.item;
   const paginaEtapasAtual = Math.min(paginaEtapas, Math.max(1, Math.ceil(grupos.length / 10)));
   const paginaAcoes = grupo ? Math.min(paginasAcoes[grupo.chave] ?? 1, Math.max(1, Math.ceil(grupo.acoes.length / 10))) : 1;
@@ -147,13 +154,15 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuad
   }, [itens, selecionada, paginaEtapasAtual, paginaAcoes, edicaoAberta]);
   useEffect(() => {
     if (indiceErro == null) return;
+    if (itens[indiceErro] && motivoEdicaoBloqueada?.(itens[indiceErro])) return;
     const indiceGrupo = grupos.findIndex(g => g.acoes.some(a => a.indice === indiceErro));
     if (indiceGrupo < 0) return;
     const comErro = grupos[indiceGrupo];
-    setSelecionada(comErro.chave); setAcaoSelecionada(indiceErro); abrirEdicao();
+    const calendario = abrirPeloCalendario?.(itens[indiceErro]);
+    setSelecionada(comErro.chave); setAcaoSelecionada(indiceErro); abrirEdicao(calendario ? 0 : 1);
     setPaginaEtapas(Math.floor(indiceGrupo / 10) + 1);
     setPaginasAcoes(ps => ({ ...ps, [comErro.chave]: Math.floor(comErro.acoes.findIndex(a => a.indice === indiceErro) / 10) + 1 }));
-    foco.current = { tipo: "acao", indice: indiceErro };
+    if (!calendario) foco.current = { tipo: "acao", indice: indiceErro };
     // A posição do erro é fornecida pelo formulário ao validar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indiceErro]);
@@ -168,7 +177,7 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuad
     return { base, momento: { nome: `Etapa ${ordem}`, ordem, modoAtendimento: "MANUAL" } };
   };
   function mudarMomento(patch: Partial<MomentoCadastro>) {
-    if (!grupo?.momento) return;
+    if (!grupo?.momento || dadosDaEtapaBloqueados) return;
     const indices = new Set(grupo.acoes.map(a => a.indice));
     onChange(itens.map((item, i) => indices.has(i) ? { ...item, momento: { ...grupo.momento!, ...patch } } : item));
   }
@@ -195,8 +204,14 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuad
     onChange(itens.filter((_, i) => i !== indice));
   }
 
-  function focarErroAoAbrir(evento: Event) {
-    if (indiceErro == null || !(evento.target instanceof HTMLElement)) return;
+  function focarAoAbrir(evento: Event) {
+    if (!(evento.target instanceof HTMLElement)) return;
+    if (passoModal === 0 && acaoAtiva && abrirPeloCalendario?.(acaoAtiva)) {
+      const calendario = evento.target.querySelector<HTMLInputElement>("[data-calendario-protocolo]");
+      if (calendario) { evento.preventDefault(); calendario.focus(); }
+      return;
+    }
+    if (indiceErro == null) return;
     const procedimento = evento.target.querySelector(`[data-indice-acao="${indiceErro}"]`);
     const invalido = procedimento?.querySelector<HTMLElement>('[aria-invalid="true"], [role="alert"][tabindex="-1"]');
     if (invalido) { evento.preventDefault(); invalido.focus(); }
@@ -211,19 +226,46 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuad
     }}><Plus size={16} aria-hidden />Adicionar etapa</Button>}</header>
     {!completo && <div><p role="status">{itens.length} de {origem?.totalEtapas} procedimentos carregados.</p><Button secondary type="button" disabled={carregando} onClick={() => void carregar(paginas + 1)}>{erroCarga ? "Tentar novamente" : "Carregar próximos procedimentos"}</Button></div>}
     <ErrorBox erro={erroCarga} />{carregando && <EsqueletoLista label="Carregando procedimentos" />}
-    <div className={quadroSomenteLeitura ? "quadro-protocolo-rolagem quadro-protocolo-leitura" : "quadro-protocolo-rolagem"} role="region" aria-label="Quadro de procedimentos" tabIndex={0}><table><thead><tr><th>Etapa</th><th>Procedimento</th><th>Produto / modelo</th><th>Qtd. por animal</th>{!quadroSomenteLeitura && <th>Ações</th>}</tr></thead>{grupos.map(g => <tbody key={g.chave}>{g.acoes.map(({item, indice}, posicao) => { const linha = quadro(item); return <tr key={chaveAcao(item, indice)}>{posicao === 0 && <th scope="rowgroup" rowSpan={g.acoes.length}><span className="quadro-referencia">{resumoEtapa?.(g.acoes.map(a => a.item)).referencia}</span><strong>{g.momento?.nome ?? "Ação legada"}</strong></th>}<td>{linha.procedimento}</td><td>{linha.produto}</td><td>{linha.quantidade}</td>{!quadroSomenteLeitura && <td><Button secondary type="button" aria-label={`Editar ${linha.procedimento} · ${g.momento?.nome ?? "ação legada"}`} disabled={!editavel} onClick={() => { setSelecionada(g.chave); setAcaoSelecionada(indice); abrirEdicao(); }}><Pencil size={16} aria-hidden /></Button></td>}</tr>; })}</tbody>)}</table></div>
-    {!quadroSomenteLeitura && edicaoAberta && grupo && <PainelCadastro aberto camada="sobreDetalhe" titulo={`Editar etapa · ${grupo.momento?.nome ?? "Ação legada"}`} largura="sm:max-w-[724px]" className="quadro-etapa-dialogo" onOpenAutoFocus={indiceErro != null ? focarErroAoAbrir : undefined} rascunhoPersistido onFechar={() => { onChange(antesDaEdicao.current); setEdicaoAberta(false); }} rodape={<>{passoModal === 0 && <Button secondary type="button" onClick={() => { onChange(antesDaEdicao.current); setEdicaoAberta(false); }}>Cancelar</Button>}{passoModal === 1 && <Button secondary type="button" onClick={() => setPassoModal(0)}>Voltar aos dados</Button>}<Button type="button" onClick={() => passoModal === 0 ? setPassoModal(1) : setEdicaoAberta(false)}>{passoModal === 0 ? "Ir para procedimentos" : "Concluir etapa"}</Button></>}>
+    <div className={quadroSomenteLeitura ? "quadro-protocolo-rolagem quadro-protocolo-leitura" : "quadro-protocolo-rolagem"} role="region" aria-label="Quadro de procedimentos" tabIndex={0}>
+      <table>
+        <thead><tr><th>Etapa</th><th>Procedimento</th><th>Produto / modelo</th><th>Qtd. por animal</th>{!quadroSomenteLeitura && <th>Ações</th>}</tr></thead>
+        {grupos.map(g => <tbody key={g.chave}>{g.acoes.map(({ item, indice }, posicao) => {
+          const linha = quadro(item);
+          const motivo = motivoEdicaoBloqueada?.(item);
+          const nomeEtapa = g.momento?.nome ?? "Ação legada";
+          const editarDados = !quadroSomenteLeitura && !g.acoes.some(acao => motivoEdicaoBloqueada?.(acao.item));
+          const dadosEtapa = posicao === 0 && <>
+            <span className="quadro-referencia">{resumoEtapa?.(g.acoes.map(a => a.item)).referencia}</span>
+            <strong>{nomeEtapa}</strong>
+          </>;
+          return <tr key={chaveAcao(item, indice)}>
+            {posicao === 0 && <th scope="rowgroup" rowSpan={g.acoes.length}>
+              {editarDados ? <button type="button" className="quadro-editar-dados" aria-label={`Editar dados da etapa ${nomeEtapa}`} title="Editar dados da etapa" disabled={!editavel} onClick={() => {
+                setSelecionada(g.chave);
+                setAcaoSelecionada(indice);
+                abrirEdicao(0);
+              }}>{dadosEtapa}</button> : dadosEtapa}
+            </th>}
+            <td>{linha.procedimento}</td><td>{linha.produto}</td><td>{linha.quantidade}</td>
+            {!quadroSomenteLeitura && <td>{motivo ? <AjudaCampo texto={motivo} rotulo={`Como alterar ${linha.procedimento}`} /> :
+              <Button secondary type="button" aria-label={`Editar ${linha.procedimento} · ${g.momento?.nome ?? "ação legada"}`} disabled={!editavel} onClick={() => { setSelecionada(g.chave); setAcaoSelecionada(indice); abrirEdicao(); }}><Pencil size={16} aria-hidden /></Button>}
+            </td>}
+          </tr>;
+        })}</tbody>)}
+      </table>
+    </div>
+    {!quadroSomenteLeitura && edicaoAberta && grupo && <PainelCadastro aberto camada="sobreDetalhe" titulo={`Editar etapa · ${grupo.momento?.nome ?? "Ação legada"}`} largura="sm:max-w-[724px]" className="quadro-etapa-dialogo" onOpenAutoFocus={focarAoAbrir} rascunhoPersistido onFechar={cancelarEdicao} rodape={<>{passoModal === 0 && <Button secondary type="button" onClick={cancelarEdicao}>Cancelar</Button>}{passoModal === 1 && <Button secondary type="button" onClick={() => setPassoModal(0)}>Voltar aos dados</Button>}<Button type="button" onClick={() => passoModal === 0 ? setPassoModal(1) : encerrarEdicao()}>{passoModal === 0 ? "Ir para procedimentos" : "Concluir etapa"}</Button></>}>
       <nav className="quadro-passos" aria-label="Edição da etapa">
         <button type="button" aria-current={passoModal === 0 ? "step" : undefined} onClick={() => setPassoModal(0)}><span>1</span> Dados da etapa</button>
         <button type="button" aria-current={passoModal === 1 ? "step" : undefined} onClick={() => setPassoModal(1)}><span>2</span> Procedimentos</button>
       </nav>
       {passoModal === 0 ? <div className="quadro-dados-etapa">
         {grupo.momento ? <>
-          <label>Nome da etapa<input className={classeInput} required maxLength={120} value={grupo.momento.nome} onChange={e => mudarMomento({ nome: e.target.value })} /></label>
+          <label><span>Nome da etapa <span aria-hidden="true">*</span></span><input aria-label="Nome da etapa" className={classeInput} required maxLength={120} readOnly={dadosDaEtapaBloqueados} value={grupo.momento.nome} onChange={e => mudarMomento({ nome: e.target.value })} /></label>
           {renderizarCalendario?.(grupo.acoes[0].item, grupo.acoes.map(a => a.indice))}
-          <label>Modo de atendimento<select className={classeInput} value={grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO" ? "AUTOMATICA_EXCECAO" : "CONFIRMACAO_OBRIGATORIA"} onChange={e => mudarMomento(e.target.value === "AUTOMATICA_EXCECAO" ? { modoAtendimento: "AUTOMATIZADA", politicaExecucao: "AUTOMATICA_EXCECAO", fusoHorario: "America/Sao_Paulo" } : { modoAtendimento: "MANUAL", politicaExecucao: "CONFIRMACAO_OBRIGATORIA" })}><option value="CONFIRMACAO_OBRIGATORIA">Confirmação obrigatória</option>{permitirAutomacao && <option value="AUTOMATICA_EXCECAO">Automática com reversão por exceção</option>}</select></label>
-          {grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO" && <label>Horário padrão<input type="time" className={classeInput} value={grupo.momento.horarioPadrao ?? ""} onChange={e => mudarMomento({ horarioPadrao: e.target.value })} /></label>}
-          <label>Instruções gerais (opcional)<textarea className={classeInput} value={grupo.momento.instrucoesGerais ?? ""} onChange={e => mudarMomento({ instrucoesGerais: e.target.value })} /></label>
+          <label><span>Modo de atendimento <span aria-hidden="true">*</span></span><select aria-label="Modo de atendimento" className={classeInput} required disabled={dadosDaEtapaBloqueados} value={grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO" ? "AUTOMATICA_EXCECAO" : "CONFIRMACAO_OBRIGATORIA"} onChange={e => mudarMomento(e.target.value === "AUTOMATICA_EXCECAO" ? { modoAtendimento: "AUTOMATIZADA", politicaExecucao: "AUTOMATICA_EXCECAO", fusoHorario: "America/Sao_Paulo" } : { modoAtendimento: "MANUAL", politicaExecucao: "CONFIRMACAO_OBRIGATORIA" })}><option value="CONFIRMACAO_OBRIGATORIA">Confirmação obrigatória</option>{permitirAutomacao && <option value="AUTOMATICA_EXCECAO">Automática com reversão por exceção</option>}</select></label>
+          {grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO" && <label><span>Horário padrão <span aria-hidden="true">*</span></span><input aria-label="Horário padrão" type="time" className={classeInput} required readOnly={dadosDaEtapaBloqueados} value={grupo.momento.horarioPadrao ?? ""} onChange={e => mudarMomento({ horarioPadrao: e.target.value })} /></label>}
+          <label>Instruções gerais<textarea className={classeInput} readOnly={dadosDaEtapaBloqueados} value={grupo.momento.instrucoesGerais ?? ""} onChange={e => mudarMomento({ instrucoesGerais: e.target.value })} /></label>
         </> : <><p>Ação legada sem etapa declarada.</p>{renderizarCalendario?.(grupo.acoes[0].item, grupo.acoes.map(a => a.indice))}</>}
         <Button ref={botaoRemoverEtapa} secondary type="button" disabled={podeRemover?.(grupo.acoes.map(a => a.indice)) === false} onClick={() => { acionadorExclusao.current = botaoRemoverEtapa.current; setExclusao("etapa"); }}>Remover etapa</Button>
       </div> : <>
@@ -233,7 +275,7 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuad
           <div><dt>Modo de atendimento</dt><dd>{grupo.momento?.modoAtendimento === "AUTOMATIZADA" ? "Automatizada" : grupo.momento?.modoAtendimento === "MANUAL" ? "Manual" : "Não informado"}</dd></div>
         </dl>
         <header className="quadro-protocolo-cabecalho"><h3 id={`${id}-procedimentos-quadro`}>Procedimentos da etapa</h3>
-          <Button secondary type="button" disabled={!grupo.momento || itens.length >= 100} onClick={() => {
+          <Button secondary type="button" disabled={dadosDaEtapaBloqueados || !grupo.momento || itens.length >= 100} onClick={() => {
             if (!grupo.momento) return;
             const pos = grupo.acoes[grupo.acoes.length - 1].indice + 1;
             onChange([...itens.slice(0, pos), criarAcao({ ...grupo.momento }, grupo.acoes[0].item), ...itens.slice(pos)]);

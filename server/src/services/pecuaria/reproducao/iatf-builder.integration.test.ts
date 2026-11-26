@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
 import { normalizarNomeCatalogo } from "../../estoque/catalogos.js";
-import { criarProtocolo, editarProtocolo } from "./iatf.js";
+import { criarProtocolo, editarProtocolo, publicarProtocolo } from "./iatf.js";
 import { protocoloSchema } from "./schemas.js";
 import { estimarModeloTx, estimativaModeloSchema } from "../custos/estimativa-modelo.js";
 const comBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
@@ -89,5 +89,37 @@ comBanco("Builder reprodutivo: adoção e versões no PostgreSQL", () => {
     expect(await prisma.protocolo.findUnique({ where: { id: rascunho.id }, include: { etapas: true } })).toMatchObject({
       versao: 3, finalidade: "PRE_SINCRONIZACAO", modalidadeTentativa: null, modalidadeDiagnostico: null, etapas: [{ tipo: "RETIRADA" }],
     });
+  }, 30000);
+  it("bloqueia o encerramento inválido na gravação e na publicação posterior de uma nova derivação", async () => {
+    const dados = protocoloSchema.parse({
+      nome, versao: 4, origemVersaoId: origem, finalidade: "IATF",
+      modalidadeTentativa: "ETAPA", modalidadeDiagnostico: "EXTERNO",
+      etapas: [
+        { nome: "Inseminação", tipo: "TENTATIVA", tentativaTipo: "IA", intervalo: 9, unidade: "DIAS" },
+        { nome: "Retirada", tipo: "RETIRADA", intervalo: 12, unidade: "DIAS" },
+      ],
+    });
+
+    await expect(criarProtocolo({ ...dados, publicado: true }, null)).rejects.toThrow(/última ação/);
+    const rascunho = await criarProtocolo(dados, null);
+    await expect(publicarProtocolo(rascunho.id, null)).rejects.toThrow(/última ação/);
+    const versao = await prisma.protocolo.findUniqueOrThrow({ where: { id: rascunho.id } });
+    expect(versao).toMatchObject({ publicado: false, publicadoEm: null, referenciaTecnica: { protocoloOrigemId: origem } });
+  }, 30000);
+  it("mantém validação guiada quando um rascunho preexistente é editado e publicado depois", async () => {
+    const dados = protocoloSchema.parse({
+      nome, versao: 5, finalidade: "IATF", modalidadeTentativa: "ETAPA", modalidadeDiagnostico: "EXTERNO",
+      etapas: [
+        { nome: "Inseminação", tipo: "TENTATIVA", tentativaTipo: "IA", intervalo: 9, unidade: "DIAS" },
+        { nome: "Retirada", tipo: "RETIRADA", intervalo: 12, unidade: "DIAS" },
+      ],
+    });
+    const rascunho = await criarProtocolo(dados, null);
+    await prisma.protocolo.update({ where: { id: rascunho.id }, data: { referenciaTecnica: { protocoloOrigemId: origem } } });
+    await editarProtocolo(rascunho.id, { ...dados, encerramentoGuiado: true }, null);
+    await expect(publicarProtocolo(rascunho.id, null)).rejects.toThrow(/última ação/);
+    await expect(editarProtocolo(rascunho.id, { ...dados, publicado: true }, null)).rejects.toThrow(/última ação/);
+    const salvo = await prisma.protocolo.findUniqueOrThrow({ where: { id: rascunho.id } });
+    expect(salvo).toMatchObject({ publicado: false, publicadoEm: null, referenciaTecnica: { protocoloOrigemId: origem, encerramentoGuiado: true } });
   }, 30000);
 });

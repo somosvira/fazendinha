@@ -115,6 +115,30 @@ function participacaoExternaValida(t:{animalId:string;propriedadeId:number|null;
  return t.participacoesExplicitas.find(v=>{const s=registro(v.snapshot);return !t.tarefaId && t.status==="VALIDO" && v.propriedadeId===t.propriedadeId && s.propriedadeId===t.propriedadeId && s.animalId===t.animalId && s.tipo===t.tipo && s.data===texto(t.data);})?.participacaoId;
 }
 
+export function primeiroDiagnosticoPositivoTx(tx: Prisma.TransactionClient, animalId: string, gestacaoId: string, propriedadeId?: number) {
+ return tx.exameAnimal.findFirst({
+  where: {
+   animalId, propriedadeId, status: "VALIDO", realizacao: "REALIZADO", finalidades: { has: "DIAGNOSTICO" },
+   interpretacao: { gestacaoId },
+   resultados: { some: { campo: "CONCLUSAO_GESTACIONAL", vigente: true, valor: { equals: "POSITIVO" } } },
+  },
+  orderBy: [{ data: "asc" }, { criadoEm: "asc" }, { id: "asc" }],
+  select: { id: true, data: true },
+ });
+}
+
+/** Consulta factual sem reprogramar a tarefa nem alterar o histórico manual. */
+export async function referenciaGuiadaValidaTx(tx: Prisma.TransactionClient, tarefaId: string, animalId: string, participacaoId: string, propriedadeId: number, reconfirmacao: boolean) {
+ const tentativa = await tx.tentativaReprodutiva.findFirst({where:{animalId,status:"VALIDO"},orderBy:[{data:"desc"},{ordem:"desc"}],include:{tarefa:true,participacoesExplicitas:{where:{revogadoEm:null},select:{participacaoId:true,propriedadeId:true,snapshot:true}}}});
+ if (!tentativa || tentativa.propriedadeId !== propriedadeId || (tentativa.tarefa?.execucaoId ?? participacaoExternaValida(tentativa)) !== participacaoId) return false;
+ if (await tx.partoAnimal.findFirst({where:{animalId,status:"VALIDO",data:{gte:tentativa.data}},select:{id:true}})) return false;
+ if (!reconfirmacao) return tentativa;
+ const demanda = await tx.demandaAcompanhamentoReprodutivo.findUnique({where:{tarefaId},include:{decisaoOperacional:true,exameOrigem:{include:incluirExameOrigem},gestacao:true}});
+ if (!demanda || demanda.finalidade !== "RECONFIRMACAO" || demanda.ocorrencia !== 1 || demanda.estado !== "PENDENTE" || !demanda.previstaPara || demandaDispensada(demanda) || !demanda.gestacaoId || demanda.gestacao?.tentativaId !== tentativa.id || demanda.gestacao.status !== "VALIDO" || demanda.gestacao.encerradaEm || !demanda.exameOrigemId || pendenciasOrigemDemanda(demanda,demanda.exameOrigem).length || !formatoCompativel(demanda,TIPO_EXAME_REPRODUTIVO,undefined)) return false;
+ const primeiro = await primeiroDiagnosticoPositivoTx(tx, animalId, demanda.gestacaoId);
+ return primeiro?.id === demanda.exameOrigemId ? tentativa : false;
+}
+
 /** A tarefa segue a tentativa vigente da participação. A demanda preserva sua própria regra. */
 export async function reconciliarPrevisoesDiagnosticoTx(tx: Prisma.TransactionClient, animalId: string, usuarioId: number | null) {
  const tarefas = await tx.tarefaProtocolo.findMany({
@@ -384,7 +408,7 @@ async function previaAdocaoTx(tx:Prisma.TransactionClient,input:PreviaAdocaoAcom
  if(tentativas.length!==input.tentativaIds.length||gestacoes.length!==input.gestacaoIds.length)erro("Fatos válidos não pertencem ao sítio escolhido; gestações devem estar abertas");
  const origens:Origem[]=tentativas.map(t=>({tentativaId:t.id,tipoTentativa:t.tipo,animalId:t.animalId,propriedadeId:input.propriedadeId,data:t.data}));
  for(const g of gestacoes){
-  const primeiro=await tx.exameAnimal.findFirst({where:{animalId:g.animalId,status:"VALIDO",realizacao:"REALIZADO",interpretacao:{gestacaoId:g.id},resultados:{some:{campo:"CONCLUSAO_GESTACIONAL",vigente:true,valor:{equals:"POSITIVO"}}}},orderBy:[{data:"asc"},{id:"asc"}]});
+  const primeiro=await primeiroDiagnosticoPositivoTx(tx,g.animalId,g.id);
   if(!primeiro)erro("Gestação sem primeiro DG positivo comprovado; reconcilie a evidência antes de adotar reconfirmações", "gestacaoIds");
   origens.push({gestacaoId:g.id,animalId:g.animalId,propriedadeId:input.propriedadeId,data:primeiro.data,exameOrigemId:primeiro.id});
  }

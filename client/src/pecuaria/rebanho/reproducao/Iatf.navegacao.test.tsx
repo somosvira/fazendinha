@@ -34,13 +34,12 @@ it.each(["IA", "TE"] as const)("cria modelo %s com procedimentos no mesmo calend
   mudarCampo(screen.getByLabelText("Nome do protocolo"), { target: { value: "Modelo genético" } });
   mudarCampo(screen.getByLabelText("Finalidade"), { target: { value: tentativaTipo === "IA" ? "IATF" : "TETF" } });
   mudarCampo(screen.getByLabelText("Tentativa"), { target: { value: "ETAPA" } });
-  expect(screen.getByLabelText("Diagnóstico de gestação (DG)")).toHaveProperty("value", "EXTERNO");
+  expect(screen.getByLabelText("DG")).toHaveProperty("checked", false);
   avancarParaEtapas();
   fireEvent.click(await screen.findByRole("button", { name: tentativaTipo === "IA" ? /Editar Inseminação/ : /Editar Transferência de embrião/ }));
   fireEvent.click(screen.getByRole("button", { name: "Voltar aos dados" }));
   mudarCampo(screen.getByLabelText("Dia da etapa"), { target: { value: "10.5" } });
-  mudarCampo(screen.getByLabelText("Unidade do intervalo"), { target: { value: "HORAS" } });
-  mudarCampo(screen.getByLabelText("Instruções gerais (opcional)"), { target: { value: "Registrar o material por animal ou grupo." } });
+  mudarCampo(screen.getByLabelText("Instruções gerais"), { target: { value: "Registrar o material por animal ou grupo." } });
   fireEvent.click(screen.getByRole("button", { name: "Ir para procedimentos" }));
   expect(screen.queryByRole("button", { name: /Selecionar Material/ })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Adicionar procedimento" }));
@@ -51,8 +50,8 @@ it.each(["IA", "TE"] as const)("cria modelo %s com procedimentos no mesmo calend
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({ etapas: expect.any(Array) }), "POST", 7));
   const [, body] = vi.mocked(reqV4).mock.calls.find(([path, body]) => path === "/reproducao/protocolos" && !!body)!;
   expect(body).toMatchObject({ modalidadeTentativa: "ETAPA", modalidadeDiagnostico: "EXTERNO", etapas: [
-    { tipo: "RETIRADA", intervalo: 10.5, unidade: "HORAS", momento: { ordem: 1 } },
-    { tipo: "TENTATIVA", tentativaTipo, intervalo: 10.5, unidade: "HORAS", momento: { ordem: 2, modoAtendimento: "MANUAL", instrucoesGerais: "Registrar o material por animal ou grupo." } },
+    { tipo: "RETIRADA", intervalo: 10.5, unidade: "DIAS", momento: { ordem: 1 } },
+    { tipo: "TENTATIVA", tentativaTipo, intervalo: 10.5, unidade: "DIAS", momento: { ordem: 2, modoAtendimento: "MANUAL", instrucoesGerais: "Registrar o material por animal ou grupo." } },
   ] });
   expect(JSON.stringify(body)).not.toContain("materialGeneticoId");
 });
@@ -78,7 +77,7 @@ it.each(["Editar rascunho","Nova versão"])("%s envia apenas parâmetros editáv
   await screen.findByDisplayValue("Modelo");
   mudarCampo(screen.getByLabelText("Finalidade"), { target: { value: "IATF" } });
   mudarCampo(screen.getByLabelText("Tentativa"), { target: { value: "EXTERNA" } });
-  mudarCampo(screen.getByLabelText("Diagnóstico de gestação (DG)"), { target: { value: "PROTOCOLO" } });
+  fireEvent.click(screen.getByLabelText("DG"));
   mudarCampo(screen.getByLabelText("Dias após a tentativa"), { target: { value: "30" } });
   avancarParaEtapas();
   avancarParaConferencia();
@@ -129,7 +128,7 @@ it.each(["PRE_SINCRONIZACAO", "IATF", "TETF"] as const)("publicação valida a f
   mudarCampo(screen.getByLabelText("Finalidade"), { target: { value: finalidade } });
   if (finalidade !== "PRE_SINCRONIZACAO") {
     mudarCampo(screen.getByLabelText("Tentativa"), { target: { value: "ETAPA" } });
-    expect(screen.getByLabelText("Diagnóstico de gestação (DG)")).toHaveProperty("value", "EXTERNO");
+    expect(screen.getByLabelText("DG")).toHaveProperty("checked", false);
   }
   avancarParaEtapas();
   if (finalidade === "PRE_SINCRONIZACAO") {
@@ -146,10 +145,10 @@ it.each(["PRE_SINCRONIZACAO", "IATF", "TETF"] as const)("publicação valida a f
     const nome = finalidade === "IATF" ? "Inseminação" : "Transferência de embrião";
     expect(screen.getByRole("button", { name: new RegExp(`Editar ${nome}`) })).toBeTruthy();
     avancarParaConferencia();
-    expect(screen.getByText(/complete o dia/)).toBeTruthy();
+    expect(screen.getByText(/Defina o dia da etapa/)).toBeTruthy();
     const modal = await screen.findByRole("dialog");
     await waitFor(() => expect(modal.contains(document.activeElement)).toBe(true));
-    expect(within(modal).getByRole("button", { name: `Remover ${nome}` })).toHaveProperty("disabled", true);
+    expect(within(modal).getByRole("button", { name: "Remover etapa" })).toHaveProperty("disabled", true);
     expect(screen.queryByRole("button", { name: "Salvar protocolo" })).toBeNull();
     expect(vi.mocked(reqV4).mock.calls.some(([, body]) => !!body)).toBe(false);
   }

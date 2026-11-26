@@ -14,7 +14,7 @@ import { associarMomentosAcoesTx } from "../protocolos/momentos.js";
 import { impactosInicioLegado } from "../protocolos/inicio-legado.calc.js";
 import crypto from "node:crypto";
 import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
-import { garantirDemandaProtocoloTx, reconciliarDemandasAnimalTx, validarTiposPoliticaTx, criarDemandasDoFatoTx } from "./acompanhamento.js";
+import { garantirDemandaProtocoloTx, reconciliarDemandasAnimalTx, validarTiposPoliticaTx, criarDemandasDoFatoTx, referenciaGuiadaValidaTx } from "./acompanhamento.js";
 import { lerDataIatf, dataDisponibilidadeIatf, diaIatf, anteriorIatf, serializarDataIatf, type PrecisaoIatf } from "./horarios.calc.js";
 import { conferirFormatoReprodutivo } from "../exames/formatos.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
@@ -208,7 +208,7 @@ export async function criarProtocolo(
   input: z.infer<typeof protocoloSchema>,
   usuarioId: number | null,
 ) {
-  input = protocoloSchema.parse(input);
+  input = protocoloSchema.parse(input.origemVersaoId ? { ...input, encerramentoGuiado: true } : input);
   return transacaoPecuaria(async (tx) => {
     const origem=input.origemVersaoId?await tx.protocolo.findFirst({where:{id:input.origemVersaoId,tipo:"REPRODUTIVO"}}):null;
     if(input.origemVersaoId&&!origem)erro("Versão de origem reprodutiva não encontrada", "origemVersaoId");
@@ -217,7 +217,7 @@ export async function criarProtocolo(
     if (input.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,input.configuracaoAcompanhamento);
     const { encerramentoGuiado: _encerramentoGuiado, ...dadosProtocolo } = input;
     const p = await criarProtocoloReprodutivoTx(tx, {
-      data: { ...dadosProtocolo, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : undefined, etapas: json(etapas), criadoPorId: usuarioId,...(origem ? { referenciaTecnica: json({ ...(origem.referenciaTecnica && typeof origem.referenciaTecnica === "object" && !Array.isArray(origem.referenciaTecnica) ? origem.referenciaTecnica : {}), protocoloOrigemId: origem.id }) } : {}) },
+      data: { ...dadosProtocolo, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : undefined, etapas: json(etapas), criadoPorId: usuarioId,...(origem || input.encerramentoGuiado ? { referenciaTecnica: json({ ...(origem?.referenciaTecnica && typeof origem.referenciaTecnica === "object" && !Array.isArray(origem.referenciaTecnica) ? origem.referenciaTecnica : {}), ...(origem ? { protocoloOrigemId: origem.id } : {}), encerramentoGuiado: true }) } : {}) },
     });
     await auditar(tx, {
       entidade: "ProtocoloIatf",
@@ -242,9 +242,13 @@ function etapaSemReferencias(e: Prisma.JsonValue) {
   const { referencias: _referencias, ...etapa } = e;
   return etapa;
 }
+function referenciaTecnicaDoProtocolo(valor: Prisma.JsonValue | undefined) {
+  return valor && typeof valor === "object" && !Array.isArray(valor) ? valor : {};
+}
 async function publicarReprodutivoTx(tx: Prisma.TransactionClient, id: string, usuarioId: number | null) {
   await publicarVersaoTx(tx, id, "REPRODUTIVO", usuarioId, async p => {
-    const validado = protocoloSchema.parse({ nome: p.nome, versao: p.versao, publicado: true, finalidade: p.finalidade, modalidadeTentativa: p.modalidadeTentativa, modalidadeDiagnostico: p.modalidadeDiagnostico, configuracaoAcompanhamento: p.configuracaoAcompanhamento, etapas: p.etapas.map(e => etapaSemReferencias(e.configuracao)) });
+    const referencia = referenciaTecnicaDoProtocolo(p.referenciaTecnica);
+    const validado = protocoloSchema.parse({ nome: p.nome, versao: p.versao, publicado: true, ...(referencia.encerramentoGuiado === true ? { encerramentoGuiado: true } : {}), finalidade: p.finalidade, modalidadeTentativa: p.modalidadeTentativa, modalidadeDiagnostico: p.modalidadeDiagnostico, configuracaoAcompanhamento: p.configuracaoAcompanhamento, etapas: p.etapas.map(e => etapaSemReferencias(e.configuracao)) });
     if (validado.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,validado.configuracaoAcompanhamento);
     const congeladas = await congelarEtapasTx(tx, validado.etapas, validado.finalidade != null);
     const etapas = etapasReprodutivasDoContrato(json(congeladas));
@@ -258,8 +262,10 @@ export async function editarProtocolo(id: string, input: z.infer<typeof protocol
     const identidade = await resolverIdReprodutivoTx(tx, "protocolo", id);
     const antes = await carregarVersaoTx(tx, identidade, "REPRODUTIVO", true);
     if (!podeVerValores && antes.etapas.some(e => e.configuracao && typeof e.configuracao === "object" && !Array.isArray(e.configuracao) && "referenciasCusto" in e.configuracao)) throw new RebanhoError("CONFLITO", "Esta versão contém referências financeiras protegidas; solicite a edição a um usuário com acesso a valores", "etapas");
+    const referenciaTecnica = referenciaTecnicaDoProtocolo(antes.referenciaTecnica);
     input = protocoloSchema.parse({
       ...input,
+      ...(referenciaTecnica.encerramentoGuiado === true ? { encerramentoGuiado: true } : {}),
       finalidade: input.finalidade ?? antes.finalidade,
       modalidadeTentativa: input.modalidadeTentativa === undefined ? antes.modalidadeTentativa : input.modalidadeTentativa,
       modalidadeDiagnostico: input.modalidadeDiagnostico === undefined ? antes.modalidadeDiagnostico : input.modalidadeDiagnostico,
@@ -270,7 +276,12 @@ export async function editarProtocolo(id: string, input: z.infer<typeof protocol
     const congeladas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null, usuarioId);
     await tx.etapaProtocolo.deleteMany({ where: { protocoloId: identidade } });
     await tx.momentoProtocolo.deleteMany({ where: { protocoloId: identidade } });
-    await tx.protocolo.update({ where: { id: identidade, tipo: "REPRODUTIVO" }, data: { nome: input.nome, descricao: input.descricao, finalidade: input.finalidade, modalidadeTentativa: input.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : Prisma.DbNull, etapas: { deleteMany: {}, create: etapasReprodutivasDoContrato(json(congeladas)) } } });
+    await tx.protocolo.update({ where: { id: identidade, tipo: "REPRODUTIVO" }, data: {
+      nome: input.nome, descricao: input.descricao, finalidade: input.finalidade, modalidadeTentativa: input.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico,
+      configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : Prisma.DbNull,
+      ...(input.encerramentoGuiado ? { referenciaTecnica: json({ ...referenciaTecnica, encerramentoGuiado: true }) } : {}),
+      etapas: { deleteMany: {}, create: etapasReprodutivasDoContrato(json(congeladas)) },
+    } });
     await associarMomentosAcoesTx(tx, identidade, input.etapas);
     if (input.publicado) await publicarReprodutivoTx(tx, identidade, usuarioId);
     const depois = await tx.protocoloIatf.findUniqueOrThrow({ where: { id: identidade } });
@@ -689,6 +700,13 @@ export async function prepararExecucaoTarefaTx(
     await conferirMatrizTx(tx, participante.animalId, input.propriedadeId, dia(data));
   const planoOriginal = tarefa.planejadoSnapshot as SnapshotIatf | null;
   if (referenciaDiagnosticoPendente(planoOriginal?.etapa, tarefa.previsaoPendente)) erro("A avaliação aguarda o fato de referência antes do atendimento", "realizadaEm");
+  const referenciaGuiada = planoOriginal?.etapa.referenciaPrazoDiagnostico || planoOriginal?.etapa.referenciaPrazoReconfirmacao
+    ? await referenciaGuiadaValidaTx(tx, tarefa.id, participante.animalId, participante.id, input.propriedadeId, !!planoOriginal.etapa.referenciaPrazoReconfirmacao) : null;
+  if ((planoOriginal?.etapa.referenciaPrazoDiagnostico || planoOriginal?.etapa.referenciaPrazoReconfirmacao) && !referenciaGuiada) erro("A avaliação aguarda o fato de referência antes do atendimento", "realizadaEm");
+  if (referenciaGuiada && planoOriginal?.etapa.referenciaPrazoDiagnostico) {
+    if (data < diaIatf(referenciaGuiada.data, "DIA")) erro("O diagnóstico não pode anteceder a tentativa vinculada", "realizadaEm");
+    if (input.dados.tentativaId != null && input.dados.tentativaId !== referenciaGuiada.id) erro("A tentativa informada diverge da tentativa vinculada à participação", "tentativaId");
+  }
   // A referência operacional pode ser adiada sem reescrever o snapshot publicado.
   const plano = planoOriginal ? { ...planoOriginal, previstaEm: serializarDataIatf(tarefa.previstaEm, tarefa.precisaoTemporal),
     precisaoTemporal: tarefa.precisaoTemporal, previsaoPendente: tarefa.previsaoPendente } : null;
@@ -698,6 +716,7 @@ export async function prepararExecucaoTarefaTx(
   const dadosAcompanhamento: Record<string, unknown> = {};
   if (demanda) {
     if (demanda.estado !== "PENDENTE" || demandaDispensada(demanda)) erro("A demanda desta tarefa não está pendente operacionalmente; revise o acompanhamento", "demandaAcompanhamentoId");
+    if (referenciaGuiada && planoOriginal?.etapa.referenciaPrazoDiagnostico && (demanda.finalidade !== "DIAGNOSTICO" || demanda.tentativaId !== referenciaGuiada.id)) erro("A demanda diverge da tentativa vinculada à participação; revise o acompanhamento", "demandaAcompanhamentoId");
     Object.assign(dadosAcompanhamento, { demandaAcompanhamentoId: demanda.id, finalidade: demanda.finalidade, tentativaId: demanda.tentativaId, gestacaoId: demanda.gestacaoId });
     const regra = demanda.regraSnapshot as Record<string, unknown>;
     if (regra.tipoExameId) dadosAcompanhamento.tipoExameId = regra.tipoExameId;
@@ -708,6 +727,7 @@ export async function prepararExecucaoTarefaTx(
   const dados = {
     ...(tarefa.tipo === "AVALIACAO" ? { tipoExameId: plano?.etapa.planoAvaliacao?.tipoExameId ?? TIPO_EXAME_REPRODUTIVO } : {}),
     ...input.dados,
+    ...(referenciaGuiada && planoOriginal?.etapa.referenciaPrazoDiagnostico ? { tentativaId: referenciaGuiada.id } : {}),
     ...dadosAcompanhamento,
     chave: input.chave,
     animalId: participante.animalId,

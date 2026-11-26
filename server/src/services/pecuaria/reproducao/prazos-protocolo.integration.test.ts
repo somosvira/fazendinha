@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
-import { criarDemandasDoFatoTx, criarPoliticaAcompanhamentoTx, previaRevisaoPrazosTx, revisarPrazosTx, reconciliarDemandasAnimalTx } from "./acompanhamento.js";
+import { criarDemandasDoFatoTx, criarPoliticaAcompanhamentoTx, previaRevisaoPrazosTx, revisarPrazosTx, reconciliarDemandasAnimalTx, referenciaGuiadaValidaTx } from "./acompanhamento.js";
 import { reconciliarAlertasReprodutivosAnimalTx } from "./alertas/produtor.js";
 import { criarPoliticaAcompanhamentoSchema } from "./acompanhamento.schemas.js";
 import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
@@ -99,16 +99,26 @@ banco("reconfirmação factual no PostgreSQL autorizado",()=>{
    expect(await tx.tarefaProtocolo.findUniqueOrThrow({where:{id:rec.id}})).toMatchObject({previsaoPendente:true});
    const gestacao=await tx.gestacaoAnimal.create({data:{animalId:animal.id,propriedadeId:sitio.id,tentativaId:tentativa.id,confirmadaEm:dia("2026-02-01")}});
    const tipo=await tx.tipoExame.create({data:{nome:marca,tipoResultado:"MULTIPLO",contexto:"REPRODUTIVO",campos:[{codigo:"CONCLUSAO_GESTACIONAL",tipo:"OPCAO",opcoes:["POSITIVO","NEGATIVO","INCONCLUSIVO"]}]}});
-   const exame=await tx.exameAnimal.create({data:{animalId:animal.id,propriedadeId:sitio.id,tipoExameId:tipo.id,data:dia("2026-02-01"),finalidades:["DIAGNOSTICO"],finalidadePrincipal:"DIAGNOSTICO",formatoSnapshot:{nome:marca,tipoResultado:"MULTIPLO",versao:1},interpretacao:{create:{tentativaId:tentativa.id,gestacaoId:gestacao.id}},resultados:{create:{campo:"CONCLUSAO_GESTACIONAL",valor:"POSITIVO"}}}});
+   const criarPositivo = (prefixo: string, finalidade: "DIAGNOSTICO" | "RECONFIRMACAO", criadoEm: string) => tx.exameAnimal.create({data:{
+    id: prefixo + randomUUID().slice(8), animalId:animal.id, propriedadeId:sitio.id, tipoExameId:tipo.id, data:dia("2026-02-01"), criadoEm:new Date(criadoEm),
+    finalidades:[finalidade], finalidadePrincipal:finalidade, formatoSnapshot:{nome:marca,tipoResultado:"MULTIPLO",versao:1},
+    interpretacao:{create:{tentativaId:tentativa.id,gestacaoId:gestacao.id}}, resultados:{create:{campo:"CONCLUSAO_GESTACIONAL",valor:"POSITIVO"}},
+   }});
+   const exame = await criarPositivo("f0000000", "DIAGNOSTICO", "2026-02-01T11:00:00Z");
    const origem={gestacaoId:gestacao.id,animalId:animal.id,propriedadeId:sitio.id,data:exame.data,exameOrigemId:exame.id};
    await criarDemandasDoFatoTx(tx,origem,null); await criarDemandasDoFatoTx(tx,origem,null);
    await reconciliarDemandasAnimalTx(tx,animal.id,null); await reconciliarDemandasAnimalTx(tx,animal.id,null);
    expect(await tx.demandaAcompanhamentoReprodutivo.count({where:{gestacaoId:gestacao.id,finalidade:"RECONFIRMACAO"}})).toBe(1);
    expect(await tx.tarefaProtocolo.findUniqueOrThrow({where:{id:rec.id}})).toMatchObject({previsaoPendente:false,previstaPara:dia("2026-02-21")});
    expect(await tx.demandaAcompanhamentoReprodutivo.findFirstOrThrow({where:{gestacaoId:gestacao.id}})).toMatchObject({tarefaId:rec.id,exameOrigemId:exame.id});
+   await criarPositivo("10000000", "DIAGNOSTICO", "2026-02-01T12:00:00Z");
+   await criarPositivo("20000000", "RECONFIRMACAO", "2026-02-01T10:00:00Z");
+   const verificarReferencia = () => referenciaGuiadaValidaTx(tx, rec.id, animal.id, participacao.id, sitio.id, true);
+   await expect(verificarReferencia()).resolves.toMatchObject({ id: tentativa.id });
    await tx.exameAnimal.update({where:{id:exame.id},data:{status:"ANULADO",anuladoEm:new Date(),motivoAnulacao:"Correção de evidência de teste"}});
    await reconciliarDemandasAnimalTx(tx,animal.id,null);
    expect(await tx.tarefaProtocolo.findUniqueOrThrow({where:{id:rec.id}})).toMatchObject({previsaoPendente:true});
+   await expect(verificarReferencia()).resolves.toBe(false);
    throw cancelar;
   },{timeout:30000})).rejects.toBe(cancelar);
  });

@@ -45,10 +45,18 @@ export const protocoloSchema = z.object({ encerramentoGuiado: z.literal(true).op
   const builder = protocolo.finalidade != null;
   const dependentes = protocolo.etapas.filter(e => e.referenciaPrazoDiagnostico);
   if (dependentes.length) {
-    const publico = protocolo.finalidade === "IATF" ? "IA" : protocolo.finalidade === "TETF" ? "TE" : null;
-    if (dependentes.length !== 1 || protocolo.modalidadeDiagnostico !== "PROTOCOLO" || !publico || !protocolo.configuracaoAcompanhamento?.regras.some(r => r.finalidade === "DIAGNOSTICO" && r.publico === publico)) ctx.addIssue({code:"custom",path:["configuracaoAcompanhamento"],message:"A avaliação dependente exige uma única ação de diagnóstico interno e regra de prazo para IA ou TE conforme a finalidade"});
-    const regra = protocolo.configuracaoAcompanhamento?.regras.find(r => r.finalidade === "DIAGNOSTICO" && r.publico === publico);
-    if (regra?.tipoExameId && dependentes[0] && regra.tipoExameId !== (dependentes[0].planoAvaliacao?.tipoExameId ?? TIPO_EXAME_REPRODUTIVO)) ctx.addIssue({code:"custom",path:["configuracaoAcompanhamento"],message:"O exame da regra de diagnóstico deve corresponder ao exame da ação"});
+    const tentativaExterna = protocolo.modalidadeTentativa === "EXTERNA";
+    const publico = tentativaExterna
+      ? (protocolo.finalidade === "IATF" ? "IA" : "TE")
+      : protocolo.etapas.find(e => e.tipo === "TENTATIVA")?.tentativaTipo;
+    const regras = protocolo.configuracaoAcompanhamento?.regras.filter(r => r.finalidade === "DIAGNOSTICO" && r.ocorrencia === 1) ?? [];
+    const regrasAplicaveis = publico ? regras.filter(r => r.publico === publico) : regras;
+    const regrasExigidas = !tentativaExterna && protocolo.encerramentoGuiado && protocolo.publicado ? regrasAplicaveis : regras;
+    if (dependentes.length !== 1 || protocolo.modalidadeDiagnostico !== "PROTOCOLO" || !["IATF", "TETF"].includes(protocolo.finalidade ?? "") || !regrasExigidas.length) ctx.addIssue({code:"custom",path:["configuracaoAcompanhamento"],message:"A avaliação dependente exige regra de primeiro diagnóstico para a tentativa planejada"});
+    const tipoExame = dependentes[0]?.planoAvaliacao?.tipoExameId ?? TIPO_EXAME_REPRODUTIVO;
+    const formatoCompativel = (regra: typeof regras[number]) => !regra.tipoExameId || regra.tipoExameId === tipoExame;
+    const formatos = tentativaExterna && !regrasAplicaveis.length ? regras : regrasAplicaveis;
+    if (formatos.length && !formatos.some(formatoCompativel)) ctx.addIssue({code:"custom",path:["configuracaoAcompanhamento"],message:"O exame da regra de diagnóstico deve corresponder ao exame da ação"});
   }
   const reconfirmacoes = protocolo.etapas.filter(e => e.referenciaPrazoReconfirmacao);
   if (reconfirmacoes.length && (reconfirmacoes.length !== 1 || !["IATF", "TETF"].includes(protocolo.finalidade ?? "") || !protocolo.configuracaoAcompanhamento?.regras.some(r => r.finalidade === "RECONFIRMACAO" && r.ocorrencia === 1))) ctx.addIssue({code:"custom",path:["configuracaoAcompanhamento"],message:"A reconfirmação dependente exige uma regra de primeiro DG positivo"});
