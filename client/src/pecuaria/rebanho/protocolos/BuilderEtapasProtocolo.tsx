@@ -23,6 +23,7 @@ export type BuilderEtapasProtocoloProps<T extends AcaoBuilderEtapas> = {
   permitirAutomacao?: boolean;
   editorEmModal?: boolean;
   resumoEtapa?: (itens: T[]) => { referencia: string; procedimentos: string };
+  ordemExibicaoEtapa?: (itens: T[]) => number;
   quadro?: (item: T) => { procedimento: string; produto: ReactNode; quantidade: string };
   origem: CadastroProtocoloMeta | null;
   cargaPersistida?: MutableRefObject<CargaAcoesCadastro | null>;
@@ -52,7 +53,7 @@ function agrupar<T extends AcaoBuilderEtapas>(itens: T[]): Grupo<T>[] {
   return [...grupos.values()].sort((a, b) => (a.momento?.ordem ?? a.acoes[0].item.ordem ?? a.acoes[0].indice) - (b.momento?.ordem ?? b.acoes[0].item.ordem ?? b.acoes[0].indice));
 }
 
-export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuadro = "Etapas e procedimentos", quadroSomenteLeitura = false, podeRemover, motivoEdicaoBloqueada, abrirPeloCalendario, onEncerrarEdicao, permitirAutomacao = false, editorEmModal = false, resumoEtapa, quadro, origem, cargaPersistida, itens, onChange, converter, onCompletoChange, criarAcao, renderizarAcao, renderizarDetalhes, renderizarCalendario, indiceErro }: BuilderEtapasProtocoloProps<T>) {
+export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuadro = "Etapas e procedimentos", quadroSomenteLeitura = false, podeRemover, motivoEdicaoBloqueada, abrirPeloCalendario, onEncerrarEdicao, permitirAutomacao = false, editorEmModal = false, resumoEtapa, ordemExibicaoEtapa, quadro, origem, cargaPersistida, itens, onChange, converter, onCompletoChange, criarAcao, renderizarAcao, renderizarDetalhes, renderizarCalendario, indiceErro }: BuilderEtapasProtocoloProps<T>) {
   const id = useId();
   const raiz = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLElement>(null);
@@ -129,6 +130,10 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuad
   useEffect(() => { onCompletoChange(podeSalvar); }, [podeSalvar, onCompletoChange]);
 
   const grupos = agrupar(itens);
+  const gruposQuadro = ordemExibicaoEtapa ? grupos
+    .map(grupo => ({ grupo, ordem: ordemExibicaoEtapa(grupo.acoes.map(({ item }) => item)) }))
+    .sort((a, b) => a.ordem === b.ordem ? 0 : a.ordem - b.ordem)
+    .map(({ grupo }) => grupo) : grupos;
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [paginaEtapas, setPaginaEtapas] = useState(1);
   const [paginasAcoes, setPaginasAcoes] = useState<Record<string, number>>({});
@@ -229,7 +234,7 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuad
     <div className={quadroSomenteLeitura ? "quadro-protocolo-rolagem quadro-protocolo-leitura" : "quadro-protocolo-rolagem"} role="region" aria-label="Quadro de procedimentos" tabIndex={0}>
       <table>
         <thead><tr><th>Etapa</th><th>Procedimento</th><th>Produto / modelo</th><th>Qtd. por animal</th>{!quadroSomenteLeitura && <th>Ações</th>}</tr></thead>
-        {grupos.map(g => <tbody key={g.chave}>{g.acoes.map(({ item, indice }, posicao) => {
+        {gruposQuadro.map(g => <tbody key={g.chave}>{g.acoes.map(({ item, indice }, posicao) => {
           const linha = quadro(item);
           const motivo = motivoEdicaoBloqueada?.(item);
           const nomeEtapa = g.momento?.nome ?? "Ação legada";

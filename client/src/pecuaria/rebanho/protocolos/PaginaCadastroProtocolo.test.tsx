@@ -49,6 +49,36 @@ async function iniciarReproComAplicacao() {
   fireEvent.click(screen.getByRole("button", {name:"Concluir etapa"}));
   fireEvent.click(screen.getByRole("button", {name:/Editar Aplicação de produto/}));
 }
+it("ordena as etapas pelo dia ao adicionar, editar e conferir o protocolo", async () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo");
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />);
+  mudarCampo(screen.getByLabelText("Nome do protocolo"), { target: { value: "Preparo" } });
+  mudarCampo(screen.getByLabelText("Finalidade"), { target: { value: "PRE_SINCRONIZACAO" } });
+  fireEvent.click(screen.getByRole("button", { name: "Ir para etapas" }));
+
+  for (const dia of ["2", "0"]) {
+    fireEvent.click(await screen.findByRole("button", { name: "Adicionar etapa" }));
+    mudarCampo(screen.getByLabelText("Dia da etapa"), { target: { value: dia } });
+    fireEvent.click(screen.getByRole("button", { name: "Ir para procedimentos" }));
+    mudarCampo(screen.getByLabelText("Tipo de procedimento"), { target: { value: "RETIRADA" } });
+    fireEvent.click(screen.getByRole("button", { name: "Concluir etapa" }));
+  }
+
+  const etapas = () => within(screen.getByRole("region", { name: "Quadro de procedimentos" }))
+    .getAllByRole("rowheader").map(celula => celula.textContent);
+  expect(etapas()).toEqual(["D0Etapa 2", "D2Etapa 1"]);
+
+  fireEvent.click(screen.getByRole("button", { name: "Editar dados da etapa Etapa 2" }));
+  mudarCampo(screen.getByLabelText("Dia da etapa"), { target: { value: "10" } });
+  fireEvent.click(screen.getByRole("button", { name: "Ir para procedimentos" }));
+  fireEvent.click(screen.getByRole("button", { name: "Concluir etapa" }));
+  expect(etapas()).toEqual(["D2Etapa 1", "D10Etapa 2"]);
+
+  fireEvent.click(screen.getByRole("button", { name: "Ir para conferência" }));
+  expect(screen.getByRole("button", { name: "Salvar protocolo" })).toBeTruthy();
+  expect(etapas()).toEqual(["D2Etapa 1", "D10Etapa 2"]);
+});
+
 it("herda o domínio da rota e lista bases em páginas de dez sem rascunho ou área", async () => {
   vi.mocked(listarCadastrosProtocolos).mockImplementation(async (_tipo, atual) => pagina(Array.from({ length: atual === 1 ? 10 : 1 }, (_, i) => ({ ...meta, id: `p-${atual}-${i}`, nome: `Modelo ${atual}-${i}` })), 11, atual));
   render(<PaginaCadastroProtocolo tipo="SANITARIO" podeLancar />);

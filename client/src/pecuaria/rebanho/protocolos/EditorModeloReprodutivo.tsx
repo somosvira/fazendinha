@@ -37,6 +37,13 @@ export function nomeProcedimentoReprodutivo(acao: EtapaIatf) {
 
 const prazoDefinidoNaIdentificacao = (acao: EtapaIatf) => acao.referenciaPrazoDiagnostico || acao.referenciaPrazoReconfirmacao;
 
+function primeiraHoraNoCalendario(acoes: EtapaIatf[]) {
+  const horas = acoes
+    .filter(acao => !acao.intervaloPendente && !prazoDefinidoNaIdentificacao(acao))
+    .map(acao => acao.intervalo * (acao.unidade === "HORAS" ? 1 : 24));
+  return Math.min(...horas);
+}
+
 export function EditorModeloReprodutivo({ origemCadastro, cargaPersistida, etapas, setEtapas, setAcoesCompletas, acoesCompletas, indiceErroCadastro, erroNoCalendario = false, onEncerrarEdicao, erroCampo, sitioEfetivo, contratoNovo = true, podeRemover, prazoDg, prazoReconfirmacao, tituloQuadro, somenteLeitura }: {
   origemCadastro: CadastroProtocoloMeta | null; cargaPersistida?: MutableRefObject<CargaAcoesCadastro | null>; etapas: EtapaIatf[]; setEtapas: Dispatch<SetStateAction<EtapaIatf[]>>;
   onEncerrarEdicao?: () => void;
@@ -218,6 +225,7 @@ export function EditorModeloReprodutivo({ origemCadastro, cargaPersistida, etapa
   }
 
   return <><BuilderEtapasProtocolo<EtapaIatf> permitirAutomacao editorEmModal podeRemover={podeRemover} tituloQuadro={tituloQuadro} quadroSomenteLeitura={somenteLeitura}
+                  ordemExibicaoEtapa={primeiraHoraNoCalendario}
                   abrirPeloCalendario={item => item.intervaloPendente === true || erroNoCalendario && indiceErroCadastro !== null && etapas[indiceErroCadastro] === item}
                   onEncerrarEdicao={onEncerrarEdicao}
                   motivoEdicaoBloqueada={item => prazoDefinidoNaIdentificacao(item) ? "Para alterar este acompanhamento, volte à Identificação." : undefined}
