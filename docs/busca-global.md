@@ -112,3 +112,5 @@ abre o modal exato em Estoque → Catálogo usando `referenciaCatalogo`, mantend
 a busca `buscaCatalogo` e o escopo ativo. O gate é o de Estoque (Financeiro ou
 Pecuária). Produtos sem dados oficiais vinculados continuam disponíveis na consulta
 do Catálogo e exibem o motivo da pendência. Não geram resultado do tipo referência oficial apenas por possuírem pesquisa pendente ou links a conferir. Referências parciais são identificadas como tais no contexto do resultado e abrem o modal exato com seus campos e pendências.
+
+O ECC informado na entrada do animal cria um `ExameAnimal` estruturado após o cadastro ou a confirmação da compra. A fonte existente de exames o indexa pelo tipo e pelo animal, com destino ao detalhe exato do exame e os mesmos gates de Pecuária e sítio; rascunhos não geram resultado de busca.

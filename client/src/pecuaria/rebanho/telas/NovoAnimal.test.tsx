@@ -1,8 +1,9 @@
+import { executarComGuardaNavegacao } from "../../../navegacaoGuardada";
 import { consultarBezerreiro } from "../bezerreiro/api";
 // @vitest-environment jsdom
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NovoAnimal } from "./NovoAnimal";
 import { cadastrarAnimal, listarCategorias, listarGenitores, obterCatalogos, preverComposicaoAnimal } from "../api";
 import type { Catalogos } from "../types";
@@ -57,6 +58,69 @@ async function montar() {
 }
 
 describe("NovoAnimal", () => {
+  it("preserva composição desconhecida ao cancelar seleção", async () => {
+    await montar();
+    expect(screen.getByText("64/64 sem informação")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Pai.*Selecionar pai/ }));
+    const seletor = screen.getByRole("dialog", { name: "Selecionar pai" });
+    fireEvent.click(within(seletor).getByRole("button", { name: "Cancelar" }));
+    expect(screen.getByText("64/64 sem informação")).toBeTruthy();
+  });
+
+  it("não apresenta um resumo válido quando há linha incompleta", async () => {
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: "Editar composição" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Adicionar raça" }));
+    expect(screen.getByText(/Complete ou corrija as linhas/)).toBeTruthy();
+    expect(screen.queryByText("64/64 sem informação")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
+    expect(screen.getByText("Selecione a raça em todas as linhas de composição")).toBeTruthy();
+  });
+
+  it("bloqueia fechamento e envio repetido enquanto salva", async () => {
+    let resolver!: (valor: never) => void;
+    vi.mocked(cadastrarAnimal).mockReturnValue(new Promise(resolve => { resolver = resolve; }));
+    const voltar = vi.fn();
+    history.replaceState({ cadastroAnimalOrigem: "/pecuaria/rebanho/animais" }, "", "/pecuaria/rebanho/animais/novo?retorno=%2Fpecuaria%2Frebanho%2Fanimais");
+    render(<NovoAnimal onVoltar={voltar} />);
+    await screen.findByLabelText("Sítio");
+    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "R1" } });
+    await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
+    await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledTimes(1));
+    fireEvent.submit(document.getElementById("form-novo-animal")!);
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    const ouvinte = vi.fn();
+    window.addEventListener("popstate", ouvinte);
+    history.replaceState(null, "", "/financeiro/operacoes");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(ouvinte).not.toHaveBeenCalled();
+    expect(history.state).toBeNull();
+    expect(location.pathname).toBe("/pecuaria/rebanho/animais/novo");
+    window.removeEventListener("popstate", ouvinte);
+    expect(cadastrarAnimal).toHaveBeenCalledTimes(1);
+    const acaoShell = vi.fn();
+    await executarComGuardaNavegacao(acaoShell);
+    expect(acaoShell).not.toHaveBeenCalled();
+    expect(voltar).not.toHaveBeenCalled();
+    resolver({ id: "animal-1", avisos: [] } as never);
+  });
+
+  it("valida ECC e envia escore decimal independente do peso", async () => {
+    vi.mocked(cadastrarAnimal).mockResolvedValue({ id: "ecc-1", avisos: [] } as never);
+    await montar();
+    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "ECC1" } });
+    await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    const ecc = screen.getByLabelText("Escore corporal (ECC) opcional");
+    fireEvent.change(ecc, { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
+    expect(screen.getByText("Informe um ECC entre 1 e 5")).toBeTruthy();
+    expect(cadastrarAnimal).not.toHaveBeenCalled();
+    fireEvent.change(ecc, { target: { value: "3,25" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
+    await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({ eccEntrada: 3.25, pesoEntradaKg: null })));
+  });
+
   it("cadastra finalidade Reprodução sem alterar papel nem sexo", async () => {
     vi.mocked(cadastrarAnimal).mockResolvedValue({ id: "repro-1", avisos: [] } as never);
     await montar();
@@ -70,6 +134,25 @@ describe("NovoAnimal", () => {
     await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({ aptidao: "REPRODUCAO", papelReprodutivo: "DOADORA", sexo: "F" })));
   });
 
+  it("conserva parcela manual ao confirmar genitor e exige revisão se exceder", async () => {
+    vi.mocked(listarGenitores).mockImplementation(filtros => Promise.resolve(filtros?.sexo === "M" ? [{ id: "pai-1", sexo: "M", nome: "Touro", codigo: null, fornecedor: null, fornecedorId: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "", filhos: 0 }] : []));
+    vi.mocked(preverComposicaoAnimal).mockResolvedValue({ itens: [{ racaId: "raca-1", sigla: "NE", fracao64: 32 }], rotulo: "1/2 NE" });
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: "Editar composição" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Adicionar raça" }));
+    await alterarControle(screen.getByLabelText("Raça"), { target: { value: "raca-1" } });
+    fireEvent.change(screen.getByLabelText("Fração (/64)"), { target: { value: "48" } });
+    fireEvent.click(screen.getByRole("button", { name: /Pai.*Selecionar pai/ }));
+    const seletor = screen.getByRole("dialog", { name: "Selecionar pai" });
+    fireEvent.click(within(seletor).getByRole("button", { name: "Genitores externos" }));
+    fireEvent.click(await within(seletor).findByRole("radio", { name: /Touro/ }));
+    fireEvent.click(within(seletor).getByRole("button", { name: "Usar como pai" }));
+    expect(await screen.findByText(/Complete ou corrija as linhas/)).toBeTruthy();
+    expect((screen.getByLabelText("Fração (/64)") as HTMLInputElement).value).toBe("48");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
+    expect(screen.getByText(/parcela informada não pode passar de 32\/64/)).toBeTruthy();
+  });
+
   it("ao selecionar um pai, fixa a metade herdada e limita a parte informável", async () => {
     vi.mocked(listarGenitores).mockImplementation((filtros) => Promise.resolve(filtros?.sexo === "M" ? [{ id: "pai-1", sexo: "M", nome: "Touro", codigo: null, fornecedor: null, fornecedorId: null, observacao: null, ativo: true, composicao: [], composicaoRotulo: "", filhos: 0 }] : []));
     vi.mocked(preverComposicaoAnimal).mockResolvedValue({ itens: [{ racaId: "raca-1", sigla: "NE", fracao64: 32 }], rotulo: "1/2 NE" });
@@ -77,9 +160,12 @@ describe("NovoAnimal", () => {
     await montar();
     await alterarControle(screen.getByLabelText("Brinco"), { target: { value: "filho-1" } });
     await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
-    fireEvent.click(screen.getAllByRole("button", { name: "Genitor externo" })[1]);
-    await alterarControle(await screen.findByLabelText("Selecionar pai entre os genitores externos"), { target: { value: "pai-1" } });
-    expect(await screen.findByText(/Parcela fixa dos genitores: 1\/2 NE \(32\/64\)/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Pai.*Selecionar pai/ }));
+    const seletor = screen.getByRole("dialog", { name: "Selecionar pai" });
+    fireEvent.click(within(seletor).getByRole("button", { name: "Genitores externos" }));
+    fireEvent.click(await within(seletor).findByRole("radio", { name: /Touro/ }));
+    fireEvent.click(within(seletor).getByRole("button", { name: "Usar como pai" }));
+    expect(await screen.findByText(/32\/64 calculados pela filiação · 1\/2 NE/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
     await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({ composicao: [{ racaId: "raca-1", fracao64: 32 }] })));
   });
@@ -91,15 +177,11 @@ describe("NovoAnimal", () => {
     expect(cadastrarAnimal).not.toHaveBeenCalled();
   });
 
-  it("cadastra somente compra e encaminha nascimento para o parto da mãe", async () => {
+  it("mantém origem comprada sem faixa nem atalho de parto", async () => {
     await montar();
-    expect(screen.getByText("Animal comprado")).toBeTruthy();
+    expect(screen.queryByText("Animal comprado")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Registrar nascimento pelo parto" })).toBeNull();
     expect(screen.queryByLabelText("Origem")).toBeNull();
-    expect((screen.getByLabelText("Data de entrada") as HTMLInputElement).disabled).toBe(false);
-    expect(screen.queryByRole("option", { name: "Nascido na propriedade" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Registrar nascimento pelo parto" }));
-    expect(navegarPara).toHaveBeenCalledWith("/pecuaria/reproducao?acao=parto");
-    expect(cadastrarAnimal).not.toHaveBeenCalled();
   });
 
   it("trocar o sexo para macho esconde e zera papel reprodutivo e partos (R1)", async () => {

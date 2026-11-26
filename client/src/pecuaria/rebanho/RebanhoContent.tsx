@@ -7,7 +7,7 @@ import { CentralAlertas } from "./alertas/CentralAlertas";
 // sem depender de react-router. App.tsx preserva a sub-rota via
 // isSubrotaRebanho ao trocar de aba.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   isCadastrosRebanho,
   isListaAnimaisRebanho,
@@ -26,7 +26,7 @@ import { DetalheLote } from "./telas/DetalheLote";
 import { Cadastros } from "./telas/Cadastros";
 import { Sanidade } from "./sanidade/Sanidade";
 import { Nutricao } from "./nutricao/Nutricao";
-import { linkFichaAnimal, linkFichaLote, linkNovoAnimal, retornoRebanhoDaUrl, rotuloRetornoRebanho } from "./lib/navegacao";
+import { abrirNovoAnimal, fecharNovoAnimal, linkFichaAnimal, linkFichaLote, retornoRebanhoDaUrl, rotuloRetornoRebanho } from "./lib/navegacao";
 
 type Tela =
   | { tipo: "visao-geral" }
@@ -59,22 +59,25 @@ const URL_LOTES = "/pecuaria/rebanho/lotes";
 /** `podeLancar`: sem a flag `lancar` o módulo é só consulta — as telas escondem toda ação de escrita. */
 function TelasRebanho({ podeLancar = true }: { podeLancar?: boolean }) {
   const [tela, setTela] = useState<TelaV3>(() => telaDaUrl(window.location.pathname));
+  const anterior = useRef<TelaV3 | null>(null);
 
   useEffect(() => {
-    const aoNavegar = () => setTela(telaDaUrl(window.location.pathname));
+    const aoNavegar = () => setTela(atual => { const proxima = telaDaUrl(window.location.pathname); if (proxima.tipo === "novo-animal" && atual.tipo !== "novo-animal") anterior.current = window.history.state?.cadastroAnimalOrigem ? atual : null; return proxima; });
     window.addEventListener("popstate", aoNavegar);
     return () => window.removeEventListener("popstate", aoNavegar);
   }, []);
 
-  if (tela.tipo === "animais") {
-    return <ListaAnimais
-      podeLancar={podeLancar}
-      onAbrirAnimal={(id) => navegarPara(linkFichaAnimal(id))}
-      onNovoAnimal={() => navegarPara(linkNovoAnimal())}
-    />;
+  if (tela.tipo === "animais" || tela.tipo === "novo-animal" && anterior.current?.tipo === "animais") {
+    return <>
+      <ListaAnimais podeLancar={podeLancar} onAbrirAnimal={(id) => navegarPara(linkFichaAnimal(id))} onNovoAnimal={abrirNovoAnimal} />
+      {tela.tipo === "novo-animal" && <NovoAnimal podeLancar={podeLancar} onVoltar={fecharNovoAnimal} />}
+    </>;
   }
-  if (tela.tipo === "novo-animal") {
-    return <NovoAnimal podeLancar={podeLancar} onVoltar={() => navegarPara(retornoRebanhoDaUrl(URL_ANIMAIS))} />;
+  if (tela.tipo === "novo-animal" || tela.tipo === "visao-geral") {
+    return <>
+      {(tela.tipo === "visao-geral" || anterior.current?.tipo === "visao-geral") && <VisaoGeral podeLancar={podeLancar} />}
+      {tela.tipo === "novo-animal" && <NovoAnimal podeLancar={podeLancar} onVoltar={fecharNovoAnimal} />}
+    </>;
   }
   if (tela.tipo === "detalhe-animal") {
     return <DetalheAnimal id={tela.id} podeLancar={podeLancar} rotuloVoltar={rotuloRetornoRebanho(retornoRebanhoDaUrl(URL_ANIMAIS))} onVoltar={() => navegarPara(retornoRebanhoDaUrl(URL_ANIMAIS))} />;

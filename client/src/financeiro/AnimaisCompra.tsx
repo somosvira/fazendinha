@@ -1,3 +1,4 @@
+import { ModalCadastroAnimal } from "../pecuaria/rebanho/forms/ModalCadastroAnimal";
 // Seção "Animais" da compra de animais (FormOperacao.tsx). O cadastro de cada animal é o MESMO da
 // página Novo animal (pecuaria/rebanho/forms/CadastroAnimal.tsx), aberto em modal: ao confirmar, o
 // animal vira uma linha de resumo na operação, com os campos financeiros do item. A operação só
@@ -12,7 +13,6 @@ import { EsqueletoFormulario } from "../components/Esqueleto";
 import { CadastroAnimalCampos, useCadastroAnimal, type AnimalPayload, type FormAnimal, type SitioFixo } from "../pecuaria/rebanho/forms/CadastroAnimal";
 import type { Aptidao, Sexo } from "../pecuaria/rebanho/types";
 import { CAMPO, CampoErro, SELECT } from "./CamposOperacao";
-import { DialogFinanceiro } from "./DialogFinanceiro";
 import { brl, Button, Empty, ErrorBox } from "./financeiro-ui";
 import { SelectCampo } from "./SelectCampo";
 import type { ConfiguracoesFinanceiras, Operacao } from "./novo-api";
@@ -208,15 +208,14 @@ function ModalAnimalCompra({ sitio, dataOperacao, inicial, erro, brincosReservad
     });
   };
 
-  return <DialogFinanceiro
+  return <ModalCadastroAnimal
     titulo={inicial ? `Editar animal ${inicial.resumo.brinco}` : "Adicionar animal"}
-    eyebrow={`Compra de animais · ${sitio.nome}.`}
-    onClose={onFechar}
-    className="max-w-4xl"
+    contexto={`Compra de animais · ${sitio.nome}.`}
+    onFechar={onFechar}
     rodape={<div className="flex flex-wrap items-center justify-end gap-3">
       {categoriaPrevista && <span className="mr-auto text-sm">Categoria prevista: <strong>{categoriaPrevista.nome}</strong></span>}
       <Button type="button" secondary onClick={onFechar}>Cancelar</Button>
-      <Button type="button" disabled={!catalogos} onClick={confirmar}>Confirmar animal</Button>
+      <Button type="button" disabled={!catalogos} onClick={confirmar}>Adicionar à compra</Button>
     </div>}
   >
     {/* O modal é um portal React dentro do formulário da operação: o envio daqui não pode subir até lá. */}
@@ -225,7 +224,7 @@ function ModalAnimalCompra({ sitio, dataOperacao, inicial, erro, brincosReservad
       {!catalogos && !erroCatalogos && <EsqueletoFormulario label="Carregando cadastro" campos={8} />}
       <CadastroAnimalCampos cadastro={cadastro} />
     </form>
-  </DialogFinanceiro>;
+  </ModalCadastroAnimal>;
 }
 
 /**

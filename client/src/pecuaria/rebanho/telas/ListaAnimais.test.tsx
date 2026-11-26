@@ -84,6 +84,21 @@ function mostrarTodasColunas() {
 }
 
 describe("ListaAnimais", () => {
+  it("preserva os filtros e a URL do modal quando a lista permanece montada", async () => {
+    window.history.replaceState(null, "", "/pecuaria/rebanho/animais?busca=estrela");
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
+    montar();
+    await waitFor(() => expect(listarAnimais).toHaveBeenCalledWith(expect.objectContaining({ busca: "estrela" })));
+    fireEvent.click((await screen.findAllByRole("checkbox", { name: "Selecionar 0001" }))[0]);
+    expect(screen.getByText("1 selecionado")).toBeTruthy();
+    const destino = "/pecuaria/rebanho/animais/novo?retorno=%2Fpecuaria%2Frebanho%2Fanimais%3Fbusca%3Destrela";
+    act(() => { window.history.pushState(null, "", destino); window.dispatchEvent(new PopStateEvent("popstate")); });
+    expect(window.location.pathname + window.location.search).toBe(destino);
+    act(() => { window.history.replaceState(null, "", "/pecuaria/rebanho/animais?busca=estrela"); window.dispatchEvent(new PopStateEvent("popstate")); });
+    await waitFor(() => expect(window.location.search).toContain("busca=estrela"));
+    expect(screen.getByText("1 selecionado")).toBeTruthy();
+  });
+
   it("ignora a preferência antiga de cartões e mantém a tabela no desktop", async () => {
     window.history.replaceState(null, "", "/pecuaria/rebanho/animais?visualAnimais=visual");
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });

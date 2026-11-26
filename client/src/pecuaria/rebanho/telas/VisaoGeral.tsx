@@ -11,7 +11,7 @@ import { navegarPara } from "../../../router";
 import { Button, Empty, emDias, ErrorBox, PageHeader, PaginaFinanceira, Panel } from "../../../financeiro/financeiro-ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { NavRebanho } from "./NavRebanho";
-import { linkFichaAnimal, linkNovoAnimal } from "../lib/navegacao";
+import { abrirNovoAnimal, linkFichaAnimal } from "../lib/navegacao";
 import { CORES_REBANHO, percentualRebanho } from "../components/GraficosRebanho";
 import "./visao-geral.css";
 import { EsqueletoPainel } from "../../../components/Esqueleto";
@@ -108,7 +108,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
   const hrefTipoBaixa = (tipo: TipoBaixa) => filtrosAnimais({ situacao: "BAIXADO", tipoBaixa: tipo, baixaDe: emDias(-(painel?.periodoDias ?? 30)) });
 
   return <PaginaFinanceira><div className="pec-painel-rebanho">
-    <PageHeader titulo={<span className="rotina-titulo"><span><LayoutDashboard aria-hidden/></span>Rebanho</span>} acao={podeLancar ? <Button onClick={() => navegarPara(linkNovoAnimal())}><Plus size={16} /> Novo animal</Button> : undefined} />
+    <PageHeader titulo={<span className="rotina-titulo"><span><LayoutDashboard aria-hidden/></span>Rebanho</span>} acao={podeLancar ? <Button onClick={abrirNovoAnimal}><Plus size={16} /> Novo animal</Button> : undefined} />
     <NavRebanho ativa="visao-geral" />
     <ErrorBox erro={erro} />
     {carregando && <EsqueletoPainel label="Carregando rebanho" />}
