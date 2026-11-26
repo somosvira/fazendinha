@@ -113,4 +113,4 @@ a busca `buscaCatalogo` e o escopo ativo. O gate é o de Estoque (Financeiro ou
 Pecuária). Produtos sem dados oficiais vinculados continuam disponíveis na consulta
 do Catálogo e exibem o motivo da pendência. Não geram resultado do tipo referência oficial apenas por possuírem pesquisa pendente ou links a conferir. Referências parciais são identificadas como tais no contexto do resultado e abrem o modal exato com seus campos e pendências.
 
-A carga de cadastros padrão não cria uma nova fonte de busca: referências oficiais continuam disponíveis pelo destino exato do catálogo descrito acima, e raças são opções do filtro de animais, sem ficha individual pesquisável.
+A carga de cadastros padrão não cria uma nova fonte de busca: referências oficiais continuam disponíveis pelo destino exato do catálogo descrito acima, raças são opções do filtro de animais, e doenças são opções nos fluxos de Sanidade, sem ficha individual pesquisável na busca global.

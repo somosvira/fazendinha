@@ -16136,6 +16136,46 @@ DO $racas$ BEGIN
  IF EXISTS (SELECT 1 FROM racas_padrao s JOIN pecuaria."Raca" r ON (upper(r.sigla)=s.sigla OR (s.sigla='SD' AND upper(r.sigla)='SI')) AND public.normalizar_nome_produto_v1(r.nome)<>public.normalizar_nome_produto_v1(s.nome)) OR EXISTS (SELECT 1 FROM racas_padrao s JOIN pecuaria."Raca" r ON public.normalizar_nome_produto_v1(r.nome)=public.normalizar_nome_produto_v1(s.nome) AND upper(r.sigla)<>s.sigla AND NOT (s.sigla='SD' AND upper(r.sigla)='SI')) OR EXISTS (SELECT 1 FROM racas_padrao s JOIN pecuaria."Raca" r ON public.normalizar_nome_produto_v1(r.nome)=public.normalizar_nome_produto_v1(s.nome) WHERE r.base<>s.base) OR EXISTS (SELECT 1 FROM racas_padrao s JOIN pecuaria."Raca" r ON public.normalizar_nome_produto_v1(r.nome)=public.normalizar_nome_produto_v1(s.nome) GROUP BY s.nome HAVING count(*)>1) THEN RAISE EXCEPTION 'Identidade de raça conflitante'; END IF;
 END $racas$;
 INSERT INTO pecuaria."Raca" (id,nome,sigla,base,"atualizadoEm") SELECT gen_random_uuid()::text,s.nome,s.sigla,s.base,CURRENT_TIMESTAMP FROM racas_padrao s WHERE NOT EXISTS (SELECT 1 FROM pecuaria."Raca" r WHERE public.normalizar_nome_produto_v1(r.nome)=public.normalizar_nome_produto_v1(s.nome));
+-- Serializa escritores durante a comparação e inserção sem bloquear leitores.
+LOCK TABLE pecuaria."Doenca" IN SHARE ROW EXCLUSIVE MODE;
+-- Doenças padrão: preserva qualquer equivalente existente, inclusive inativo e seus vínculos.
+INSERT INTO pecuaria."Doenca" (id, nome, "atualizadoEm")
+SELECT gen_random_uuid()::text, padrao.nome, CURRENT_TIMESTAMP
+FROM (VALUES
+  ('Diarreia'),
+  ('Gangrena'),
+  ('Mastite'),
+  ('Metrite'),
+  ('Outros'),
+  ('Pneumonia'),
+  ('Retenção de placenta'),
+  ('Septicemia'),
+  ('Tristeza parasitária'),
+  ('Anaplasmose'),
+  ('Artrite'),
+  ('Babesiose'),
+  ('Botulismo'),
+  ('Brucelose'),
+  ('Carcinoma ocular'),
+  ('Deslocamento de abomaso'),
+  ('Insuficiência cardíaca'),
+  ('Leucose'),
+  ('Neoplasia'),
+  ('Pericardite'),
+  ('Peritonite'),
+  ('Pleuropneumonia'),
+  ('Pododermatite'),
+  ('Raiva'),
+  ('Rompimento de útero'),
+  ('Timpanismo'),
+  ('Traumatismo'),
+  ('Tuberculose')
+) AS padrao(nome)
+WHERE NOT EXISTS (
+  SELECT 1 FROM pecuaria."Doenca" existente
+  WHERE public.normalizar_nome_produto_v1(normalize(existente.nome, NFC)) = public.normalizar_nome_produto_v1(normalize(padrao.nome, NFC))
+);
+
 -- IDs fixos preservam personalizações; nome padrão em outro ID sem o original é conflito.
 DO $tecnicos$ BEGIN
  IF EXISTS (SELECT 1 FROM (VALUES ('a0300000-0000-4000-8000-000000000001','Tratamento'),('a0300000-0000-4000-8000-000000000002','Vacina'),('a0300000-0000-4000-8000-000000000003','Vermífugo')) v(id,nome) JOIN pecuaria."TipoAplicacaoSanitaria" t ON t.nome=v.nome AND t.id<>v.id WHERE NOT EXISTS (SELECT 1 FROM pecuaria."TipoAplicacaoSanitaria" original WHERE original.id=v.id))

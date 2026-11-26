@@ -4,7 +4,6 @@ import { hashSenha } from '../../src/services/auth/hash.js';
 import { aplicarPreset } from '../../src/services/auth/papeis.js';
 import { criarParceiro } from '../../src/services/financeiro/parceiros.js';
 import { criarMotivoBaixa } from '../../src/services/pecuaria/rebanho/motivos.js';
-import { criarDoenca } from '../../src/services/pecuaria/sanidade/ocorrencias.js';
 import { criarTipoExame } from '../../src/services/pecuaria/sanidade/exames.js';
 import { criarGenitor } from '../../src/services/pecuaria/rebanho/genitores.js';
 import { criarMaterialGenetico } from '../../src/services/pecuaria/rebanho/materialGenetico.js';
@@ -39,6 +38,20 @@ export const GRUPOS_PADRAO = [
 export async function registrarPadrao(c: ContextoSeed, chave: string, buscar: (id?: string) => Promise<{ id: string | number } | null>) {
   return c.registro(chave, buscar, async () => { throw new Error(`Cadastro padrão ausente: ${chave}. Aplique a migration de cadastros padrão antes da seed.`); });
 }
+export async function registrarDoencaPadrao(c: ContextoSeed, nome: string) {
+  await registrarPadrao(c, `doenca:${nome}`, async id => {
+    const doenca = id
+      ? await prisma.doenca.findUnique({ where: { id }, select: { id: true, ativo: true } })
+      : (await prisma.$queryRaw<Array<{ id: string; ativo: boolean }>>`
+          SELECT id, ativo FROM pecuaria."Doenca"
+          WHERE public.normalizar_nome_produto_v1(normalize(nome, NFC)) =
+                public.normalizar_nome_produto_v1(normalize(${nome}::text, NFC))
+          ORDER BY ativo DESC, (nome = ${nome}::text) DESC, id LIMIT 1
+        `)[0] ?? null;
+    if (doenca && !doenca.ativo) throw new Error(`A seed demonstrativa exige referência ativa para a doença ${nome}; o cadastro existente está inativo.`);
+    return doenca;
+  });
+}
 export async function catalogos(c: ContextoSeed) {
   // Fixture administrativa: não há comando de domínio para criar um usuário já ativo com senha.
   for (const [perfil, email, nome] of USUARIOS) await c.registro(`usuario:${perfil}`,
@@ -68,8 +81,7 @@ export async function catalogos(c: ContextoSeed) {
     await registrarPadrao(c, `raca:${sigla}`, id => prisma.raca.findFirst({ where: id ? { id } : { nome } }));
   for (const [nome, classe] of [['Excedente de animais', 'DESCARTE_VOLUNTARIO'], ['Acidente', 'MORTE'], ['Aborto', 'DESCARTE_INVOLUNTARIO']] as const)
     await c.registro(`motivo:${nome}`, id => prisma.motivoBaixa.findFirst({ where: id ? { id } : { nome } }), () => criarMotivoBaixa({ nome, classe }, uid));
-  for (const nome of ['Mastite', 'Retenção de placenta', 'Metrite', 'Pneumonia']) await c.registro(`doenca:${nome}`,
-    id => prisma.doenca.findFirst({ where: id ? { id } : { nome } }), () => criarDoenca(nome, null, uid));
+  for (const nome of ['Mastite', 'Retenção de placenta', 'Metrite', 'Pneumonia']) await registrarDoencaPadrao(c, nome);
   for (const nome of ['Tratamento', 'Vacina', 'Vermífugo']) await c.registro(`aplicacao:${nome}`,
     id => prisma.tipoAplicacaoSanitaria.findFirst({ where: id ? { id } : { nome } }), async () => { throw new Error(`Baseline não instalou ${nome}.`); });
   for (const nome of ['Cetose subclínica', 'Hipocalcemia', 'Brucelose', 'Tuberculose', 'Triagem demonstrativa']) await c.registro(`exame:${nome}`,

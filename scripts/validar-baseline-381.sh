@@ -24,6 +24,9 @@ DO $$ BEGIN
  OR (SELECT count(*) FROM public."CentroCusto") <> 5
  OR (SELECT count(*) FROM pecuaria."Raca" WHERE ativo) <> 10
  OR (SELECT string_agg(sigla || ':' || base::text, ',' ORDER BY sigla) FROM pecuaria."Raca" WHERE ativo) <> 'AN:true,CR:true,GL:false,GO:true,GU:true,HO:true,JE:true,NE:true,PS:true,SD:true'
+ OR (SELECT count(*) FROM pecuaria."Doenca") <> 28
+ OR (SELECT count(*) FROM pecuaria."Doenca" WHERE ativo) <> 28
+ OR (SELECT array_agg(nome ORDER BY nome COLLATE "C") FROM pecuaria."Doenca") <> ARRAY['Anaplasmose','Artrite','Babesiose','Botulismo','Brucelose','Carcinoma ocular','Deslocamento de abomaso','Diarreia','Gangrena','Insuficiência cardíaca','Leucose','Mastite','Metrite','Neoplasia','Outros','Pericardite','Peritonite','Pleuropneumonia','Pneumonia','Pododermatite','Raiva','Retenção de placenta','Rompimento de útero','Septicemia','Timpanismo','Traumatismo','Tristeza parasitária','Tuberculose']::text[]
  OR (SELECT count(*) FROM public."ProdutoCatalogo" WHERE fonte='IDEAGRI_DADOS000') <> 2576
  OR (SELECT count(*) FROM public."ProdutoCatalogo" WHERE fonte='IDEAGRI_DADOS777') <> 7
  THEN RAISE EXCEPTION 'Cadastros padrão incompletos ou divergentes'; END IF;
@@ -70,11 +73,16 @@ INSERT INTO pecuaria."ComposicaoGenitorExterno" (id,"genitorId","racaId",fracao6
  ('fixture-composicao-genitor','fixture-genitor','fixture-ho',64);
 INSERT INTO pecuaria."Animal" (id,brinco,sexo,"dataNascimento",origem,"dataEntrada","paiExternoId","atualizadoEm") VALUES
  ('fixture-animal','CI-381','F','2020-01-01','NASCIDO','2020-01-01','fixture-genitor','2020-01-01');
+INSERT INTO pecuaria."Doenca" (id,nome,ativo,"atualizadoEm") VALUES
+ ('fixture-doenca','  DIARRÉIA  ',false,'2020-01-01'),
+ ('fixture-doenca-propria','CCS',true,'2020-01-01');
+INSERT INTO pecuaria."OcorrenciaSanitaria" (id,"animalId","doencaId",inicio,"doencaNomeSnapshot","atualizadoEm") VALUES
+ ('fixture-ocorrencia','fixture-animal','fixture-doenca','2020-01-01','Diarréia histórica','2020-01-01');
 INSERT INTO pecuaria."ComposicaoRacial" (id,"animalId","racaId",fracao64,origem,"atualizadoEm") VALUES
  ('fixture-composicao-animal','fixture-animal','fixture-ho',64,'INFORMADA','2020-01-01');
 SQL
 snapshot_protegido() {
-  psql "$url_antiga" -XAt -v ON_ERROR_STOP=1 -c "SELECT row_to_json(t) FROM (SELECT * FROM public.\"Produto\" WHERE id LIKE 'fixture-produto%' ORDER BY id) t UNION ALL SELECT row_to_json(t) FROM (SELECT id,nome,ativo,ordem FROM public.\"Categoria\" WHERE nome='Sanidade') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"Raca\" WHERE id LIKE 'fixture-%' ORDER BY id) t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"GenitorExterno\" WHERE id='fixture-genitor') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"ComposicaoGenitorExterno\" WHERE id='fixture-composicao-genitor') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"Animal\" WHERE id='fixture-animal') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"ComposicaoRacial\" WHERE id='fixture-composicao-animal') t;"
+  psql "$url_antiga" -XAt -v ON_ERROR_STOP=1 -c "SELECT row_to_json(t) FROM (SELECT * FROM public.\"Produto\" WHERE id LIKE 'fixture-produto%' ORDER BY id) t UNION ALL SELECT row_to_json(t) FROM (SELECT id,nome,ativo,ordem FROM public.\"Categoria\" WHERE nome='Sanidade') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"Raca\" WHERE id LIKE 'fixture-%' ORDER BY id) t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"GenitorExterno\" WHERE id='fixture-genitor') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"ComposicaoGenitorExterno\" WHERE id='fixture-composicao-genitor') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"Doenca\" WHERE id LIKE 'fixture-%' ORDER BY id) t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"OcorrenciaSanitaria\" WHERE id='fixture-ocorrencia') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"Animal\" WHERE id='fixture-animal') t UNION ALL SELECT row_to_json(t) FROM (SELECT * FROM pecuaria.\"ComposicaoRacial\" WHERE id='fixture-composicao-animal') t;"
 }
 test "$(psql "$url_antiga" -XAt -c "SELECT count(*) FROM public.\"Produto\" WHERE id LIKE 'fixture-produto%'")" = 36
 test "$(psql "$url_antiga" -XAt -c "SELECT count(*) FROM pecuaria.\"Raca\" WHERE id LIKE 'fixture-%'")" = 5
@@ -82,6 +90,9 @@ test "$(psql "$url_antiga" -XAt -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pecu
 snapshot_protegido > "$base/protegido-antes"
 DATABASE_URL="$url_antiga" DIRECT_URL="$url_antiga" pnpm --filter rionovo-server exec prisma migrate resolve --applied 20261124170000_base_unificada --schema "$base/nova/server/prisma/schema.prisma"
 DATABASE_URL="$url_antiga" DIRECT_URL="$url_antiga" pnpm --filter rionovo-server exec prisma migrate deploy --schema "$base/nova/server/prisma/schema.prisma"
+test "$(psql "$url_antiga" -XAt -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pecuaria.\"Doenca\" WHERE public.normalizar_nome_produto_v1(normalize(nome, NFC))='diarreia'")" = 1
+test "$(psql "$url_antiga" -XAt -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pecuaria.\"OcorrenciaSanitaria\" o JOIN pecuaria.\"Doenca\" d ON d.id=o.\"doencaId\" WHERE o.id='fixture-ocorrencia' AND d.id='fixture-doenca' AND NOT d.ativo")" = 1
+test "$(psql "$url_antiga" -XAt -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM pecuaria."Doenca"')" = 29
 snapshot_protegido > "$base/protegido-depois"
 diff -u "$base/protegido-antes" "$base/protegido-depois"
 snapshot_catalogo "$url_antiga" 'to_jsonb(t)::text' > "$base/catalogo-depois-upgrade"
