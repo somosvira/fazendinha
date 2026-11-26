@@ -1,6 +1,6 @@
 # Mockup de nutrição para aprovação
 
-Situação: referência visual aprovada na conversa para implementação. Os dados do mockup são demonstrativos, sem acesso ao banco. O contrato implementado e os limites de validação estão em [Nutrição mensal](../../pecuaria/nutricao-mensal.md).
+Situação: referência visual aprovada na conversa para implementação. Os dados do mockup são demonstrativos, sem acesso ao banco. O contrato implementado e os limites de validação estão em [Nutrição mensal](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/nutricao-mensal.md).
 
 Direção: operação de fazenda, leitura de quantidades e consequências de estoque. Uma família tipográfica de sistema; texto #243e36, ação #256347, fundo #f5f7f6, superfície #ffffff, atenção #fff5df. Formulário de configuração em linhas explicativas; fechamento centrado na tabela de ingredientes, sem cartões de indicadores que repitam valores. Alertas apresentam motivo e ação.
 

@@ -12,8 +12,8 @@ Mockup isolado para revisão. Não altera o cadastro operacional ou o banco. Os 
 
 Abrir `index.html` ou servir a pasta `docs/pecuaria` e acessar `/artefatos/protocolos/catalogo-modelos/`. `?area=sanitario` apresenta o mesmo padrão no domínio sanitário.
 
-Mockup aprovado e aplicado aos dois cadastros. A implementação usa `CatalogoModelosProtocolos` e `DetalheModeloProtocolo`; as regras vigentes estão no [contrato dos protocolos](../../../protocolos-exames.md#cadastro-de-modelos-finalidade-parâmetros-e-compatibilidade). A demonstração permanece isolada com dados fictícios. No legado real, etapas não agrupadas e modos não informados continuam explícitos.
+Mockup aprovado e aplicado aos dois cadastros. A implementação usa `CatalogoModelosProtocolos` e `DetalheModeloProtocolo`; as regras descritas na entrega estão no [contrato dos protocolos](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/protocolos-exames.md). A demonstração permanece isolada com dados fictícios. No legado real, etapas não agrupadas e modos não informados continuam explícitos.
 
-Revisão visual orientada pelo Impeccable e pelos componentes atuais de consulta. `frontend-design`, citado no AGENTS.md, não estava disponível no ambiente.
+Revisão visual orientada pelo Impeccable e pelos componentes atuais de consulta. Naquela revisão, a skill `frontend-design` estava indisponível. Para novos mockups, siga o [fluxo por ambiente](../../../../../AGENTS.md#ferramentas-para-definir-e-criar-mockups).
 
 Conferência local: sintaxe JavaScript, carregamento HTTP, cards/tabela, busca, inclusão de inativos, navegação do catálogo (10 + 1 registros) e das etapas do modal (10 + 2). Layout inspecionado em desktop e em iframe de 390 px; não representa homologação em aparelho físico. Prévias `preview-cards.png`, `preview-table.png`, `preview-modal.png` e `preview-mobile.png` registram a apresentação. Nenhuma escrita no banco ou alteração na interface operacional foi executada.

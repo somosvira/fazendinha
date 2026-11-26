@@ -4,7 +4,9 @@ Registro solicitado pelo usuário para retomar o trabalho em outra máquina. Dat
 
 > Estado vigente em 26/10/2026: a branch incorpora a main `88b1eb0c`, incluindo leite V5 e as consultas atuais de reprodução, preservando as apresentações visuais complementares. Para operar, siga [desenvolvimento](../../desenvolvimento.md) e o [seed unificado](../../../server/prisma/seed/README.md). As instruções V3/V4 abaixo são históricas: seus executores foram substituídos. Com autorização explícita, somente o banco local `fazendinha_seedatev3` foi substituído pelo cenário integrado V5; o banco anterior e seus manifestos permanecem no backup local ignorado `.backups/retomada-20261026/`. O novo manifesto e guia ficam em `server/.seed/`. Nenhum segredo ou backup é transportado por este documento.
 
-## Objetivo e decisões aprovadas
+## Objetivo e decisões aprovadas naquela sessão
+
+A grade de animais abaixo corresponde à entrega de outubro. A consulta vigente de [Rebanho → Animais](../../../client/DESIGN.md#overview) usa tabela no desktop e lista compacta no celular.
 
 O usuário primeiro pediu para executar a branch localmente. Depois apontou excesso de espaço vazio nos cartões de Animais e Lotes e a aparência nativa dos checkboxes de seleção. Pediu uma redução simples, preservando a interface existente. Foram gerados e apresentados mockups com as skills `impeccable` e `frontend-design`; o usuário respondeu “perfeito, pode seguir”.
 
@@ -14,15 +16,15 @@ A direção aprovada mantém Terrano, as cores e os cabeçalhos atuais. A mudan�
 - Lotes: gráfico de composição reduzido, espaços menores, peso médio, janela de GMD e cobertura preservados. Edição, ativação/desativação e abertura continuam disponíveis.
 - Filtros, ordenação, paginação, permissões e a alternativa de tabela permanecem nos fluxos existentes.
 
-O contrato vigente está em [Pecuária](../../pecuaria/README.md), especialmente “Consultas visuais de animais e fatos registrados”. Esta nota registra a continuidade da sessão, sem substituir esse contrato.
+A referência usada naquela entrega está em [Pecuária](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/README.md), especialmente “Consultas visuais de animais e fatos registrados”. Esta nota registra a continuidade da sessão, sem substituir esse contrato.
 
-## Implementação que deve ser continuada
+## Implementação registrada em outubro
 
 - `client/src/pecuaria/rebanho/telas/ListaAnimais.tsx`: classes locais para a grade/cartão, categoria no cabeçalho e estado parcial do checkbox de seleção da página. A seleção permanece no mesmo estado e nos mesmos handlers usados pela tabela.
 - `client/src/pecuaria/rebanho/telas/lista-animais.css`: apresentação compacta e checkbox nativo estilizado, com foco visível e retorno à aparência nativa em cores forçadas. Categorias manuais podem ter dois marcadores e precisam quebrar linha sem sobrepor a identificação.
 - `client/src/pecuaria/rebanho/telas/CartoesLotes.tsx`: classe específica para a grade de lotes.
 - `client/src/pecuaria/rebanho/telas/lotes-visuais.css`: dimensões compactas do gráfico, composição e rodapé.
-- `docs/pecuaria/README.md`: documentação do comportamento visual atual.
+- [documento da época](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/README.md): descrição visual da época.
 
 A grade usa `auto-fill` com largura mínima de 265 px para animais e 320 px para lotes, limitada à largura do contêiner. Cinco/quatro colunas são referências de desktop amplo, não uma contagem fixa em qualquer tela. Não houve alteração de API, schema, migration ou regra de negócio.
 

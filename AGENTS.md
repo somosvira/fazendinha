@@ -1,56 +1,59 @@
-# Orientações para agentes
+# Orientações para agentes do Fazendinha
 
-## Leitura e fonte de contexto
+## Antes de alterar o projeto
 
-Antes de alterar o projeto, leia [README.md](README.md), [ARCHITECTURE.md](ARCHITECTURE.md) e o contrato relacionado à tarefa no [índice](docs/README.md). O mapa integrado fica em [system design](docs/system-design.md) e a leitura de usuário no [manual](docs/guia/README.md). Em Pecuária, comece por [docs/pecuaria/README.md](docs/pecuaria/README.md); em Financeiro, por [seu contrato](docs/financeiro-rebuild-contrato.md).
+Para propostas de UI/UX, parta da tarefa do usuário, do [produto](client/PRODUCT.md) e dos [princípios de design](client/DESIGN.md). Observe onde a pessoa encontra dificuldade e quais componentes já resolvem parte do problema. A proposta explica a escolha de composição. O mockup aprovado orienta aquela entrega. Uma escolha local passa a orientar outras telas quando o usuário a adota como princípio compartilhado.
 
-Confira comportamento em rotas/serviços/interface, estrutura no schema e garantias SQL nas migrations, e invariantes nos testes. Investigue divergências entre essas fontes: documentação, seed, mock ou artefato visual isolado não prova que uma funcionalidade está disponível ou validada.
+Antes de alterar o projeto, consulte o [README](README.md) e a [arquitetura](ARCHITECTURE.md). Use as [referências por domínio](docs/README.md#referências-por-domínio) quando precisar esclarecer dados, permissões, cálculos ou efeitos da operação. Mockups anteriores, roteiros e descrições de telas ajudam a entender a história de uma entrega.
 
-## Escopo atual
+Confira o comportamento na interface, rotas e serviços, a estrutura no schema, as garantias no SQL das migrations e os invariantes nos testes. Quando fontes divergirem, descreva a diferença entre o que foi decidido e o que está implementado. Seed, captura, mockup e pesquisa de concorrentes têm usos específicos e exigem confirmação antes de fundamentar afirmações sobre o produto em funcionamento.
 
-- Domínios ativos: Financeiro, Estoque, Pecuária V1–V5, Sítios e Contas/Acessos.
-- Deploy exclusivamente em Cloudflare Workers, com interface e API no mesmo Worker, Neon para o banco e R2 para arquivos. Node atende desenvolvimento local e testes; não introduza outro provedor como pressuposto de implementação.
-- Agricultura, Cultivo e Equipe/Ponto foram removidos. Não reintroduza seus módulos, rotas ou seeds como dependência de outra entrega. Categorias/centros financeiros e movimentos históricos dessas atividades podem permanecer.
-- A pecuária anterior no schema `public` foi substituída pela base no schema `pecuaria`. Preserve a implementação atual; não recupere o rebanho legado.
-- Reprodução V4 inclui tentativas, avaliações, gestação, partos/crias, visitas e IATF. Confira `docs/pecuaria/reproducao.md`; produção de leite V5 está integrada com contrato próprio, conforme `docs/pecuaria/leite.md`. Qualidade V5 usa formatos manuais versionados a partir do laudo, reutilizando exames comuns para animais e amostras próprias para origens coletivas; o mapeamento automático IDEAGRI continua pendente. Laboratório/FIV permanecem fora do escopo. Partos, incluindo aborto e natimorto, reiniciam o ciclo de tentativas; genética da doadora não se confunde com a receptora.
-- Protocolos/tarefas e exames usam a base comum descrita em `docs/pecuaria/protocolos-exames.md`. As entidades IATF anteriores são views de leitura; escreva pelo núcleo comum. Papel por data vem de `PeriodoReprodutivoAnimal`, separado da aptidão.
-- O IDEAGRI serve à carga inicial e reconciliação. O Fazendinha é a fonte operacional após importar; não crie sincronização contínua por pressuposto.
-- O bot anterior, `/ia` e WhatsApp estão suspensos em `client/src/featureFlags.ts` e `server/src/featureFlags.ts`. Não os reative incidentalmente. O novo assistente de consulta é separado: siga [seu contrato](docs/assistente-consulta.md), os gates e o registro de ferramentas de leitura.
+Em Financeiro, Pecuária e Leite, use o manual para instruções de uso. Registre o motivo de uma [decisão de negócio](docs/decisoes-de-negocio.md) quando ele ajudar a interpretar o sistema. Sugestões ainda em discussão ficam fora do manual.
 
 ## Fluxo de alterações visuais
 
-- Consulte o [README do frontend](client/README.md) para organização, hierarquia, legibilidade e simplificação. Ele distingue diretrizes consolidadas de composições ainda propostas; a pesquisa de concorrentes não substitui contratos nem aprova automaticamente um novo layout.
-- Antes de implementar uma página ou mudança de layout, gere um mockup e revise-o com as skills `impeccable` e `frontend-design`. Apresente o resultado para aprovação antes de escrever a interface. Preserve os dados e contratos funcionais no desenho. Na implementação, confira a tela no navegador; mockup e revisão visual não substituem validação funcional. Para os relatórios financeiros deste fluxo, priorize o desktop.
+Para criar uma página ou alterar o layout ou a interação de um fluxo, siga esta sequência.
 
-- Aberturas auxiliares de detalhes, filtros, formulários e conferências usam modal centralizado; não introduza painéis laterais. Siga [a regra do frontend](client/README.md#aberturas-em-modal), preservando foco, rascunho e URLs.
+1. **Análise.** Percorra a tarefa atual. Qual dado a pessoa precisa registrar ou entender? Onde encontra dificuldade e o que fará com o resultado?
+2. **Proposta.** Explique como a solução melhora esse percurso, quais componentes existentes se encaixam e o que justifica uma variação.
+3. **Mockup e aprovação.** Mostre as escolhas, as ações e a resposta da interface com dados representativos. Apresente o mockup ao usuário. Uma mudança material na proposta volta para sua avaliação.
+4. **Plano após o aceite.** Divida o trabalho conforme as dependências. Priorize modelos econômicos para execução delimitada e modelos de maior capacidade para decisões complexas e revisão do código.
+5. **Implementação e revisão de código.** Implemente a proposta aprovada e confira o fluxo, os dados, as permissões e os testes pertinentes.
+6. **Revisão manual.** Percorra a tarefa na interface real até o resultado, confira seu uso no desktop e no celular e apresente a entrega para revisão humana.
 
-## Implementação
+### Ferramentas para definir e criar mockups
 
-- Sempre que criar, remover ou alterar páginas, registros, fluxos, URLs/filtros ou permissões, confira a busca global na mesma alteração: atualize o catálogo de páginas/ações, as fontes de registros, os destinos navegáveis, os gates e os testes afetados. Um resultado deve abrir a ficha exata ou a consulta já filtrada, respeitando o sítio e as permissões; não basta encontrar a aba. Quando algo não for pesquisável, documente a limitação e o motivo no [contrato da busca](docs/busca-global.md).
+| Ambiente | Uso no projeto |
+|---|---|
+| Claude | Use a skill `frontend-design` para definir a composição, criar o mockup e revisar a proposta com os princípios compartilhados do produto e do design. |
+| Codex | Use o plugin **Product Design** para definir o problema, explorar a solução e criar o mockup. Use o plugin **Impeccable** em conjunto para trabalhar organização, alinhamento, densidade, controles e responsividade durante a criação e a revisão. Carregue o contexto Impeccable a partir de `client/`, onde estão `PRODUCT.md` e `DESIGN.md`. |
 
-- Ao criar ou ampliar relatórios, confira as variáveis no builder na mesma alteração: atualize catálogo, adapters e testes, ou documente o motivo de exclusão. Siga [o contrato dos relatórios](docs/pecuaria/relatorios.md).
+Indique as ferramentas realmente usadas. Se uma estiver indisponível, informe qual etapa foi afetada e qual alternativa está disponível. A aprovação da proposta pertence ao usuário.
 
-- Busque componentes, schemas, formatadores e serviços equivalentes antes de criar novos. Use TypeScript estrito e identificadores/mensagens em português consistentes com o domínio.
-- Rotas Hono validam entradas com Zod e delegam aos serviços; cálculos puros ficam separados do acesso ao banco. Imports relativos do backend usam `.js`.
-- Configuração de runtime vem de `server/src/env.ts`. Novas variáveis precisam de validação e exemplo sem segredo.
-- Nos recursos de IA, priorize sempre o modelo de menor custo compatível com o fluxo, conforme preferência do usuário. Verifique preços/disponibilidade na documentação oficial ao trocar ou ampliar o modelo; não crie fallback automático para modelos mais caros. A escolha vigente e sua revisão ficam no [contrato do assistente](docs/assistente-consulta.md#política-de-custo).
-- Preserve histórico, autoria, auditoria, escopo por sítio, localização na data do fato e garantias de idempotência/concorrência. Escritas que afetam múltiplos fatos devem manter a atomicidade do fluxo.
-- Dinheiro usa `Prisma.Decimal` e as regras de `services/financeiro/regras.ts`. Compromisso não movimenta conta; estorno confirmado cria inverso, sem apagar o original. Não contorne período fechado.
-- Autorização é do servidor: sessão, área, ação e escopo. Esconder um botão não protege uma rota. Confira `verValores` também em DTOs de custos e relatórios. `SHARED_ACCESS_TOKEN` é ponte existente, não base para recursos novos.
-- Migre o banco por migrations. Não edite migrations aplicadas nem use `db push` como substituto: constraints/índices parciais e dados iniciais existem no SQL.
-- Tailwind, Radix e Recharts fazem parte da implementação atual; isso descreve a stack, não uma direção visual. O visual atual não foi aprovado como padrão para os próximos passos. Defina alterações visuais pelo escopo da tarefa, preservando acessibilidade, estados e contratos funcionais. Não recupere regras estéticas de documentos antigos.
-- A navegação usa `client/src/router.ts` + History API; preserve os contratos de URL/filtros dos fluxos afetados.
+Para testes manuais, reutilize a aba do navegador do chat. Se o usuário indicar o Chrome ou outro navegador, reutilize a aba existente nele. Use sessões separadas do Playwright para testes automatizados repetíveis, em segundo plano, e encerre as temporárias ao finalizar.
 
-## Dados e validação
+## Escopo dos domínios
 
-- Preserve alterações locais de outras tarefas. Não faça reset do checkout, limpeza de bancos, remoção de volumes ou reexecução de cargas para validar uma mudança comum.
-- Use sempre e somente o PostgreSQL local `fazendinha_seedatev3` no desenvolvimento e na validação local. Não crie outro banco, clone ou cópia temporária para testes ou ensaio de migration. O seed único é `seed`; preserve os dados e o manifesto `server/.seed/`. Substituição da base exige autorização explícita, backup e manutenção separada da carga normal. Leia [desenvolvimento](docs/desenvolvimento.md).
-- As flags `AUTH_DB_INTEGRATION`, `PECUARIA_DB_INTEGRATION` e `FINANCE_DB_INTEGRATION` habilitam escritas reais. Antes de executar integração local, confira que cada teste cria/remove apenas suas próprias fixtures e usa `fazendinha_seedatev3`; não rode rotinas de reset, limpeza global ou criação de bancos. Casos que exigem recriar estrutura ou banco ficam restritos ao CI externo.
-- Rode os testes e builds proporcionais ao que mudou. Separe evidência automatizada de homologação manual e informe o que não foi executado. Não aprove nem resete marcações de roteiros pela atualização documental.
-- Commits seguem `tipo(escopo): descrição` em PT-BR. Não publique, faça deploy ou altere ambientes como efeito colateral de uma tarefa local.
+- Financeiro, Estoque, Pecuária V1–V5, Sítios e Contas/Acessos são os domínios ativos. Agricultura, Cultivo e Equipe/Ponto foram removidos; preserve apenas as categorias, centros e movimentos históricos cabíveis.
+- Interface e API rodam no mesmo Cloudflare Worker. O banco é Neon e os arquivos ficam em R2. Node atende desenvolvimento e testes locais.
+- A base operacional da pecuária usa o schema `pecuaria`. Preserve essa base e mantenha o rebanho legado de `public` fora dos fluxos atuais. O IDEAGRI serve à carga inicial e à reconciliação. Após a importação, o Fazendinha é a fonte operacional.
+- [Reprodução](server/src/services/pecuaria/reproducao) cobre tentativas, avaliações, gestação, partos/crias, visitas e IATF. Partos, inclusive aborto e natimorto, reiniciam o ciclo de tentativas. Preserve a distinção entre genética da doadora e gestação da receptora. Laboratório/FIV permanecem fora do escopo.
+- [Protocolos e tarefas](server/src/services/pecuaria/protocolos) são escritos no núcleo comum. Entidades IATF anteriores são views de leitura. O papel por data vem de `PeriodoReprodutivoAnimal`, independente da aptidão.
+- [Produção e qualidade do leite](server/src/services/pecuaria/leite) usam formatos manuais versionados a partir do laudo, exames comuns para animais e amostras próprias para origens coletivas. O mapeamento automático IDEAGRI permanece pendente.
+- O bot anterior, `/ia` e WhatsApp permanecem suspensos pelas flags do cliente e do servidor. O [assistente de consulta](docs/assistente-consulta.md) tem gates e registro próprio de ferramentas de leitura. Nos recursos de IA, escolha o modelo de menor custo compatível, confira disponibilidade e preços oficiais ao rever o modelo e preserve a política de custo, sem fallback automático mais caro.
 
-## Documentação
+## Implementação e integração
 
-Decisões compartilhadas ficam nesta base neutra; `CLAUDE.md` apenas a referencia. Atualize o documento correspondente na mesma mudança que alterar comportamento, vocabulário ou contrato de dados.
+- Reutilize componentes, schemas, formatadores e serviços equivalentes. Use TypeScript estrito, identificadores e mensagens em português. Rotas Hono validam entradas com Zod e delegam aos serviços. Separe cálculo puro de acesso ao banco. Imports relativos no backend usam `.js`. Centralize variáveis de runtime em `server/src/env.ts`, com validação e exemplo sem segredo.
+- Preserve histórico, autoria, auditoria, escopo por sítio, localização na data do fato, idempotência e concorrência. Uma escrita que produz vários fatos deve ser atômica. A autorização no servidor verifica sessão, área, ação e escopo. Respeite `verValores` também nos DTOs e relatórios. Reserve `SHARED_ACCESS_TOKEN` para a ponte existente.
+- Dinheiro usa `Prisma.Decimal` e `services/financeiro/regras.ts`. Compromisso não movimenta conta. Estorno confirmado cria o inverso e conserva o original. Respeite o período fechado.
+- Faça mudanças no banco por novas migrations. Preserve as aplicadas. Constraints, índices parciais e dados iniciais dependem do SQL; não use `db push`.
+- A navegação usa `client/src/router.ts` e History API. Ao alterar páginas, registros, fluxos, URLs, filtros ou permissões, confira na mesma mudança o catálogo da busca global, fontes de registros, destino exato ou consulta filtrada, gates e testes. Documente exclusões justificadas no [contrato da busca](docs/busca-global.md).
+- Ao criar ou ampliar relatórios, confira a cobertura das variáveis no [catálogo do builder](client/src/pecuaria/relatorios/catalogo.ts), nos adapters e nos testes e justifique eventuais exclusões na revisão da mudança.
 
-Documente o estado atual e o necessário para operar/evoluir o domínio. Evite duplicar contratos em handoffs, catálogos manuais de componentes, contagens de testes ou relatos de sessões. Para uma feature nova, registre escopo, regras/efeitos, implementação e validação; mantenha propostas explicitamente separadas. Ao concluir, incorpore as decisões vigentes ao contrato e retire o plano temporário obsoleto. Não derive roadmap de documentos ou PRs antigos.
+## Dados, validação e entrega
+
+- Preserve alterações de outras tarefas, dados e volumes. Use exclusivamente o PostgreSQL local `fazendinha_seedatev3`, inclusive para ensaio de migration. Não crie bancos, clones ou cópias temporárias. O seed único é `seed`; preserve seu manifesto em `server/.seed/`. Substituição da base exige autorização explícita, backup e manutenção separada. Siga o [guia de desenvolvimento](docs/desenvolvimento.md).
+- `AUTH_DB_INTEGRATION`, `PECUARIA_DB_INTEGRATION` e `FINANCE_DB_INTEGRATION` habilitam escritas reais. Antes de rodar integração local, confira o destino e que cada teste cria e remove somente suas fixtures. Reset, limpeza global, recarga de dados e recriação de estrutura não fazem parte da validação local. Casos que exigem recriação ficam no CI externo.
+- Distinga teste automatizado, revisão manual e homologação. Atualizações documentais preservam as marcações dos roteiros. Commits seguem `tipo(escopo): descrição` em PT-BR. Publicação, deploy e alterações de ambiente exigem escopo próprio.
+- Atualize a referência existente quando mudarem o significado de um dado, seus efeitos, as permissões ou o modo de operar. Registre o que foi observado, proposto ou aprovado conforme a evidência disponível. Documente escolhas visuais de alcance geral em `client/DESIGN.md` quando acordadas com o usuário. A evolução de uma tela pode ficar no próprio mockup e na revisão da entrega.

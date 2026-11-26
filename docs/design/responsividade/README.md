@@ -1,19 +1,19 @@
 # Responsividade e densidade da interface
 
-A direção aprovada para esta entrega está incorporada ao [README do frontend](../../../client/README.md#densidade-responsiva-da-navegação-e-dos-protocolos), ao [design unificado](../cooperativa-unificada.md#responsividade-e-consultas-compactas) e à [arquitetura](../../../ARCHITECTURE.md). Este diretório conserva somente a referência visual e os limites de sua evidência; o plano temporário foi substituído pelos contratos vigentes.
+Este diretório registra a revisão de responsividade do shell e dos protocolos. O mockup e as capturas documentam a composição adotada naquela entrega.
 
 ## Referência visual
 
-O [mockup](mockup.html) usa dados ilustrativos e ações simuladas, sem API, banco ou armazenamento da aplicação. Para visualizá-lo, servir a raiz do repositório por HTTP e abrir `/docs/design/responsividade/mockup.html`. Ele conserva a direção aceita de shell/sidebar e protocolos; o conteúdo dos cartões de animais foi posteriormente reduzido a cabeçalho, imagem/tags/lote e ações. Não substitui a implementação ou sua validação.
+O [mockup](mockup.html) usa dados ilustrativos e ações simuladas, sem API, banco ou armazenamento da aplicação. Para visualizá-lo, servir a raiz do repositório por HTTP e abrir `/docs/design/responsividade/mockup.html`. As escolhas de shell e protocolos estão documentadas para essa entrega. A grade de animais pertence à versão histórica. A [consulta vigente](../../../client/src/pecuaria/rebanho/telas/ListaAnimais.tsx) usa tabela no desktop e lista compacta no celular. Não substitui a implementação ou sua validação.
 
 A revisão da direção usou `impeccable`; `frontend-design` não estava disponível e o usuário autorizou a continuidade com a revisão disponível. A identidade Terrano foi preservada. Os contratos funcionais continuam nos documentos de domínio.
 
-## Escopo implementado
+## Escopo implementado naquela revisão
 
 - Gutters simétricos, títulos compartilhados compactos e acionadores alinhados no trilho; limites de 900/901 e 1100/1101 px coerentes entre CSS e variantes do Tailwind.
 - Menu móvel e expansão temporária do trilho automático preservados, separados do colapso manual.
 - Protocolos em tabela explícita também no celular, com rolagem própria, finalidade somente quando relevante e comandos secundários condicionados em menu.
-- Consultas de animais, painel do rebanho e conteúdo da ficha mantêm os quatro cantos arredondados em 12 px, como os demais painéis. O espaço entre as abas do rebanho e a consulta é preservado.
+- Consultas de animais, painel do rebanho e conteúdo da ficha mantêm os quatro cantos arredondados em 12 px nessa composição. O espaço entre as abas do rebanho e a consulta é preservado.
 - Cartões de protocolos sem reserva para prévia vazia; cartões de animais limitados a cabeçalho, imagem/tags/lote e ações, com altura uniforme e seleção independente.
 
 A resposta de `GET /animais?comContexto=true` passa a incluir a situação reprodutiva já calculada em lote para a tabela de animais. Não há alteração de banco, migrations, permissões ou cálculos. Os comentários anteriores sobre tags do cabeçalho do animal e tabela de Últimas pesagens não integram esta entrega.
