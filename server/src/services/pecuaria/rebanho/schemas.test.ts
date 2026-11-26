@@ -160,3 +160,9 @@ it("aceita contexto do cartão explicitamente sem confundir false com true", () 
   expect(listarFiltrosSchema.parse({}).comContexto).toBeUndefined();
   expect(listarFiltrosSchema.safeParse({comContexto:"sim"}).success).toBe(false);
 });
+
+describe("ECC de entrada", () => {
+  const base = { brinco: "A", sexo: "F", origem: "COMPRADO", dataNascimento: "2024-01-01", dataEntrada: "2026-01-01", propriedadeId: 1, aptidao: "LEITE" };
+  it.each([undefined, null, 1, 3.25, 5])("aceita %s", eccEntrada => { expect(cadastrarAnimalSchema.safeParse({ ...base, eccEntrada }).success).toBe(true); });
+  it.each([0, 5.1, Infinity, NaN])("rejeita %s", eccEntrada => { expect(cadastrarAnimalSchema.safeParse({ ...base, eccEntrada }).success).toBe(false); });
+});

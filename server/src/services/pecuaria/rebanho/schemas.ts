@@ -61,6 +61,7 @@ export const cadastrarAnimalSchema = z.object({
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
   composicao: z.array(composicaoItemSchema).optional().default([]),
   pesoEntradaKg: pesoKgSchema.nullable().optional(),
+  eccEntrada: z.number().finite().min(1).max(5).nullable().optional(),
 }).merge(filiacaoCamposSchema).superRefine(exigirLadoUnico);
 export type CadastrarAnimalInput = z.infer<typeof cadastrarAnimalSchema>;
 

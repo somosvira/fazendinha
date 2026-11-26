@@ -33,6 +33,12 @@ for (const key of ['DATABASE_URL', 'DIRECT_URL']) {
 JS
 if [ "$?" -ne 0 ]; then exit 1; fi
 
+# Não aplique uma baseline pendente sobre um banco já materializado.
+if ! (cd server && pnpm exec node scripts/preflight-deploy.mjs); then
+  echo "Preflight recusou o banco; migrations e publicação abortadas." >&2
+  exit 1
+fi
+
 OUTPUT=$(cd server && pnpm exec prisma migrate deploy 2>&1)
 STATUS=$?
 echo "$OUTPUT"

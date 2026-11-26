@@ -1,7 +1,9 @@
 import { comPropriedade } from "../propriedadeScope";
 import { mensagemErroHttp } from "../lib/erroHttp";
 import type { RelatorioGerencialDTO } from "../components/relatorio-gerencial/types";
-import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
+import { estadoRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
+import { getUsuario } from "../lib/auth";
+import { removerCachesRascunhoUsuario } from "./cacheCadastroAnimal";
 import { prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
 import type { UnidadeMedida } from "../lib/unidades";
 import { SEM_VINCULO } from "../lib/ids";
@@ -211,12 +213,16 @@ export const salvarRascunhoOperacao = (dados: unknown, versao?: number) => {
   return req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify({ dados, versao }) }).then(publicar);
 };
 export const descartarRascunhoOperacao = () => {
+  const usuarioId = getUsuario()?.id;
+  const rascunhoId = estadoRascunhoAtivo().rascunho?.id;
   const publicar = prepararPublicacaoRascunho("escrita");
-  return req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" }).then(() => { publicar(null); });
+  return req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" }).then(() => { removerCachesRascunhoUsuario(usuarioId, rascunhoId); publicar(null); });
 };
 export const confirmarRascunhoOperacao = (versao?: number, chave?: string) => {
+  const usuarioId = getUsuario()?.id;
+  const rascunhoId = estadoRascunhoAtivo().rascunho?.id;
   const publicar = prepararPublicacaoRascunho("escrita");
-  return req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao, chave }) }).then((operacao) => { publicar(null); return operacao; });
+  return req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao, chave }) }).then((operacao) => { removerCachesRascunhoUsuario(usuarioId, rascunhoId); publicar(null); return operacao; });
 };
 export const listarRelatoriosFinanceiros = () => req<RelatorioFinanceiro[]>("/financeiro/relatorios");
 export const obterRascunhoRelatorioFinanceiro = () => {

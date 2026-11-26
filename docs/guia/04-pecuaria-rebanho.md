@@ -10,6 +10,10 @@ O brinco é identificação de uso; o ID preserva os vínculos. Uma cria sem bri
 
 Animal comprado registra entrada e origem; o cadastro zootécnico não deve ser presumido como pagamento financeiro. Animal nascido pode ser cadastrado ao registrar o parto de sua mãe. Sexo, origem, datas, saldo de partos anteriores e filiação precisam refletir evidências.
 
+O cadastro abre em modal a partir do Rebanho ou da compra de animais, preservando a consulta de origem. Na compra, o sítio vem da operação e o animal só é criado na confirmação. Para mãe e pai, selecione um animal da fazenda ou genitor externo e confirme; cancelar preserva a escolha e a composição informada. A parte calculada pela filiação é separada da informada e da não conhecida; se uma nova filiação exceder o saldo disponível, revise o complemento antes de salvar. Se a consulta da herança falhar, tente novamente sem perder a parcela informada. No cadastro da compra, fechar o modal preserva os dados locais nesta aba, para o mesmo usuário, sítio e rascunho; Limpar restaura os dados iniciais do formulário aberto. Ao adicionar ou confirmar o animal, esse cache é removido.
+
+O ECC de entrada é opcional e independente do peso. Quando informado, usa escala de 1 a 5 e cria um exame estruturado com data de entrada, sítio e autoria na mesma transação do cadastro ou da confirmação da compra. Exames antigos preservam sua escala.
+
 Não invente datas para preencher lacunas. “Partos antes da entrada” é um saldo conhecido, não uma lista de partos com datas recuperadas. Para consultas anteriores à entrada, esse saldo não pode ser distribuído no tempo por suposição.
 
 Corrigir nascimento ou entrada preserva as datas factuais de pesos históricos, inclusive cargas antigas identificadas por origem IDEAGRI ou vínculo de importação. Pesos associados a parto/secagem também não acompanham a correção cadastral. Se a nova cronologia contrariar esses fatos, a alteração é recusada por inteiro e informa o registro a reconciliar. Cadastro ou movimentação não podem tornar incompatíveis pesos com contexto interno/externo nem controles documentais de leite já registrados.

@@ -113,4 +113,8 @@ a busca `buscaCatalogo` e o escopo ativo. O gate é o de Estoque (Financeiro ou
 Pecuária). Produtos sem dados oficiais vinculados continuam disponíveis na consulta
 do Catálogo e exibem o motivo da pendência. Não geram resultado do tipo referência oficial apenas por possuírem pesquisa pendente ou links a conferir. Referências parciais são identificadas como tais no contexto do resultado e abrem o modal exato com seus campos e pendências.
 
+A carga de cadastros padrão não cria uma nova fonte de busca: referências oficiais continuam disponíveis pelo destino exato do catálogo descrito acima, raças são opções do filtro de animais, e doenças são opções nos fluxos de Sanidade, sem ficha individual pesquisável na busca global.
+
 O exame de ECC do tipo de sistema responde ao nome original do catálogo e a “Escore de condição corporal (ECC)”; o resultado abre o exame exato, sob os gates e escopo existentes. No catálogo de tipos, `cadastroId` opcional limita a lista ao tipo encontrado; editar a busca remove esse filtro e URLs anteriores continuam válidas.
+
+O ECC informado na entrada do animal fica disponível na busca de exames após o cadastro avulso ou a confirmação da compra. A busca encontra o exame pelo tipo e pelo animal. Rascunhos de compra ainda não geram exames nem resultados de busca.

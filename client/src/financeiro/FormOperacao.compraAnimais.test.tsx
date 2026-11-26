@@ -5,9 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import "../lib/controles.fixture"; // define ResizeObserver e scrollIntoView para o Radix
 import { FormOperacao } from "./FormOperacao";
+import { setSessao, clearSessao } from "../lib/auth";
 import { setPropriedadeAtiva } from "../propriedadeScope";
 import type { ConfiguracoesFinanceiras, RascunhoOperacao } from "./novo-api";
 import { limparRascunhoAtivo } from "./rascunhoAtivo";
+import { descartarTrabalhoAtivo } from "./descarteTrabalhoAtivo";
 import { brl, hoje } from "./financeiro-ui";
 import { uid } from "../lib/uid.fixture";
 import { cadastrarAnimal, listarCategorias, listarGenitores, obterCatalogos, preverComposicaoAnimal } from "../pecuaria/rebanho/api";
@@ -40,6 +42,7 @@ const catalogos: Catalogos = {
 
 beforeEach(() => {
   limparRascunhoAtivo();
+  sessionStorage.clear();
   setPropriedadeAtiva(1);
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(listarPropriedades).mockResolvedValue([{ id: 1, nome: "Sítio Sede", apelido: null, cidade: null, uf: null, principal: true, ativo: true, ordem: 0 }]);
@@ -49,7 +52,7 @@ beforeEach(() => {
   vi.mocked(preverComposicaoAnimal).mockResolvedValue(null);
   vi.mocked(consultarBezerreiro).mockResolvedValue({ perfis: [] });
 });
-afterEach(() => { limparRascunhoAtivo(); setPropriedadeAtiva(null); cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { clearSessao(); sessionStorage.clear(); limparRascunhoAtivo(); setPropriedadeAtiva(null); cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const DATA = hoje();
 
@@ -110,11 +113,93 @@ async function abrirModal() {
 async function adicionarAnimal(brinco: string) {
   const dialogo = await abrirModal();
   fireEvent.change(within(dialogo).getByLabelText("Brinco"), { target: { value: brinco } });
-  fireEvent.click(within(dialogo).getByRole("button", { name: "Confirmar animal" }));
+  fireEvent.click(within(dialogo).getByRole("button", { name: "Adicionar à compra" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 }
 
 describe("compra de animais: tela", () => {
+  it("preserva rascunho do modal ao fechar e Limpar restaura somente o formulário aberto", async () => {
+    setSessao("teste", { id: 7, nome: "Ana", email: "ana@example.test", papel: "proprietario", status: "ATIVO", dono: true, abas: [], areas: ["financeiro", "pecuaria"], flags: ["lancar", "verValores"] });
+    simularApi(); montar(rascunhoCom({ animais: [animalForm(1, "101")] }));
+    const modal = await abrirModal();
+    fireEvent.change(within(modal).getByLabelText("Brinco"), { target: { value: "222" } });
+    await waitFor(() => expect([...Array(sessionStorage.length)].map((_, i) => sessionStorage.key(i)).some(chave => chave?.includes(":novo"))).toBe(true));
+    fireEvent.click(within(modal).getByRole("button", { name: "Cancelar" }));
+    const reaberto = await abrirModal();
+    expect((within(reaberto).getByLabelText("Brinco") as HTMLInputElement).value).toBe("222");
+    fireEvent.click(within(reaberto).getByRole("button", { name: "Limpar" }));
+    expect((within(reaberto).getByLabelText("Brinco") as HTMLInputElement).value).toBe("");
+    expect(screen.getByRole("list", { name: "Animais da compra", hidden: true }).textContent).toContain("101");
+  });
+
+  it("remove cache ao voltar manualmente ao valor inicial", async () => {
+    setSessao("teste", { id: 7, nome: "Ana", email: "ana@example.test", papel: "proprietario", status: "ATIVO", dono: true, abas: [], areas: ["financeiro", "pecuaria"], flags: ["lancar", "verValores"] });
+    simularApi(); montar(rascunhoCom({}));
+    const modal = await abrirModal(); const brinco = within(modal).getByLabelText("Brinco") as HTMLInputElement;
+    fireEvent.change(brinco, { target: { value: "222" } });
+    await waitFor(() => expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes(":novo"))).toBe(true));
+    fireEvent.change(brinco, { target: { value: "" } });
+    await waitFor(() => expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes(":novo"))).toBe(false));
+  });
+
+  it("descarte espera primeiro PUT e limpa a identidade remota migrada", async () => {
+    setSessao("teste", { id: 7, nome: "Ana", email: "ana@example.test", papel: "proprietario", status: "ATIVO", dono: true, abas: [], areas: ["financeiro", "pecuaria"], flags: ["lancar", "verValores"] });
+    simularApi(); const anterior = globalThis.fetch;
+    let liberar!: (v: Response) => void; const pendente = new Promise<Response>(resolve => { liberar = resolve; });
+    const fetchTeste = vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") return pendente;
+      if (String(url).endsWith("/financeiro/operacoes/rascunho") && init?.method === "DELETE") return Promise.resolve(new Response("{}", { status: 200 }));
+      return anterior(url, init);
+    }); vi.stubGlobal("fetch", fetchTeste);
+    montar(); const modal = await abrirModal();
+    fireEvent.change(within(modal).getByLabelText("Brinco"), { target: { value: "222" } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Cancelar" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra de teste" } });
+    await waitFor(() => expect(fetchTeste.mock.calls.some(([url, init]) => String(url).endsWith("/rascunho") && init?.method === "PUT")).toBe(true), { timeout: 3000 });
+    const descarte = descartarTrabalhoAtivo("operacao", async () => { throw new Error("editor ausente"); });
+    liberar(new Response(JSON.stringify({ id: "draft-1", dados: {}, versao: 1, documentos: [] }), { status: 200, headers: { "content-type": "application/json" } }));
+    await descarte;
+    expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes("animal-compra"))).toBe(false);
+  });
+
+  it("confirmação aguarda PUT inicial e limpa cache migrado", async () => {
+    setSessao("teste", { id: 7, nome: "Ana", email: "ana@example.test", papel: "proprietario", status: "ATIVO", dono: true, abas: [], areas: ["financeiro", "pecuaria"], flags: ["lancar", "verValores"] });
+    simularApi(); const anterior = globalThis.fetch;
+    let liberar!: (v: Response) => void; const pendente = new Promise<Response>(resolve => { liberar = resolve; });
+    const fetchTeste = vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).endsWith("/rascunho") && init?.method === "PUT") return pendente;
+      if (String(url).endsWith("/rascunho/confirmacao")) return Promise.resolve(new Response(JSON.stringify({ id: "operacao", numero: 12 }), { status: 200, headers: { "content-type": "application/json" } }));
+      return anterior(url, init);
+    }); vi.stubGlobal("fetch", fetchTeste);
+    const onSalvo = vi.fn(); montar({ ...rascunhoCom({ animais: [animalForm(1, "101", { preco: "4500" })] }), id: "" }, onSalvo);
+    const modal = await abrirModal(); fireEvent.change(within(modal).getByLabelText("Brinco"), { target: { value: "222" } });
+    fireEvent.click(within(modal).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes(":pendente:novo"))).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await waitFor(() => expect(fetchTeste.mock.calls.some(([url, init]) => String(url).endsWith("/rascunho") && init?.method === "PUT")).toBe(true));
+    liberar(new Response(JSON.stringify({ id: "draft-1", dados: {}, versao: 1, documentos: [] }), { status: 200, headers: { "content-type": "application/json" } }));
+    await waitFor(() => expect(onSalvo).toHaveBeenCalled());
+    expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes("animal-compra"))).toBe(false);
+  });
+
+  it("vincula cache quando o sítio único carrega durante primeiro PUT", async () => {
+    setSessao("teste", { id: 7, nome: "Ana", email: "ana@example.test", papel: "proprietario", status: "ATIVO", dono: true, abas: [], areas: ["financeiro", "pecuaria"], flags: ["lancar", "verValores"] });
+    setPropriedadeAtiva(null);
+    let liberarSitios!: (itens: never) => void; vi.mocked(listarPropriedades).mockReturnValue(new Promise(resolve => { liberarSitios = resolve; }));
+    simularApi(); const anterior = globalThis.fetch;
+    let liberarPut!: (v: Response) => void; const pendente = new Promise<Response>(resolve => { liberarPut = resolve; });
+    const fetchTeste = vi.fn((url: RequestInfo | URL, init?: RequestInit) => String(url).endsWith("/rascunho") && init?.method === "PUT" ? pendente : anterior(url, init)); vi.stubGlobal("fetch", fetchTeste);
+    montar(); fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra" } });
+    await waitFor(() => expect(fetchTeste.mock.calls.some(([url, init]) => String(url).endsWith("/rascunho") && init?.method === "PUT")).toBe(true), { timeout: 3000 });
+    liberarSitios([{ id: 1, nome: "Sítio Sede", apelido: null, cidade: null, uf: null, principal: true, ativo: true, ordem: 0 }] as never);
+    const modal = await abrirModal(); fireEvent.change(within(modal).getByLabelText("Brinco"), { target: { value: "222" } });
+    await waitFor(() => expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes(":pendente:novo"))).toBe(true));
+    liberarPut(new Response(JSON.stringify({ id: "draft-1", dados: {}, versao: 1, documentos: [] }), { status: 200, headers: { "content-type": "application/json" } }));
+    await waitFor(() => expect([...Array(sessionStorage.length)].some((_, i) => sessionStorage.key(i)?.includes(":draft:draft-1:novo"))).toBe(true));
+    fireEvent.click(within(modal).getByRole("button", { name: "Cancelar" }));
+    const reaberto = await abrirModal(); expect((within(reaberto).getByLabelText("Brinco") as HTMLInputElement).value).toBe("222");
+  });
+
   it("oferece Compra de animais no tipo e começa sem item em branco", async () => {
     simularApi();
     montar();
@@ -155,11 +240,24 @@ describe("compra de animais: tela", () => {
     for (const campo of ["Brinco", "Nome", "Sexo", "Brinco eletrônico", "SISBOV", "Data de nascimento", "Data de entrada", "Partos antes da entrada", "Lote", "Finalidade", "Papel reprodutivo", "Peso de entrada (kg)", "Observação"]) {
       expect(within(dialogo).getByLabelText(campo)).toBeTruthy();
     }
-    for (const secao of ["Identificação", "Datas e filiação", "Localização e finalidade", "Composição racial"]) expect(within(dialogo).getByRole("heading", { name: secao })).toBeTruthy();
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Confirmar animal" }));
+    for (const secao of ["Identificação", "Datas", "Localização e finalidade", "Composição racial"]) expect(within(dialogo).getByRole("heading", { name: secao })).toBeTruthy();
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Adicionar à compra" }));
     expect(await within(dialogo).findByText("Informe o brinco")).toBeTruthy();
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.queryByRole("list", { name: "Animais da compra" })).toBeNull();
+  });
+
+  it("mantém ECC no rascunho e reabre sem cadastrar o exame", async () => {
+    simularApi(); montar();
+    const dialogo = await abrirModal();
+    fireEvent.change(within(dialogo).getByLabelText("Brinco"), { target: { value: "ECC101" } });
+    fireEvent.change(within(dialogo).getByLabelText("Escore de condição corporal (ECC) opcional"), { target: { value: "3,25" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Adicionar à compra" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(cadastrarAnimal).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Editar animal ECC101"));
+    const edicao = await screen.findByRole("dialog", { name: "Editar animal ECC101" });
+    expect((await within(edicao).findByLabelText("Escore de condição corporal (ECC) opcional") as HTMLInputElement).value).toBe("3,25");
   });
 
   it("recusa brinco repetido na mesma compra", async () => {
@@ -168,7 +266,7 @@ describe("compra de animais: tela", () => {
     await adicionarAnimal("101");
     const dialogo = await abrirModal();
     fireEvent.change(within(dialogo).getByLabelText("Brinco"), { target: { value: " 101 " } });
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Confirmar animal" }));
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Adicionar à compra" }));
     expect(await within(dialogo).findByText("O brinco 101 já está nesta operação")).toBeTruthy();
   });
 
@@ -186,6 +284,19 @@ describe("compra de animais: tela", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Adicionar animal" })));
   });
 
+  it("permite remover parcela manual de rascunho quando a filiação recalculada ocupa 64/64", async () => {
+    const anterior = animalForm(1, "101");
+    anterior.cadastro = { ...anterior.cadastro!, pai: { tipo: "EXTERNO", id: "pai-1" }, composicao: [{ racaId: "raca-1", fracao64: 16 }] };
+    vi.mocked(preverComposicaoAnimal).mockResolvedValue({ itens: [{ racaId: "raca-1", sigla: "NE", fracao64: 64 }], rotulo: "1/1 NE" });
+    montar(rascunhoCom({ animais: [anterior] }));
+    fireEvent.click(screen.getByLabelText("Editar animal 101"));
+    const dialogo = await screen.findByRole("dialog", { name: "Editar animal 101" });
+    fireEvent.click(await within(dialogo).findByRole("button", { name: "Remover parcela informada" }));
+    expect(await within(dialogo).findByText(/64\/64 calculados pela filiação/)).toBeTruthy();
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Adicionar à compra" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Editar animal 101" })).toBeNull());
+  });
+
   it("editar reabre o modal com os dados e confirmar atualiza só o resumo, mantendo o preço", async () => {
     simularApi();
     montar(rascunhoCom({ animais: [animalForm(1, "101", { preco: "4500" })] }));
@@ -194,7 +305,7 @@ describe("compra de animais: tela", () => {
     await within(dialogo).findByLabelText("Brinco");
     expect((within(dialogo).getByLabelText("Brinco") as HTMLInputElement).value).toBe("101");
     fireEvent.change(within(dialogo).getByLabelText("Brinco"), { target: { value: "101-A" } });
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Confirmar animal" }));
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Adicionar à compra" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getByLabelText("Editar animal 101-A")).toBeTruthy();
     expect((screen.getByLabelText("Preço do animal 101-A") as HTMLInputElement).value).toBe("4500");
@@ -359,7 +470,7 @@ describe("compra de animais: envio e rascunho", () => {
     expect(await within(dialogo).findByText("Já existe um animal ativo com o brinco 102 neste sítio")).toBeTruthy();
     await waitFor(() => expect(document.activeElement?.id).toBe("animal-compra-brinco"));
     fireEvent.change(within(dialogo).getByLabelText("Brinco"), { target: { value: "103" } });
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Confirmar animal" }));
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Adicionar à compra" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getByLabelText("Editar animal 103")).toBeTruthy();
     expect(document.getElementById("animal-2")?.getAttribute("aria-invalid")).toBeNull();
