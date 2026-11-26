@@ -146,6 +146,5 @@
 .indicadores-vazio span{font-size:14px;color:var(--muted-foreground)}
 
 /* Agenda: lista à esquerda e calendário do mês à direita; em tela estreita o calendário desce. */
-.repro-agenda-grade{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,1fr);gap:28px;align-items:start}
-@media(max-width:1100px){.repro-agenda-grade{grid-template-columns:minmax(0,1fr) 300px;gap:18px}}
-@media(max-width:800px){.repro-agenda-grade{grid-template-columns:1fr}}
+.repro-agenda-grade{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+@media(max-width:1250px){.repro-agenda-grade{grid-template-columns:1fr}}

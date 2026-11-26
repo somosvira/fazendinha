@@ -5,9 +5,7 @@ import { ConsultaExames, ConsultaCarencias } from "./ConsultasSanitariasVisuais"
 import { AgendaCuidados } from "./AgendaCuidados";
 import { AgendaCalendario } from "./AgendaCalendario";
 import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
-import { AlternarVisualizacaoSanitaria, useVisualizacaoSanitaria } from "./VisualizacaoSanitaria";
-import { AgendaPorDia, FaixaDias } from "./AgendaPorDia";
-type ResumoOcorrencias = { abertas: number; encerradas: number; anuladas: number; porDoenca: { id: string; nome: string; quantidade: number }[] };
+import { CasosPorDoenca, type ResumoOcorrencias } from "./CasosPorDoenca";
 import type { ColunaTabela } from "@/financeiro/financeiro-ui";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -256,7 +254,6 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const [ocorrenciaId, setOcorrenciaId] = useState("");
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const [aplicacoes, setAplicacoes] = useState<AplicacaoSanitaria[]>([]);
-  const visualTarefas = useVisualizacaoSanitaria("visualTarefas", "visual");
   const [doencaVisual, setDoencaVisual] = useState(() => new URLSearchParams(window.location.search).get("doencaId") ?? "");
   const [resumoOcorrencias, setResumoOcorrencias] = useState<ResumoOcorrencias | null>(null);
   const [totalOcorrencias, setTotalOcorrencias] = useState(0);
@@ -323,7 +320,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   useEffect(() => {
     const params = new URLSearchParams();
     const preferencias = new URLSearchParams(window.location.search);
-    for (const chave of ["visualCiclos", "visualTarefas", "semanaSanitaria", "agendaSanitaria"]) { const valor = preferencias.get(chave); if (valor) params.set(chave, valor); }
+    for (const chave of ["visualCiclos"]) { const valor = preferencias.get(chave); if (valor) params.set(chave, valor); }
     if (aba === "ocorrencias" && doencaVisual) params.set("doencaId", doencaVisual);
     if (aba === "agenda" && rodadaId) { const atual = new URLSearchParams(window.location.search); for (const chave of ["protocoloContexto", "protocoloBusca", "protocoloSituacao", "abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) { const v = atual.get(chave); if (v) params.set(chave, v); } }
     params.set("aba", aba);
@@ -813,9 +810,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const qtdAguardando = examesVisiveis.filter(e => e.status !== "ANULADO" && resultadoExameSanitario(e) === "Aguardando resultado").length;
   const abasOcorrencias = <SubTabs variant="financeiro" aparencia="segmentado" ariaLabel="Situação das ocorrências" active={situacao} onSelect={v => { setSituacao(v); setPagina(1); }} tabs={[{ id: "ABERTA", label: `Abertas (${qtdAbertas})` }, { id: "ENCERRADA", label: `Já encerradas (${qtdEncerradas})` }]} />;
   const abasExames = <SubTabs variant="financeiro" aparencia="segmentado" ariaLabel="Situação dos exames" active={situacao === "AGUARDANDO_RESULTADO" ? situacao : ""} onSelect={v => { setSituacao(v); setPagina(1); }} tabs={[{ id: "", label: "Todos" }, { id: "AGUARDANDO_RESULTADO", label: `Aguardando resultado (${qtdAguardando})` }]} />;
-  const [pendentesAgenda, setPendentesAgenda] = useState<Tarefa[]>([]);
   const [totalPendentesAgenda, setTotalPendentesAgenda] = useState(0);
-  const [diaAgenda, setDiaAgenda] = useState<string | null>(null);
   const [qtdOcorrenciasAbertas, setQtdOcorrenciasAbertas] = useState<number | null>(null);
   const [qtdEmCarencia, setQtdEmCarencia] = useState<number | null>(null);
   const [pendenciasTablet, setPendenciasTablet] = useState(0);
@@ -823,13 +818,8 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   useEffect(() => {
     let vivo = true;
     const sitio = getPropriedadeAtiva();
-    // O servidor limita a página a 50 itens: busca até 4 páginas para alimentar a faixa de dias.
-    const pagina = (n: number) => reqSanidade<PaginaSanitaria<Tarefa>>(`/tarefas?situacao=PENDENTE&pagina=${n}&porPagina=50&paginado=true`);
-    pagina(1).then(async primeira => {
-      const total = primeira.total ?? 0;
-      const demais = await Promise.all(Array.from({ length: Math.min(3, Math.max(0, Math.ceil(total / 50) - 1)) }, (_, i) => pagina(i + 2).catch(() => ({ itens: [] as Tarefa[] }))));
-      if (vivo) { setPendentesAgenda([...(primeira.itens ?? []), ...demais.flatMap(d => d.itens ?? [])]); setTotalPendentesAgenda(total); }
-    }).catch(() => {});
+    // Só o total de pendentes alimenta o contador da sub-aba Tarefas.
+    reqSanidade<PaginaSanitaria<Tarefa>>("/tarefas?situacao=PENDENTE&pagina=1&porPagina=1&paginado=true").then(p => { if (vivo) setTotalPendentesAgenda(p.total ?? 0); }).catch(() => {});
     reqSanidade<{ resumo?: ResumoOcorrencias }>("/ocorrencias?paginado=true&pagina=1&porPagina=1").then(p => { if (vivo) setQtdOcorrenciasAbertas(p.resumo?.abertas ?? null); }).catch(() => {});
     if (podeRevisarTablet && sitio) reqSanidade<{ revisadoEm?: string | null }[]>(`/tablet/envios?propriedadeId=${sitio}`).then(l => { if (vivo && Array.isArray(l)) setPendenciasTablet(l.filter(e => !e.revisadoEm).length); }).catch(() => {});
     return () => { vivo = false; };
@@ -913,7 +903,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
         </Button>
       )}
       <Panel className="overflow-hidden sanidade-lista">
-        {aba === "agenda" && !rodadaId && <div className="sanidade-agenda-visoes"><SubTabs variant="financeiro" aparencia="segmentado" ariaLabel="Visão da agenda" active={visaoAgenda} onSelect={v => { setVisaoAgenda(v); setPagina(1); }} tabs={[{ id: "rodadas", label: "Ciclos" }, { id: "tarefas", label: totalPendentesAgenda ? `Tarefas ${totalPendentesAgenda}` : "Tarefas" }, { id: "cuidados", label: "Todos os cuidados" }]} /></div>}
+        {aba === "agenda" && !rodadaId && <div className="sanidade-agenda-visoes"><SubTabs variant="financeiro" aparencia="segmentado" ariaLabel="Visão da agenda" active={visaoAgenda} onSelect={v => { setVisaoAgenda(v); setPagina(1); }} tabs={[{ id: "rodadas", label: "Ciclos" }, { id: "tarefas", label: totalPendentesAgenda ? `Tarefas (${totalPendentesAgenda})` : "Tarefas" }, { id: "cuidados", label: "Todos os cuidados" }]} /></div>}
         {!(aba === "agenda" && ["rodadas","cuidados"].includes(visaoAgenda)) && aba !== "aplicacoes" && <>
           {carenciasIndividuais ? <div className="sanidade-carencias-contexto">
             <strong>{animal ? nomeAnimalSanitario(animal) : "Animal selecionado"}</strong>
@@ -935,11 +925,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
             <>
 
               {visaoAgenda === "cuidados" ? <AgendaCuidados filtros={{animalId,busca:buscaAnimal,loteId,de,ate,pagina}} revisao={revisao} onFiltros={v=>{setAnimalId(v.animalId);setBuscaAnimal(v.busca);setLoteId(v.loteId);setDe(v.de);setAte(v.ate);setPagina(v.pagina)}}/> : visaoAgenda === "rodadas" ? <AgendaRodadas filtrosColunas={filtrosColunas} filtrosUI={(acao) => filtrosTabela(acao)} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 10 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={(id) => { const url = new URL(window.location.href); if (id) url.searchParams.set("rodadaId", id); else url.searchParams.delete("rodadaId"); for (const chave of ["protocoloContexto", "protocoloBusca", "protocoloSituacao", "abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) url.searchParams.delete(chave); navegarPara(url.pathname + url.search); setRodadaId(id); }} onExecutar={setExecutandoEtapa} /> : <>
-              {(pendentesAgenda.length > 0 || diaAgenda) && <FaixaDias hoje={hojeSanitario} tarefas={pendentesAgenda} diaSelecionado={diaAgenda} onSelecionar={dia => { setDiaAgenda(dia); setDe(dia ?? ""); setAte(dia ?? ""); setPagina(1); }} />}
-              <div className="san-visual-barra sanidade-agenda-visoes">
-                <AlternarVisualizacaoSanitaria rotulo="Visualização das tarefas" {...visualTarefas}/>
-              </div>
-              {visualTarefas.modo === "visual" ? <AgendaPorDia<Tarefa> tarefas={tarefasVisiveis} hoje={hojeSanitario} podeLancar={podeLancar} rotuloSituacao={t => rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario)} onRegistrar={itens => { const t0 = itens[0]; if (t0) setAnimalDaAcao({ animalId: t0.execucao.animalId, propriedadeId: t0.propriedadeAtualId ?? t0.execucao.propriedadeId }); setExecutandoEtapa(itens.map(t => ({ ...t, parametros: { ...t.parametros, tipo: t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME" } }))); }} /> : <div className="san-tarefas-lista"><TabelaFinanceira iconeDe={t => t.parametros.tipo === "APLICACAO" ? ICONES_TABELA.aplicacao : ICONES_TABELA.exame} compacta filtrosColunas={filtrosColunas} rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).sort((a, b) => Number(b.situacao === "PENDENTE") - Number(a.situacao === "PENDENTE") || a.previstaPara.localeCompare(b.previstaPara) || a.id.localeCompare(b.id))} chaveDe={t => t.id} colunas={colunasTarefas} /></div>}
+              <div className="san-tarefas-lista"><TabelaFinanceira iconeDe={t => t.parametros.tipo === "APLICACAO" ? ICONES_TABELA.aplicacao : ICONES_TABELA.exame} compacta filtrosColunas={filtrosColunas} rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).sort((a, b) => Number(b.situacao === "PENDENTE") - Number(a.situacao === "PENDENTE") || a.previstaPara.localeCompare(b.previstaPara) || a.id.localeCompare(b.id))} chaveDe={t => t.id} colunas={colunasTarefas} /></div>
               {!carregandoAba && !erroAba && !tarefas.length && (
                 <p className="p-4">
                   Nenhuma tarefa planejada.
@@ -952,6 +938,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           {aba === "ocorrencias" && (
             <>
               <div className="consulta-visual-barra sanidade-agenda-visoes">{abasOcorrencias}</div>
+              {situacao === "ABERTA" && resumoOcorrencias && !carregandoAba && !erroAba && <CasosPorDoenca resumo={resumoOcorrencias} doencaId={doencaVisual} onDoenca={id => { setDoencaVisual(id); setPagina(1); }} />}
               {<>
               <TabelaFinanceira icone={ICONES_TABELA.ocorrencia} filtrosColunas={filtrosColunas} rotulo="Ocorrências sanitárias" itens={ocorrenciasVisiveis} chaveDe={(o) => o.id} onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={colunasOcorrencias} /></>}
               {ocorrenciasPaginadas && totalOcorrencias > 0 && <Paginacao paginaAtual={pagina} totalPaginas={Math.max(1,Math.ceil(totalOcorrencias/50))} totalItens={totalOcorrencias} itensPorPagina={50} onPaginaChange={setPagina} rotulo="ocorrências" idSelect="pagina-ocorrencias"/>}

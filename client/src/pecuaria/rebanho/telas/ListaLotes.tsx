@@ -191,7 +191,6 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
       <BarraConsulta ordenacao={ordemLotes.controle} campos={camposLotes} edicaoFiltros={edicaoLotes} criterios={[...(filtroSitio?[{id:"sitio",rotulo:`Sítio: ${sitiosAtivos.find(s=>String(s.id)===filtroSitio)?.nome ?? "Selecionado"}`,limpar:()=>{setFiltroSitio("");setPaginaLotes(1);}}]:[]),...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>{setMostrarInativos(false);setPaginaLotes(1);}}]:[])]}>
         <BuscaLista rotulo="Buscar lote" placeholder="Buscar lote ou sítio" valor={busca} onChange={valor => { setBusca(valor); setPaginaLotes(1); }} />
       </BarraConsulta>
-      <div className="consulta-visual-barra"><span>{lotesFiltrados.length} lotes no recorte</span></div>
       <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
         {lotes === null
           ? <EsqueletoTabela label="Carregando lotes" className="p-6" />

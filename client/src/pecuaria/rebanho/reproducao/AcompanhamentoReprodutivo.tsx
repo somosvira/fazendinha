@@ -228,7 +228,7 @@ export function AcompanhamentoReprodutivo({
         {!carregando && !erro && dados && (
           <>
             {propriedadeId != null && <LembretesAutomaticos propriedadeId={propriedadeId} data={diaAgenda || hoje()} />}
-            <div className="repro-consulta-titulo"><div><h2>Próximas atividades  <span>{retornos.length} acompanhamentos</span></h2><p>Datas registradas, sem presumir resultado clínico.</p></div></div>
+            <div className="repro-consulta-titulo"><div><h2>Próximas atividades  <span>{retornos.length} acompanhamentos</span></h2></div></div>
             {/* Calendário do mês ao lado da lista: escolher um dia filtra a tabela (a #421 mantém calendários). */}
             <div className="repro-agenda-grade"><section aria-label="Lista de próximas atividades" className="min-w-0">
             {diaAgenda && <div className="mb-4 flex flex-wrap items-center gap-3"><strong>{dataBR(diaAgenda)}</strong><Button variant="outline" onClick={() => { setDiaAgenda(""); setPagina(1); }}>Ver todos os dias</Button></div>}
