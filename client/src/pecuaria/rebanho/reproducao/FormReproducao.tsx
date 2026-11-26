@@ -266,6 +266,8 @@ export function FormReproducao({
   const [dadosParto, setDadosParto] = useState(dadosPartoVazios);
   const [revelarExplicacao, setRevelarExplicacao] = useState(0);
   const [revelarEscore, setRevelarEscore] = useState(0);
+  const [revelarPos, setRevelarPos] = useState(0);
+  const [revelarDestino, setRevelarDestino] = useState(0);
   const [destinoCriaPendente, setDestinoCriaPendente] = useState(false);
   const [crias, setCrias] = useState<CriaInput[]>([
     { viva: true, sexo: "F", aptidao: "LEITE" },
@@ -406,8 +408,8 @@ export function FormReproducao({
     if (acao === "avaliacao" && (!resultado || !tipoExameId || (resultado === "SEXAGEM" && !sexoFetal))) { setErro("Informe o tipo de exame, a conclusão e o sexo fetal quando houver sexagem."); return; }
     if (acao === "avaliacao" && resultado !== "NAO_AVALIADO" && ["SEXAGEM", "RECONFIRMACAO"].includes(finalidade ?? "") && !demandaInicial?.gestacaoId && !gestacaoDoFato) { setErro("Vincule uma gestação conhecida para reconfirmação ou sexagem."); return; }
     if (acao === "tentativa" && tipo !== "COBERTURA" && quantidade && Number(quantidade) !== 1 && motivoQuantidadeExcepcional.trim().length < 5) { setErro("Informe o motivo da quantidade excepcional (mínimo de 5 caracteres)."); return; }
-    if (acao === "parto" && destinoCriaPendente) { setErro("Confira a sugestão de Bezerreiro e escolha o lote de cada cria ou Sem lote."); return; }
-    if (acao === "parto") { const erroParto = validarDadosParto(dadosParto); if (erroParto) { setErro(erroParto); if (dadosParto.desfecho === "ABORTO" && dadosParto.observacao.trim().length < 5) setRevelarExplicacao(v => v + 1); else if (dadosParto.escoreAtivo && !escoreNumericoValido(dadosParto.escoreValor)) setRevelarEscore(v => v + 1); return; } }
+    if (acao === "parto" && destinoCriaPendente) { setErro("Confira a sugestão de Bezerreiro e escolha o lote de cada cria ou Sem lote."); setRevelarDestino(v => v + 1); return; }
+    if (acao === "parto") { const erroParto = validarDadosParto(dadosParto); if (erroParto) { setErro(erroParto); if (dadosParto.desfecho === "ABORTO" && dadosParto.observacao.trim().length < 5) setRevelarExplicacao(v => v + 1); else if (dadosParto.escoreAtivo && !escoreNumericoValido(dadosParto.escoreValor)) setRevelarEscore(v => v + 1); else setRevelarPos(v => v + 1); return; } }
     if (ocupado) return;
     setOcupado(true);
     setErro(null);
@@ -639,7 +641,8 @@ export function FormReproducao({
     >
       <form
         id="form-reproducao"
-        onChangeCapture={() => { rascunhoAlterado.current = true; }}
+        onChangeCapture={() => { rascunhoAlterado.current = true; if (acao === "parto") setErro(null); }}
+        onInvalidCapture={() => { if (acao === "parto") setErro(null); }}
         className="repro-registro"
         onSubmit={(e) => {
           e.preventDefault();
@@ -649,7 +652,7 @@ export function FormReproducao({
         <fieldset disabled={acao === "parto" && ocupado} className="contents">
         {conteudoExtra}
         <ErrorBox erro={erro} />
-        <section className="repro-registro-identidade" aria-label="Animal e data do fato">
+        <section className={acao === "parto" ? "repro-registro-identidade repro-registro-identidade-parto" : "repro-registro-identidade"} aria-label="Animal e data do fato">
         {pagina && <h2 className="sm:col-span-2 font-semibold text-lg">Atendimento</h2>}
         {seletor(
           "animal",
@@ -663,7 +666,7 @@ export function FormReproducao({
         )}
         {campo("data", "Data do fato", data, setData, true, "date")}
         </section>
-        <section className="repro-registro-dados" aria-labelledby="repro-dados-titulo"><h2 id="repro-dados-titulo">{{tentativa:"Procedimento e material",avaliacao:"Resultado e acompanhamento",parto:"Parto e crias",situacao:"Referências da situação inicial",restricao:"Alcance da restrição"}[acao]}</h2><div className="repro-registro-campos">
+        <section className="repro-registro-dados" aria-labelledby="repro-dados-titulo"><h2 id="repro-dados-titulo" className={acao === "parto" ? "sr-only" : undefined}>{{tentativa:"Procedimento e material",avaliacao:"Resultado e acompanhamento",parto:"Parto e crias",situacao:"Referências da situação inicial",restricao:"Alcance da restrição"}[acao]}</h2><div className="repro-registro-campos">
         {acao === "tentativa" && (
           <>
             {seletor(
@@ -884,7 +887,7 @@ export function FormReproducao({
           </ConfirmacaoCiencia>
           </>
         )}
-        {acao === "parto" && <PartoCampos revelarEscore={revelarEscore} revelarExplicacao={revelarExplicacao} lotesCarregando={catalogosCarregando} onDestinoPendente={setDestinoCriaPendente} valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
+        {acao === "parto" && <PartoCampos revelarPos={revelarPos} revelarDestino={revelarDestino} revelarEscore={revelarEscore} revelarExplicacao={revelarExplicacao} lotesCarregando={catalogosCarregando} onDestinoPendente={setDestinoCriaPendente} valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
         {acao === "situacao" &&
           seletor("situacao", "Situação inicial", situacao, valor => { if (valor === "VAZIA" || valor === "DESCONHECIDA") setSituacao(valor); }, [
             ["VAZIA", "Vazia"],

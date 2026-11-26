@@ -74,7 +74,7 @@ Aborto é um desfecho de parto na contagem do sistema e participa da análise de
 
 Ao confirmar o parto, confira também as crias vivas registradas junto com ele. Uma cria sem brinco definitivo permanece identificada provisoriamente. Filiação respeita genética/gestação; peso pode ser informado e vinculado. Início da lactação é explícito; aborto não abre lactação por suposição.
 
-Em **Registrar parto → Parto e crias**, **Observações do parto** e **Brinco** são opcionais para um nascimento. Para aborto, informe uma explicação de pelo menos cinco caracteres. O campo **Responsável pelo parto** identifica quem acompanhou o fato. A autoria identifica quem fez o lançamento.
+Em **Registrar parto**, abra **Parto e crias** ou **Pós-parto** para preencher cada seção; ao abrir uma, a outra é recolhida e conserva o que foi preenchido. Em **Parto e crias**, **Observações do parto** e **Brinco** são opcionais para um nascimento. Para aborto, informe uma explicação de pelo menos cinco caracteres. O campo **Responsável pelo parto** identifica quem acompanhou o fato. A autoria identifica quem fez o lançamento.
 
 Em **Pós-parto**, ative **Registrar ECC da matriz** para preencher **Valor do escore**. O Terrano usa a data do parto. Para lançar uma avaliação feita depois, abra o detalhe do parto, selecione **Registrar escore de condição corporal (ECC)** e informe o valor e a data real, igual ou posterior à do parto. Cada parto pode ter um ECC vigente. Use a correção do parto e informe o motivo para substituir ou anular a avaliação.
 
