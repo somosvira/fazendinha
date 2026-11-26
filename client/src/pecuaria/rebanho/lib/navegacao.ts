@@ -52,3 +52,19 @@ export function linkFichaLote(id: string, retorno = contextoRebanhoAtual()): str
 export function linkNovoAnimal(retorno = contextoRebanhoAtual()): string {
   return comRetorno("/pecuaria/rebanho/animais/novo", retorno);
 }
+
+/** Marca somente uma abertura originada pelo botão da própria consulta. */
+export function abrirNovoAnimal(): void {
+  const retorno = contextoRebanhoAtual();
+  window.history.pushState({ cadastroAnimalOrigem: retorno }, "", linkNovoAnimal(retorno));
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+export function fecharNovoAnimal(): void {
+  const retorno = retornoRebanhoDaUrl();
+  if (window.history.state?.cadastroAnimalOrigem === retorno) window.history.back();
+  else {
+    window.history.replaceState(null, "", retorno);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }
+}

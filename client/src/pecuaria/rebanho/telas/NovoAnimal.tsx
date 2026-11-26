@@ -1,10 +1,12 @@
+import { registrarGuardaNavegacao } from "../../../navegacaoGuardada";
+import { ModalCadastroAnimal } from "../forms/ModalCadastroAnimal";
 // Cadastro de animal — página cheia no layout de FormOperacao.tsx: form em
 // card + resumo de revisão à direita. POST /pecuaria/rebanho/animais.
 // Os campos e a validação vêm de forms/CadastroAnimal.tsx, o mesmo cadastro que a compra de animais
 // abre em modal: assim os dois nunca divergem.
 
-import { Beef, Save } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { Save } from "lucide-react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { cadastrarAnimal, RebanhoApiError } from "../api";
 import type { Origem } from "../types";
 import { CadastroAnimalCampos, useCadastroAnimal } from "../forms/CadastroAnimal";
@@ -33,16 +35,34 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
   const { catalogos, erroCatalogos, categoriaPrevista, setErros } = cadastro;
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const envio = useRef(false);
+  useEffect(() => registrarGuardaNavegacao(async () => !envio.current), []);
+  useEffect(() => {
+    const url = window.location.href;
+    const estado = window.history.state;
+    const impedirSaida = (evento: PopStateEvent) => {
+      if (!envio.current) return;
+      evento.stopImmediatePropagation();
+      const visitada = window.location.pathname + window.location.search + window.location.hash;
+      const retorno = new URL(url).searchParams.get("retorno");
+      window.history.pushState(estado?.cadastroAnimalOrigem === retorno && visitada === retorno ? estado : null, "", url);
+    };
+    window.addEventListener("popstate", impedirSaida, true);
+    return () => window.removeEventListener("popstate", impedirSaida, true);
+  }, []);
 
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    if (envio.current) return;
     const validacao = cadastro.validar();
     setErros(validacao);
     if (Object.keys(validacao).length) { cadastro.irParaPrimeiroErro(validacao); return; }
-    setSalvando(true); setErroGeral(null);
+    envio.current = true; setSalvando(true); setErroGeral(null);
     try {
       const animal = await cadastrarAnimal({ ...cadastro.montarPayload(), origem, propriedadeId: Number(cadastro.propriedadeId) });
       if (animal.avisos?.length) toast.warn("Animal salvo com aviso", animal.avisos.map((aviso) => aviso.mensagem).join(" · "));
+      envio.current = false;
       navegarPara(linkFichaAnimal(animal.id, retornoRebanhoDaUrl()));
     } catch (falha) {
       const mensagem = falha instanceof RebanhoApiError ? falha.message : falha instanceof Error ? falha.message : String(falha);
@@ -51,24 +71,19 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
       const doCampo = falha instanceof RebanhoApiError && falha.campo ? { [falha.campo]: mensagem } : {};
       setErros(doCampo);
       if (!cadastro.irParaPrimeiroErro(doCampo)) { setErroGeral(mensagem); rolarParaCampo("novo-animal-erro"); }
-    } finally { setSalvando(false); }
+    } finally { envio.current = false; setSalvando(false); }
   };
 
-  return <PaginaFinanceira><div className="pb-10">
-    <PageHeader titulo={<span className="rotina-titulo"><span><Beef aria-hidden/></span>Novo animal</span>} />
-    <ErrorBox erro={erroCatalogos} />
-    {!catalogos && !erroCatalogos && <EsqueletoFormulario label="Carregando cadastro" campos={8} />}
-    {catalogos && <form onSubmit={submeter} noValidate className="pec-novo-animal">
-      <div className="pec-form-corpo space-y-7 p-5 md:p-7">
-        <div className="rebanho-origem-cadastro"><span>Animal comprado</span><Button secondary type="button" onClick={() => navegarPara("/pecuaria/reproducao?acao=parto")}>Registrar nascimento pelo parto</Button></div>
-        <div id="novo-animal-erro" tabIndex={-1} className="outline-none"><ErrorBox erro={erroGeral} /></div>
-        <CadastroAnimalCampos cadastro={cadastro} />
-      </div>
-      <footer className="rebanho-form-acoes">
-        {categoriaPrevista && <span>Categoria prevista: <strong>{categoriaPrevista.nome}</strong></span>}
-        <Button secondary type="button" onClick={onVoltar} disabled={salvando}>Cancelar</Button>
-        <Button type="submit" disabled={salvando}><Save size={18} aria-hidden/>{salvando ? "Salvando…" : "Salvar animal"}</Button>
-      </footer>
-    </form>}
-  </div></PaginaFinanceira>;
+  return <ModalCadastroAnimal titulo="Novo animal" contexto="Rebanho" onFechar={onVoltar} salvando={salvando} rodape={<div className="flex flex-wrap items-center justify-end gap-3">
+    {categoriaPrevista && <span className="mr-auto text-sm">Categoria prevista: <strong>{categoriaPrevista.nome}</strong></span>}
+    <Button secondary type="button" onClick={onVoltar} disabled={salvando}>Cancelar</Button>
+    <Button type="submit" form="form-novo-animal" disabled={salvando || !catalogos}><Save size={18} aria-hidden/>{salvando ? "Salvando…" : "Salvar animal"}</Button>
+  </div>}>
+    <form id="form-novo-animal" onSubmit={submeter} noValidate className="space-y-7 p-5 sm:p-6 [&>section+section]:border-t [&>section+section]:border-border [&>section+section]:pt-5">
+      <ErrorBox erro={erroCatalogos} />
+      {!catalogos && !erroCatalogos && <EsqueletoFormulario label="Carregando cadastro" campos={8} />}
+      <div id="novo-animal-erro" tabIndex={-1} className="outline-none"><ErrorBox erro={erroGeral} /></div>
+      <CadastroAnimalCampos cadastro={cadastro} />
+    </form>
+  </ModalCadastroAnimal>;
 }
