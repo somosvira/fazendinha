@@ -48,7 +48,7 @@ Parto, inclusive aborto ou natimorto, inicia novo ciclo e exige novo exame. Apó
 
 ### Avisos e acompanhamento
 
-Idade e peso, inclusive percentual de peso adulto, são parâmetros configuráveis para avisar que a avaliação está devida. Não são mínimos obrigatórios de aptidão e não substituem o exame. **ECC** é um valor acompanhado por data e escala, com gráfico junto ao peso na ficha; não gera avisos nem condiciona aptidão nesta etapa.
+Idade e peso, inclusive percentual de peso adulto, são parâmetros configuráveis para avisar que a avaliação está devida. Não são mínimos obrigatórios de aptidão e não substituem o exame. O **Escore de condição corporal (ECC)** é uma observação com data e valor. A ficha separa as curvas por escala informada e inclui no histórico as avaliações que têm só o valor.
 
 Contador de partos igual a zero não prova que a fêmea nunca pariu. Quando houver evidência, registre a **Classe na data do registro** em **Situação inicial**: Novilha ou Vaca, com **Evidência ou referência**. O padrão **Não determinada** conserva a lacuna. Essa declaração não cria parto nem comprova aptidão.
 
@@ -73,6 +73,10 @@ Perda precisa de explicação e pode ter causa desconhecida, suspeita ou confirm
 Aborto é um desfecho de parto na contagem do sistema e participa da análise de perdas sem duplicação. Natimorto é identificado no nascimento e não gera animal ativo. Morte depois de nascimento vivo usa a baixa normal da cria. Gêmeos são várias crias de um único parto.
 
 Ao confirmar o parto, confira também as crias vivas registradas junto com ele. Uma cria sem brinco definitivo permanece identificada provisoriamente. Filiação respeita genética/gestação; peso pode ser informado e vinculado. Início da lactação é explícito; aborto não abre lactação por suposição.
+
+Em **Registrar parto**, abra **Parto e crias** ou **Pós-parto** para preencher cada seção; ao abrir uma, a outra é recolhida e conserva o que foi preenchido. Em **Parto e crias**, **Observações do parto** e **Brinco** são opcionais para um nascimento. Para aborto, informe uma explicação de pelo menos cinco caracteres. O campo **Responsável pelo parto** identifica quem acompanhou o fato. A autoria identifica quem fez o lançamento.
+
+Em **Pós-parto**, ative **Registrar ECC da matriz** para preencher **Valor do escore**. O Terrano usa a data do parto. Para lançar uma avaliação feita depois, abra o detalhe do parto, selecione **Registrar escore de condição corporal (ECC)** e informe o valor e a data real, igual ou posterior à do parto. Cada parto pode ter um ECC vigente. Use a correção do parto e informe o motivo para substituir ou anular a avaliação.
 
 ## Lactação e contadores
 

@@ -1,3 +1,4 @@
+import { nomeExame, camposExameParaExibicao } from "../sanidade/nomeExame";
 import { AvaliacaoContextualVisita, limparCamposContextuais } from "./AvaliacaoContextualVisita";
 import { PreviaAvaliacaoContextual } from "./PreviaAvaliacaoContextual";
 import type { PreviaAvaliacaoContextual as PreviaContextual } from "./avaliacao-contextual-api";
@@ -792,7 +793,7 @@ export function Transcricao({
         && t.data.slice(0, 10) <= visita.data.slice(0, 10) && lista.findIndex(item => item.id === t.id) === indice);
     const gestacoes = gestacoesDoAnimal(p);
     const perdaPendente = r.resultado === "NEGATIVO" && gestacoes.length > 0;
-    const camposExame = (tiposExame.find(t => t.id === r.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo));
+    const camposExame = camposExameParaExibicao(r.tipoExameId, tiposExame.find(t => t.id === r.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo));
     const exameRealizado = !!r.resultado && r.resultado !== "NAO_AVALIADO";
     const podeVincular = !!r.avaliacaoContextual || exameRealizado;
     const exigeJustificativa = r.resultado === "POSITIVO" && !r.tentativaId && !r.gestacaoId;
@@ -812,7 +813,7 @@ export function Transcricao({
               mudarAvaliacao(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [], avaliacaoContextual:undefined,vinculosConclusao:undefined,realizadoSemDG:undefined });
             }}>
             <option value="">Avaliação reprodutiva padrão</option>
-            {tiposExame.filter(t => t.ativo || t.id === r.tipoExameId).map(t => <option disabled={!t.ativo} key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}
+            {tiposExame.filter(t => t.ativo || t.id === r.tipoExameId).map(t => <option disabled={!t.ativo} key={t.id} value={t.id}>{nomeExame(t.id, t.nome)} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}
           </SelectCampo></label>
       {!r.avaliacaoContextual && exameRealizado && <CamposAvaliacao secao="detalhes" incluirAptidao={!emModalIndividual}
         identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} />}
@@ -928,7 +929,7 @@ export function Transcricao({
     const campos = [
       ["Resultado", resultado],
       ...(!ausente ? [
-        ["Tipo de exame", tipo?.nome ?? (r.tipoExameId ? "Tipo registrado no rascunho" : "Avaliação reprodutiva padrão")],
+        ["Tipo de exame", (tipo ? nomeExame(tipo.id, tipo.nome) : undefined) ?? (r.tipoExameId ? "Tipo registrado no rascunho" : "Avaliação reprodutiva padrão")],
         ["Sexo fetal", r.sexoFetal ? (r.sexoFetal === "F" ? "Fêmea" : "Macho") : null],
         ["Aptidão reprodutiva", aptidao],
         ["Responsável pela aptidão", aptidao ? r.responsavel?.trim() : null],
@@ -1170,8 +1171,8 @@ export function Transcricao({
                       <label>Anotação original<input className={classeInput} value={String(r.dados?.anotacaoOriginal ?? "")} onChange={e => atualizarDados(p, { anotacaoOriginal: e.target.value })} onBlur={() => void persistir(p)} /></label>
                       {["ADIADO", "NAO_ATENDIDO"].includes(r.status ?? "") && input(p, "motivo", "Motivo do atendimento pendente")}
                     </fieldset>
-                    <div className="grid gap-3"><label>Tipo de exame<SelectCampo className={classeInput} aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} value={String(r.dados?.tipoExameId ?? p.snapshot.tarefaPlanejada?.tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId ?? (preparar?.id === p.id ? tarefaPreparada?.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId : ""))} onValueChange={(valor) => { const tipo = tiposExame.find(t => t.id === valor); atualizarDados(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] }); }}><option value="">Avaliação padrão da tarefa</option>{tiposExame.filter(t => t.ativo || t.id === r.dados?.tipoExameId).map(t => <option key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}</SelectCampo></label>
-                      {!r.dados?.avaliacaoContextual&&!!r.dados?.tipoExameId && <CamposResultadoExame campos={(tiposExame.find(t => t.id === r.dados?.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={(r.dados?.resultados as import("../sanidade/CamposExame").ObservacaoExame[]) ?? []} onChange={resultados => atualizarDados(p, { resultados })} />}
+                    <div className="grid gap-3"><label>Tipo de exame<SelectCampo className={classeInput} aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} value={String(r.dados?.tipoExameId ?? p.snapshot.tarefaPlanejada?.tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId ?? (preparar?.id === p.id ? tarefaPreparada?.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId : ""))} onValueChange={(valor) => { const tipo = tiposExame.find(t => t.id === valor); atualizarDados(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] }); }}><option value="">Avaliação padrão da tarefa</option>{tiposExame.filter(t => t.ativo || t.id === r.dados?.tipoExameId).map(t => <option key={t.id} value={t.id}>{nomeExame(t.id, t.nome)} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}</SelectCampo></label>
+                      {!r.dados?.avaliacaoContextual&&!!r.dados?.tipoExameId && <CamposResultadoExame campos={camposExameParaExibicao(r.dados?.tipoExameId, tiposExame.find(t => t.id === r.dados?.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={(r.dados?.resultados as import("../sanidade/CamposExame").ObservacaoExame[]) ?? []} onChange={resultados => atualizarDados(p, { resultados })} />}
                     </div>
                   </>}
                   {atividade.tipo === "TAREFA_IATF" && r.status === "ADIADO" && <CampoDataIatf rotulo={`Nova previsão · ${p.snapshot.brinco ?? p.ordem}`} valor={r.previstaPara ?? ""} onChange={v => atualizar(p, "previstaPara", v)} onBlur={() => void persistir(p)} disabled={bloqueado} />}

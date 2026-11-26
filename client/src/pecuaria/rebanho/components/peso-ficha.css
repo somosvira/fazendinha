@@ -1,6 +1,4 @@
 .ficha-peso-conjunto .ficha-gmd-cabecalho { margin-bottom: 16px; }
-.ficha-peso-conjunto .ficha-peso-aviso { display: flex; min-height: 176px; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
-.ficha-peso-conjunto .ficha-peso-aviso h3 { margin-bottom: 8px; }
 .ficha-peso-conjunto .ficha-peso-aviso-gmd { margin-bottom: 16px; color: var(--muted-foreground); font-size: 14px; }
 .ficha-pesagens-rolagem { overflow-x: auto; }
 .ficha-pesagens-rolagem:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

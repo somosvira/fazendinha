@@ -1,3 +1,4 @@
+import { camposExameParaExibicao } from "../sanidade/nomeExame";
 import { useEffect, useState } from "react";
 import { ErrorBox } from "../../../financeiro/financeiro-ui";
 import type { TipoExame } from "../sanidade/CadastrosSanitarios";
@@ -118,7 +119,7 @@ export function AvaliacaoContextualVisita({
           partos: contexto.partos,
         })}
         dados={dados}
-        campos={tipo?.campos ?? []}
+        campos={camposExameParaExibicao(tipo?.id, tipo?.campos ?? [])}
         necessidades={necessidades.filter(
           (n) =>
             n.id === contexto.acompanhamento?.id ||

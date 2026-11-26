@@ -33,15 +33,24 @@ function montar(animal = base, podeLancar = true) {
 describe("PesoEGanho", () => {
   it("mostra ausência de dados e faixa integrada sem inventar GMD", () => {
     montar();
-    expect(screen.getByRole("status").textContent).toContain("Pesagens insuficientes para a curva e o GMD do período");
+    const vazioEvolucao = within(screen.getByRole("status")).getByRole("note");
+    expect(within(vazioEvolucao).getByRole("heading", { name: /^Pesagens insuficientes$/ })).toBeTruthy();
+    expect(vazioEvolucao.textContent).toContain("O período precisa ter pelo menos 2 pesagens compatíveis em datas diferentes.");
+    const vazioEcc = screen.getByText("Nenhuma avaliação registrada.").closest("[role=note]");
+    const vazioPesagens = screen.getByText("Nenhuma pesagem registrada.").closest("[role=note]");
+    expect(vazioEvolucao.className).toBe(vazioPesagens?.className);
+    expect(vazioEcc?.className).toBe(vazioPesagens?.className);
+    expect(vazioEcc?.querySelector("[aria-hidden=true] svg")).toBeTruthy();
     expect(screen.getByText("Últimas pesagens")).toBeTruthy();
+    expect(screen.getByText("Evolução do peso").compareDocumentPosition(screen.getByText("Últimas pesagens")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("Últimas pesagens").compareDocumentPosition(screen.getByText("Escore de condição corporal (ECC)")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Manejos registrados/ })).toBeNull();
     expect(screen.queryByText("Manejo disponível")).toBeNull();
     expect(screen.queryByText("Último peso")).toBeNull();
   });
   it("preserva ações e seletor com uma pesagem e controles de expansão completos", async () => {
     const { editar, periodo } = montar({ ...base, historicoPesagens: [pesagem] });
-    expect(screen.getByRole("status").textContent).toContain("Pesagens insuficientes para a curva e o GMD do período");
+    expect(within(screen.getByRole("status")).getByRole("heading", { name: /^Pesagens insuficientes$/ })).toBeTruthy();
     await alterarControle(screen.getByLabelText("Período do GMD"), { target: { value: "90" } });
     expect(periodo).toHaveBeenCalledWith(90);
     fireEvent.click(screen.getByRole("button", { name: "Editar pesagem de 01/10/2026" }));
@@ -52,6 +61,8 @@ describe("PesoEGanho", () => {
     montar({ ...base, historicoPesagens: [pesagem, { ...pesagem, id: "p0", data: "2026-09-01", pesoKg: 470 }] }, false);
     expect(screen.getByRole("table")).toBeTruthy();
     expect(screen.getByRole("table").textContent).toContain("470 kg");
+    expect(screen.getByText("Evolução do peso").compareDocumentPosition(screen.getByText("Últimas pesagens")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("Últimas pesagens").compareDocumentPosition(screen.getByText("Escore de condição corporal (ECC)")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Editar pesagem/ })).toBeNull();
   });
   it("mostra um só indicador quando período, recente e entrada usam as mesmas duas pesagens", () => {
@@ -134,7 +145,7 @@ it("mantém gráfico desenhável sem presumir GMD com estimativas ou datas iguai
   ] });
   expect(screen.getByRole("img", { name: "Evolução do peso do animal ao longo do tempo" })).toBeTruthy();
   expect(screen.getByRole("status").textContent).toContain("Pesagens insuficientes para o GMD do período");
-  expect(screen.queryByText("Pesagens insuficientes para a curva e o GMD do período")).toBeNull();
+  expect(screen.queryByRole("heading", { name: /^Pesagens insuficientes$/ })).toBeNull();
   expect(screen.getAllByRole("row", { name: "Pesagem de 01/10/2026" })[0].textContent).not.toContain("kg/dia");
 });
 
@@ -143,19 +154,20 @@ it("preserva GMD recente e desde a entrada quando falta base no período recorta
   expect(screen.getAllByText("+0,633 kg/dia").length).toBeGreaterThan(0);
   expect(screen.getByText("+0,500 kg/dia")).toBeTruthy();
   expect(screen.getByText("GMD recente")).toBeTruthy();
-  expect(screen.getByRole("status").textContent).toContain("Pesagens insuficientes para a curva e o GMD do período");
+  expect(within(screen.getByRole("status")).getByRole("heading", { name: /^Pesagens insuficientes$/ })).toBeTruthy();
+  expect(within(screen.getByRole("status")).getByText("Escolha um período maior para consultar outras pesagens.")).toBeTruthy();
 });
 
 it("mostra GMD disponível e aviso próprio da curva quando o histórico local é insuficiente", () => {
   montar({ ...base, historicoPesagens: [pesagem], peso: { ...base.peso, gmdPeriodo: { valor: 0.5, dias: 30, pesagens: 2 } } });
   expect(screen.getByText("+0,500 kg/dia")).toBeTruthy();
-  expect(screen.getByRole("status").textContent).toContain("Uma pesagem ainda não forma uma curva");
-  expect(screen.queryByText("Pesagens insuficientes para a curva e o GMD do período")).toBeNull();
+  expect(within(screen.getByRole("status")).getByRole("note").textContent).toContain("Uma pesagem ainda não forma uma curva");
+  expect(screen.queryByRole("heading", { name: /^Pesagens insuficientes$/ })).toBeNull();
 });
 
 it("recorta a curva na data da baixa e conserva observação e referência no modal", () => {
   const { container } = render(<PesoEGanho animal={{ ...base, baixa: { id: "baixa-1", data: "2026-09-15", tipo: "VENDA", motivo: null, observacao: null, estornadaEm: null, estornoMotivo: null }, historicoPesagens: [pesagem, { ...pesagem, id: "p0", data: "2026-09-01", referenciaHistorica: "IDEAGRI:123", observacao: "Peso externo conferido." }] }} periodo="entrada" onPeriodoChange={vi.fn()} podeLancar={true} onEditarPesagem={vi.fn()} onExcluirPesagem={vi.fn()} />);
-  expect(screen.getByRole("status").textContent).toContain("Pesagens insuficientes para a curva e o GMD do período");
+  expect(within(screen.getByRole("status")).getByRole("heading", { name: /^Pesagens insuficientes$/ })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Detalhes da pesagem de 01/09/2026" }));
   const modal = screen.getByRole("dialog", { name: "Detalhes da pesagem" });
   expect(within(modal).getByText("Peso externo conferido.")).toBeTruthy();

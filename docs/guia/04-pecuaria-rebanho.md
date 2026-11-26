@@ -50,6 +50,8 @@ Composição racial informada e composição calculada têm proveniências disti
 
 Pesagens têm data, tipo e origem; podem ser individuais ou coletivas. GMD é ganho médio diário entre pesos válidos com intervalo conhecido. Peso ausente não é zero; uma pesagem isolada não comprova tendência. Desmama e castração são fatos de manejo com autoria e histórico.
 
+Na aba **Geral** da ficha, **Evolução do peso**, **Últimas pesagens** e **Escore de condição corporal (ECC)** aparecem nessa ordem, mesmo quando ainda faltam dados para a curva. Use o seletor de período em **Evolução do peso** e o menu da tabela para consultar os detalhes de uma pesagem.
+
 Peso de nascimento e peso ligado ao parto precisam conservar seus vínculos. A ficha usa a mesma série comparável para último peso, peso anterior e GMD, até a referência ou baixa. Estimados, informados e externos permanecem no histórico, mas não entram nesses indicadores. Precisão desconhecida no legado continua identificada, sem virar medição comprovada. Indicadores com janelas diferentes conservam suas definições, mesmo que coincidam numericamente.
 
 Pesagem com origem histórica exige reconciliação da fonte para corrigir ou excluir; o editor comum não apaga sua proveniência. Por exemplo, o GMD entre 300 kg medidos em 30/09 e 340 kg medidos em 20/10 é 2 kg/dia; uma estimativa intermediária não substitui esses pesos comparáveis.
