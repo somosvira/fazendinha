@@ -59,7 +59,7 @@ function pesos(itens: Array<{ data: string; pesoKg: string }>) {
 }
 export function csvRelatorioPartos(snapshot: SnapshotRelatorioPartos): string {
   const escape = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
-  const linhas: unknown[][] = [["Emissão", "Versão relatório", "Sítio", "Início inclusivo", "Fim inclusivo", "Total partos", "ID parto", "Versão parto", "Contagem parto", "Matriz", "Data/hora", "Desfecho", "Tipo", "Induzido", "Dificuldade", "Assistência", "RP", "Grau de RP", "Responsável parto", "Lançador", "Observação parto", "Pesos matriz datados", "Escores matriz datados/escala", "ID cria", "Ordem cria", "Identificação preservada cria", "Sexo", "Viva", "Peso informado no nascimento", "Pesos cria datados", "Colostro por evento"]];
+  const linhas: unknown[][] = [["Emissão", "Versão relatório", "Sítio", "Início inclusivo", "Fim inclusivo", "Total partos", "ID parto", "Versão parto", "Contagem parto", "Matriz", "Data/hora", "Desfecho", "Tipo", "Induzido", "Dificuldade", "Assistência", "RP", "Grau de RP", "Responsável parto", "Lançador", "Observação parto", "Pesos matriz datados", "Escore de condição corporal (ECC) da matriz datado/escala", "ID cria", "Ordem cria", "Identificação preservada cria", "Sexo", "Viva", "Peso informado no nascimento", "Pesos cria datados", "Colostro por evento"]];
   for (const { parto: p, cria: c, contarParto } of linhasCriasPartos(snapshot)) linhas.push([
     snapshot.emitidoEm, snapshot.versao, snapshot.propriedadeId, snapshot.periodo.inicio, snapshot.periodo.fim, snapshot.totalPartos,
     p.id, p.versao, contarParto, `${p.matriz.brinco} ${p.matriz.nome ?? ""}`, horarioRelatorio(p.data, p.ocorridoEm, p.horarioEstimado),
@@ -197,7 +197,7 @@ export function FolhaRelatorioPartos({ snapshot, operacional = false }: { snapsh
       <p>Responsável pelo parto: {p.responsavel ?? "Não informado"} · Lançador: {p.lancador?.nome ?? p.lancador?.id ?? "Não informado"} · Registro: {p.criadoEm}</p>
       <p>Observações: {p.observacao ?? "—"}</p>
       <p>Pesagens da matriz: {pesos(p.pesosMatriz)}</p>
-      <p>Escores da matriz: {p.escoresMatriz.length ? p.escoresMatriz.map(e => `${e.data}: ${e.resultados.map(r => `${r.campo}: ${textoPreservado(r.valor)}`).join("; ")}; responsável: ${e.responsavel ?? "não informado"}`).join(" · ") : "Não informados"}</p>
+      <p>Escore de condição corporal (ECC) da matriz: {p.escoresMatriz.length ? p.escoresMatriz.map(e => `${e.data}: ${e.resultados.map(r => `${({ ESCORE: "Escore", ESCALA_MIN: "Mínimo da escala", ESCALA_MAX: "Máximo da escala", ESCALA_DESCRICAO: "Descrição da escala" } as Record<string, string>)[r.campo] ?? r.campo}: ${textoPreservado(r.valor)}`).join("; ")}; responsável: ${e.responsavel ?? "não informado"}`).join(" · ") : "Não informados"}</p>
       <table className="mt-3 w-full border-collapse">
         <thead className="table-header-group"><tr><th className="border p-2">Cria</th><th className="border p-2">Pesos da cria</th><th className="border p-2">Fornecimentos de colostro</th></tr></thead>
         <tbody>{p.crias.length ? p.crias.map(c => <tr key={c.id} className="break-inside-avoid">

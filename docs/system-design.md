@@ -6,7 +6,7 @@ Este documento descreve o sistema implementado na `main` que integra a V5 (`b639
 
 ```mermaid
 flowchart LR
-  Pessoa[Funcionário ou gestor] --> UI[React e History API]
+  Pessoa[Pessoa que registra e analisa] --> UI[React e History API]
   UI --> API[Hono no mesmo Cloudflare Worker]
   API --> Auth[Sessão, área, ação e sítio]
   Auth --> Servicos[Serviços de domínio]

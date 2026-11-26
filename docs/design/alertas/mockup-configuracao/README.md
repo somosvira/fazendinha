@@ -1,6 +1,6 @@
 # Mockup — configuração de alertas (G2)
 
-Referência visual navegável aprovada pelo usuário para a implementação G2. O comportamento vigente e os gates de liberação ficam no [contrato de alertas](../../../pecuaria/alertas.md). Extensão pontual do [mockup de consulta](../mockup-v1/README.md), com os mesmos tokens, fontes locais, barra de consulta, filtros com aplicação explícita e modos tabela/cartões. Modo operacional: listagem horizontal no desktop, formulário em colunas, confirmação de impacto antes de ativar. Não define nova identidade visual.
+Referência visual navegável aprovada pelo usuário para a implementação G2. Os critérios considerados naquela entrega foram registrados no [contrato de alertas](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/alertas.md). Extensão pontual do [mockup de consulta](../mockup-v1/README.md), com os mesmos tokens, fontes locais, barra de consulta, filtros com aplicação explícita e modos tabela/cartões. Modo operacional: listagem horizontal no desktop, formulário em colunas, confirmação de impacto antes de ativar. Não define nova identidade visual.
 
 ## Abrir
 

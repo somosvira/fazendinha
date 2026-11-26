@@ -30,7 +30,7 @@ A seed cria somente os dois usuários abaixo, ativos e como donos, com o maior p
 | `fellipe@test.com` | `test1234` |
 | `rafael@test.com` | `test1234` |
 
-Perfis restritos são fixtures temporárias de testes, sem outros usuários persistentes na seed. Valide as permissões também na API: visibilidade de botão não comprova autorização e `verValores` precisa ser respeitado em DTOs, custos e relatórios. Consulte o [contrato financeiro](financeiro-rebuild-contrato.md#permissões-e-documentos).
+Perfis restritos são fixtures temporárias de testes, sem outros usuários persistentes na seed. Valide as permissões também na API: visibilidade de botão não comprova autorização e `verValores` precisa ser respeitado em DTOs, custos e relatórios. Consulte o [controle de acesso do Financeiro](../server/src/routes/financeiro.ts).
 
 ## Retomada, arquivos e verificação
 
@@ -115,7 +115,7 @@ A carga conserva anotações e dados originais de IATF, relações comprovadas, 
 
 ### Baixas históricas sem classificação
 
-A migration incremental `20261029000000_baixa_historica_tipo_indeterminado` acrescenta o tipo específico e as evidências de regularização, sem alterar registros antigos. Não executá-la incidentalmente ao testar interface. As rotas e precauções do fluxo estão no [contrato da Pecuária](pecuaria/README.md#regularização-de-baixa-histórica).
+A migration incremental `20261029000000_baixa_historica_tipo_indeterminado` acrescenta o tipo específico e as evidências de regularização, sem alterar registros antigos. Não executá-la incidentalmente ao testar interface. Confira as verificações do fluxo no [serviço de regularização histórica](../server/src/services/pecuaria/rebanho/baixas-historicas.ts).
 
 O importador técnico V1 não transforma mais uma classe de descarte em venda ou ausência de tipo em morte. O cálculo puro `classificacao-baixa-origem.ts` recusa casos ambíguos, preservando o rollback do animal já existente no importador e o relatório de falhas. A resolução desses casos exige dados comprovados e a regularização específica; não refazer uma carga nem apagar o banco para suprir essa lacuna.
 
@@ -133,7 +133,7 @@ As decisões são diferentes:
 
 Candidatos a duplicidade exigem `VINCULAR` ou revisão explícita com `duplicidadesRevisadas` cobrindo todos os IDs apresentados e motivo. A decisão não cria equivalências por proximidade temporal. Mapeamentos de unidade, escala e origem precisam estar comprovados nos dados do domínio; a ferramenta não os preenche por suposição.
 
-Os handlers cobrem `PESAGEM`, `LEITE` documental, `ECC`, `QUALIDADE` e `MASTITE`, conforme o [contrato de incorporação histórica](pecuaria/leite.md#incorporação-documental-e-clínica). `CORRIGIR` está habilitado somente para o documento `LEITE`, com versão, motivo e identidade preservada. Pesagens e fatos clínicos não são reescritos por essa operação; exigem revisão auditada específica do domínio. O envelope não amplia as permissões de correção de cada handler.
+Os handlers cobrem `PESAGEM`, `LEITE` documental, `ECC`, `QUALIDADE` e `MASTITE`, conforme o [serviço de incorporação histórica](../server/src/services/pecuaria/importacao/historico.ts). `CORRIGIR` está habilitado somente para o documento `LEITE`, com versão, motivo e identidade preservada. Pesagens e fatos clínicos não são reescritos por essa operação; exigem revisão auditada específica do domínio. O envelope não amplia as permissões de correção de cada handler.
 
 Execute em `server/`, com o `.env` autorizado configurado. Prévia é o padrão e só lê o banco; o relatório é gravado no arquivo solicitado:
 

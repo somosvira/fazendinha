@@ -1,3 +1,4 @@
+import { camposExameParaExibicao } from "../sanidade/nomeExame";
 import { PreviaAvaliacaoContextual } from "../reproducao/PreviaAvaliacaoContextual";
 import { AjudaCampo } from "../../../components/Dica";
 import { Stethoscope } from "lucide-react";
@@ -98,7 +99,7 @@ function EditorClinico({ tarefas, primeira, reprodutivo, onFechar, onSalvo, onPr
 }
 function ResultadoClinico({ dados: d, onChange }: { dados: DadosClinicos; onChange: (patch: Partial<DadosClinicos>) => void }) {
   if (!d.formato) return <p>Selecione o tipo de exame para carregar seu formato.</p>;
-  if (d.formato.tipoResultado === "MULTIPLO") return <CamposResultadoExame campos={d.formato.campos ?? []} valores={d.resultados} onChange={resultados => onChange({ resultados })} />;
+  if (d.formato.tipoResultado === "MULTIPLO") return <CamposResultadoExame campos={camposExameParaExibicao(d.tipoExameId, d.formato.campos ?? [])} valores={d.resultados} onChange={resultados => onChange({ resultados })} />;
   return <label>Resultado{d.formato.unidade ? ` · ${d.formato.unidade}` : ""}{d.formato.tipoResultado === "OPCAO" ? <SelectCampo className={classeInput} value={d.valorResultado} onValueChange={(valor) => onChange({ valorResultado: valor })}><option value="">Não informado</option>{d.formato.opcoes?.map(o => <option key={o}>{o}</option>)}</SelectCampo> : <input className={classeInput} type={d.formato.tipoResultado === "NUMERO" ? "number" : "text"} step="any" value={d.valorResultado} onChange={e => onChange({ valorResultado: e.target.value })} />}</label>;
 }
 

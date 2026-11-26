@@ -1,6 +1,6 @@
 # Mockup de IATF — estilo da main
 
-Proposta visual isolada para a turma de IATF, na direção **Operate**. Preserva a UX aprovada: etapas e animais na mesma seção, procedimentos e custos ao final, seções recolhíveis, ações explícitas por botões e até dez itens por página nas listas. O contexto funcional está nos [contratos de Pecuária](../../../README.md); este artefato não altera o aplicativo.
+Proposta visual isolada para a turma de IATF, na direção **Operate**. Preserva a UX aprovada: etapas e animais na mesma seção, procedimentos e custos ao final, seções recolhíveis, ações explícitas por botões e até dez itens por página nas listas. O contexto funcional está nos [contratos de Pecuária](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/README.md); este artefato não altera o aplicativo.
 
 Abra [a demonstração local](http://127.0.0.1:41877/docs/pecuaria/artefatos/protocolos/mockup-main/index.html#turma). Se o servidor não estiver ativo, execute na raiz do repositório:
 

@@ -63,3 +63,18 @@ it("referências conferidas abrem o item exato e herdam o acesso ao estoque", ()
     .toBe("/estoque?aba=catalogo&referenciaCatalogo=id-referencia&buscaCatalogo=Pirosan");
   expect(fontesAutorizadas(usuario()).some(f => f.tipo === fonte.tipo)).toBe(false);
 });
+
+it("busca o exame ECC pelos nomes antigo e atual e abre o registro exato", () => {
+  const fonte = fontesAutorizadas(usuario({ areas: ["pecuaria"] })).find(f => f.tipo === "exame")!;
+  expect(fonte.consulta.sql).toContain("e.nome");
+  expect(fonte.consulta.sql).toContain("Escore de condição corporal (ECC)");
+  expect(fonte.consulta.sql).toContain("b0841f3c-3f88-4c2d-9d0d-3ef33d49b841");
+  expect(fonte.caminho({ tipo: "exame", id: "exame-1", label: "ECC", contexto: "", alvoId: "animal-1", propriedadeId: 1 })).toBe("/pecuaria/sanidade?aba=exames&detalheTipo=exame&detalheId=exame-1");
+});
+
+it("abre o tipo de exame de sistema com filtro exato e aceita os dois nomes", () => {
+  const fonte = fontesAutorizadas(usuario({ areas: ["pecuaria"] })).find(f => f.tipo === "tipo-exame")!;
+  expect(fonte.consulta.sql).toContain("t.nome");
+  expect(fonte.consulta.sql).toContain("Escore de condição corporal (ECC)");
+  expect(fonte.caminho({ tipo: "tipo-exame", id: "tipo-1", label: "Escore de condição corporal (ECC)", contexto: "", alvoId: "tipo-1", propriedadeId: null })).toContain("cadastroId=tipo-1");
+});

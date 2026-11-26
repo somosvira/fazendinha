@@ -1,3 +1,4 @@
+import { nomeExame } from "./nomeExame";
 import { useState } from "react";
 import { History, HeartPulse, FlaskConical, Search } from "lucide-react";
 import { LinkInterno } from "../../../components/LinkInterno";
@@ -50,7 +51,8 @@ type Fato = Partial<ExameResultado> & {
   fim?: string | null;
   status?: string;
   doenca?: { nome: string };
-  tipoExame?: { nome: string };
+  tipoExameId?: string;
+  tipoExame?: { id?: string; nome: string };
 };
 const normalizar = (valor: string) =>
   valor
@@ -94,6 +96,7 @@ export function HistoricoSanitario({
       tipo: "ocorrencia",
       data: f.inicio ?? "",
       nome: f.doenca?.nome ?? "Ocorrência",
+      nomeOriginal: f.doenca?.nome ?? "Ocorrência",
       situacao:
         f.status === "ANULADO" ? "Anulada" : f.fim ? "Encerrada" : "Aberta",
     })),
@@ -101,7 +104,8 @@ export function HistoricoSanitario({
       f,
       tipo: "exame",
       data: f.data ?? "",
-      nome: f.tipoExame?.nome ?? "Exame",
+      nome: nomeExame(f.tipoExameId ?? f.tipoExame?.id, f.tipoExame?.nome),
+      nomeOriginal: f.tipoExame?.nome ?? "Exame",
       situacao:
         f.status === "ANULADO"
           ? "Anulado"
@@ -120,7 +124,7 @@ export function HistoricoSanitario({
       (!tipo || r.tipo === tipo) &&
       (!de || r.data.slice(0, 10) >= de) &&
       (!ate || r.data.slice(0, 10) <= ate) &&
-      normalizar(`${r.nome} ${r.situacao}`).includes(normalizar(busca.trim())),
+      normalizar(`${r.nome} ${r.nomeOriginal} ${r.situacao}`).includes(normalizar(busca.trim())),
   );
   const paginacao = usePaginacaoLocal(
     filtrados,
