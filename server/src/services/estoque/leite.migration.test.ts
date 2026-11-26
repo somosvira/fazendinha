@@ -1,9 +1,8 @@
-import { contemSql } from "../../test/sql-baseline.js";
-import { readFileSync } from "node:fs";
+import { baselineSql, contemSql } from "../../test/sql-baseline.js";
 import { describe, expect, it } from "vitest";
 
-const sql = readFileSync(new URL("../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
-const classificacao = readFileSync(new URL("../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
+const sql = baselineSql;
+const classificacao = baselineSql;
 
 describe("contrato SQL do estoque leiteiro — verificação estrutural, sem banco", () => {
   it.each(["Apuracao", "Apropriacao"])("%s confirmada impede UPDATE e DELETE", nome => {
@@ -40,7 +39,7 @@ describe("contrato SQL do estoque leiteiro — verificação estrutural, sem ban
   });
 });
 
-const correcao = readFileSync(new URL("../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
+const correcao = baselineSql;
 it("cadeia comercial imutável preserva retirada e bloqueia refund/estoque implícitos — contrato estrutural", () => {
   expect(contemSql(correcao, '"VersaoVendaLeite_imutavel" BEFORE UPDATE OR DELETE')).toBe(true);
   expect(correcao).not.toContain('vendas leiteiras anteriores exigem reconciliação manual'); // Conversão histórica retirada da instalação limpa.
