@@ -471,7 +471,17 @@ export type Catalogos = {
 };
 
 /** GET /pecuaria/rebanho/painel — números da Visão geral. */
-export type EventoPainel = { tipo: "CADASTRO" | "BAIXA" | "ESTORNO"; animalId: string; brinco: string; data: string };
+export type EventoPainel = {
+  tipo: "CADASTRO" | "BAIXA" | "ESTORNO"; animalId: string; brinco: string; data: string;
+  /** Nome do animal, quando houver. */
+  nome?: string | null;
+  /** CADASTRO: nascido na fazenda ou comprado. */
+  origem?: "NASCIDO" | "COMPRADO";
+  /** BAIXA e ESTORNO: o tipo da saída. */
+  tipoBaixa?: TipoBaixa;
+  /** Sítio onde o fato aconteceu. */
+  sitio?: string | null;
+};
 export type PainelGeral = {
   ativos: number;
   /** `categoriaId` nulo = "Sem categoria" */

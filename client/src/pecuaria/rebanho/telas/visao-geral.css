@@ -56,8 +56,11 @@
 .pec-evento-linha { display: flex; align-items: center; gap: 12px; padding: 15px 8px; width: 100%; text-align: left; border-radius: 8px; font-size: 14px; }
 .pec-evento-linha:hover { background: var(--muted); }
 .pec-evento-icone { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; background: var(--fin-positive-bg); color: var(--primary); }
-.pec-evento-baixa { background: var(--fin-warning-bg); color: var(--warn); }
+/* Entrada verde (padrão), saída âmbar, perda (morte/extravio) vermelha, baixa desfeita neutra. */
+.pec-evento-saida { background: var(--fin-warning-bg); color: var(--warn); }
+.pec-evento-perda { background: var(--fin-danger-bg); color: var(--destructive); }
 .pec-evento-estorno { background: var(--muted); color: var(--muted-foreground); }
+.pec-evento-nome { font-weight: 400; color: var(--muted-foreground); }
 @media (max-width: 1199px) { .pec-composicao-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 959px) { .pec-atividade-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 799px) {
@@ -107,7 +110,8 @@
 @media(max-width:1100px) { .pec-panorama-grid { grid-template-columns: minmax(0,1fr); } }
 
 /* Barras comparáveis: mesmo denominador e valores sempre legíveis. */
-.rebanho-content .pec-painel-rebanho .pec-panorama-grid { grid-template-columns: minmax(0,1.35fr) minmax(0,1fr); gap: 16px; align-items: start; }
+/* Cards da mesma linha com a mesma altura: as bordas de baixo fecham a grade. */
+.rebanho-content .pec-painel-rebanho .pec-panorama-grid { grid-template-columns: minmax(0,1.35fr) minmax(0,1fr); gap: 16px; align-items: stretch; }
 .pec-painel-rebanho .pec-panorama-principal, .pec-painel-rebanho .pec-panorama-contexto { display: contents; }
 .pec-panorama-principal > :first-child { order: 1; }.pec-panorama-contexto > :first-child { order: 2; }.pec-panorama-principal > :nth-child(2) { order: 3; }.pec-panorama-contexto > :last-child { order: 4; }
 .rebanho-content .pec-painel-rebanho .pec-legenda-categorias { grid-template-columns: minmax(0,1fr); gap: 3px; }

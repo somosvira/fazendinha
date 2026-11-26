@@ -1,4 +1,4 @@
-import { Prisma, type ClasseMotivoBaixa, type SexoBovino, type TipoBaixa } from "@prisma/client";
+import { Prisma, type ClasseMotivoBaixa, type OrigemAnimal, type SexoBovino, type TipoBaixa } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { hojeFazendaDate } from "./regras.js";
 import { listar, whereSituacao } from "./animais.js";
@@ -7,7 +7,15 @@ export interface EventoPainel {
   tipo: "CADASTRO" | "BAIXA" | "ESTORNO";
   animalId: string;
   brinco: string;
+  /** Nome do animal, quando houver. */
+  nome: string | null;
   data: string;
+  /** CADASTRO: se o animal nasceu na fazenda ou foi comprado. */
+  origem?: OrigemAnimal;
+  /** BAIXA e ESTORNO: o tipo da saída (venda, morte…). */
+  tipoBaixa?: TipoBaixa;
+  /** Sítio onde o fato aconteceu: entrada (primeira localização) ou a localização que a baixa fechou. */
+  sitio: string | null;
 }
 
 export interface PainelGeralDTO {
@@ -55,9 +63,9 @@ export async function buscarPainelGeral(escopo: number | null, periodoDias = 30)
   const categoriasIds = painel.porCategoria.flatMap((c) => c.categoria ? [c.categoria.id] : []);
   const [baixasNoPeriodo, cadastros, baixas, estornos, categorias] = await Promise.all([
     prisma.baixaAnimal.findMany({ where: baixaNoPeriodo, select: { tipo: true, data: true, motivo: { select: { classe: true } } } }),
-    prisma.animal.findMany({ where: animalNoEscopo, orderBy: { criadoEm: "desc" }, take: 10, select: { id: true, brinco: true, criadoEm: true } }),
-    prisma.baixaAnimal.findMany({ where: baixaSemCadastroIndevido, orderBy: { criadoEm: "desc" }, take: 10, select: { animalId: true, data: true, criadoEm: true, animal: { select: { brinco: true } } } }),
-    prisma.baixaAnimal.findMany({ where: { ...baixaSemCadastroIndevido, estornadaEm: { not: null } }, orderBy: { estornadaEm: "desc" }, take: 10, select: { animalId: true, estornadaEm: true, animal: { select: { brinco: true } } } }),
+    prisma.animal.findMany({ where: animalNoEscopo, orderBy: { criadoEm: "desc" }, take: 10, select: { id: true, brinco: true, nome: true, origem: true, criadoEm: true, localizacoes: { orderBy: { desde: "asc" }, take: 1, select: { propriedade: { select: { nome: true } } } } } }),
+    prisma.baixaAnimal.findMany({ where: baixaSemCadastroIndevido, orderBy: { criadoEm: "desc" }, take: 10, select: { animalId: true, tipo: true, data: true, criadoEm: true, animal: { select: { brinco: true, nome: true } }, localizacaoFechada: { select: { propriedade: { select: { nome: true } } } } } }),
+    prisma.baixaAnimal.findMany({ where: { ...baixaSemCadastroIndevido, estornadaEm: { not: null } }, orderBy: { estornadaEm: "desc" }, take: 10, select: { animalId: true, tipo: true, estornadaEm: true, animal: { select: { brinco: true, nome: true } }, localizacaoFechada: { select: { propriedade: { select: { nome: true } } } } } }),
     categoriasIds.length ? prisma.categoriaAnimal.findMany({ where: { id: { in: categoriasIds } }, select: { id: true, sexo: true } }) : Promise.resolve([]),
   ]);
   const sexoPorCategoria = new Map(categorias.map((c) => [c.id, c.sexo]));
@@ -74,9 +82,9 @@ export async function buscarPainelGeral(escopo: number | null, periodoDias = 30)
 
   // ordena pelo momento do registro (timestamp); exibe a data do fato
   const eventos: Array<EventoPainel & { ordenacao: Date }> = [
-    ...cadastros.map((a) => ({ tipo: "CADASTRO" as const, animalId: a.id, brinco: a.brinco, ordenacao: a.criadoEm, data: a.criadoEm.toISOString().slice(0, 10) })),
-    ...baixas.map((s) => ({ tipo: "BAIXA" as const, animalId: s.animalId, brinco: s.animal.brinco, ordenacao: s.criadoEm, data: s.data.toISOString().slice(0, 10) })),
-    ...estornos.map((s) => ({ tipo: "ESTORNO" as const, animalId: s.animalId, brinco: s.animal.brinco, ordenacao: s.estornadaEm!, data: s.estornadaEm!.toISOString().slice(0, 10) })),
+    ...cadastros.map((a) => ({ tipo: "CADASTRO" as const, animalId: a.id, brinco: a.brinco, nome: a.nome, origem: a.origem, sitio: a.localizacoes[0]?.propriedade.nome ?? null, ordenacao: a.criadoEm, data: a.criadoEm.toISOString().slice(0, 10) })),
+    ...baixas.map((s) => ({ tipo: "BAIXA" as const, animalId: s.animalId, brinco: s.animal.brinco, nome: s.animal.nome, tipoBaixa: s.tipo, sitio: s.localizacaoFechada?.propriedade.nome ?? null, ordenacao: s.criadoEm, data: s.data.toISOString().slice(0, 10) })),
+    ...estornos.map((s) => ({ tipo: "ESTORNO" as const, animalId: s.animalId, brinco: s.animal.brinco, nome: s.animal.nome, tipoBaixa: s.tipo, sitio: s.localizacaoFechada?.propriedade.nome ?? null, ordenacao: s.estornadaEm!, data: s.estornadaEm!.toISOString().slice(0, 10) })),
   ];
   eventos.sort((a, b) => b.ordenacao.getTime() - a.ordenacao.getTime());
 
@@ -91,6 +99,6 @@ export async function buscarPainelGeral(escopo: number | null, periodoDias = 30)
     baixasPorTipo,
     baixasPorClasse,
     periodoDias,
-    ultimosEventos: eventos.slice(0, 10).map(({ tipo, animalId, brinco, data }) => ({ tipo, animalId, brinco, data })),
+    ultimosEventos: eventos.slice(0, 10).map(({ ordenacao: _ordenacao, ...evento }) => evento),
   };
 }
