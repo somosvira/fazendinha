@@ -721,6 +721,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const descricaoValida = descricao.trim().length >= (ehAjuste ? 5 : 2);
   const parceiroValido = !exigeParceiro || !!parceiroSelecionado;
   const composicaoValida = !compraComComposicao || composicaoCompra.valido;
+  const freteValido = !logisticaPayload || !!logisticaCategoriaId;
   const totalValido = total > 0 || (!permiteFinanceiro && total >= 0);
   const pendenciasPrevia = ehAjuste ? [
     !saldoProduto && "Produto",
@@ -733,6 +734,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     !itensValidos && "Dados dos itens",
     !centrosValidos && "Centro de custo dos itens",
     !composicaoValida && "Desconto comercial",
+    !freteValido && "Categoria do frete",
     !totalValido && "Valor da operação",
     !contaValida && "Conta financeira",
     !parcelasValidas && "Parcelas",
@@ -802,6 +804,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     } else if (permiteFinanceiro && !(total > 0)) {
       return { campo: "valorOperacao", elementId: "campo-valorOperacao" };
     }
+    if (!freteValido) return { campo: "logistica.categoriaId", elementId: "campo-logistica.categoriaId" };
     if (!contaValida) return { campo: "contaId", elementId: "campo-contaId" };
     if (condicao === "PARCIAL" && !(realizadoAgora > 0)) return { campo: "valorAgora", elementId: "campo-valorAgora" };
     if (parcelaIncompleta) {
@@ -1033,7 +1036,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
               <AjudaCampo rotulo="Sobre o frete na mesma nota" texto="Frete ou entrega cobrados por este fornecedor. Vira uma despesa separada e não entra no custo dos produtos. Se outra transportadora cobrou o frete, registre em outra operação." />
               {temFrete && <label className="ml-auto flex items-center gap-2 text-sm font-medium">R$<Input aria-label="Logística do mesmo fornecedor" className="w-36" type="number" min="0" step="0.01" value={logisticaValor} onChange={e => setLogisticaValor(e.target.value)} /></label>}
             </div>
-            {temFrete && Number(logisticaValor)>0 && <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Categoria do frete<SelectCampo aria-label="Categoria da logística" value={logisticaCategoriaId} onValueChange={setLogisticaCategoriaId}><option value="">Selecione</option>{categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label><label className="text-sm">Centro de custo do frete<SelectCampo aria-label="Centro de custo da logística" value={logisticaCentroId} onValueChange={setLogisticaCentroId}><option value="">Usar centro da operação</option>{config.centrosCusto.filter(c => c.ativo).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label></div>}
+            {temFrete && Number(logisticaValor)>0 && <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Categoria do frete *<SelectCampo id="campo-logistica.categoriaId" aria-label="Categoria da logística" aria-invalid={campoInvalido === "logistica.categoriaId" || undefined} aria-describedby={campoInvalido === "logistica.categoriaId" ? "erro-logistica.categoriaId" : undefined} className={SELECT + classeCampoErro("logistica.categoriaId")} value={logisticaCategoriaId} onValueChange={(valor) => { setLogisticaCategoriaId(valor); limparCampoInvalido("logistica.categoriaId"); }}><option value="">Selecione</option>{categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo>{campoInvalido === "logistica.categoriaId" && <CampoErro id="erro-logistica.categoriaId">Selecione a categoria do frete.</CampoErro>}</label><label className="text-sm">Centro de custo do frete<SelectCampo aria-label="Centro de custo da logística" value={logisticaCentroId} onValueChange={setLogisticaCentroId}><option value="">Usar centro da operação</option>{config.centrosCusto.filter(c => c.ativo).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label></div>}
           </div>
         </section>}
         <section><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><ChartPie aria-hidden /></span>Categoria e centro</h3>

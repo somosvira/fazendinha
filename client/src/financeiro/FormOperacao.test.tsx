@@ -905,6 +905,30 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
     expect(within(previa).getByText(/Registrar pagamento integral/)).toBeTruthy();
   });
 
+  it("frete com valor e sem categoria: aparece na prévia e o foco vai para Categoria do frete", async () => {
+    const [, scroll] = await comScrollStub(async () => {
+      render(<FormOperacao config={{ ...config, categorias: [{ id: uid(70), nome: "Logística", tipo: "DESPESA", ativo: true } as never] }} onSalvo={vi.fn()} />);
+      await alterarControle(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: uid(1) } });
+      await alterarControle(screen.getByLabelText("Descrição"), { target: { value: "Compra de ração" } });
+      await alterarControle(screen.getByLabelText("Produto do item 1"), { target: { value: uid(1) } });
+      await alterarControle(screen.getByLabelText("Descrição do item 1"), { target: { value: "Ração" } });
+      await alterarControle(screen.getByLabelText("Valor unitário do item 1"), { target: { value: "10" } });
+      await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
+      fireEvent.click(screen.getByRole("checkbox", { name: "Frete na mesma nota" }));
+      fireEvent.change(screen.getByLabelText("Logística do mesmo fornecedor"), { target: { value: "10" } });
+      const previa = screen.getByTestId("conteudo-resumo-operacao");
+      expect(within(previa).getByText("Categoria do frete")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+      const campo = screen.getByLabelText("Categoria da logística");
+      expect(campo.getAttribute("aria-invalid")).toBe("true");
+      expect(document.activeElement).toBe(campo);
+      expect(screen.getByText("Selecione a categoria do frete.")).toBeTruthy();
+      await alterarControle(campo, { target: { value: uid(70) } });
+      expect(within(previa).queryByText("Categoria do frete")).toBeNull();
+    });
+    expect(scroll).toHaveBeenCalled();
+  });
+
   it("descrição vazia: rola e foca o campo ao tentar confirmar", async () => {
     const [, scroll] = await comScrollStub(async () => {
       render(<FormOperacao config={config} tipoInicial="SERVICO" onSalvo={vi.fn()} />);

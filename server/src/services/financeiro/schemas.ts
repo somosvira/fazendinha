@@ -172,7 +172,7 @@ const valorComercial = z.coerce.number().finite("Informe um valor finito").nonne
 const composicaoCompra = {
   descontoComercial: valorComercial.optional(),
   distribuicaoDesconto: z.array(valorComercial).max(1000).optional(),
-  logistica: z.object({ valor: valorComercial.refine(v => v > 0, "Informe um valor positivo"), descricao: z.string().trim().min(2).max(160).default("Logística da aquisição"), categoriaId: z.string().uuid(), centroCustoId: z.string().uuid().optional() }).strict().optional(),
+  logistica: z.object({ valor: valorComercial.refine(v => v > 0, "Informe um valor positivo"), descricao: z.string().trim().min(2).max(160).default("Logística da aquisição"), categoriaId: z.string({ required_error: "Selecione a categoria do frete" }).uuid("Selecione a categoria do frete"), centroCustoId: z.string().uuid().optional() }).strict().optional(),
 };
 export const simulacaoParcelasSchema = z.object({
   ...composicaoCompra,
