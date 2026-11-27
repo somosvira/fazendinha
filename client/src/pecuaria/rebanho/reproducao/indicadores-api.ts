@@ -4,7 +4,8 @@ import type {
   PapelElegibilidade,
 } from "./elegibilidade-api";
 export type FiltrosIndicadores = {
-  propriedadeId: number;
+  /** Ausente = Consolidado: contagens somadas entre sítios e taxas recalculadas. */
+  propriedadeId?: number;
   inicio: string;
   fim: string;
   corte: string;
@@ -92,6 +93,9 @@ export type PeriodoIndicadores = {
 };
 export type SnapshotIndicadoresReprodutivos = {
   versao: 1 | 2;
+  /** Consolidado: contagens somadas entre sítios; `porSitio` traz o resultado de cada sítio. */
+  escopoConsolidado?: boolean;
+  porSitio?: { propriedadeId: number; nome: string; contagens: { elegiveis: number | null }; taxas: { servico: number | null; concepcao: number | null; prenhez: number | null } }[];
   acompanhamento?:import("./IndicadoresAcompanhamento").AcompanhamentoIndicadores;
   versaoMetodologia: string;
   metodologia: {
@@ -223,7 +227,7 @@ export function exportarIndicadoresCsv(
   }
   linhas.push(
     [],
-    ["Sítio", snapshot.filtros.propriedadeId],
+    ["Sítio", snapshot.filtros.propriedadeId ?? "Consolidado"],
     ["Filtros preservados", JSON.stringify(snapshot.filtros)],
     [
       "Componentes do denominador",

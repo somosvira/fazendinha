@@ -747,3 +747,9 @@ it("coloca a lactação em Produção com contexto e permissão da ficha", async
  fireEvent.click(screen.getByRole("tab", { name: "Reprodução" }));
  expect(within(screen.getByRole("tabpanel", { name: "Reprodução" })).queryByText("Lactação da produção")).toBeNull();
 });
+it("origem Comprado abre a compra exata e não repete a linha Comprado na", async () => {
+  await montar({ ...base, origem: "COMPRADO", aquisicao: { operacaoId: "op-2", numero: 2, status: "CANCELADA" } } as AnimalFicha);
+  const comprado = screen.getByRole("button", { name: "Comprado · abrir a operação #2" });
+  expect(comprado.closest("div")?.textContent).toContain("(compra cancelada)");
+  expect(screen.queryByText("Comprado na")).toBeNull();
+});

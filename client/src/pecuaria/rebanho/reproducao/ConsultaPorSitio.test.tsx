@@ -1,61 +1,79 @@
 // @vitest-environment jsdom
-import { alterarControle } from "@/lib/controles.fixture";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ConsultaPorSitio } from "./ConsultaPorSitio";
 import { listarPropriedades } from "../../../api/propriedades";
 import { getPropriedadeAtiva, setPropriedadeAtiva } from "../../../propriedadeScope";
 vi.mock("../../../api/propriedades", () => ({ listarPropriedades: vi.fn() }));
+const sitio = (id: number, nome: string, ativo = true) => ({ id, nome, apelido: null, cidade: null, uf: null, principal: id === 7, ativo, ordem: id });
 beforeEach(() => { vi.resetAllMocks(); setPropriedadeAtiva(null); window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=partos"); });
 afterEach(() => { cleanup(); setPropriedadeAtiva(null); });
-it("seleciona sítio no consolidado, mantém seleção global e responde ao histórico", async () => {
-  vi.mocked(listarPropriedades).mockResolvedValue([{ id: 7, nome: "Escola" }, { id: 8, nome: "Destino" }].map(s => ({ ...s, apelido: null, cidade: null, uf: null, principal: s.id === 7, ativo: true, ordem: s.id })));
+it("no consolidado com vários sítios orienta a escolha pela sidebar sem assumir um sítio", async () => {
+  vi.mocked(listarPropriedades).mockResolvedValue([sitio(7, "Escola"), sitio(8, "Destino")]);
   render(<ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
-  await screen.findByRole("combobox", { name: "Sítio da consulta" });
-  await screen.findByText("Escolha um sítio");
-  fireEvent.click(await screen.findByRole("button", {name:/Escola/}));
-  await screen.findByText("Dados 7");
-  expect(screen.queryByRole("region", {name:"Seleção do sítio"})).toBeNull();
-  expect(listarPropriedades).toHaveBeenCalledTimes(1);
+  await screen.findByRole("heading", { name: "Escolha um sítio na barra lateral" });
+  expect(screen.queryByText(/Dados/)).toBeNull();
+  expect(screen.queryByRole("button", { name: /Escola/ })).toBeNull();
   expect(getPropriedadeAtiva()).toBeNull();
-  expect(window.location.search).toBe("?rotina=partos&sitio=7");
-  window.history.pushState(null, "", "/pecuaria/reproducao?rotina=partos&sitio=8");
-  fireEvent(window, new PopStateEvent("popstate"));
-  await screen.findByText("Dados 8"); expect(screen.queryByText("Dados 7")).toBeNull();
 });
-it("não consulta sítio que não aparece na lista autorizada nem disfarça falha de leitura como ausência", async () => {
-  window.history.replaceState(null, "", "/pecuaria/relatorios?sitio=999");
+it("ignora sítio vindo do endereço: o escopo é só o da sidebar", async () => {
+  window.history.replaceState(null, "", "/pecuaria/relatorios?sitio=8");
+  vi.mocked(listarPropriedades).mockResolvedValue([sitio(7, "Escola"), sitio(8, "Destino")]);
+  render(<ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
+  await screen.findByRole("heading", { name: "Escolha um sítio na barra lateral" });
+  expect(screen.queryByText("Dados 8")).toBeNull();
+});
+it("com um único sítio ativo consulta esse sítio direto", async () => {
+  vi.mocked(listarPropriedades).mockResolvedValue([sitio(7, "Escola"), sitio(8, "Arquivado", false)]);
+  render(<ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
+  await screen.findByText("Dados 7");
+});
+it("não disfarça falha de leitura como ausência de sítios", async () => {
   vi.mocked(listarPropriedades).mockRejectedValueOnce(new Error("Falha ao carregar"));
   render(<ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
   await screen.findByRole("alert"); expect(screen.queryByText(/Nenhum sítio/)).toBeNull();
   vi.mocked(listarPropriedades).mockResolvedValue([]);
   fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
   await screen.findByText("Nenhum sítio disponível para consulta.");
-  expect(screen.queryByText("Dados 999")).toBeNull();
 });
-it("usa sítio global diretamente sem montar outro seletor", () => {
+it("usa sítio global diretamente sem consultar a lista", () => {
   setPropriedadeAtiva(7);
   render(<ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
   expect(screen.getByText("Dados 7")).toBeTruthy(); expect(listarPropriedades).not.toHaveBeenCalled();
 });
-it("preserva filtros e fragmento ao selecionar outro sítio", async () => {
-  window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=indicadores&inicio=2026-01-01&fim=2026-10-17#periodos");
-  vi.mocked(listarPropriedades).mockResolvedValue([{ id: 7, nome: "Escola", apelido: null, cidade: null, uf: null, principal: true, ativo: true, ordem: 1 }]);
-  render(<ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
-  await screen.findByText("Dados 7");
-  const seletor = screen.getByLabelText("Sítio da consulta");
-  expect(seletor.getAttribute("aria-describedby")).toBeTruthy();
-  window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=indicadores&inicio=2026-01-01&fim=2026-10-17&sitio=999#periodos");
-  fireEvent(window, new PopStateEvent("popstate"));
-  await alterarControle(seletor, { target: { value: "7" } });
-  expect(window.location.search).toBe("?rotina=indicadores&inicio=2026-01-01&fim=2026-10-17&sitio=7");
-  expect(window.location.hash).toBe("#periodos");
+it("trocar o sítio na sidebar descarta o estado da área do sítio anterior", () => {
+  function Rascunho({ id }: { id: number }) { const [texto, setTexto] = useState(""); return <label>Rascunho {id}<input value={texto} onChange={e => setTexto(e.target.value)} /></label>; }
+  setPropriedadeAtiva(7);
+  const { rerender } = render(<ConsultaPorSitio>{id => <Rascunho id={id} />}</ConsultaPorSitio>);
+  fireEvent.change(screen.getByLabelText("Rascunho 7"), { target: { value: "conferência do sítio 7" } });
+  setPropriedadeAtiva(8);
+  rerender(<ConsultaPorSitio>{id => <Rascunho id={id} />}</ConsultaPorSitio>);
+  expect((screen.getByLabelText("Rascunho 8") as HTMLInputElement).value).toBe("");
 });
-it("não substitui um sítio inválido da URL pelo único disponível silenciosamente", async () => {
-  window.history.replaceState(null, "", "/pecuaria/relatorios?sitio=999");
-  vi.mocked(listarPropriedades).mockResolvedValue([{ id: 7, nome: "Escola", apelido: null, cidade: null, uf: null, principal: true, ativo: true, ordem: 1 }]);
-  render(<ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
-  await screen.findByText(/O sítio do endereço não está disponível/);
-  expect(screen.queryByText("Dados 7")).toBeNull();
-  expect(screen.getByLabelText("Sítio da consulta").textContent).toContain("Escolha um sítio");
+it("mostra o cabeçalho próprio só junto do aviso de escolher sítio", async () => {
+  vi.mocked(listarPropriedades).mockResolvedValue([sitio(7, "Escola"), sitio(8, "Destino")]);
+  render(<ConsultaPorSitio cabecalhoAviso={<h1>Programar protocolo</h1>}>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
+  await screen.findByRole("heading", { name: "Escolha um sítio na barra lateral" });
+  expect(screen.getByRole("heading", { name: "Programar protocolo" })).toBeTruthy();
+});
+it("no celular, Escolher sítio abre o menu e depois o seletor que está à vista", async () => {
+  vi.mocked(listarPropriedades).mockResolvedValue([sitio(7, "Escola"), sitio(8, "Destino")]);
+  // jsdom não faz layout: marca como visível só o que recebe data-visivel.
+  const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (this: HTMLElement) { return (this.dataset.visivel ? [{}] : []) as unknown as DOMRectList; });
+  const abriuSeletor = vi.fn();
+  function Casca() {
+    const [aberto, setAberto] = useState(false);
+    return <>
+      <button aria-label="Propriedade / sítio ativo">desktop escondido</button>
+      <button aria-label="Abrir menu" data-visivel="1" onClick={() => setAberto(true)}>☰</button>
+      {aberto && <button aria-label="Propriedade / sítio ativo" data-visivel="1" onPointerDown={abriuSeletor}>no menu</button>}
+      <ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>
+    </>;
+  }
+  render(<Casca />);
+  fireEvent.click(await screen.findByRole("button", { name: "Escolher sítio" }));
+  await vi.waitFor(() => expect(abriuSeletor).toHaveBeenCalledTimes(1));
+  expect(screen.getByText("no menu")).toBeTruthy();
+  rects.mockRestore();
 });

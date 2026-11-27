@@ -19,7 +19,8 @@ import "./consultas-leite.css";
 import { ICONES_TABELA } from "../../../components/iconesTabela";
 import { RegistroVisualProducaoLeite } from "./RegistroVisualProducaoLeite";
 type Grupo = GrupoProducaoLeite;
-interface Consulta { grupos: Grupo[]; ordenhas: { posicaoId: string; nome: string }[] }
+interface ProducaoSitio { propriedadeId: number; nome: string; litros: number | null; completa: boolean; pendentes: number }
+interface Consulta { grupos: Grupo[]; ordenhas: { posicaoId: string; nome: string }[]; consolidado?: boolean; porSitio?: ProducaoSitio[] }
 const datasVisao = (data: string, visao: string) => ({ inicio: visao === "dia" ? data : `${data.slice(0, 7)}-01`, fim: visao === "dia" ? data : new Date(Date.UTC(Number(data.slice(0, 4)), Number(data.slice(5, 7)), 0)).toISOString().slice(0, 10) });
 const iniciais = () => { const q = new URLSearchParams(location.search); const hoje = hojeOperacional(); const valor = q.get("producaoData") ?? hoje; const data = /^\d{4}-\d{2}-\d{2}$/.test(valor) && Number.isFinite(Date.parse(valor)) ? valor : hoje; const visao = q.get("producaoVisao") === "mes" ? "mes" : "dia"; const periodo = datasVisao(data, q.has("producaoVisao") ? visao : "mes"); return { visao, data, natureza: q.get("natureza") ?? "", inicio: q.get("inicio") || periodo.inicio, fim: q.get("fim") || periodo.fim }; };
 
@@ -74,7 +75,17 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
       </>}
       </section></div>
     </>}
-    {!periodoInvalido && <HistoricoColetivoLeite key={`${sitio}:${inicio}:${fim}`} propriedadeId={sitio} inicio={inicio} fim={fim} />}
+    {dados?.consolidado && dados.porSitio && <section className="leite-producao-sitios" aria-labelledby="producao-por-sitio">
+      <h3 id="producao-por-sitio">Produção por sítio</h3>
+      <TabelaFinanceira icone={ICONES_TABELA.sitio} rotulo="Produção por sítio" itens={dados.porSitio} chaveDe={s => s.propriedadeId} colunas={[
+        { chave: "sitio", titulo: "Sítio", principal: true, celula: s => s.nome },
+        { chave: "litros", titulo: "Volume registrado", alinhamento: "direita", celula: s => formatarLitros(s.litros) },
+        { chave: "situacao", titulo: "Situação", celula: s => s.completa ? "Completa" : s.litros == null ? "Sem registro" : `Parcial · ${s.pendentes} pendentes` },
+      ]} />
+    </section>}
+    {!periodoInvalido && (dados?.consolidado
+      ? <p className="leite-producao-escopo text-sm text-ink-3">Agregados históricos são por sítio: escolha um sítio na barra lateral para consultá-los.</p>
+      : <HistoricoColetivoLeite key={`${sitio}:${inicio}:${fim}`} propriedadeId={sitio} inicio={inicio} fim={fim} />)}
     {!periodoInvalido && <CustosLeite periodo={{ inicio, fim, natureza }} />}
   </section>;
 }

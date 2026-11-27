@@ -5,10 +5,9 @@ import {
   getUsuario,
 } from "../../middleware/permissao.js";
 import { podeVerValoresFinanceiros } from "../../services/pecuaria/custos/permissoes.js";
-import { consultarCustosLeite } from "../../services/pecuaria/leite/custos.js";
+import { consultarCustosLeite, consultarCustosLeiteConsolidado } from "../../services/pecuaria/leite/custos.js";
 import { consultaCustosLeiteSchema } from "../../services/pecuaria/leite/custos.schemas.js";
 import { resolverEscopoLeitura } from "../../services/propriedade.js";
-import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { falhaV4 } from "./reproducao.js";
 
 async function consultar(c: Context) {
@@ -20,11 +19,9 @@ async function consultar(c: Context) {
     );
   try {
     const propriedadeId = await resolverEscopoLeitura(c);
+    // Consolidado: cada sítio é apurado e os resultados são somados.
     if (propriedadeId === null)
-      throw new RebanhoError(
-        "VALIDACAO",
-        "Selecione um sítio para consultar os custos do leite",
-      );
+      return c.json(await consultarCustosLeiteConsolidado(validacao.data, podeVerValoresFinanceiros(getUsuario(c))));
     return c.json(
       await consultarCustosLeite(
         propriedadeId,

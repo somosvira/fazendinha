@@ -22,7 +22,8 @@ import { DatasQualidade } from "./DatasQualidade";
 import type { AmostraQualidade } from "./qualidade-types";
 import { Empty } from "@/financeiro/financeiro-ui";
 interface ListaEmissoes {
-  propriedadeId: number;
+  propriedadeId: number | null;
+  consolidado?: boolean;
   total: number;
   pagina: number;
   tamanho: number;
@@ -33,6 +34,7 @@ interface ListaEmissoes {
     corteEm: string;
     versaoCalculo: string;
     valoresIncluidos: boolean;
+    sitio?: string | null;
   }[];
 }
 interface Balanco {
@@ -219,6 +221,8 @@ export function RelatoriosLeite({
   const [emissao, setEmissao] = useState<Emissao | null>(null),
     [erro, setErro] = useState(""),
     [ocupado, setOcupado] = useState(false);
+  // Sem sítio na sidebar e fora do Consolidado (fazenda com um sítio), usa o sítio resolvido pelo servidor.
+  const sitioRelatorio = sitio ?? (lista && !lista.consolidado ? lista.propriedadeId : null);
   const trava = useRef(false),
     geracao = useRef(0);
   useEffect(() => {
@@ -319,17 +323,18 @@ export function RelatoriosLeite({
     <section className="leite-operacoes leite-comercial-consulta rel-leite">
       <BarraRelatorio acoes={<AcoesRelatorio imprimir={emissao?()=>window.print():undefined} impressaoDesabilitada={ocupado} acoes={[
         ...(podeExportar?[{rotulo:'Exportar esta emissão em CSV',executar:()=>{void baixar()},desabilitado:!emissao||ocupado}]:[]),
-        ...(podeExportar?[{rotulo:'Emitir relatório preservado',executar:()=>setFiltrosAbertos(true),desabilitado:ocupado||!lista}]:[]),
+        ...(podeExportar&&!lista?.consolidado?[{rotulo:'Emitir relatório preservado',executar:()=>setFiltrosAbertos(true),desabilitado:ocupado||!lista}]:[]),
         {rotulo:'Emissões anteriores',executar:()=>setHistoricoAberto(true),icone:<History size={16}/>},
         ...(emissao?[{rotulo:'Voltar à consulta atual',executar:()=>setEmissao(null)}]:[]),
       ]}/>}><Card className="rel-periodo-compacto"><CalendarDays size={19} aria-hidden/><strong>{dataPt(emissao?.snapshot.filtros.inicio??periodoAtual.inicio)} a {dataPt(emissao?.snapshot.filtros.fim??periodoAtual.fim)}</strong><Button variant="outline" size="sm" onClick={()=>setFiltrosAbertos(true)}><SlidersHorizontal size={15}/>Período e emissão</Button></Card>{emissao&&<Badge variant="outline">Emissão preservada</Badge>}</BarraRelatorio>
-      {!emissao && sitio!=null && <ResumoRelatorioLeite key={`${sitio}:${periodoAtual.inicio}:${periodoAtual.fim}`} propriedadeId={sitio} inicio={periodoAtual.inicio} fim={periodoAtual.fim}/>}
+      {!emissao && sitioRelatorio!=null && <ResumoRelatorioLeite key={`${sitioRelatorio}:${periodoAtual.inicio}:${periodoAtual.fim}`} propriedadeId={sitioRelatorio} inicio={periodoAtual.inicio} fim={periodoAtual.fim}/>}
+      {!emissao && lista?.consolidado && <p className="text-sm text-ink-3">O relatório do período é calculado por sítio: escolha um sítio na barra lateral. As emissões de todos os sítios estão em “Emissões anteriores”.</p>}
       <PainelCadastro aberto={filtrosAbertos} titulo="Período e emissão de leite"
         onFechar={() => setFiltrosAbertos(false)} bloqueado={ocupado} rascunhoPersistido
         largura="sm:max-w-5xl"
         rodape={<>
           <Button variant="outline" type="button" onClick={()=>{setEmissao(null);setPeriodoAtual({inicio,fim});setFiltrosAbertos(false)}} disabled={ocupado||!inicio||!fim||inicio>fim||fim>hojeOperacional()}>Consultar produção atual</Button>
-          {podeExportar && <Button type="submit" form={formPeriodoId} disabled={ocupado || !lista}>Emitir relatório preservado</Button>}
+          {podeExportar && !lista?.consolidado && <Button type="submit" form={formPeriodoId} disabled={ocupado || !lista}>Emitir relatório preservado</Button>}
         </>}><div className="leite-operacoes rel-emissao-grupos"><section aria-label="Exportar consulta de produção"><ExportacaoProducaoLeite propriedadeId={sitio} podeExportar={podeExportar} /></section><section aria-label="Consultar ou preservar relatório"><h3>Período do relatório </h3>
 
       <form id={formPeriodoId}
@@ -377,10 +382,11 @@ export function RelatoriosLeite({
           {lista.itens.length ? (
             <div className="leite-tabela-scroll">
               <Table semContainer>
-                <TableCaption>Relatórios emitidos neste sítio</TableCaption>
+                <TableCaption>{lista.consolidado ? "Relatórios emitidos em todos os sítios" : "Relatórios emitidos neste sítio"}</TableCaption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Período</TableHead>
+                    {lista.consolidado && <TableHead>Sítio</TableHead>}
                     <TableHead>Corte da consulta</TableHead>
                     <TableHead>Conteúdo</TableHead>
                     <TableHead>Ação</TableHead>
@@ -392,6 +398,7 @@ export function RelatoriosLeite({
                       <TableCell>
                         {dataPt(i.inicio)} a {dataPt(i.fim)}
                       </TableCell>
+                      {lista.consolidado && <TableCell>{i.sitio ?? "—"}</TableCell>}
                       <TableCell>{new Date(i.corteEm).toLocaleString("pt-BR")}</TableCell>
                       <TableCell>
                         {i.valoresIncluidos

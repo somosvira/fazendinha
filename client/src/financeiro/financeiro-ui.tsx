@@ -215,8 +215,6 @@ export function ReviewLine({ children, tone = "green" }: { children: React.React
 
 export type ColunaTabela<T> = {
   chave: string;
-  /** @deprecated transição do split: ignorado; sai quando as consultas migram. */
-  ocultarNoCartao?: boolean;
   titulo: string;
   /** Controle opcional no cabeçalho; o título textual continua nos cartões. */
   cabecalho?: React.ReactNode;
@@ -241,10 +239,7 @@ function ComIconeItem<T>({ item, icone, iconeDe, children }: { item: T; icone?: 
 }
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, filtrosColunas, rodape, ordenacao, icone, iconeDe }: {
-  /** @deprecated transição do split: ignorados; saem quando as consultas migram. */
-  visualizacao?: string;
-  cartaoComLinks?: boolean;
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, podeAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, filtrosColunas, rodape, ordenacao, icone, iconeDe }: {
   /** Mesmo ícone do cartão do item, exibido antes da coluna principal. */
   icone?: IconeItem;
   iconeDe?: (item: T) => IconeItem | undefined;
@@ -257,6 +252,8 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   itens: T[];
   chaveDe: (item: T) => React.Key;
   onAbrir?: (item: T) => void;
+  /** Quando só algumas linhas têm destino: as demais ficam sem clique nem foco. */
+  podeAbrir?: (item: T) => boolean;
   classeLinha?: (item: T) => string;
   ancoraDe?: (item: T) => string;
   rotulo: string;
@@ -325,8 +322,8 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
             key={chaveDe(item)} data-ancora={ancoraDe?.(item)}
             /* linha acionável pelo teclado sem sobrescrever o role="row" — trocar
                por role="button" quebraria a semântica de tabela para leitores de tela */
-            {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
-            className={`${onAbrir ? "cursor-pointer hover:bg-muted" : ""} ${classeLinha?.(item) ?? ""}`}
+            {...(onAbrir && (podeAbrir?.(item) ?? true) ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
+            className={`${onAbrir && (podeAbrir?.(item) ?? true) ? "cursor-pointer hover:bg-muted" : ""} ${classeLinha?.(item) ?? ""}`}
           >{colunas.map((coluna) => <TableCell key={coluna.chave} data-fin-coluna={coluna.chave} data-fin-principal={coluna === principal || undefined} data-fin-acoes={coluna.acoes || undefined} className={`whitespace-normal ${compacta ? "px-3 py-2" : "p-4"} align-middle ${alinhaCelula(coluna.alinhamento ?? (coluna.acoes ? "direita" : undefined))}`}>{coluna === principal ? <ComIconeItem item={item} icone={icone} iconeDe={iconeDe}>{coluna.celula(item)}</ComIconeItem> : coluna.celula(item)}</TableCell>)}</TableRow>)}
         </TableBody>
         {rodape && <TableFooter className="fin-tabela-rodape"><TableRow>{colunas.map(coluna => <TableCell key={coluna.chave} className={alinhaCelula(coluna.alinhamento)}>{rodape[coluna.chave] ?? null}</TableCell>)}</TableRow></TableFooter>}

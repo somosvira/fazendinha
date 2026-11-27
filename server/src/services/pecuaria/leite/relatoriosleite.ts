@@ -1,3 +1,4 @@
+import { escopoSitiosTx } from "./escopo-consolidado.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../../db.js";
@@ -209,11 +210,13 @@ export async function obterRelatorioLeite(id: string, propriedadeId: number, ver
   if (!registro) throw new RebanhoError("NAO_ENCONTRADO", "Emissão não encontrada neste sítio");
   return dto(registro, verValores);
 }
-export async function listarRelatoriosLeite(propriedadeId: number, pagina = 1) {
-  const where = { propriedadeId };
+/** `escopoId` null = Consolidado: emissões de todos os sítios ativos, com o nome do sítio. */
+export async function listarRelatoriosLeite(escopoId: number | null, pagina = 1) {
+  const escopo = await escopoSitiosTx(prisma as unknown as Prisma.TransactionClient, escopoId);
+  const where = { propriedadeId: escopo.propriedadeId };
   const [itens, total] = await prisma.$transaction([prisma.emissaoRelatorioLeite.findMany({ where, orderBy: [{ criadoEm: "desc" }, { id: "desc" }], skip: (pagina - 1) * 20, take: 20,
     select: { id: true, propriedadeId: true, inicio: true, fim: true, versaoCalculo: true, corteEm: true, valoresIncluidos: true, criadoEm: true, criadoPorId: true } }), prisma.emissaoRelatorioLeite.count({ where })]);
-  return { propriedadeId, itens: itens.map(i => ({ ...i, inicio: texto(i.inicio), fim: texto(i.fim), corteEm: i.corteEm.toISOString(), criadoEm: i.criadoEm.toISOString() })), total, pagina, tamanho: 20 };
+  return { propriedadeId: escopoId, consolidado: escopo.consolidado, itens: itens.map(i => ({ ...i, ...(escopo.consolidado ? { sitio: escopo.nome(i.propriedadeId) } : {}), inicio: texto(i.inicio), fim: texto(i.fim), corteEm: i.corteEm.toISOString(), criadoEm: i.criadoEm.toISOString() })), total, pagina, tamanho: 20 };
 }
 export async function exportarRelatorioLeiteCsv(id: string, propriedadeId: number, verValores: boolean) {
   const emissao = await obterRelatorioLeite(id, propriedadeId, verValores);

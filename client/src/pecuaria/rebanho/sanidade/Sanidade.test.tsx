@@ -17,18 +17,15 @@ import { listarAnimais, buscarFichaAnimal } from "../api";
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.mocked(listarAnimais).mockResolvedValue({ itens: [] } as unknown as Awaited<ReturnType<typeof listarAnimais>>); window.history.replaceState(null, "", "/"); });
 describe("busca e atualização da Sanidade", () => {
-  it("preserva a semana dos links antigos e registra a volta à lista", () => {
+  it("links antigos de semana abrem a agenda por dia, sem alternar Lista/Semana", () => {
     mocks.req.mockResolvedValue([]);
-    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas&visualTarefas=visual&semanaSanitaria=2026-10-19");
+    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas&visualTarefas=visual&agendaSanitaria=semana&semanaSanitaria=2026-10-19");
     render(<Sanidade podeLancar={false} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Voltar à lista" }));
-    const params = new URLSearchParams(window.location.search);
-    expect(params.get("agendaSanitaria")).toBe("lista");
-    expect(params.get("semanaSanitaria")).toBe("2026-10-19");
-
-    fireEvent.click(screen.getByRole("button", { name: "Ver semana" }));
-    expect(new URLSearchParams(window.location.search).get("agendaSanitaria")).toBe("semana");
+    expect(screen.queryByRole("tab", { name: "Semana" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Lista" })).toBeNull();
+    expect(screen.queryByRole("group", { name: /Etapas dos próximos 14 dias/ })).toBeNull();
+    expect(screen.getByRole("tab", { name: /^Tarefas/ })).toBeTruthy();
   });
 
   it("limpa o filtro de doença do gráfico pelo modal somente após aplicar", async () => {
@@ -114,7 +111,7 @@ describe("busca e atualização da Sanidade", () => {
     expect(estado.closest("td")?.textContent).toContain("01/01/2020");
     expect(tabela.getByText("Ciclo de vacinação · Vacina")).toBeTruthy();
     expect(tabela.queryByRole("columnheader", { name: "Tipo" })).toBeNull();
-    expect(tabela.getByRole("button", { name: "Executar tarefa" }).closest("td")?.getAttribute("data-fin-coluna")).toBe("acoes");
+    expect(tabela.getByRole("button", { name: "Registrar execução" }).closest("td")?.getAttribute("data-fin-coluna")).toBe("acoes");
     expect(tabela.getByRole("button", { name: "Mais ações da tarefa de DEV-001 · Aurora" })).toBeTruthy();
   });
 
@@ -139,7 +136,7 @@ describe("busca e atualização da Sanidade", () => {
     render(<Sanidade podeLancar={false} />);
     const tabela = within(await screen.findByRole("table", { name: "Tarefas de protocolos" }));
     await tabela.findByText("Atrasada");
-    expect(tabela.queryByRole("button", { name: "Executar tarefa" })).toBeNull();
+    expect(tabela.queryByRole("button", { name: "Registrar execução" })).toBeNull();
     expect(tabela.queryByRole("button", { name: /Mais ações/ })).toBeNull();
   });
 
@@ -167,7 +164,8 @@ describe("busca e atualização da Sanidade", () => {
     mocks.req.mockResolvedValue([]);
     window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda");
     render(<Sanidade podeLancar />);
-    fireEvent.click(screen.getByRole("button", { name: "Gerenciar procedimentos" }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Gerenciar" }), { button: 0, ctrlKey: false, pointerType: "mouse" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Gerenciar procedimentos" }));
     await screen.findByText("Gerenciador aberto");
     fireEvent.click(screen.getByRole("button", { name: /Filtros/ }));
     expect(screen.getByRole("combobox", { name: "Animal" })).toHaveProperty("value", "");
@@ -278,5 +276,6 @@ it('abre Todos os cuidados pela URL sem substituir o calendário ou o contrato d
  expect(new URLSearchParams(window.location.search).get('visaoAgenda')).toBe('cuidados');
  fireEvent.click(screen.getByRole('tab',{name:'Tarefas'}));
  await waitFor(()=>expect(new URLSearchParams(window.location.search).get('visaoAgenda')).toBe('tarefas'));
- expect(screen.getByRole('button',{name:'Calendário sanitário'})).toBeTruthy();
+ fireEvent.pointerDown(screen.getByRole('button',{name:'Gerenciar'}),{button:0,ctrlKey:false,pointerType:"mouse"});
+ expect(await screen.findByRole('menuitem',{name:'Calendário sanitário'})).toBeTruthy();
 });

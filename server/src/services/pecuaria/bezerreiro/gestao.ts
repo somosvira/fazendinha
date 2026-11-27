@@ -207,7 +207,8 @@ export async function participantesNaDataTx(tx: Prisma.TransactionClient, propri
   const locais = ids.length ? await tx.localizacaoAnimal.findMany({ where: { animalId: { in: ids }, propriedadeId, desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] } }) : [];
   return ps.map(p => ({ ...p, localizacaoComprovada: locais.some(l => l.animalId === p.animalId && l.loteId === p.perfil.loteId) }));
 }
-export async function listarParticipantes(propriedadeId: number, q: ConsultaBezerreiro) {
+/** `propriedadeId` com `{ in }` = Consolidado: participações de todos os sítios informados. */
+export async function listarParticipantes(propriedadeId: number | { in: number[] }, q: ConsultaBezerreiro) {
   const data = q.data ? dia(q.data) : hojeFazendaDate();
   return prisma.$transaction(async tx => {
     const where: Prisma.ParticipacaoBezerreiroWhereInput = {
@@ -219,7 +220,7 @@ export async function listarParticipantes(propriedadeId: number, q: ConsultaBeze
     };
     const [total, itens] = await Promise.all([
       tx.participacaoBezerreiro.count({ where }),
-      tx.participacaoBezerreiro.findMany({ where, orderBy: [{ desde: 'desc' }, { id: 'asc' }], skip: (q.pagina - 1) * q.porPagina, take: q.porPagina, include: { animal: { select: { id: true, brinco: true, nome: true, dataNascimento: true } }, perfil: { include: { lote: true } }, fases: { orderBy: { desde: 'desc' }, include: { faseVersao: { include: { coleira: true, ofertas: true } } } } } }),
+      tx.participacaoBezerreiro.findMany({ where, orderBy: [{ desde: 'desc' }, { id: 'asc' }], skip: (q.pagina - 1) * q.porPagina, take: q.porPagina, include: { animal: { select: { id: true, brinco: true, nome: true, dataNascimento: true } }, perfil: { include: { lote: true, propriedade: { select: { id: true, nome: true } } } }, fases: { orderBy: { desde: 'desc' }, include: { faseVersao: { include: { coleira: true, ofertas: true } } } } } }),
     ]);
     return { itens, total, pagina: q.pagina, porPagina: q.porPagina };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });

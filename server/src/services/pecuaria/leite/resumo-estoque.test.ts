@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { consultarResumoEstoqueLeiteTx } from "./resumo-estoque.js";
 vi.mock("../../../db.js", () => ({ prisma: {} }));
 const D = (v: number) => new Prisma.Decimal(v);
-const db = { produto: { findMany: vi.fn() }, movimentoEstoque: { groupBy: vi.fn() }, entradaProducaoLeite: { findMany: vi.fn() } };
+const db = { produto: { findMany: vi.fn() }, movimentoEstoque: { groupBy: vi.fn() }, entradaProducaoLeite: { findMany: vi.fn() }, propriedade: { findMany: vi.fn() } };
 const tx = db as unknown as Prisma.TransactionClient;
 function origem(produtoId: string, litros: number, natureza: string, valor: number | null = null, alocacoes: unknown[] = []) {
   return { movimento: { produtoId, quantidade: D(litros) }, classificacoes: [{ natureza }], apuracoes: valor === null ? [] : [{ valorTotal: D(valor), apropriacoes: [] }], alocacoes };
@@ -55,4 +55,13 @@ it("sem produtos ou origens não inventa zero nem consulta por produto", async (
   const r = await consultarResumoEstoqueLeiteTx(tx, 3, {}, true);
   expect(r.resumo.quantidadeLitros).toBeNull(); expect(r.total).toBe(0);
   expect(db.movimentoEstoque.groupBy).not.toHaveBeenCalled();
+});
+it("Consolidado lista produto por sítio e soma o resumo de todos os sítios ativos", async () => {
+  db.propriedade.findMany.mockResolvedValue([{ id: 3, nome: "Sede" }, { id: 4, nome: "Arrendado" }]);
+  const r = await consultarResumoEstoqueLeiteTx(tx, null, {}, true);
+  expect(r.consolidado).toBe(true);
+  expect(r.total).toBe(4);
+  expect(r.itens.map(i => "sitio" in i ? `${i.sitio}:${i.nome}` : "")).toEqual(["Sede:Leite 1", "Sede:Leite 2", "Arrendado:Leite 1", "Arrendado:Leite 2"]);
+  expect(r.resumo).toMatchObject({ quantidadeLitros: "190", descarteLitros: "20", colostroLitros: "10" });
+  expect(db.produto.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { movimentos: { some: { propriedadeId: 4, metodoValorizacao: "LEITE_FIFO_V1" } } } }));
 });

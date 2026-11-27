@@ -560,6 +560,7 @@ function RelatorioIndicadores({
     </section>
   );
 }
-export function IndicadoresReprodutivos(props: { propriedadeId: number; podeLancar: boolean; modo?: "painel" | "relatorio" }) {
-  return props.modo === "painel" ? <ConsultaIndicadoresOperacionais propriedadeId={props.propriedadeId}/> : <RelatorioIndicadores {...props}/>;
+/** `propriedadeId` null (Consolidado) só no painel: contagens somadas entre sítios. */
+export function IndicadoresReprodutivos(props: { propriedadeId: number | null; podeLancar: boolean; modo?: "painel" | "relatorio" }) {
+  return props.modo === "painel" || props.propriedadeId == null ? <ConsultaIndicadoresOperacionais propriedadeId={props.propriedadeId}/> : <RelatorioIndicadores {...props} propriedadeId={props.propriedadeId}/>;
 }

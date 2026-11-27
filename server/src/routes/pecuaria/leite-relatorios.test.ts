@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ emitir: vi.fn(), obter: vi.fn(), listar: vi.fn(), csv: vi.fn(), leitura: vi.fn(), escrita: vi.fn() }));
+const m = vi.hoisted(() => ({ emissao: vi.fn(), emitir: vi.fn(), obter: vi.fn(), listar: vi.fn(), csv: vi.fn(), leitura: vi.fn(), escrita: vi.fn() }));
 vi.mock("../../services/pecuaria/leite/relatoriosleite.js", () => ({ emitirRelatorioLeite: m.emitir, obterRelatorioLeite: m.obter, listarRelatoriosLeite: m.listar, exportarRelatorioLeiteCsv: m.csv, RelatorioLeiteAcessoError: class extends Error {} }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: m.leitura, resolverEscopoEscrita: m.escrita }));
+vi.mock("../../db.js", () => ({ prisma: { emissaoRelatorioLeite: { findUnique: m.emissao } } }));
 import { leiteRelatoriosRouter } from "./leite-relatorios.js";
 const id = "00000000-0000-4000-8000-000000000001";
 const payload = { chave: id, inicio: "2026-10-01", fim: "2026-10-02" };
@@ -28,11 +29,14 @@ describe("permissões das emissões de leite", () => {
     expect(m.emitir).toHaveBeenCalledWith({ ...payload, propriedadeId: 7, incluirValores: true }, 5, true);
     expect(m.escrita).toHaveBeenCalledWith(expect.anything(), undefined);
   });
-  it("reavalia acesso na abertura e no CSV, conserva cache privado e recusa consolidado", async () => {
+  it("reavalia acesso na abertura e no CSV, conserva cache privado e em Consolidado usa o sítio da emissão", async () => {
     const consulta = await app().request(`/relatorios/emissoes/${id}`);
     expect(consulta.status).toBe(200); expect(consulta.headers.get("cache-control")).toBe("private, no-store"); expect(m.obter).toHaveBeenCalledWith(id, 7, false);
     expect((await app(["exportar"]).request(`/relatorios/emissoes/${id}/csv`)).status).toBe(200); expect(m.csv).toHaveBeenCalledWith(id, 7, false);
-    m.leitura.mockResolvedValue(null); expect((await app().request("/relatorios/emissoes")).status).toBe(422);
+    m.leitura.mockResolvedValue(null); m.listar.mockResolvedValue({ consolidado: true, itens: [] });
+    expect((await app().request("/relatorios/emissoes")).status).toBe(200); expect(m.listar).toHaveBeenLastCalledWith(null, 1);
+    m.emissao.mockResolvedValue({ propriedadeId: 9 });
+    expect((await app().request(`/relatorios/emissoes/${id}`)).status).toBe(200); expect(m.obter).toHaveBeenLastCalledWith(id, 9, false);
   });
   it("rejeita intervalo inválido e parâmetros desconhecidos sem emitir", async () => {
     expect((await app(["exportar"]).request("/relatorios/emissoes", post({ ...payload, inicio: "2026-02-30" }))).status).toBe(422);

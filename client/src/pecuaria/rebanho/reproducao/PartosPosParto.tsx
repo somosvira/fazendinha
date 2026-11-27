@@ -14,7 +14,8 @@ import { usePeriodoConsulta } from "./periodo-consulta";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
 import { ICONES_TABELA } from "../../../components/iconesTabela";
 
-export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
+/** `propriedadeId` null = Consolidado: partos de todos os sítios, com a coluna Sítio. */
+export function PartosPosParto({ propriedadeId }: { propriedadeId: number | null }) {
   const periodo = usePeriodoConsulta("partos");
   const [snapshot, setSnapshot] = useState<SnapshotRelatorioPartos | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -28,8 +29,8 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
   useEffect(() => {
     let ativo = true;
     setErro(null); setCarregando(true);
-    const filtros = new URLSearchParams({ propriedadeId: String(propriedadeId), inicio: periodo.inicio, fim: periodo.fim });
-    void reqV4<SnapshotRelatorioPartos>(`/reproducao/relatorios/partos?${filtros}`, undefined, "GET", propriedadeId)
+    const filtros = new URLSearchParams({ ...(propriedadeId != null ? { propriedadeId: String(propriedadeId) } : {}), inicio: periodo.inicio, fim: periodo.fim });
+    void reqV4<SnapshotRelatorioPartos>(`/reproducao/relatorios/partos?${filtros}`, undefined, "GET", propriedadeId ?? undefined)
       .then(dados => { if (ativo) { setSnapshot(dados); setConsultaCarregada(assinatura); } })
       .catch(e => { if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível consultar os partos."); })
       .finally(() => { if (ativo) setCarregando(false); });
@@ -47,7 +48,7 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
   const partos = consulta.filtrar(visivel?.partos ?? []).filter(p=>`${p.matriz.brinco} ${p.matriz.nome??""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR"))).sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
   const paginas=Math.max(1,Math.ceil(partos.length/20)),atual=Math.min(pagina,paginas);
   return <div className="space-y-5">
-    <PartosPrevistos propriedadeId={propriedadeId}/>
+    {propriedadeId != null && <PartosPrevistos propriedadeId={propriedadeId}/>}
     <section aria-label="Partos e pós-parto" className="space-y-4"><div className="repro-consulta-titulo"><h2>Partos e pós-parto</h2></div>
     <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} resumo={visivel ? <span>{partos.length} de {visivel.totalPartos} partos no período</span> : undefined}>
 
@@ -63,11 +64,12 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
       {!partos.length ? <div className="space-y-3 p-5"><p>{visivel.partos.length ? "Nenhum parto corresponde à busca ou aos filtros." : "Nenhum parto neste período."}</p>{visivel.partos.length ? <><p className="text-sm text-muted-foreground">Existem {visivel.totalPartos} partos no período selecionado.</p><Button secondary onClick={() => { buscar(""); consulta.edicao.limpar(); consulta.limpar(); }}>Limpar busca e filtros</Button></> : <p className="text-sm text-muted-foreground">Use o filtro de período para consultar outras datas.</p>}</div> : <TabelaFinanceira icone={ICONES_TABELA.parto} filtrosColunas={consulta.colunas}
         rotulo="Partos realizados" itens={partos.slice((atual-1)*20,atual*20)} chaveDe={p => p.id} colunas={[
           { chave: "data", titulo: "Data do parto", larguraMinima: 110, celula: p => formatBRDateISO(p.data) },
-          { chave: "matriz", titulo: "Matriz", principal: true, larguraFlexivel: true, larguraMinima: 160, celula: p => <IdentificacaoReproducao id={p.matriz.id} brinco={p.matriz.brinco} nome={p.matriz.nome} sitio={propriedadeId}/> },
+          { chave: "matriz", titulo: "Matriz", principal: true, larguraFlexivel: true, larguraMinima: 160, celula: p => <IdentificacaoReproducao id={p.matriz.id} brinco={p.matriz.brinco} nome={p.matriz.nome} sitio={p.propriedadeId ?? propriedadeId ?? undefined}/> },
+          ...(propriedadeId == null ? [{ chave: "sitio", titulo: "Sítio", larguraMinima: 120, celula: (p: SnapshotRelatorioPartos["partos"][number]) => p.sitio ?? "—" }] : []),
           { chave: "desfecho", titulo: "Desfecho", larguraMinima: 110, celula: p => p.desfecho === "ABORTO" ? "Aborto" : p.desfecho === "NASCIMENTO" ? "Nascimento" : "Não informado" },
           { chave: "crias", titulo: "Crias", larguraMinima: 100, celula: p => `${p.crias.length} · ${p.crias.filter(c => c.viva).length} vivas` },
           { chave: "rp", titulo: "Retenção de placenta", larguraMinima: 150, celula: p => p.retencaoPlacenta === null ? "Não informado" : p.retencaoPlacenta ? "Sim" : "Não" },
-          { chave: "detalhe", titulo: "", acoes: true, larguraMinima: 140, celula: p => <LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/reproducao/partos/${p.id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`}>Ver parto</LinkReproducao> },
+          { chave: "detalhe", titulo: "", acoes: true, larguraMinima: 140, celula: p => <LinkReproducao botao sitio={p.propriedadeId ?? propriedadeId ?? undefined} href={`/pecuaria/reproducao/partos/${p.id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`}>Ver parto</LinkReproducao> },
         ]}/>}
       {partos.length>20&&<Paginacao paginaAtual={atual} totalPaginas={paginas} totalItens={partos.length} itensPorPagina={20} onPaginaChange={setPagina} rotulo="partos" idSelect="pagina-partos"/>}
     </Panel>}

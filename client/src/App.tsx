@@ -598,7 +598,7 @@ export function App() {
     : tab === "pec-sanidade"
     ? <Sanidade podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-reproducao"
-    ? <Reproducao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    ? <Reproducao onSelecionarSitio={trocarPropriedade} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-relatorios"
     ? <RelatoriosPecuaria podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-visitas"

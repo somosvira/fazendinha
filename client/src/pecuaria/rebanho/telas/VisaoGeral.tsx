@@ -3,9 +3,9 @@
 
 import { ResumoAlertas } from "../alertas/ResumoAlertas";
 import { useEffect, useState } from "react";
-import { ArrowDownRight, ArrowUpRight, LayoutDashboard, ChartNoAxesCombined, ChevronRight, Heart, MapPin, Plus, RotateCcw } from "lucide-react";
+import { Baby, Beef, Gift, HandCoins, HeartCrack, LayoutDashboard, LogOut, SearchX, ShoppingBag, ChartNoAxesCombined, ChevronRight, Heart, MapPin, Plus, RotateCcw } from "lucide-react";
 import { obterPainelRebanho } from "../api";
-import type { PainelGeral, TipoBaixa } from "../types";
+import type { EventoPainel, PainelGeral, TipoBaixa } from "../types";
 import { formatarDataBR, rotuloClasseMotivo, rotuloTipoBaixa } from "../lib/rotulos";
 import { navegarPara } from "../../../router";
 import { Button, Empty, emDias, ErrorBox, PageHeader, PaginaFinanceira, Panel } from "../../../financeiro/financeiro-ui";
@@ -19,8 +19,19 @@ import { Destaques } from "@/financeiro/financeiro-ui";
 
 const URL_ANIMAIS = "/pecuaria/rebanho/animais";
 
-const ROTULO_EVENTO: Record<string, string> = { CADASTRO: "Cadastro", BAIXA: "Baixa", ESTORNO: "Estorno de baixa" };
-const ICONE_EVENTO = { CADASTRO: ArrowUpRight, BAIXA: ArrowDownRight, ESTORNO: RotateCcw };
+type TomEvento = "entrada" | "saida" | "perda" | "estorno";
+const ICONE_SAIDA: Partial<Record<TipoBaixa, typeof LogOut>> = { VENDA: HandCoins, ABATE: Beef, MORTE: HeartCrack, DOACAO: Gift, EXTRAVIO: SearchX };
+const PERDAS: TipoBaixa[] = ["MORTE", "EXTRAVIO"];
+
+/** O que aconteceu com o animal, em ícone, cor e texto: entrada (nascimento/compra), saída pelo tipo da baixa ou baixa desfeita. */
+function descreverEvento(evento: EventoPainel): { Icone: typeof LogOut; tom: TomEvento; fato: string } {
+  if (evento.tipo === "CADASTRO") return evento.origem === "COMPRADO"
+    ? { Icone: ShoppingBag, tom: "entrada", fato: "Compra" }
+    : evento.origem === "NASCIDO" ? { Icone: Baby, tom: "entrada", fato: "Nascimento" } : { Icone: Plus, tom: "entrada", fato: "Entrada no rebanho" };
+  const saida = evento.tipoBaixa ? rotuloTipoBaixa(evento.tipoBaixa) : null;
+  if (evento.tipo === "ESTORNO") return { Icone: RotateCcw, tom: "estorno", fato: saida ? `${saida} desfeita` : "Baixa desfeita" };
+  return { Icone: (evento.tipoBaixa && ICONE_SAIDA[evento.tipoBaixa]) || LogOut, tom: evento.tipoBaixa && PERDAS.includes(evento.tipoBaixa) ? "perda" : "saida", fato: saida ?? "Saída do rebanho" };
+}
 
 const PERIODOS_BAIXAS = [
   { valor: 30, rotulo: "30 dias" },
@@ -167,8 +178,9 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
       <Panel className="overflow-hidden">
         <div className="pec-eventos-cabecalho flex items-center justify-between gap-3 border-b border-border p-5"><div><h2 className="font-sans text-xl">Atividade recente</h2></div></div>
         {painel.ultimosEventos.length ? <ol className="pec-eventos">{painel.ultimosEventos.slice(0, 4).map((evento, indice) => {
-          const Icone = ICONE_EVENTO[evento.tipo];
-          return <li key={`${evento.animalId}-${indice}`}><button type="button" onClick={() => navegarPara(linkFichaAnimal(evento.animalId))} className="pec-painel-link pec-evento-linha"><span aria-hidden="true" className={`pec-evento-icone pec-evento-${evento.tipo.toLowerCase()}`}><Icone size={18} /></span><span className="min-w-0 flex-1"><strong className="block break-words">{evento.brinco}</strong><span className="pec-participacao">{ROTULO_EVENTO[evento.tipo]}</span></span><span className="shrink-0 text-sm text-ink-3">{formatarDataBR(evento.data)}</span><ChevronRight aria-hidden="true" size={14} /></button></li>;
+          const { Icone, tom, fato } = descreverEvento(evento);
+          const detalhe = [fato, consolidado ? evento.sitio : null].filter(Boolean).join(" · ");
+          return <li key={`${evento.animalId}-${indice}`}><button type="button" onClick={() => navegarPara(linkFichaAnimal(evento.animalId))} aria-label={`${evento.brinco}${evento.nome ? ` ${evento.nome}` : ""}: ${detalhe}, ${formatarDataBR(evento.data)}. Abrir ficha do animal`} className="pec-painel-link pec-evento-linha"><span aria-hidden="true" className={`pec-evento-icone pec-evento-${tom}`}><Icone size={18} /></span><span className="min-w-0 flex-1"><strong className="block break-words">{evento.brinco}{evento.nome && <span className="pec-evento-nome"> {evento.nome}</span>}</strong><span className="pec-participacao">{detalhe}</span></span><span className="shrink-0 text-sm text-ink-3">{formatarDataBR(evento.data)}</span><ChevronRight aria-hidden="true" size={14} /></button></li>;
         })}</ol> : <Empty>Nenhum evento recente.</Empty>}
       </Panel>
       </div></div>

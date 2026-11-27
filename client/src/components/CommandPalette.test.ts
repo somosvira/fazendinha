@@ -260,6 +260,8 @@ describe("busca só de animais (Ctrl/⌘ Shift K)", () => {
     expect(mock.mock.calls.some(([url])=>url.startsWith("/api/pecuaria/rebanho/animais?"))).toBe(true);
     expect(screen.queryByRole("navigation",{name:"Tipos de resultado"})).toBeNull();
     fireEvent.keyDown(screen.getByRole("searchbox",{name:"Buscar animal"}),{key:"Enter"});
+    expect(props.onNav).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button",{name:/Ver ficha completa/}));
     expect(props.onNav).toHaveBeenCalledWith("pec-rebanho","a1",expect.stringContaining("/animais/a1?"));
     expect(props.onFechar).toHaveBeenCalled();
   });

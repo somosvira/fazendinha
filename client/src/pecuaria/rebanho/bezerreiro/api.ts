@@ -1,9 +1,10 @@
 import { comPropriedade } from '../../../propriedadeScope';
 import { RebanhoApiError } from '../api';
-export async function consultarBezerreiro<T>(path: string, propriedadeId: number, body?: unknown): Promise<T> {
+/** `propriedadeId` null = Consolidado (só nas consultas que aceitam todos os sítios). */
+export async function consultarBezerreiro<T>(path: string, propriedadeId: number | null, body?: unknown): Promise<T> {
   const resposta = await fetch(`/api/pecuaria/rebanho/bezerreiro${path}`, {
     method: body === undefined ? 'GET' : 'POST',
-    headers: {...comPropriedade(body === undefined ? {} : {'content-type': 'application/json'}), 'X-Propriedade-Id': String(propriedadeId)},
+    headers: {...comPropriedade(body === undefined ? {} : {'content-type': 'application/json'}), ...(propriedadeId != null ? {'X-Propriedade-Id': String(propriedadeId)} : {})},
     ...(body === undefined ? {} : {body: JSON.stringify(body)}),
   });
   const dados: unknown = await resposta.json().catch(() => null);

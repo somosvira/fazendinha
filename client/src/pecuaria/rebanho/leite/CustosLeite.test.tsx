@@ -26,3 +26,11 @@ it("ignora resposta antiga quando o período muda", async () => {
   await screen.findByText("Sem acesso a valores."); resolver({ consolidado: { situacao: "NAO_APURADO", motivos: [], custos: { totalConhecido: "999" }, custoPorLitro: null }, porClassificacao: [] });
   await waitFor(() => expect(screen.queryByText(/999/)).toBeNull());
 });
+it("em Consolidado mostra o custo somado e o custo por litro de cada sítio", async () => {
+  vi.mocked(consultarLeite).mockResolvedValue({ escopoConsolidado: true, consolidado: { situacao: "APURADO", motivos: [], custoPorLitro: "2.50", custos: { totalConhecido: "1000.00" } }, porClassificacao: [],
+    porSitio: [{ propriedadeId: 1, nome: "Sede", custoPorLitro: "1.00", totalConhecido: "100.00", litros: 100 }, { propriedadeId: 2, nome: "Arrendado", custoPorLitro: null, totalConhecido: null, litros: null }] });
+  render(<CustosLeite periodo={{ inicio: "2026-10-01", fim: "2026-10-31" }} />);
+  expect(await screen.findByText("Arrendado")).toBeTruthy();
+  expect(screen.getByText("Sede")).toBeTruthy();
+  expect(screen.getAllByText(/2,50/).length).toBeGreaterThan(0);
+});

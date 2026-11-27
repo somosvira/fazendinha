@@ -29,7 +29,8 @@ import "./operacoes.css";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { ICONES_TABELA } from "../../../components/iconesTabela";
 interface HistoricoDestinos {
-  itens: DestinoLeiteDTO[];
+  consolidado?: boolean;
+  itens: (DestinoLeiteDTO & { sitio?: string | null })[];
   total: number;
   pagina: number;
   porPagina: number;
@@ -56,11 +57,14 @@ const novoRascunho = (): RascunhoDestino => ({
 });
 const dataPt = (data: string) =>
   data.slice(0, 10).split("-").reverse().join("/");
-export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; aoMudou?: () => void }) {
+export function DestinosLeite({ podeLancar: podeLancarPerfil, aoMudou }: { podeLancar: boolean; aoMudou?: () => void }) {
   const sitio = getPropriedadeAtiva();
   const [novo, setNovo] = useState(false);
   const [data, setData] = useState(hojeOperacional);
   const [historico, setHistorico] = useState<HistoricoDestinos | null>(null);
+  // Registrar e estornar exigem um sítio: em Consolidado (resposta do servidor) o histórico é só leitura.
+  const consolidado = historico?.consolidado === true;
+  const podeLancar = podeLancarPerfil && !consolidado;
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
   const [pagina, setPagina] = useState(1);
@@ -162,6 +166,8 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
             setNovo(false);
           }}
         />
+      ) : consolidado && podeLancarPerfil ? (
+        <p className="text-sm text-ink-3">Para registrar um fornecimento, escolha um sítio na barra lateral.</p>
       ) : !podeLancar ? (
         <p>
           Acesso de consulta. Os destinos registrados permanecem disponíveis no
@@ -176,6 +182,7 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
         <>
           <ListaConsultaLeite icone={ICONES_TABELA.parceiro} compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
             { chave: "data", titulo: "Data", principal: true, celula: d => dataPt(d.data) },
+            ...(consolidado ? [{ chave: "sitio", titulo: "Sítio", celula: (d: DestinoLeiteDTO & { sitio?: string | null }) => d.sitio ?? "—" }] : []),
             { chave: "natureza", titulo: "Natureza", celula: d => nomeNaturezaDestino(d.natureza) },
             { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },
             { chave: "animais", titulo: "Animais", alinhamento: "direita", celula: d => d.parcelas.length },

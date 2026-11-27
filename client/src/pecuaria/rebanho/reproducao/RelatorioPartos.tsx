@@ -42,8 +42,8 @@ export type PartoRelatorio = {
   crias: CriaRelatorio[];
 };
 export type SnapshotRelatorioPartos = {
-  versao: number; emitidoEm: string; propriedadeId: number;
-  periodo: { inicio: string; fim: string }; totalPartos: number; partos: PartoRelatorio[];
+  versao: number; emitidoEm: string; propriedadeId: number | null; escopoConsolidado?: boolean;
+  periodo: { inicio: string; fim: string }; totalPartos: number; partos: (PartoRelatorio & { propriedadeId?: number; sitio?: string })[];
 };
 export function linhasCriasPartos(snapshot: SnapshotRelatorioPartos) {
   return snapshot.partos.flatMap<{ parto: PartoRelatorio; cria: CriaRelatorio | null; contarParto: number }>(parto => parto.crias.length

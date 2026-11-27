@@ -41,10 +41,11 @@ import { HistoricoParametrosQualidade } from "./HistoricoParametrosQualidade";
 import { CamposDatasQualidade, DatasQualidade } from "./DatasQualidade";
 import { LaudosQualidade } from "./LaudosQualidade";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { AvisoEscolherSitio } from "../../../components/EscolherSitioSidebar";
 import { EsqueletoLista } from "../../../components/Esqueleto";
 const mensagem = (e: unknown) =>
   e instanceof Error ? e.message : "Não foi possível concluir a operação";
-export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
+export function QualidadeLeite({ podeLancar: podeLancarPerfil }: { podeLancar: boolean }) {
   const sitio = getPropriedadeAtiva();
   const tituloAmostra = useRef<HTMLHeadingElement>(null);
   const [aba, setAba] = useState<"amostras" | "resultados">("amostras");
@@ -53,10 +54,13 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
   >(sitio);
   const [formatos, setFormatos] = useState<FormatoQualidade[]>([]);
   const [amostras, setAmostras] = useState<{
-    itens: AmostraQualidade[];
+    itens: (AmostraQualidade & { sitio?: string | null })[];
     total: number;
-    propriedadeId: number;
+    propriedadeId: number | null;
+    consolidado?: boolean;
   } | null>(null);
+  // Registros e correções exigem um sítio: em Consolidado (resposta do servidor) a consulta é só leitura.
+  const podeLancar = podeLancarPerfil && amostras?.consolidado !== true;
   const [data, setData] = useState(hojeOperacional);
   const filtros = useRascunhoConsulta({ data }, { data: hojeOperacional() }, v => { setData(v.data); setPagina(1); setSelecionada(null); });
   const [pagina, setPagina] = useState(1),
@@ -90,9 +94,10 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
         sitio,
       ),
       consultarLeite<{
-        itens: AmostraQualidade[];
+        itens: (AmostraQualidade & { sitio?: string | null })[];
         total: number;
-        propriedadeId: number;
+        propriedadeId: number | null;
+        consolidado?: boolean;
       }>(
         `/qualidade/amostras?fim=${data}&pagina=${pagina}&tamanho=20`,
         sitio,
@@ -148,7 +153,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
             <Plus size={17} aria-hidden />Registrar amostra
           </Button>
         )}
-        {podeLancar && (
+        {podeLancarPerfil && (
           <Button variant="outline" className="leite-secondary"
             onClick={() => {
               setNovoFormato(true);
@@ -158,7 +163,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
           </Button>
         )}
       </>} />}
-      {aba === "resultados" && <HistoricoParametrosQualidade sitio={sitio} formatos={formatos} data={data} revisao={revisao} />}
+      {aba === "resultados" && (amostras?.consolidado ? <AvisoEscolherSitio /> : <HistoricoParametrosQualidade sitio={sitio} formatos={formatos} data={data} revisao={revisao} />)}
       {erro && <p role="alert">{erro} <Button type="button" variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {aviso && <p role="status">{aviso}</p>}
       {carregando && <p role="status">Consultando laudos…</p>}
@@ -192,6 +197,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
           {!amostras.itens.length ? <Empty icone={FlaskConical}><strong>Nenhuma amostra até {formatarDataBR(data)}</strong><p>Registre a coleta mesmo se o resultado ainda não chegou.</p></Empty> : <>
           <ListaConsultaLeite icone={FlaskConical} compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
             { chave: "data", titulo: "Coleta", principal: true, celula: a => a.data.slice(0, 10).split("-").reverse().join("/") },
+            ...(amostras.consolidado ? [{ chave: "sitio", titulo: "Sítio", celula: (a: AmostraQualidade & { sitio?: string | null }) => a.sitio ?? "—" }] : []),
             { chave: "tipo", titulo: "Tipo", celula: a => a.sujeito.tipo === "ANIMAL" ? "Individual" : "Coletiva" },
             { chave: "origem", titulo: "Origem", celula: a => a.sujeito.tipo === "ANIMAL" ? a.animal?.brinco ?? "Sem brinco" : a.sujeito.origem },
             { chave: "formato", titulo: "Formato", celula: a => a.formatoSnapshot.nome },

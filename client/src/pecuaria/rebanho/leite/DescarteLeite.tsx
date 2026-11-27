@@ -38,7 +38,7 @@ interface Descarte {
   versao: number;
   motivoEstorno: string | null;
 }
-export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { podeLancar: boolean; aoMudou?: () => void; modo?: "descarte" | "retirada" }) {
+export function DescarteLeite({ podeLancar: podeLancarPerfil, aoMudou, modo = "descarte" }: { podeLancar: boolean; aoMudou?: () => void; modo?: "descarte" | "retirada" }) {
   const interna = modo === "retirada";
   const base = interna ? "/retiradas-internas" : "/descartes";
   const [destino, setDestino] = useState("CASA");
@@ -53,13 +53,17 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
   const [litros, setLitros] = useState(""),
     [motivo, setMotivo] = useState("");
   const [lista, setLista] = useState<{
-      propriedadeId: number;
-      itens: Descarte[];
+      propriedadeId: number | null;
+      consolidado?: boolean;
+      itens: (Descarte & { sitio?: string | null })[];
       total: number;
       tamanho: number;
     } | null>(null),
     [pagina, setPagina] = useState(1),
     [revisao, setRevisao] = useState(0);
+  // Registros exigem um sítio: em Consolidado (resposta do servidor) a lista é só leitura.
+  const consolidado = lista?.consolidado === true;
+  const podeLancar = podeLancarPerfil && !consolidado;
   const filtros = useRascunhoConsulta({ data }, { data: hojeOperacional() }, v => { setData(v.data); setPagina(1); });
   const [estorno, setEstorno] = useState<Descarte | null>(null),
     [motivoEstorno, setMotivoEstorno] = useState("");
@@ -285,6 +289,7 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
           <ListaConsultaLeite icone={ICONES_TABELA.carencia} compacta rotulo={interna ? "Retiradas internas registradas" : "Descartes registrados"} itens={lista.itens} chaveDe={d => d.id} colunas={[
           ...(interna ? [{ chave: "destino", titulo: "Destino", celula: (d: Descarte) => d.destino === "CASA" ? "Casa" : "Funcionários" }, { chave: "responsavel", titulo: "Responsável", celula: (d: Descarte) => d.responsavel ?? "Não informado" }] : []),
             { chave: "data", titulo: "Data", principal: true, celula: d => d.data.split("-").reverse().join("/") },
+            ...(consolidado ? [{ chave: "sitio", titulo: "Sítio", celula: (d: Descarte & { sitio?: string | null }) => d.sitio ?? "—" }] : []),
             { chave: "produto", titulo: "Produto", celula: d => d.produtoNome },
             { chave: "ordenha", titulo: "Ordenha", celula: d => d.nomeOrdenha },
             { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },

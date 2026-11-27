@@ -85,3 +85,11 @@ it("registra Casa com responsável e origem comercial sem criar descarte físico
  fireEvent.click(screen.getByRole("button",{name:"Confirmar retirada interna"}));await waitFor(()=>expect(registrarLeite).toHaveBeenCalledWith("/retiradas-internas",2,expect.objectContaining({destino:"CASA",responsavel:"Maria",quantidadeLitros:2.125,entradaId:"origem"})));
  expect(vi.mocked(registrarLeite).mock.calls.some(c=>c[0]==="/descartes")).toBe(false);
 });
+it("em Consolidado lista descartes de todos os sítios com a coluna Sítio e sem registrar", async () => {
+  vi.mocked(listarProdutos).mockResolvedValue([]);
+  vi.mocked(consultarLeite).mockImplementation(async () => ({ propriedadeId: null, consolidado: true, itens: [{ id: "d1", propriedadeId: 3, entradaId: "e", nomeOrdenha: "Manhã", data: "2026-10-19", produtoNome: "Leite", quantidadeLitros: 2, saldoOrigemAntes: 10, saldoOrigemDepois: 8, motivo: "Mastite", status: "CONFIRMADO", versao: 1, motivoEstorno: null, sitio: "Arrendado" }], total: 1, tamanho: 20 }));
+  render(<DescarteLeite podeLancar />);
+  expect(await screen.findByText("Arrendado")).toBeTruthy();
+  expect(screen.getByRole("columnheader", { name: "Sítio" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Registrar descarte" })).toBeNull();
+});

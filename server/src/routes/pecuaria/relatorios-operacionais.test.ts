@@ -4,6 +4,7 @@ vi.mock('../../services/pecuaria/relatorios/anteriores.js',()=>({consultarRelato
 const mocks=vi.hoisted(()=>({escopo:vi.fn(),rebanho:vi.fn(),sanidade:vi.fn(),nutricao:vi.fn(),animaisHistoricos:vi.fn()}));
 vi.mock('../../services/pecuaria/relatorios/animais-historicos.js',()=>({buscarAnimaisHistoricosRelatorio:mocks.animaisHistoricos}));
 vi.mock('../../services/propriedade.js',()=>({resolverEscopoLeitura:mocks.escopo}));
+vi.mock('../../db.js',()=>({prisma:{propriedade:{findMany:vi.fn(async()=>[{id:1,nome:'Sede'},{id:2,nome:'Arrendado'}])}}}));
 vi.mock('../../services/pecuaria/relatorios/rebanho.js',()=>({consultarRelatoriosRebanho:mocks.rebanho}));
 vi.mock('../../services/pecuaria/relatorios/sanidade-leite.js',()=>({consultarRelatoriosSanidadeLeite:mocks.sanidade}));
 vi.mock('../../services/pecuaria/relatorios/nutricao-custos.js',()=>({consultarRelatoriosNutricaoCustos:mocks.nutricao}));
@@ -14,7 +15,18 @@ function app(areas:string[]=['pecuaria'],flags:string[]=[]){return new Hono<{Var
 beforeEach(()=>{vi.clearAllMocks();mocks.escopo.mockResolvedValue(1);mocks.rebanho.mockResolvedValue(null);mocks.sanidade.mockResolvedValue(null);mocks.nutricao.mockResolvedValue(null)});
 it('bloqueia usuário sem Pecuária antes de ler dados',async()=>{expect((await app(['financeiro']).request(url)).status).toBe(403);expect(mocks.rebanho).not.toHaveBeenCalled()});
 it('valida período e página antes de acessar serviços',async()=>{expect((await app().request(url+'&pagina=0')).status).toBe(422);expect((await app().request('/consulta?fonte=animais&inicio=2026-10-27&fim=2026-01-01')).status).toBe(422);expect(mocks.rebanho).not.toHaveBeenCalled()});
-it('não aceita sítio divergente nem consulta consolidada silenciosa',async()=>{expect((await app().request(url+'&propriedadeId=2')).status).toBe(403);mocks.escopo.mockResolvedValue(null);expect((await app().request(url)).status).toBe(422);expect(mocks.rebanho).not.toHaveBeenCalled()});
+it('não aceita sítio divergente',async()=>{expect((await app().request(url+'&propriedadeId=2')).status).toBe(403);expect(mocks.rebanho).not.toHaveBeenCalled()});
+it('em Consolidado junta as linhas dos sítios ativos com a coluna Sítio e sem resumo',async()=>{
+ mocks.escopo.mockResolvedValue(null);
+ mocks.rebanho.mockImplementation(async(q:{propriedadeId:number})=>({linhas:[{id:`a${q.propriedadeId}`,animal:`Animal ${q.propriedadeId}`}],total:1,pagina:1,porPagina:100,paginado:true,consultadoEm:'',resumo:[{nome:'Média',valor:1}]}));
+ const r=await app().request(url);expect(r.status).toBe(200);
+ const dados=await r.json() as {linhas:{sitioConsulta:string}[];resumo?:unknown;escopoConsolidado:boolean;propriedadeId:null};
+ expect(dados).toMatchObject({escopoConsolidado:true,propriedadeId:null,total:2});
+ expect(dados.linhas.map(l=>l.sitioConsulta)).toEqual(['Sede','Arrendado']);
+ expect(dados.resumo).toBeUndefined();
+ // Uma consulta por sítio, sem repetir a busca a cada página.
+ expect(mocks.rebanho).toHaveBeenCalledTimes(2);
+});
 it('delega leitura no sítio autorizado e sem valores para perfil de consulta',async()=>{mocks.rebanho.mockResolvedValue({linhas:[{id:'a',animal:'Camila'}],total:1,pagina:1,porPagina:12,paginado:true,consultadoEm:''});const r=await app().request(url);expect(r.status).toBe(200);expect(await r.json()).toMatchObject({propriedadeId:1,total:1});expect(mocks.rebanho).toHaveBeenCalledWith(expect.objectContaining({propriedadeId:1,podeVerValores:false}));expect(mocks.sanidade).not.toHaveBeenCalled()});
 it('recusa fonte inexistente sem devolver página vazia',async()=>{expect((await app().request(url.replace('animais','inexistente'))).status).toBe(422)});
 
@@ -60,7 +72,7 @@ it('protege metadados por área e sítio e recusa fonte desconhecida',async()=>{
  expect((await app(['financeiro']).request('/filtros?fonte=animais')).status).toBe(403);
  expect((await app().request('/filtros?fonte=animais&propriedadeId=2')).status).toBe(403);
  expect((await app().request('/filtros?fonte=inexistente')).status).toBe(422);
- mocks.escopo.mockResolvedValue(null);expect((await app().request('/filtros?fonte=animais')).status).toBe(422);
+ mocks.escopo.mockResolvedValue(null);expect((await app().request('/filtros?fonte=animais')).status).toBe(200);
 });
 it('recusa parâmetros nativos fora da fonte antes de consultar serviços',async()=>{
  const casos=[['perdas','tiposTentativa=IA'],['iep','tiposTentativa=IA'],['animais','papeis=RECEPTORA'],['ordenhas','corte=2026-10-27'],['espera','janelaPerdaDias=30'],['perdas','iepModo=TODOS_PARTOS'],['concepcoes','deslocamentoTeDias=0'],['tentativas','concepcaoEstimada=0']];

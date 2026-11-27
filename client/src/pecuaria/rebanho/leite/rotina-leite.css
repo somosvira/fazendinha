@@ -81,3 +81,6 @@
   padding: 0;
 }
 .leite-rotina-reformulada .leite-cabecalho-acoes[data-rotina="vendas"] .leite-configuracoes-acao > span { display: none; }
+.leite-producao-sitios{margin-top:24px;padding:24px;background:var(--card);border-radius:16px;min-width:0}
+.leite-producao-sitios h3{margin:0 0 12px;font-size:16px;font-weight:600}
+.leite-producao-escopo{margin-top:20px}

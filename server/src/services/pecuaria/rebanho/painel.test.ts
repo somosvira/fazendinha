@@ -80,4 +80,20 @@ describe("painel geral do rebanho", () => {
     for (const [args] of chamadas) expect(args?.where).toMatchObject({ tipo: { notIn: ["CADASTRO_INDEVIDO", "COMPRA_ESTORNADA"] } });
   });
 
+  it("descreve cada evento recente: origem do cadastro, tipo da saída, nome e sítio", async () => {
+    vi.mocked(prisma.animal.findMany).mockResolvedValueOnce([
+      { id: "a1", brinco: "1023", nome: "Mimosa", origem: "COMPRADO", criadoEm: new Date("2026-10-10T12:00:00Z"), localizacoes: [{ propriedade: { nome: "Sede" } }] },
+    ] as never);
+    vi.mocked(prisma.baixaAnimal.findMany)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ animalId: "a2", tipo: "VENDA", data: new Date("2026-10-09T12:00:00Z"), criadoEm: new Date("2026-10-11T12:00:00Z"), animal: { brinco: "0981", nome: null }, localizacaoFechada: { propriedade: { nome: "Arrendado" } } }] as never)
+      .mockResolvedValueOnce([{ animalId: "a3", tipo: "MORTE", estornadaEm: new Date("2026-10-12T12:00:00Z"), animal: { brinco: "0982", nome: null }, localizacaoFechada: null }] as never);
+    const { ultimosEventos } = await buscarPainelGeral(null);
+    expect(ultimosEventos).toEqual([
+      { tipo: "ESTORNO", animalId: "a3", brinco: "0982", nome: null, tipoBaixa: "MORTE", sitio: null, data: "2026-10-12" },
+      { tipo: "BAIXA", animalId: "a2", brinco: "0981", nome: null, tipoBaixa: "VENDA", sitio: "Arrendado", data: "2026-10-09" },
+      { tipo: "CADASTRO", animalId: "a1", brinco: "1023", nome: "Mimosa", origem: "COMPRADO", sitio: "Sede", data: "2026-10-10" },
+    ]);
+  });
+
 });

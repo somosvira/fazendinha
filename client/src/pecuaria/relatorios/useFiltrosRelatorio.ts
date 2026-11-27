@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react';
 import type {FonteId} from './catalogo';
 import {lerConfigUrl,normalizarConfigFiltros,type ConfigFiltrosRelatorio} from './filtros-templates';
-export function useFiltrosRelatorio(fonte:FonteId,propriedadeId:number){
+export function useFiltrosRelatorio(fonte:FonteId,propriedadeId:number|null){
  const chave=`${fonte}:${propriedadeId}`;
  const [estado,setEstado]=useState(()=>({chave,config:lerConfigUrl(fonte)}));
  useEffect(()=>{setEstado({chave,config:lerConfigUrl(fonte)});const sync=()=>setEstado({chave,config:lerConfigUrl(fonte)});window.addEventListener('popstate',sync);return()=>window.removeEventListener('popstate',sync)},[chave]);

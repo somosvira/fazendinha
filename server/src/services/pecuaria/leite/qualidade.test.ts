@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({
-  tx: { $executeRaw: vi.fn(), propriedade: { findUnique: vi.fn() },
+  tx: { $executeRaw: vi.fn(), propriedade: { findUnique: vi.fn(), findMany: vi.fn() },
     formatoQualidadeLeite: { findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), findUniqueOrThrow: vi.fn() },
     amostraQualidadeLeite: { findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
     resultadoQualidadeLeite: { updateMany: vi.fn(), createMany: vi.fn() },
@@ -101,8 +101,14 @@ describe("correção e consultas da qualidade", () => {
   });
   it("lista vazia conserva sítio resolvido e filtra por data/animal antes da paginação", async () => {
     m.tx.amostraQualidadeLeite.findMany.mockResolvedValue([]); m.tx.amostraQualidadeLeite.count.mockResolvedValue(0);
-    expect(await listarAmostrasQualidade(3, { animalId: uid(6), inicio: "2026-10-01", pagina: 2, tamanho: 10 })).toEqual({ propriedadeId: 3, itens: [], total: 0, pagina: 2, tamanho: 10 });
+    expect(await listarAmostrasQualidade(3, { animalId: uid(6), inicio: "2026-10-01", pagina: 2, tamanho: 10 })).toEqual({ propriedadeId: 3, consolidado: false, itens: [], total: 0, pagina: 2, tamanho: 10 });
     expect(m.tx.amostraQualidadeLeite.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { propriedadeId: 3, exameAnimal: { animalId: uid(6) }, data: { gte: new Date("2026-10-01") } }, skip: 10, take: 10 }));
+  });
+  it("Consolidado lista amostras de todos os sítios ativos com o nome do sítio", async () => {
+    m.tx.propriedade.findMany.mockResolvedValue([{ id: 3, nome: "Sede" }, { id: 4, nome: "Arrendado" }]);
+    m.tx.amostraQualidadeLeite.findMany.mockResolvedValue([]); m.tx.amostraQualidadeLeite.count.mockResolvedValue(0);
+    expect(await listarAmostrasQualidade(null, { pagina: 1, tamanho: 20 })).toMatchObject({ propriedadeId: null, consolidado: true, itens: [] });
+    expect(m.tx.amostraQualidadeLeite.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { propriedadeId: { in: [3, 4] } } }));
   });
   it("seletor inclui entradas consumidas sem deduzir saldo ou tanque", async () => {
     m.tx.entradaProducaoLeite.findMany.mockResolvedValue([]); m.tx.entradaProducaoLeite.count.mockResolvedValue(0);

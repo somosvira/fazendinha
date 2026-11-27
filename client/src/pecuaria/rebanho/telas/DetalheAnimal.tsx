@@ -363,8 +363,10 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
           <DadoFicha icon={Nfc} rotulo="Brinco eletrônico">{animal.brincoEletronico ?? "—"}</DadoFicha>
           <DadoFicha icon={Hash} rotulo="SISBOV">{animal.sisbov ?? "—"}</DadoFicha>
           <DadoFicha icon={animal.sexo === "F" ? Venus : Mars} rotulo="Sexo">{animal.sexo === "F" ? "Fêmea" : "Macho"}</DadoFicha>
-          <DadoFicha icon={Home} rotulo="Origem">{animal.origem === "NASCIDO" ? "Nascido na propriedade" : "Comprado"}</DadoFicha>
-          {animal.aquisicao && <DadoFicha icon={LogIn} rotulo="Comprado na">{<><LinkOperacao id={animal.aquisicao.operacaoId} numero={animal.aquisicao.numero} />{animal.aquisicao.status === "CANCELADA" ? " (cancelada)" : ""}</>}</DadoFicha>}
+          <DadoFicha icon={Home} rotulo="Origem">{animal.origem === "NASCIDO" ? "Nascido na propriedade" : animal.aquisicao && podeAcessarArea("financeiro")
+            // Com vínculo à compra, "Comprado" abre a operação exata; sem acesso ao Financeiro, fica o texto.
+            ? <><button type="button" onClick={() => navegarPara(linkOperacaoFinanceira(animal.aquisicao!.operacaoId))} className="break-words font-semibold text-mast hover:underline" aria-label={`Comprado · abrir a operação #${animal.aquisicao.numero}`}>Comprado</button>{animal.aquisicao.status === "CANCELADA" ? " (compra cancelada)" : ""}</>
+            : <>Comprado{animal.aquisicao?.status === "CANCELADA" ? " (compra cancelada)" : ""}</>}</DadoFicha>
           {animal.devolucao && <DadoFicha icon={ArchiveX} rotulo="Devolvido na"><LinkOperacao id={animal.devolucao.operacaoId} numero={animal.devolucao.numero} /></DadoFicha>}
           <DadoFicha icon={CalendarDays} rotulo="Nascimento">{formatarDataBR(animal.dataNascimento)}{animal.nascimentoEstimado ? " (estimado)" : ""}</DadoFicha>
           <DadoFicha icon={CalendarDays} rotulo={animal.idadeNaBaixa ? "Idade na baixa" : "Idade"}>{formatarIdade(animal.idadeMeses)}</DadoFicha>

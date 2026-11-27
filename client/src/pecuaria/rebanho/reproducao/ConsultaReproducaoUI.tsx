@@ -19,7 +19,7 @@ export function LinkReproducao({ href, sitio, children, botao = false, aoAbrir }
   }
   return botao ? <Button asChild variant="outline" className="reproducao-link-botao"><a href={destino} onClick={abrir}>{children}</a></Button> : <a href={destino} onClick={abrir} className="reproducao-identificacao">{children}</a>;
 }
-export function IdentificacaoReproducao({ id, brinco, nome, sitio }: { id: string; brinco: string | null; nome?: string | null; sitio: number }) {
+export function IdentificacaoReproducao({ id, brinco, nome, sitio }: { id: string; brinco: string | null; nome?: string | null; sitio?: number }) {
   return <LinkReproducao href={`/pecuaria/rebanho/animais/${id}#reproducao`} sitio={sitio}><strong>{brinco ?? "Sem brinco"}</strong>{nome && <span>{nome}</span>}</LinkReproducao>;
 }
 export function CartaoProtocoloReprodutivo({ grupo: p, sitio, aoAbrir }: { grupo: CabecalhoProtocolo; sitio?: number; aoAbrir: () => void }) {

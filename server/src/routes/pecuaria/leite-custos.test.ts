@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { beforeEach, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ consultar: vi.fn(), resolver: vi.fn() }));
+const m = vi.hoisted(() => ({ consultar: vi.fn(), consolidado: vi.fn(), resolver: vi.fn() }));
 vi.mock("../../services/pecuaria/leite/custos.js", () => ({
   consultarCustosLeite: m.consultar,
+  consultarCustosLeiteConsolidado: m.consolidado,
 }));
 vi.mock("../../services/propriedade.js", async (original) => ({
   ...(await original<typeof import("../../services/propriedade.js")>()),
@@ -46,10 +47,12 @@ it("autoriza exportação no servidor e mantém máscara financeira independente
   );
   expect(m.consultar).toHaveBeenLastCalledWith(2, expect.anything(), true);
 });
-it("consulta comum continua independente da permissão de exportar e exige sítio", async () => {
+it("consulta comum continua independente da permissão de exportar e soma os sítios em Consolidado", async () => {
   expect((await app([]).request(`/?${periodo}`)).status).toBe(200);
   m.resolver.mockResolvedValue(null);
-  expect((await app([]).request(`/?${periodo}`)).status).toBe(422);
+  m.consolidado.mockResolvedValue({ escopoConsolidado: true });
+  expect((await app([]).request(`/?${periodo}`)).status).toBe(200);
+  expect(m.consolidado).toHaveBeenCalledTimes(1);
   expect(
     (await app(["exportar"], ["financeiro"]).request(`/exportacao?${periodo}`))
       .status,

@@ -4,7 +4,8 @@ import { CampoFiltro } from "../../../financeiro/PainelFiltros";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
 import { classeInput } from "../../../financeiro/PainelCadastro";
-import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 import { dateFromIso } from "../../../components/DateRangePicker";
 import { getHojeISO } from "../../../lib/hoje";
 import { usePeriodoConsulta } from "./periodo-consulta";
@@ -20,7 +21,9 @@ function lerCriterios(): Criterios {
   const lista = (chave: string, permitidos: string[]) => (p.get(chave)?.split(",") ?? []).filter(v=>permitidos.includes(v));
   return { lote:p.get("indicadoresLote")??"", tipos:lista("indicadoresTipos",["IA","TE","COBERTURA"]), papeis:lista("indicadoresPapeis",["NENHUM","DOADORA","RECEPTORA"]), te:p.get("indicadoresTe")??"7", estimativa:p.get("indicadoresEstimativa")??"", perdas:p.get("indicadoresPerdas")??"", iep:p.get("indicadoresIep")==="TODOS_PARTOS"?"TODOS_PARTOS":"VIVOS_NATIMORTOS" };
 }
-export function ConsultaIndicadoresOperacionais({ propriedadeId }: { propriedadeId: number }) {
+/** `propriedadeId` null = Consolidado: soma as contagens dos sítios e recalcula as taxas. */
+const pct=(v:number|null)=>v==null?"—":`${v.toLocaleString("pt-BR",{maximumFractionDigits:1})}%`;
+export function ConsultaIndicadoresOperacionais({ propriedadeId }: { propriedadeId: number | null }) {
   const periodo = usePeriodoConsulta("indicadores-mensal");
   const [criterios,setCriterios] = useState(lerCriterios);
   const [snapshot,setSnapshot] = useState<SnapshotIndicadoresReprodutivos|null>(null);
@@ -30,14 +33,14 @@ export function ConsultaIndicadoresOperacionais({ propriedadeId }: { propriedade
   const [carregando,setCarregando] = useState(true);
   const [revisao,setRevisao] = useState(0);
   useEffect(()=>{const restaurar=()=>setCriterios(c=>{const v=lerCriterios();return JSON.stringify(c)===JSON.stringify(v)?c:v;});window.addEventListener("popstate",restaurar);return()=>window.removeEventListener("popstate",restaurar);},[]);
-  useEffect(()=>{let ativo=true;setLotes([]);setErroLotes(null);void reqV4<Array<{id:string;nome:string}>>(`/lotes?propriedadeId=${propriedadeId}`,undefined,"GET",propriedadeId).then(v=>{if(ativo)setLotes(v);}).catch(()=>{if(ativo)setErroLotes("Lotes indisponíveis. Você pode consultar sem esse filtro.");});return()=>{ativo=false;};},[propriedadeId]);
+  useEffect(()=>{let ativo=true;setLotes([]);setErroLotes(null);if(propriedadeId==null)return;void reqV4<Array<{id:string;nome:string}>>(`/lotes?propriedadeId=${propriedadeId}`,undefined,"GET",propriedadeId).then(v=>{if(ativo)setLotes(v);}).catch(()=>{if(ativo)setErroLotes("Lotes indisponíveis. Você pode consultar sem esse filtro.");});return()=>{ativo=false;};},[propriedadeId]);
   const edicao = useRascunhoConsulta(criterios,padrao,v=>{
     setCriterios(v);const url=new URL(window.location.href);
     for(const [k,value] of Object.entries({Lote:v.lote,Tipos:v.tipos.join(","),Papeis:v.papeis.join(","),Te:v.te,Estimativa:v.estimativa,Perdas:v.perdas,Iep:v.iep})) value?url.searchParams.set(`indicadores${k}`,value):url.searchParams.delete(`indicadores${k}`);
     window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);
   });
   useEffect(()=>{let ativo=true;setCarregando(true);setErro(null);setSnapshot(null);
-    const f:FiltrosIndicadores={propriedadeId,inicio:periodo.inicio,fim:periodo.fim,corte:getHojeISO(),deslocamentoTeDias:Number(criterios.te||7),iepModo:criterios.iep as FiltrosIndicadores["iepModo"],...(criterios.lote?{loteId:criterios.lote}:{}),...(criterios.tipos.length?{tiposTentativa:criterios.tipos as FiltrosIndicadores["tiposTentativa"]}:{}),...(criterios.papeis.length?{papeis:criterios.papeis as FiltrosIndicadores["papeis"]}:{}),...(criterios.estimativa!==""?{concepcaoEstimada:Number(criterios.estimativa)}:{}),...(criterios.perdas!==""?{janelaPerdaDias:Number(criterios.perdas)}:{})};
+    const f:FiltrosIndicadores={...(propriedadeId!=null?{propriedadeId}:{}),inicio:periodo.inicio,fim:periodo.fim,corte:getHojeISO(),deslocamentoTeDias:Number(criterios.te||7),iepModo:criterios.iep as FiltrosIndicadores["iepModo"],...(criterios.lote?{loteId:criterios.lote}:{}),...(criterios.tipos.length?{tiposTentativa:criterios.tipos as FiltrosIndicadores["tiposTentativa"]}:{}),...(criterios.papeis.length?{papeis:criterios.papeis as FiltrosIndicadores["papeis"]}:{}),...(criterios.estimativa!==""?{concepcaoEstimada:Number(criterios.estimativa)}:{}),...(criterios.perdas!==""?{janelaPerdaDias:Number(criterios.perdas)}:{})};
     void consultarIndicadores(f).then(v=>{if(ativo)setSnapshot(v);}).catch(e=>{if(ativo)setErro(e instanceof Error?e.message:"Não foi possível consultar os indicadores.");}).finally(()=>{if(ativo)setCarregando(false);});return()=>{ativo=false;};
   },[propriedadeId,periodo.inicio,periodo.fim,criterios,revisao]);
   function remover<K extends keyof Criterios>(campo: K, chave: string) {
@@ -74,6 +77,13 @@ export function ConsultaIndicadoresOperacionais({ propriedadeId }: { propriedade
     {periodo.aviso&&<p role="status" className="text-sm">{periodo.aviso}</p>}{erroLotes&&<p role="status" className="text-sm">{erroLotes}</p>}
     <ErrorBox erro={erro}/>{erro&&<Button secondary onClick={()=>setRevisao(v=>v+1)}>Tentar novamente</Button>}
     {carregando&&<EsqueletoPainel label="Carregando indicadores" />}
-    {!carregando&&snapshot?.filtros.propriedadeId===propriedadeId&&<PainelIndicadores key={JSON.stringify(snapshot.filtros)} snapshot={snapshot}/>}
+    {!carregando&&snapshot&&(propriedadeId==null?snapshot.escopoConsolidado:snapshot.filtros.propriedadeId===propriedadeId)&&<PainelIndicadores key={JSON.stringify(snapshot.filtros)} snapshot={snapshot}/>}
+    {!carregando&&propriedadeId==null&&snapshot?.porSitio&&<Panel className="overflow-hidden"><TabelaFinanceira icone={ICONES_TABELA.sitio} rotulo="Indicadores por sítio" itens={snapshot.porSitio} chaveDe={s=>s.propriedadeId} colunas={[
+      {chave:"sitio",titulo:"Sítio",principal:true,celula:s=>s.nome},
+      {chave:"elegiveis",titulo:"Elegíveis",alinhamento:"direita",celula:s=>s.contagens.elegiveis??"—"},
+      {chave:"servico",titulo:"Taxa de serviço",alinhamento:"direita",celula:s=>pct(s.taxas.servico)},
+      {chave:"concepcao",titulo:"Concepção",alinhamento:"direita",celula:s=>pct(s.taxas.concepcao)},
+      {chave:"prenhez",titulo:"Prenhez",alinhamento:"direita",celula:s=>pct(s.taxas.prenhez)},
+    ]}/></Panel>}
   </section>;
 }

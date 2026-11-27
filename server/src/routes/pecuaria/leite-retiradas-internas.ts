@@ -1,3 +1,5 @@
+import { prisma } from "../../db.js";
+import { sitioDoRegistro } from "./escopo-registro.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
@@ -20,8 +22,8 @@ function falha(c: Context, erro: unknown) {
 }
 const autor = (c: Context) => { const id = getUsuario(c)?.id; return id != null && id > 0 ? id : null; };
 export const leiteRetiradasInternasRouter = new Hono().use("*", exigeArea("pecuaria"))
-  .get("/retiradas-internas", async c => { try { return c.json(await retiradas.listarRetiradasInternasLeite(await sitio(c), consultaRetiradasInternasLeiteSchema.parse(c.req.query()))); } catch (e) { return falha(c, e); } })
-  .get("/retiradas-internas/:id", async c => { try { return c.json(await retiradas.obterRetiradaInternaLeite(z.string().uuid().parse(c.req.param("id")), await sitio(c))); } catch (e) { return falha(c, e); } })
+  .get("/retiradas-internas", async c => { try { return c.json(await retiradas.listarRetiradasInternasLeite(await resolverEscopoLeitura(c), consultaRetiradasInternasLeiteSchema.parse(c.req.query()))); } catch (e) { return falha(c, e); } })
+  .get("/retiradas-internas/:id", async c => { try { return c.json(await retiradas.obterRetiradaInternaLeite(z.string().uuid().parse(c.req.param("id")), await sitioDoRegistro(c, () => prisma.retiradaInternaLeite.findUnique({ where: { id: z.string().uuid().parse(c.req.param("id")) }, select: { propriedadeId: true } }), "Retirada interna"))); } catch (e) { return falha(c, e); } })
   .post("/retiradas-internas", exigePermissao("lancar"), validar(retiradaInternaLeiteSchema), async c => {
     try { const input = c.req.valid("json"), propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId); return c.json(await retiradas.registrarRetiradaInternaLeite({ ...input, propriedadeId }, autor(c)), 201); } catch (e) { return falha(c, e); }
   })

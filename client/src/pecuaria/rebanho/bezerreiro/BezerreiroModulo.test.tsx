@@ -5,7 +5,9 @@ import { BezerreiroModulo } from './BezerreiroModulo';
 import { AcompanhamentoBezerreiro } from './AcompanhamentoBezerreiro';
 import { consultarBezerreiro } from './api';
 import { setPropriedadeAtiva } from '../../../propriedadeScope';
+import { listarPropriedades } from '../../../api/propriedades';
 import type { AcompanhamentoAnimal, Configuracao, Participacao } from './types';
+vi.mock('../../../api/propriedades',()=>({listarPropriedades:vi.fn(async()=>[])}));
 vi.mock('./api',async()=>({...await vi.importActual<typeof import('./api')>('./api'),consultarBezerreiro:vi.fn()}));
 const config:Configuracao={vigente:null,coleiras:[],fases:[],perfis:[]};
 beforeEach(()=>{vi.clearAllMocks();setPropriedadeAtiva(1);history.replaceState(null,'','/pecuaria/bezerreiro?coleira=coleira-a&fase=fase-v1&historico=true');});
@@ -42,5 +44,39 @@ describe('Bezerreiro: consultas e acessos',()=>{
     expect(screen.getByText(/Saída após desmame/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Alterar fase'})).toBeNull();
     expect(screen.queryByRole('button',{name:'Movimentar animal'})).toBeNull();
+  });
+});
+describe('Bezerreiro em Consolidado',()=>{
+  const participacao=(sitio:{id:number;nome:string})=>({id:`p${sitio.id}`,animalId:`a${sitio.id}`,animal:{id:`a${sitio.id}`,brinco:`B-${sitio.id}`,nome:`Bezerra ${sitio.id}`,dataNascimento:'2026-10-01'},perfilId:'perfil',perfil:{id:'perfil',loteId:'l',ativo:true,lote:{id:'l',nome:'Bezerreiro'},propriedade:sitio},desde:'2026-10-01',ate:null,motivoSaida:null,versao:1,fases:[]}) as unknown as Participacao;
+  it('com vários sítios lista bezerros de todos com a coluna Sítio e sem registrar; Acompanhar troca para o sítio do bezerro',async()=>{
+    setPropriedadeAtiva(null);history.replaceState(null,'','/pecuaria/bezerreiro?aba=animais');
+    vi.mocked(listarPropriedades).mockResolvedValue([{id:1,nome:'Sede',ativo:true},{id:2,nome:'Arrendado',ativo:true}] as never);
+    vi.mocked(consultarBezerreiro).mockImplementation(async()=>({itens:[participacao({id:2,nome:'Arrendado'})],total:1,pagina:1,porPagina:20}));
+    const selecionar=vi.fn();
+    render(<BezerreiroModulo podeLancar onSelecionarSitio={selecionar}/>);
+    expect(await screen.findByText('Arrendado')).toBeTruthy();
+    expect(screen.getByRole('columnheader',{name:'Sítio'})).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Regularizar participação'})).toBeNull();
+    expect(vi.mocked(consultarBezerreiro).mock.calls.every(([path,sitio])=>path!=='/configuracoes'&&sitio===null)).toBe(true);
+    fireEvent.click(screen.getByRole('button',{name:'Acompanhar'}));
+    expect(selecionar).toHaveBeenCalledWith(2);
+  });
+  it('Sanidade em Consolidado mostra a coluna Sítio e abrir o bezerro troca para o sítio dele',async()=>{
+    setPropriedadeAtiva(null);history.replaceState(null,'','/pecuaria/bezerreiro?aba=sanidade');
+    vi.mocked(listarPropriedades).mockResolvedValue([{id:1,nome:'Sede',ativo:true},{id:2,nome:'Arrendado',ativo:true}] as never);
+    vi.mocked(consultarBezerreiro).mockImplementation(async()=>({itens:[{id:'f1',animalId:'a2',brinco:'B-2',nome:'Bezerra 2',tipo:'EXAME',data:'2026-10-05',status:'VALIDO',descricao:'PTS',propriedadeId:2,sitio:'Arrendado'}],total:1,pagina:1,porPagina:20}));
+    const selecionar=vi.fn();
+    render(<BezerreiroModulo podeLancar onSelecionarSitio={selecionar}/>);
+    expect(await screen.findByText('Arrendado')).toBeTruthy();
+    expect(screen.getByRole('columnheader',{name:'Sítio'})).toBeTruthy();
+    fireEvent.click(screen.getByRole('button',{name:'B-2 · Bezerra 2'}));
+    expect(selecionar).toHaveBeenCalledWith(2);
+  });
+  it('com um único sítio entrega o sítio ao shell em vez de consolidar',async()=>{
+    setPropriedadeAtiva(null);history.replaceState(null,'','/pecuaria/bezerreiro?aba=animais');
+    vi.mocked(listarPropriedades).mockResolvedValue([{id:1,nome:'Sede',ativo:true}] as never);
+    const selecionar=vi.fn();
+    render(<BezerreiroModulo podeLancar onSelecionarSitio={selecionar}/>);
+    await waitFor(()=>expect(selecionar).toHaveBeenCalledWith(1));
   });
 });

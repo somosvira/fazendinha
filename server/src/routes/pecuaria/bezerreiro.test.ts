@@ -5,7 +5,10 @@ vi.mock('../../services/pecuaria/bezerreiro/gestao.js',()=>({consultarConfigurac
 vi.mock('../../services/pecuaria/bezerreiro/aleitamento.js',()=>({consultarPrevisao:vi.fn(),consultarOfertas:vi.fn(async(_p,_q,verValores)=>({itens:[],verValores})),confirmarOferta:vi.fn(async()=>({id:'oferta'})),estornarOferta:vi.fn()}));
 vi.mock('../../services/pecuaria/bezerreiro/consultas.js',()=>({consultarPartosColostro:vi.fn(async()=>({itens:[],total:0,pagina:1,porPagina:20,selecionado:null})),consultarContexto:vi.fn(),consultarCustosBezerreiro:vi.fn(async(_p,_q,verValores)=>({totalConhecido:verValores?'12.00':null})),consultarSanidade:vi.fn(),consultarAcompanhamento:vi.fn(),vincularExame:vi.fn()}));
 vi.mock('../../services/pecuaria/bezerreiro/colostro.js',()=>({listarHistoricoColostro:vi.fn(async()=>({itens:[],total:0,pagina:1,tamanho:30})),listarFornecimentosColostro:vi.fn(async()=>({itens:[],total:0,pagina:1,porPagina:20})),listarRetiradasColostro:vi.fn(),listarOrigensColostro:vi.fn(),consultarOrigemColostro:vi.fn(),registrarRetiradaColostro:vi.fn(),confirmarRetiradaColostro:vi.fn(),registrarBrixColostro:vi.fn(),destinarColostro:vi.fn(),consultarDestinacaoColostro:vi.fn(),enriquecerColostro:vi.fn(),consultarPreparoColostro:vi.fn(),estornarDestinacaoColostro:vi.fn(),estornarPreparoColostro:vi.fn(),estornarRetiradaColostro:vi.fn(),listarProducoesRetiradaColostro:vi.fn()}));
+vi.mock('../../db.js',()=>({prisma:{propriedade:{findMany:vi.fn(async()=>[{id:7},{id:8}])}}}));
 import { bezerreiroRouter } from './bezerreiro.js';
+import { resolverEscopoLeitura } from '../../services/propriedade.js';
+import { listarParticipantes } from '../../services/pecuaria/bezerreiro/gestao.js';
 import { registrarPerfil, cancelarFase } from '../../services/pecuaria/bezerreiro/gestao.js';
 import { consultarPartosColostro } from '../../services/pecuaria/bezerreiro/consultas.js';
 import { listarHistoricoColostro, listarFornecimentosColostro } from '../../services/pecuaria/bezerreiro/colostro.js';
@@ -41,4 +44,12 @@ describe('contrato público Bezerreiro',()=>{
   expect(cancelarFase).toHaveBeenCalledWith(perfil,perfil,{...dados,propriedadeId:7},3);
  });
 
+});
+
+it('em Consolidado lista participantes de todos os sítios ativos e mantém Alimentação por sítio',async()=>{
+ vi.mocked(resolverEscopoLeitura).mockResolvedValueOnce(null);
+ expect((await app().request('/participantes')).status).toBe(200);
+ expect(listarParticipantes).toHaveBeenLastCalledWith({in:[7,8]},expect.anything());
+ vi.mocked(resolverEscopoLeitura).mockResolvedValueOnce(null);
+ expect((await app().request('/ofertas')).status).toBe(422);
 });

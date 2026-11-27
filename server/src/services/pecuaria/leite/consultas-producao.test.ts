@@ -1,12 +1,12 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ estadoPopulacao: "ELEGIVEIS", count: vi.fn(), dias: vi.fn(), folha: vi.fn(), gerais: vi.fn() }));
-vi.mock("../../../db.js", () => ({ prisma: { $transaction: async (f: (tx: unknown) => unknown) => f({ medicaoLeite: { count: m.count }, diaProducaoLeite: { findMany: m.dias } }) } }));
+const m = vi.hoisted(() => ({ estadoPopulacao: "ELEGIVEIS", count: vi.fn(), dias: vi.fn(), folha: vi.fn(), gerais: vi.fn(), sitios: vi.fn() }));
+vi.mock("../../../db.js", () => ({ prisma: { $transaction: async (f: (tx: unknown) => unknown) => f({ medicaoLeite: { count: m.count }, diaProducaoLeite: { findMany: m.dias }, propriedade: { findMany: m.sitios } }) } }));
 vi.mock("./producao.js", () => ({ folhaLeiteDTO: m.folha }));
 vi.mock("./populacao-periodo.js", () => ({ consultarPopulacaoPeriodoLeiteTx: async (_tx: unknown, _id: number, inicio: string, fim: string) => {
   const dias = []; for(let t=Date.parse(inicio);t<=Date.parse(fim);t+=86400000) dias.push({data:new Date(t).toISOString().slice(0,10),estado:m.estadoPopulacao,elegiveis:[],pendentes:[]}); return dias;
 } }));
 vi.mock("./producao-geral-consulta.js", () => ({ linhasProducaoGeralTx: m.gerais }));
-import { consultarProducaoLeite } from "./consultas-producao.js";
+import { combinarEstadosDia, consultarProducaoLeite } from "./consultas-producao.js";
 const filtro = { inicio: "2026-10-31", fim: "2026-11-01", pagina: 1, tamanho: 1 };
 beforeEach(() => {
   vi.resetAllMocks(); m.estadoPopulacao="ELEGIVEIS"; m.gerais.mockResolvedValue([]); m.count.mockResolvedValue(3); m.dias.mockResolvedValue(["outubro", "novembro"]);
@@ -77,4 +77,25 @@ it("aferição geral exige origem explícita em cada parcela medida para contar 
   m.gerais.mockResolvedValue([{ ...base, animaisOrigem: ["a", "b"] }, { ...base, animaisOrigem: [] }]);
   const desconhecido = await consultarProducaoLeite(2, { ...filtro, fim: filtro.inicio });
   expect(desconhecido.grupos[0]).toMatchObject({ vacasOrdenhadas: null, mediaPorVaca: null });
+});
+
+it("Consolidado soma os sítios ativos, agrupa turnos pelo nome e informa a produção por sítio", async () => {
+  m.sitios.mockResolvedValue([{ id: 2, nome: "Sede" }, { id: 3, nome: "Arrendado" }]);
+  m.dias.mockImplementation(async ({ where }: { where: { propriedadeId: number } }) => where.propriedadeId === 2 ? ["outubro", "novembro"] : ["outubro"]);
+  const r = await consultarProducaoLeite(null, filtro);
+  expect(r.consolidado).toBe(true);
+  expect(r.totais.litros).toBe(40);
+  expect(r.ordenhas).toHaveLength(1);
+  expect(r.ordenhas[0].nome).toBe("Manhã");
+  expect("porSitio" in r && r.porSitio.map(s => [s.nome, s.litros])).toEqual([["Sede", 30], ["Arrendado", 10]]);
+  // 01/11: um sítio parcial e outro sem folha → o dia consolidado fica parcial.
+  expect(r.ritmo.map(d => [d.data, d.litros, d.estado])).toEqual([["2026-10-31", 20, "PARCIAL"], ["2026-11-01", 20, "PARCIAL"]]);
+  expect(r.grupos.every(g => g.turnos.length === 1)).toBe(true);
+});
+it("dia consolidado só é completo quando todo sítio com animais está completo", () => {
+  expect(combinarEstadosDia(["COMPLETA", "SEM_ANIMAIS_ELEGIVEIS"])).toBe("COMPLETA");
+  expect(combinarEstadosDia(["COMPLETA", "SEM_FOLHA"])).toBe("PARCIAL");
+  expect(combinarEstadosDia(["COMPLETA", "FINALIDADE_PENDENTE"])).toBe("FINALIDADE_PENDENTE");
+  expect(combinarEstadosDia(["SEM_FOLHA", "SEM_ANIMAIS_ELEGIVEIS"])).toBe("SEM_FOLHA");
+  expect(combinarEstadosDia(["SEM_ANIMAIS_ELEGIVEIS", "SEM_ANIMAIS_ELEGIVEIS"])).toBe("SEM_ANIMAIS_ELEGIVEIS");
 });

@@ -1,3 +1,4 @@
+import { escopoSitiosTx } from "./escopo-consolidado.js";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -90,8 +91,10 @@ export async function listarCriasDestino(propriedadeId: number, dataTexto: strin
         .map(f => ({ id: f.id, data: f.data.toISOString().slice(0, 10), quantidadeLitros: f.quantidadeLitros?.toNumber() ?? null })) }; }), total, pagina, porPagina: 10 };
   });
 }
-export async function listarDestinos(propriedadeId: number, filtro: ConsultaDestinosLeite) {
-  const where: Prisma.DestinoInternoLeiteWhereInput = { propriedadeId,
+/** `escopoId` null = Consolidado: destinos de todos os sítios ativos, com o nome do sítio. */
+export async function listarDestinos(escopoId: number | null, filtro: ConsultaDestinosLeite) {
+  const escopo = await escopoSitiosTx(prisma as unknown as Prisma.TransactionClient, escopoId);
+  const where: Prisma.DestinoInternoLeiteWhereInput = { propriedadeId: escopo.propriedadeId,
     ...(filtro.de || filtro.ate ? { data: { ...(filtro.de ? { gte: new Date(`${filtro.de}T00:00:00Z`) } : {}), ...(filtro.ate ? { lte: new Date(`${filtro.ate}T00:00:00Z`) } : {}) } } : {}),
     ...(filtro.animalId ? { parcelas: { some: { animalId: filtro.animalId } } } : {}),
     ...(filtro.busca ? { OR: [{ responsavel: { contains: filtro.busca, mode: "insensitive" } }, { observacao: { contains: filtro.busca, mode: "insensitive" } }, { parcelas: { some: { animal: { OR: [{ brinco: { contains: filtro.busca, mode: "insensitive" } }, { nome: { contains: filtro.busca, mode: "insensitive" } }] } } } }] } : {}) };
@@ -99,7 +102,7 @@ export async function listarDestinos(propriedadeId: number, filtro: ConsultaDest
     prisma.destinoInternoLeite.findMany({ where, include: incluirDestino, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], skip: (filtro.pagina - 1) * 20, take: 20 }),
     prisma.destinoInternoLeite.count({ where }),
   ]);
-  return { itens: itens.map(destinoLeiteDTO), total, pagina: filtro.pagina, porPagina: 20 };
+  return { consolidado: escopo.consolidado, itens: itens.map(d => ({ ...destinoLeiteDTO(d), ...(escopo.consolidado ? { sitio: escopo.nome(d.propriedadeId) } : {}) })), total, pagina: filtro.pagina, porPagina: 20 };
 }
 export async function consultarDestino(id: string, propriedadeId: number) {
   const destino = await prisma.destinoInternoLeite.findFirst({ where: { id, propriedadeId }, include: incluirDestino });

@@ -21,11 +21,13 @@ function idadeParticipante(p: Participacao) {
   return `${Math.max(0, dias)} dias`;
 }
 
-function abrirParticipante(p: Participacao) {
+function abrirParticipante(p: Participacao, aoSelecionarSitio?: (id: number) => void) {
+  // Em Consolidado, o acompanhamento é do sítio do bezerro: a sidebar passa para ele antes de abrir.
+  if (aoSelecionarSitio && p.perfil.propriedade) aoSelecionarSitio(p.perfil.propriedade.id);
   navegarPara(`/pecuaria/bezerreiro/animais/${p.animalId}`);
 }
 
-export function AnimaisBezerreiro({sitio,podeLancar,config,revisao,aoSalvar,params,mudar}: {sitio:number;podeLancar:boolean;config:Configuracao;revisao:number;aoSalvar:()=>void;params:URLSearchParams;mudar:(valores:Record<string,string>)=>void}) {
+export function AnimaisBezerreiro({sitio,podeLancar:podeLancarPerfil,config,revisao,aoSalvar,params,mudar,aoSelecionarSitio}: {aoSelecionarSitio?:(id:number)=>void;sitio:number|null;podeLancar:boolean;config:Configuracao;revisao:number;aoSalvar:()=>void;params:URLSearchParams;mudar:(valores:Record<string,string>)=>void}) {
   const [entrada,setEntrada]=useState(false), [busca,setBusca]=useState(params.get('busca')??'');
   // Busca enquanto digita, como as demais listas; a espera evita uma consulta por tecla.
   useEffect(()=>{if(busca===(params.get('busca')??''))return;const t=setTimeout(()=>mudar({busca,pagina:''}),300);return()=>clearTimeout(t);},[busca]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -33,7 +35,9 @@ export function AnimaisBezerreiro({sitio,podeLancar,config,revisao,aoSalvar,para
   const historico=params.get('historico')==='true', pagina=Math.max(1,Number(params.get('pagina'))||1);
   const rotulo = historico ? "Histórico de saídas do bezerreiro" : "Animais presentes no bezerreiro";
   const q=consultaBezerreiro({historico,pagina,busca:params.get('busca'),coleiraId:params.get('coleira'),faseVersaoId:params.get('fase'),perfilId:params.get('perfil')});
-  const consulta=useConsultaBezerreiro<Pagina<Participacao>>(`/participantes${q}`,sitio,revisao);
+  const consolidado=sitio==null,podeLancar=podeLancarPerfil&&!consolidado;
+  const consulta=useConsultaBezerreiro<Pagina<Participacao>>(`/participantes${q}`,sitio,revisao,consolidado);
+  const abrir=(p:Participacao)=>abrirParticipante(p,consolidado?aoSelecionarSitio:undefined);
   return <>
     <BarraConsulta acao={podeLancar&&!historico?<Button variant="outline" onClick={()=>setEntrada(true)}>Regularizar participação</Button>:undefined} criterios={[...(historico?[{id:'historico',rotulo:'Histórico de saídas',limpar:()=>mudar({historico:'',pagina:''})}]:[]),...(params.get('coleira')?[{id:'coleira',rotulo:`Coleira: ${config.coleiras.find(c=>c.id===params.get('coleira'))?.nome??'Selecionada'}`,limpar:()=>mudar({coleira:'',pagina:''})}]:[]),...(params.get('fase')?[{id:'fase',rotulo:`Fase: ${config.fases.find(c=>c.id===params.get('fase'))?.nome??'Selecionada'}`,limpar:()=>mudar({fase:'',pagina:''})}]:[])]} onLimpar={()=>mudar({coleira:'',fase:'',historico:'',busca:'',pagina:''})}
       edicaoFiltros={{iniciar:()=>setRascunho({coleira:params.get('coleira')??'',fase:params.get('fase')??'',historico:params.get('historico')??''}),aplicar:()=>mudar({...rascunho,pagina:''}),limpar:()=>setRascunho({coleira:'',fase:'',historico:''})}}
@@ -42,15 +46,16 @@ export function AnimaisBezerreiro({sitio,podeLancar,config,revisao,aoSalvar,para
     </BarraConsulta>
     <EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&(consulta.dados.total===0?<p className="bez-estado">{params.get('busca')||params.get('coleira')||params.get('fase')?'Nenhum animal corresponde aos filtros. Ajuste ou limpe os critérios.':historico?'Nenhuma saída registrada.':'Nenhum animal participa do bezerreiro neste sítio.'}</p>:<>{<TabelaFinanceira icone={ICONES_TABELA.animal} rotulo={rotulo} itens={consulta.dados.itens} chaveDe={p=>p.id} colunas={[
       {chave:'brinco',titulo:'Brinco',celula:p=>p.animal.brinco},
-      {chave:'nome',titulo:'Nome',principal:true,celula:p=><button className="bez-link" onClick={()=>abrirParticipante(p)}>{p.animal.nome??'Sem nome'}</button>},
+      {chave:'nome',titulo:'Nome',principal:true,celula:p=><button className="bez-link" onClick={()=>abrir(p)}>{p.animal.nome??'Sem nome'}</button>},
+      ...(consolidado?[{chave:'sitio',titulo:'Sítio',celula:(p:Participacao)=>p.perfil.propriedade?.nome??'—'}]:[]),
       ...(historico?[{chave:'entrada',titulo:'Entrada',celula:(p:Participacao)=>formatarDataBR(p.desde)},{chave:'saida',titulo:'Saída',celula:(p:Participacao)=>p.ate?formatarDataBR(p.ate):'—'},{chave:'motivo',titulo:'Motivo',celula:(p:Participacao)=>p.motivoSaida??'Não informado'}]:[
         {chave:'idade',titulo:'Idade',celula:idadeParticipante},
         {chave:'fase',titulo:'Fase',celula:(p:Participacao)=>faseParticipacao(p)?.nome??'Sem programação'},
         {chave:'coleira',titulo:'Coleira',celula:(p:Participacao)=><ColeiraBadge nome={faseParticipacao(p)?.coleira?.nome} cor={faseParticipacao(p)?.coleira?.cor}/>},
         {chave:'leite',titulo:'Leite/dia',alinhamento:'direita' as const,celula:(p:Participacao)=>litros(faseParticipacao(p)?.litrosDia)},
       ]),
-      {chave:'acao',titulo:'Ação',acoes:true,celula:p=><Button variant="outline" onClick={()=>abrirParticipante(p)}>{historico?'Ver histórico':'Acompanhar'}</Button>},
+      {chave:'acao',titulo:'Ação',acoes:true,celula:p=><Button variant="outline" onClick={()=>abrir(p)}>{historico?'Ver histórico':'Acompanhar'}</Button>},
     ]}/>}<PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} mudar={p=>mudar({pagina:String(p)})}/></>)}</EstadoConsulta>
-    {entrada&&<RegularizarParticipacao sitio={sitio} config={config} aoFechar={()=>setEntrada(false)} aoSalvar={()=>{setEntrada(false);aoSalvar();}}/>}
+    {entrada&&sitio!=null&&<RegularizarParticipacao sitio={sitio} config={config} aoFechar={()=>setEntrada(false)} aoSalvar={()=>{setEntrada(false);aoSalvar();}}/>}
   </>;
 }

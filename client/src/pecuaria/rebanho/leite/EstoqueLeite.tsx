@@ -30,12 +30,15 @@ function DetalheEstoqueLeite({
   podeLancar,
   podeFinanceiro,
   produtoInicial,
+  propriedadeId,
 }: {
   podeLancar: boolean;
   podeFinanceiro: boolean;
   produtoInicial: string;
+  /** Sítio da linha consultada; em Consolidado vem da própria linha, não da sidebar. */
+  propriedadeId?: number;
 }) {
-  const sitio = getPropriedadeAtiva();
+  const sitio = propriedadeId ?? getPropriedadeAtiva();
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]),
     [produto, setProduto] = useState(produtoInicial);
   const [data, setData] = useState(hojeOperacional),
@@ -492,8 +495,8 @@ function DetalheEstoqueLeite({
   );
 }
 
-interface ItemResumoEstoque { produtoId: string; nome: string; quantidadeLitros: string | null; comercial: { quantidadeLitros: string | null }; classificacaoPendenteLitros?: string | null; custoPendenteLitros?: string | null; descarteLitros: string | null; colostroLitros: string | null; estadoValor: string; valorTotal: string | null; confiavel: boolean }
-interface ResumoEstoque { resumo: { classificacaoPendenteLitros?: string | null; custoPendenteLitros?: string | null; estadoValor?: string; quantidadeLitros: string | null; comercial: { quantidadeLitros: string | null }; descarteLitros: string | null; colostroLitros: string | null; produtosSemLastro: number }; itens: ItemResumoEstoque[]; total: number; pagina: number; porPagina: number }
+interface ItemResumoEstoque { produtoId: string; nome: string; propriedadeId?: number; sitio?: string; quantidadeLitros: string | null; comercial: { quantidadeLitros: string | null }; classificacaoPendenteLitros?: string | null; custoPendenteLitros?: string | null; descarteLitros: string | null; colostroLitros: string | null; estadoValor: string; valorTotal: string | null; confiavel: boolean }
+interface ResumoEstoque { consolidado?: boolean; resumo: { classificacaoPendenteLitros?: string | null; custoPendenteLitros?: string | null; estadoValor?: string; quantidadeLitros: string | null; comercial: { quantidadeLitros: string | null }; descarteLitros: string | null; colostroLitros: string | null; produtosSemLastro: number }; itens: ItemResumoEstoque[]; total: number; pagina: number; porPagina: number }
 const litrosResumo = (v: string | null) => formatarLitros(v === null ? null : Number(v));
 export function EstoqueLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolean; podeFinanceiro: boolean }) {
   const sitio = getPropriedadeAtiva();
@@ -502,19 +505,20 @@ export function EstoqueLeite({ podeLancar, podeFinanceiro }: { podeLancar: boole
   const [selecionado, setSelecionado] = useState<ItemResumoEstoque | null>(null);
   const [confirmacao, setConfirmacao] = useState(false);
   useEffect(() => { let ativo = true; setDados(null); setErro(""); void consultarLeite<ResumoEstoque>(`/estoque/resumo?${new URLSearchParams({ busca, pagina: String(pagina), porPagina: "20" })}`, sitio).then(r => { if (ativo) setDados(r); }).catch(e => { if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível consultar o estoque."); }); return () => { ativo = false; }; }, [sitio, busca, pagina, revisao]);
-  return <section className="leite-operacoes leite-consultas"><CabecalhoRotinaLeite titulo="Estoque de leite" rotuloAjuda="Sobre estoque de leite" acao={podeLancar ? <Button onClick={() => setConfirmacao(true)}><ClipboardCheck size={17} aria-hidden />Confirmar produção individual</Button> : undefined} />
+  return <section className="leite-operacoes leite-consultas"><CabecalhoRotinaLeite titulo="Estoque de leite" rotuloAjuda="Sobre estoque de leite" acao={podeLancar && dados?.consolidado !== true ? <Button onClick={() => setConfirmacao(true)}><ClipboardCheck size={17} aria-hidden />Confirmar produção individual</Button> : undefined} />
     <BarraConsulta><BuscaLista rotulo="Buscar produto" placeholder="Buscar produto de leite" valor={busca} onChange={v => { setBusca(v); setPagina(1); }} /></BarraConsulta>
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando estoque…</p> : <>
       <ResumoEstoqueVisual resumo={dados.resumo}/>
       {dados.resumo.produtosSemLastro > 0 && <p role="status">Há produtos com saldo sem lastro conciliado.</p>}
-      <ListaConsultaLeite icone={Milk} rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
+      <ListaConsultaLeite icone={Milk} rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => `${i.propriedadeId ?? ""}:${i.produtoId}`} colunas={[
         { chave: "produto", titulo: "Produto", principal: true, celula: i => i.nome },
+        ...(dados.consolidado ? [{ chave: "sitio", titulo: "Sítio", celula: (i: ItemResumoEstoque) => i.sitio ?? "—" }] : []),
         { chave: "saldo", titulo: "Saldo físico", alinhamento: "direita", celula: i => litrosResumo(i.quantidadeLitros) },
         { chave: "comercial", titulo: "Comercial", alinhamento: "direita", celula: i => litrosResumo(i.comercial.quantidadeLitros) },
         { chave: "valor", titulo: "Valor", alinhamento: "direita", celula: i => i.estadoValor === "OCULTO" ? "Restrito" : i.valorTotal === null ? "Sem valor" : Number(i.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) },
         { chave: "acao", titulo: "Ações", celula: i => <Button variant="outline" onClick={() => setSelecionado(i)}>Ver origens</Button> },
       ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação do estoque de leite" substantivo="produtos" idSelect="pagina-estoque-leite" onPagina={setPagina} />} />
     </>}
-    <Dialog open={!!selecionado || confirmacao} onOpenChange={v => { if (!v) { setSelecionado(null); setConfirmacao(false); setRevisao(r => r + 1); } }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>{confirmacao ? "Confirmar produção individual" : "Origens e operações"}</DialogTitle></DialogHeader>{(selecionado || confirmacao) && <DetalheEstoqueLeite key={selecionado?.produtoId ?? "confirmar"} produtoInicial={selecionado?.produtoId ?? ""} podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />}</DialogContent></Dialog>
+    <Dialog open={!!selecionado || confirmacao} onOpenChange={v => { if (!v) { setSelecionado(null); setConfirmacao(false); setRevisao(r => r + 1); } }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>{confirmacao ? "Confirmar produção individual" : "Origens e operações"}</DialogTitle></DialogHeader>{(selecionado || confirmacao) && <DetalheEstoqueLeite key={selecionado ? `${selecionado.propriedadeId ?? ""}:${selecionado.produtoId}` : "confirmar"} produtoInicial={selecionado?.produtoId ?? ""} propriedadeId={selecionado?.propriedadeId} podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />}</DialogContent></Dialog>
   </section>;
 }

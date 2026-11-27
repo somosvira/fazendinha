@@ -76,7 +76,8 @@ export function OperacoesComerciaisLeite({
       return;
     }
     void Promise.all([
-      consultarLeite<typeof dados>(
+      // No modo integrado só o detalhe é exibido: a lista do período não é consultada.
+      integrado ? Promise.resolve(null) : consultarLeite<typeof dados>(
         `/comercial/operacoes?${new URLSearchParams({ de, ate, pagina: String(pagina) })}`,
         sitio,
       ),
@@ -126,12 +127,12 @@ export function OperacoesComerciaisLeite({
   useEffect(() => {
     let ativa = true;
     setDetalheExterno(null);
-    if (!selecionada || !dados || dados.itens.some(o => o.id === selecionada)) return;
+    if (!selecionada || (!integrado && !dados) || dados?.itens.some(o => o.id === selecionada)) return;
     void consultarLeite<OperacaoComercialLeiteDTO>(`/comercial/operacoes/${selecionada}`, sitio)
       .then(o => { if (ativa) setDetalheExterno(o); })
       .catch(e => { if (ativa) setErro(e instanceof Error ? e.message : "Não foi possível abrir a operação selecionada"); });
     return () => { ativa = false; };
-  }, [selecionada, dados, sitio]);
+  }, [selecionada, dados, sitio, integrado]);
   const o = dados?.itens.find((o) => o.id === selecionada) ?? detalheExterno,
     escopo = sitio ?? dados?.propriedadeId ?? null;
   function atualizar(id: string | null = selecionada) {

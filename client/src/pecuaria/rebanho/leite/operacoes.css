@@ -198,8 +198,7 @@
   .leite-navegacao > .leite-mais-rotinas { margin-left: auto; }
 }
 
-.leite-cabecalho-acoes, .leite-ferramentas { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.leite-ferramentas { justify-content: flex-end; margin-top: 20px; }
+.leite-cabecalho-acoes { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .leite-sete-rotinas > .abas-navegacao { width: 100%; }
 
 /* Abas contínuas à superfície, como na proposta de consultas aprovada. */
