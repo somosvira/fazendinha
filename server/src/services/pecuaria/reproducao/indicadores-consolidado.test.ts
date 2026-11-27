@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 vi.mock("../../../db.js", () => ({ prisma: {} }));
-import { combinarIndicadores, somarContagens } from "./indicadores-consolidado.js";
+import { combinarIndicadores, somarBase, somarContagens } from "./indicadores-consolidado.js";
 import { calcularTaxasIndicadores, type ContagensIndicadores } from "./indicadores.calc.js";
 
 const contagens = (elegiveis: number | null, servidas: number, tentativas: number, positivas: number): ContagensIndicadores => ({
@@ -24,4 +24,12 @@ it("taxas consolidadas vêm da soma das contagens, não da média das taxas", ()
 });
 it("elegíveis desconhecidos em um sítio mantêm o total desconhecido", () => {
   expect(somarContagens([contagens(10, 1, 1, 0), contagens(null, 1, 1, 0)]).elegiveis).toBeNull();
+});
+it("base de cálculo soma os sítios e fica parcial se algum sítio tiver pendências", () => {
+  expect(somarBase([
+    { animaisValidos: 5, animaisPendentes: 0, participacoesValidas: 5, participacoesPendentes: 0, parcial: false },
+    { animaisValidos: 2, animaisPendentes: 3, participacoesValidas: 2, participacoesPendentes: 4, parcial: true },
+    undefined,
+  ])).toEqual({ animaisValidos: 7, animaisPendentes: 3, participacoesValidas: 7, participacoesPendentes: 4, parcial: true });
+  expect(somarBase([undefined])).toBeUndefined();
 });

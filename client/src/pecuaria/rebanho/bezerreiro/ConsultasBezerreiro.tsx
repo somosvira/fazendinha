@@ -17,7 +17,9 @@ import { EstadoConsulta, ModalBezerreiro, PaginacaoBezerreiro, useConsultaBezerr
 import type { CustoBezerreiro, FatoSanidade, Pagina, Participacao } from './types';
 import { ICONES_TABELA } from "../../../components/iconesTabela";
 export function PeriodoBezerreiro({params,mudar}: {params:URLSearchParams;mudar:(v:Record<string,string>)=>void}) {return <div className="bez-contexto"><label>De<DatePicker value={params.get('de')??''} onChange={v=>mudar({de:v,pagina:''})}/></label><label>Até<DatePicker value={params.get('ate')??''} onChange={v=>mudar({ate:v,pagina:''})}/></label></div>;}
-export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number|null;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number}) {
+/** Em Consolidado, abrir um bezerro passa a sidebar para o sítio dele, como na aba Animais. */
+function abrirBezerro(animalId:string,propriedadeId:number|undefined,aoSelecionarSitio?:(id:number)=>void){if(aoSelecionarSitio&&propriedadeId!=null)aoSelecionarSitio(propriedadeId);navegarPara(`/pecuaria/bezerreiro/animais/${animalId}`);}
+export function CustosBezerreiro({sitio,params,mudar,revisao,aoSelecionarSitio}: {aoSelecionarSitio?:(id:number)=>void;sitio:number|null;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number}) {
   const consulta=useConsultaBezerreiro<CustoBezerreiro>(`/custos${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),animalId:params.get('animalId'),perfilId:params.get('perfil')})}`,sitio,revisao,sitio==null);
   const dados = consulta.dados;
   const oculto = dados?.cobertura === 'OCULTO';
@@ -69,9 +71,10 @@ export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number|nul
           <ListaBezerreiro icone={ICONES_TABELA.animal} rotulo="Custos atribuídos por animal"
             itens={dados.porAnimal} chaveDe={a => a.animalId} colunas={[
               { chave: 'animal', titulo: 'Animal', principal: true, celula: a =>
-                <button className="bez-link" onClick={() => navegarPara(`/pecuaria/bezerreiro/animais/${a.animalId}`)}>
+                <button className="bez-link" onClick={() => abrirBezerro(a.animalId, a.propriedadeId, sitio == null ? aoSelecionarSitio : undefined)}>
                   {`${a.brinco} · ${a.nome ?? 'Sem nome'}`}
                 </button> },
+              ...(sitio == null ? [{ chave: 'sitio', titulo: 'Sítio', celula: (a: CustoBezerreiro['porAnimal'][number]) => a.sitio ?? '—' }] : []),
               { chave: 'volume', titulo: 'Volume atribuído', celula: a => litros(a.litrosAtribuidos) },
               { chave: 'custo', titulo: 'Custo alimentar atribuído', alinhamento: 'direita', celula: a => valor(a.custoAlimentarAtribuido) },
               { chave: 'sanidade', titulo: 'Sanidade', alinhamento: 'direita', celula: a => valor(a.custoSanitario) },
@@ -83,7 +86,7 @@ export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number|nul
     </EstadoConsulta>
   </div>;
 }
-export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar:podeLancarPerfil,aoSalvar}: {sitio:number|null;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number;podeLancar:boolean;aoSalvar:()=>void}) {
+export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar:podeLancarPerfil,aoSalvar,aoSelecionarSitio}: {aoSelecionarSitio?:(id:number)=>void;sitio:number|null;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number;podeLancar:boolean;aoSalvar:()=>void}) {
   // Registrar exige um sítio: em Consolidado a sanidade é só consulta.
   const podeLancar=podeLancarPerfil&&sitio!=null;
   const pagina=Math.max(1,Number(params.get('pagina'))||1),consulta=useConsultaBezerreiro<Pagina<FatoSanidade>>(`/sanidade${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),pagina,animalId:params.get('animalId'),busca:params.get('busca')})}`,sitio,revisao,sitio==null);
@@ -95,11 +98,11 @@ export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar:podeLa
   function salvo(){setForm(false);aoSalvar();}
   const rotulo = 'Sanidade dos bezerros';
   const chaveDe = (f: FatoSanidade) => `${f.tipo}-${f.id}`;
-  const animal = (f: FatoSanidade) => <button className="bez-link" onClick={() => navegarPara(`/pecuaria/bezerreiro/animais/${f.animalId}`)}>
+  const animal = (f: FatoSanidade) => <button className="bez-link" onClick={() => abrirBezerro(f.animalId, f.propriedadeId, sitio == null ? aoSelecionarSitio : undefined)}>
     {f.brinco} · {f.nome ?? 'Sem nome'}
   </button>;
   const situacao = (f: FatoSanidade) => f.status === 'VALIDO' ? 'Registrado' : f.status;
-  const detalhes = (f: FatoSanidade) => <Button variant="outline" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${f.animalId}#sanidade`)}>
+  const detalhes = (f: FatoSanidade) => <Button variant="outline" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${f.animalId}${f.propriedadeId != null ? `?sitio=${f.propriedadeId}` : ''}#sanidade`)}>
     Ver detalhes
   </Button>;
 
@@ -114,6 +117,7 @@ export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar:podeLa
         {<TabelaFinanceira icone={ICONES_TABELA.aplicacao} rotulo={rotulo}
           itens={consulta.dados.itens} chaveDe={chaveDe} colunas={[
             {chave:'animal',titulo:'Animal',principal:true,celula:animal},
+            ...(sitio==null?[{chave:'sitio',titulo:'Sítio',celula:(f:FatoSanidade)=>f.sitio??'—'}]:[]),
             {chave:'acao',titulo:'Ação sanitária',celula:f=>f.descricao},
             {chave:'data',titulo:'Data',celula:f=>formatarDataBR(f.data)},
             {chave:'status',titulo:'Situação',celula:situacao},

@@ -116,11 +116,16 @@ function rotinaDaUrl(): Rotina {
   );
 }
 
-export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
+export function Reproducao({ podeLancar, onSelecionarSitio }: { podeLancar: boolean; onSelecionarSitio?: (id: number) => void }) {
   const [caminho,setCaminho]=useState(window.location.pathname);
   const [rotina, setRotina] = useState<Rotina>(rotinaDaUrl);
   const propriedadeId = getPropriedadeAtiva();
   const [consultaUrl, setConsultaUrl] = useState(window.location.search);
+  // Em Consolidado, o parto aberto pela lista é de um sítio: a sidebar passa para ele, como no Acompanhar do Bezerreiro.
+  const selecionarSitio = useRef(onSelecionarSitio);
+  selecionarSitio.current = onSelecionarSitio;
+  const sitioDoParto = /^\/pecuaria\/reproducao\/partos\/[^/]+\/?$/.test(caminho) ? Number(new URLSearchParams(consultaUrl).get("sitio")) || null : null;
+  useEffect(() => { if (sitioDoParto != null && getPropriedadeAtiva() == null) selecionarSitio.current?.(sitioDoParto); }, [caminho, sitioDoParto]);
   useEffect(() => {
     const atualizar = () => { setCaminho(window.location.pathname); setRotina(rotinaDaUrl()); setConsultaUrl(window.location.search); };
     window.addEventListener("popstate", atualizar);

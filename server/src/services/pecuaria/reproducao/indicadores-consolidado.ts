@@ -1,5 +1,5 @@
 import { prisma } from "../../../db.js";
-import { calcularTaxasIndicadores, type ContagensIndicadores, type SnapshotIndicadoresReprodutivos } from "./indicadores.calc.js";
+import { calcularTaxasIndicadores, type BaseCalculoIndicadores, type ContagensIndicadores, type SnapshotIndicadoresReprodutivos } from "./indicadores.calc.js";
 import { consultarIndicadoresReprodutivos } from "./indicadores.js";
 import { filtrosIndicadoresSchema } from "./indicadores.schemas.js";
 import { emitirRelatorioPartos } from "./relatorio-partos.js";
@@ -17,6 +17,14 @@ export function somarContagens(partes: ContagensIndicadores[]): ContagensIndicad
   };
 }
 
+/** Soma a base de cálculo dos sítios: o resultado é parcial se algum sítio tiver pendências. */
+export function somarBase(partes: (BaseCalculoIndicadores | undefined)[]): BaseCalculoIndicadores | undefined {
+  const bases = partes.filter((b): b is BaseCalculoIndicadores => !!b);
+  if (!bases.length) return undefined;
+  const n = (k: Exclude<keyof BaseCalculoIndicadores, "parcial">) => bases.reduce((s, b) => s + b[k], 0);
+  return { animaisValidos: n("animaisValidos"), animaisPendentes: n("animaisPendentes"), participacoesValidas: n("participacoesValidas"), participacoesPendentes: n("participacoesPendentes"), parcial: bases.some(b => b.parcial) };
+}
+
 /**
  * Indicadores em Consolidado: cada sítio é apurado com a própria política; as contagens são somadas
  * por período e as taxas recalculadas a partir da soma (nunca média das taxas dos sítios).
@@ -27,7 +35,7 @@ export function combinarIndicadores(partes: Array<{ sitio: { id: number; nome: s
   const periodos = base.periodos.map(periodo => {
     const doPeriodo = partes.map(p => p.s.periodos.find(x => x.id === periodo.id)!).filter(Boolean);
     const contagens = somarContagens(doPeriodo.map(p => p.contagens));
-    return { ...periodo, baseCalculo: undefined, contagens, taxas: calcularTaxasIndicadores(contagens),
+    return { ...periodo, baseCalculo: somarBase(doPeriodo.map(p => p.baseCalculo)), contagens, taxas: calcularTaxasIndicadores(contagens),
       pendencias: [...new Set(doPeriodo.flatMap(p => p.pendencias))].sort(),
       maturidade: { ...periodo.maturidade, tentativasAbertas: doPeriodo.reduce((s, p) => s + p.maturidade.tentativasAbertas, 0) },
       detalhamento: doPeriodo.flatMap(p => p.detalhamento) };
@@ -36,7 +44,7 @@ export function combinarIndicadores(partes: Array<{ sitio: { id: number; nome: s
   return {
     ...base, acompanhamento: undefined, escopoConsolidado: true as const,
     periodos,
-    totais: { baseCalculo: undefined, contagens, taxas: calcularTaxasIndicadores(contagens),
+    totais: { baseCalculo: somarBase(partes.map(p => p.s.totais.baseCalculo)), contagens, taxas: calcularTaxasIndicadores(contagens),
       participacoesAnimalPeriodo: partes.reduce((s, p) => s + p.s.totais.participacoesAnimalPeriodo, 0),
       animaisUnicos: partes.reduce((s, p) => s + p.s.totais.animaisUnicos, 0) },
     pendencias: [...new Set(partes.flatMap(p => p.s.pendencias))].sort(),

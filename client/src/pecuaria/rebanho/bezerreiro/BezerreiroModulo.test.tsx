@@ -61,6 +61,17 @@ describe('Bezerreiro em Consolidado',()=>{
     fireEvent.click(screen.getByRole('button',{name:'Acompanhar'}));
     expect(selecionar).toHaveBeenCalledWith(2);
   });
+  it('Sanidade em Consolidado mostra a coluna Sítio e abrir o bezerro troca para o sítio dele',async()=>{
+    setPropriedadeAtiva(null);history.replaceState(null,'','/pecuaria/bezerreiro?aba=sanidade');
+    vi.mocked(listarPropriedades).mockResolvedValue([{id:1,nome:'Sede',ativo:true},{id:2,nome:'Arrendado',ativo:true}] as never);
+    vi.mocked(consultarBezerreiro).mockImplementation(async()=>({itens:[{id:'f1',animalId:'a2',brinco:'B-2',nome:'Bezerra 2',tipo:'EXAME',data:'2026-10-05',status:'VALIDO',descricao:'PTS',propriedadeId:2,sitio:'Arrendado'}],total:1,pagina:1,porPagina:20}));
+    const selecionar=vi.fn();
+    render(<BezerreiroModulo podeLancar onSelecionarSitio={selecionar}/>);
+    expect(await screen.findByText('Arrendado')).toBeTruthy();
+    expect(screen.getByRole('columnheader',{name:'Sítio'})).toBeTruthy();
+    fireEvent.click(screen.getByRole('button',{name:'B-2 · Bezerra 2'}));
+    expect(selecionar).toHaveBeenCalledWith(2);
+  });
   it('com um único sítio entrega o sítio ao shell em vez de consolidar',async()=>{
     setPropriedadeAtiva(null);history.replaceState(null,'','/pecuaria/bezerreiro?aba=animais');
     vi.mocked(listarPropriedades).mockResolvedValue([{id:1,nome:'Sede',ativo:true}] as never);

@@ -140,3 +140,18 @@ it("programa protocolo pelo cabeçalho da visão geral preservando o sítio e os
   expect(window.location.pathname).toBe("/pecuaria/reproducao/programacoes/nova");
   expect(new URLSearchParams(window.location.search).get("retorno")).toBe("/pecuaria/reproducao?rotina=geral&iatfBusca=Grupo#consulta");
 });
+it("em Consolidado, abrir um parto passa a sidebar para o sítio do parto", async () => {
+  setPropriedadeAtiva(null);
+  window.history.replaceState(null, "", "/pecuaria/reproducao/partos/p1?sitio=8");
+  const onSelecionarSitio = vi.fn();
+  render(<Reproducao podeLancar onSelecionarSitio={onSelecionarSitio} />);
+  await waitFor(() => expect(onSelecionarSitio).toHaveBeenCalledWith(8));
+});
+it("com um sítio já escolhido, abrir um parto não troca a sidebar", async () => {
+  setPropriedadeAtiva(7);
+  window.history.replaceState(null, "", "/pecuaria/reproducao/partos/p1?sitio=8");
+  const onSelecionarSitio = vi.fn();
+  render(<Reproducao podeLancar onSelecionarSitio={onSelecionarSitio} />);
+  await screen.findByRole("heading", { name: "Parto e pós-parto" });
+  expect(onSelecionarSitio).not.toHaveBeenCalled();
+});
