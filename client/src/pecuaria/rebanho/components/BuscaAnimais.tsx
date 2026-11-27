@@ -12,6 +12,7 @@ import { ROTULO_SITUACAO } from "../lib/rotulos";
 import type { AnimalResumo, Catalogos, CategoriaRef, ListarFiltros, ListarResultado } from "../types";
 import "./busca-animais.css";
 import { FiltrosBuscaAnimais } from "./FiltrosBuscaAnimais";
+import { ResumoAnimalBusca } from "./ResumoAnimalBusca";
 import { FILTROS_AVANCADOS_VAZIOS, consultaFiltrosAvancados, type FiltrosAvancadosAnimais } from "./busca-animais-filtros";
 
 const POR_PAGINA = 20;
@@ -103,7 +104,7 @@ export function BuscaAnimais({ aberto, escopo, podeConsultar, podeVerCaminho, on
   }, [aberto, podeConsultar, tentativaCatalogos]);
 
   useEffect(() => {
-    if (!aberto) { setTexto(""); setBusca(""); setFiltros(VAZIOS); setAvancados(FILTROS_AVANCADOS_VAZIOS); setPagina(1); setRetorno(null); setMaisFiltros(false); }
+    if (!aberto) { setTexto(""); setBusca(""); setFiltros(VAZIOS); setAvancados(FILTROS_AVANCADOS_VAZIOS); setPagina(1); setRetorno(null); setMaisFiltros(false); setEscolhido(null); }
   }, [aberto]);
   useEffect(() => { setSelecionado(0); }, [chave]);
   useEffect(() => { corpoTabela.current?.children[selecionado]?.scrollIntoView?.({ block: "nearest" }); }, [selecionado]);
@@ -112,12 +113,14 @@ export function BuscaAnimais({ aberto, escopo, podeConsultar, podeVerCaminho, on
     setFiltros(atuais => ({ ...atuais, [campo]: valor }));
     setPagina(1);
   };
+  const [escolhido, setEscolhido] = useState<AnimalResumo | null>(null);
+  const permitido = (animal: AnimalResumo) => !(podeVerCaminho && !podeVerCaminho(caminhoAnimal(animal)));
+  /** Escolher mostra o resumo do animal; a ficha completa abre pelo "Ver ficha completa". */
   const abrir = (animal: AnimalResumo | undefined) => {
-    if (!animal || !podeConsultar || !dados) return;
-    const caminho = caminhoAnimal(animal);
-    if (podeVerCaminho && !podeVerCaminho(caminho)) return;
-    onAbrir(animal.id, caminho);
+    if (!animal || !podeConsultar || !dados || !permitido(animal)) return;
+    setEscolhido(animal);
   };
+  const verFicha = (animal: AnimalResumo) => onAbrir(animal.id, caminhoAnimal(animal));
   const navegar = (e: KeyboardEvent<HTMLElement>) => {
     if (e.altKey || e.ctrlKey || e.metaKey || !itens.length) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -139,6 +142,7 @@ export function BuscaAnimais({ aberto, escopo, podeConsultar, podeVerCaminho, on
         <Button variant="ghost" size="icon" onClick={onFechar} aria-label="Fechar busca"><X aria-hidden /></Button>
       </header>
       {!podeConsultar ? <p className="busca-animais-estado" role="alert">Acesso restrito ao Rebanho</p> : <>
+        {escolhido ? <ResumoAnimalBusca animal={escolhido} onVoltar={() => setEscolhido(null)} onVerMais={() => verFicha(escolhido)} /> : <>
         <div className="busca-animais-filtros">
           <label>Animal<span className="busca-animais-entrada"><Search size={20} aria-hidden /><input ref={input} type="search" aria-label="Buscar animal" aria-controls={`${id}-tabela`} aria-describedby={`${id}-teclas`} value={texto} maxLength={60} placeholder="Buscar por brinco ou nome" onChange={e => setTexto(e.target.value)} onKeyDown={navegar}/></span></label>
           <label>Situação<SelectCampo aria-label="Situação" value={filtros.situacao} onValueChange={v => mudar("situacao", v as Filtros["situacao"])}><option value="TODOS">Todos</option><option value="ATIVO">Ativos</option><option value="BAIXADO">Baixados</option></SelectCampo></label>
@@ -154,7 +158,7 @@ export function BuscaAnimais({ aberto, escopo, podeConsultar, podeVerCaminho, on
           {carregando ? <p className="busca-animais-estado" role="status">Consultando animais…</p> : erro ? <div className="busca-animais-estado" role="alert"><h3>{erro}</h3><p>Confira sua conexão e tente novamente.</p><Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button></div> : dados && !itens.length ? <div className="busca-animais-estado"><h3>Nenhum animal encontrado</h3><p>Altere o termo ou os filtros para tentar novamente.</p><Button variant="outline" onClick={limpar}>Limpar busca e filtros</Button></div> : <table id={`${id}-tabela`} aria-label="Animais encontrados">
             <thead><tr>{["Brinco / nome","Situação","Categoria","Reprodução","Produção","Lote",...(sitioDoShell == null ? ["Sítio"] : [])].map(t => <th key={t} scope="col">{t}</th>)}</tr></thead>
             <tbody ref={corpoTabela}>{itens.map((animal,i) => <tr key={animal.id} data-selecionado={i === selecionado || undefined} onClick={() => abrir(animal)}>
-              <td><button type="button" data-animal-id={animal.id} onFocus={() => setSelecionado(i)} onKeyDown={navegar} onClick={e => { e.stopPropagation(); abrir(animal); }} disabled={podeVerCaminho && !podeVerCaminho(caminhoAnimal(animal))} aria-label={`Abrir ficha de ${animal.brinco}${animal.nome ? ` — ${animal.nome}` : ""}`}>{animal.brinco}</button><small>{animal.nome ?? "Nome não informado"}</small></td>
+              <td><button type="button" data-animal-id={animal.id} onFocus={() => setSelecionado(i)} onKeyDown={navegar} onClick={e => { e.stopPropagation(); abrir(animal); }} disabled={podeVerCaminho && !podeVerCaminho(caminhoAnimal(animal))} aria-label={`Ver resumo de ${animal.brinco}${animal.nome ? ` — ${animal.nome}` : ""}`}>{animal.brinco}</button><small>{animal.nome ?? "Nome não informado"}</small></td>
               <td><span className={`busca-animais-situacao ${animal.situacao === "ATIVO" ? "ativa" : ""}`}>{ROTULO_SITUACAO[animal.situacao]}</span></td>
               <td>{animal.categoria?.nome ?? "Não informada"}</td>
               <td>{animal.sexo === "M" ? "Não se aplica" : REPRODUCAO[animal.contextoCartao?.situacaoReprodutiva ?? ""] ?? "Não informada"}</td>
@@ -165,10 +169,11 @@ export function BuscaAnimais({ aberto, escopo, podeConsultar, podeVerCaminho, on
         </div>
         <footer className="busca-animais-rodape">
           {itens[selecionado] && <span className="sr-only" role="status" aria-atomic="true">{dados?.total} animais encontrados. Selecionado: {itens[selecionado].brinco}{itens[selecionado].nome ? ` — ${itens[selecionado].nome}` : ""}.</span>}
-          <p id={`${id}-teclas`} className="busca-animais-teclas"><kbd>↑</kbd><kbd>↓</kbd> navegar <kbd>Enter</kbd> abrir ficha <kbd>Esc</kbd> fechar <span><kbd>Ctrl/⌘ K</kbd> buscar em tudo</span></p>
+          <p id={`${id}-teclas`} className="busca-animais-teclas"><kbd>↑</kbd><kbd>↓</kbd> navegar <kbd>Enter</kbd> ver resumo <kbd>Esc</kbd> fechar <span><kbd>Ctrl/⌘ K</kbd> buscar em tudo</span></p>
           {dados && dados.total > 0 && <Paginacao pagina={pagina} totalPaginas={Math.max(1,Math.ceil(dados.total/POR_PAGINA))} total={dados.total} porPagina={POR_PAGINA} rotulo="Paginação dos animais" substantivo="animais" idSelect={`${id}-pagina`} onPagina={setPagina}/>}
           {dados?.total === 0 && <p className="busca-animais-contagem" role="status">0 animais</p>}
         </footer>
+        </>}
       </>}
     </DialogContent>
   </Dialog>;

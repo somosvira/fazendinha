@@ -80,3 +80,6 @@
   .fin-ficha-grid > * { margin-bottom: 16px; box-shadow: none; break-inside: avoid; }
   .fin-ficha-resumo { box-shadow: none; }
 }
+
+.fin-ficha-item-link { color: var(--primary); }
+.fin-ficha-item-link:hover { text-decoration: underline; text-underline-offset: 3px; }

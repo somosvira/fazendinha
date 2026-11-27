@@ -1,3 +1,4 @@
+import { escopoSitiosTx } from "./escopo-consolidado.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { baixarLeiteTx, estornarBaixaLeiteTx, saldosOrigensLeiteTx } from "../../estoque/leite.js";
@@ -66,9 +67,13 @@ export async function obterRetiradaInternaLeite(id: string, propriedadeId: numbe
   if (!fato) throw new RebanhoError("NAO_ENCONTRADO", "Retirada interna não encontrada neste sítio");
   return retiradaInternaLeiteDTO(fato);
 }
-export async function listarRetiradasInternasLeite(propriedadeId: number, input: ReturnType<typeof consultaRetiradasInternasLeiteSchema.parse>) {
+/** `escopoId` null = Consolidado: todos os sítios ativos, com o nome do sítio. */
+export async function listarRetiradasInternasLeite(escopoId: number | null, input: ReturnType<typeof consultaRetiradasInternasLeiteSchema.parse>) {
+  const escopo = await escopoSitiosTx(prisma as unknown as Prisma.TransactionClient, escopoId);
   const filtro = consultaRetiradasInternasLeiteSchema.parse(input);
-  const where = { propriedadeId, ...(filtro.de || filtro.ate ? { data: { ...(filtro.de ? { gte: new Date(filtro.de) } : {}), ...(filtro.ate ? { lte: new Date(filtro.ate) } : {}) } } : {}) };
+  const contem = filtro.busca ? { contains: filtro.busca, mode: "insensitive" as const } : null;
+  const where = { propriedadeId: escopo.propriedadeId, ...(filtro.de || filtro.ate ? { data: { ...(filtro.de ? { gte: new Date(filtro.de) } : {}), ...(filtro.ate ? { lte: new Date(filtro.ate) } : {}) } } : {}),
+    ...(contem ? { OR: [{ motivo: contem }, { responsavel: contem }, { entrada: { sessao: { nome: contem } } }, { entrada: { movimento: { produto: { nome: contem } } } }] } : {}) };
   const [itens, total] = await prisma.$transaction([prisma.retiradaInternaLeite.findMany({ where, include: incluir, orderBy: [{ data: "desc" }, { id: "desc" }], skip: (filtro.pagina - 1) * 20, take: 20 }), prisma.retiradaInternaLeite.count({ where })]);
-  return { propriedadeId, itens: itens.map(retiradaInternaLeiteDTO), total, pagina: filtro.pagina, tamanho: 20 };
+  return { propriedadeId: escopoId, consolidado: escopo.consolidado, itens: itens.map(i => ({ ...retiradaInternaLeiteDTO(i), ...(escopo.consolidado ? { sitio: escopo.nome(i.propriedadeId) } : {}) })), total, pagina: filtro.pagina, tamanho: 20 };
 }

@@ -50,6 +50,7 @@ import { Iatf } from "./Iatf";
 import { DetalheFato } from "./DetalheFato";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 function acaoDaUrl(): AcaoReprodutiva | null {
   const acao = new URLSearchParams(window.location.search).get("acao");
   return ["avaliacao", "tentativa", "parto", "situacao", "restricao"].includes(acao ?? "") ? acao as AcaoReprodutiva : null;
@@ -115,11 +116,16 @@ function rotinaDaUrl(): Rotina {
   );
 }
 
-export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
+export function Reproducao({ podeLancar, onSelecionarSitio }: { podeLancar: boolean; onSelecionarSitio?: (id: number) => void }) {
   const [caminho,setCaminho]=useState(window.location.pathname);
   const [rotina, setRotina] = useState<Rotina>(rotinaDaUrl);
   const propriedadeId = getPropriedadeAtiva();
   const [consultaUrl, setConsultaUrl] = useState(window.location.search);
+  // Em Consolidado, o parto aberto pela lista é de um sítio: a sidebar passa para ele, como no Acompanhar do Bezerreiro.
+  const selecionarSitio = useRef(onSelecionarSitio);
+  selecionarSitio.current = onSelecionarSitio;
+  const sitioDoParto = /^\/pecuaria\/reproducao\/partos\/[^/]+\/?$/.test(caminho) ? Number(new URLSearchParams(consultaUrl).get("sitio")) || null : null;
+  useEffect(() => { if (sitioDoParto != null && getPropriedadeAtiva() == null) selecionarSitio.current?.(sitioDoParto); }, [caminho, sitioDoParto]);
   useEffect(() => {
     const atualizar = () => { setCaminho(window.location.pathname); setRotina(rotinaDaUrl()); setConsultaUrl(window.location.search); };
     window.addEventListener("popstate", atualizar);
@@ -143,7 +149,9 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
       }}>Voltar às filas de manejo</Button>
       <ConteudoReproducao podeLancar={podeLancar} propriedadeId={propriedadeId ?? (Number(parametros.get("sitio")) || null)}/>
     </>;
-    return <ConsultaPorSitio>{sitioId => <div key={`${sitioId}:${rotina}`} className="space-y-5">
+    // Consolidado (2+ sítios): Partos e Indicadores somam os sítios; as rotinas de operação seguem por sítio.
+    const consolidado = rotina === "partos" ? <PartosPosParto propriedadeId={null}/> : rotina === "indicadores" ? <IndicadoresReprodutivos propriedadeId={null} podeLancar={podeLancar} modo="painel"/> : undefined;
+    return <ConsultaPorSitio consolidado={consolidado}>{sitioId => <div key={`${sitioId}:${rotina}`} className="space-y-5">
       {rotina === "geral" ? <VisaoGeralReprodutiva propriedadeId={sitioId}/>
         : rotina === "partos" ? <PartosPosParto propriedadeId={sitioId}/>
         : rotina === "indicadores" ? <IndicadoresReprodutivos propriedadeId={sitioId} podeLancar={podeLancar} modo="painel"/>
@@ -160,8 +168,14 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   if (caminho === "/pecuaria/reproducao/programacoes/nova") {
     const retorno = new URLSearchParams(consultaUrl).get("retorno");
     const voltar = () => navegarPara(retorno?.startsWith("/pecuaria/") ? retorno : urlConsultaComSitio("/pecuaria/reproducao?rotina=programacoes", propriedadeId ?? undefined));
-    const sitioIndicado = new URLSearchParams(consultaUrl).get("acao") === "prepararIatf" ? Number(new URLSearchParams(consultaUrl).get("sitio")) : null;
-    return <PaginaFinanceira>{propriedadeId && (!sitioIndicado || sitioIndicado === propriedadeId) ? <ConteudoReproducao secao="programacoes" propriedadeId={propriedadeId} podeLancar={podeLancar} paginaProgramacao solicitarProgramacao onCancelarProgramacao={voltar}/> : <p>Selecione na barra lateral o sítio dos animais para preparar a programação.</p>}</PaginaFinanceira>;
+    const parametros = new URLSearchParams(consultaUrl);
+    const sitioIndicado = parametros.get("acao") === "prepararIatf" ? Number(parametros.get("sitio")) : null;
+    const cabecalho = <PageHeader titulo="Programar protocolo" acao={<Button secondary onClick={voltar}>Voltar</Button>}/>;
+    return <PaginaFinanceira><ConsultaPorSitio cabecalhoAviso={cabecalho}>{sitioId =>
+      sitioIndicado && sitioIndicado !== sitioId
+        ? <>{cabecalho}<p>Selecione na barra lateral o sítio dos animais indicados para preparar a programação.</p></>
+        : <ConteudoReproducao secao="programacoes" propriedadeId={sitioId} podeLancar={podeLancar} paginaProgramacao solicitarProgramacao onCancelarProgramacao={voltar}/>
+    }</ConsultaPorSitio></PaginaFinanceira>;
   }
   const detalheRota = caminho.match(/^\/pecuaria\/reproducao\/(programacoes|partos)\/([^/]+)\/?$/);
   if(detalheRota) {
@@ -396,7 +410,7 @@ function ConteudoReproducao({
           </p>
         )}
         {!carregando && painel && (
-          <ConsultaOperacional filtrosColunas={filtrosDasColunas(camposConsulta,edicaoConsulta)}
+          <ConsultaOperacional icone={ICONES_TABELA.animal} filtrosColunas={filtrosDasColunas(camposConsulta,edicaoConsulta)}
             rotulo="Animais e ciclos reprodutivos"
             itens={animais}
             chaveDe={(a) => a.animalId}
@@ -466,7 +480,7 @@ function ConteudoReproducao({
       {painel && (
         <Panel>
           <CabecalhoTabela titulo="Histórico reprodutivo" />
-          <ConsultaOperacional
+          <ConsultaOperacional icone={ICONES_TABELA.reproducao}
             rotulo="Histórico reprodutivo"
             onAbrir={(f) => setFatoAberto(f)}
             itens={fatos.filter((f) => !animalId || f.animalId === animalId)}

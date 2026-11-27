@@ -1,5 +1,6 @@
 import { mascararReferenciasModelo } from "../../services/pecuaria/protocolos/mascarar-referencias.js";
 import { detalheErroProduto } from "../../services/estoque/produtos-catalogo.js";
+import { consultarIndicadoresConsolidado, emitirRelatorioPartosConsolidado } from "../../services/pecuaria/reproducao/indicadores-consolidado.js";
 import * as avaliacaoContextual from "../../services/pecuaria/reproducao/avaliacao-contextual.js";
 import { criarCatalogoAvaliacaoSchema } from "../../services/pecuaria/reproducao/avaliacao-contextual.schemas.js";
 import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../../services/pecuaria/protocolos/automacao.schemas.js";
@@ -949,13 +950,18 @@ reproducaoRouter.get("/animais/:id/elegibilidade", async c => {
   catch(e) { return falhaV4(c,e); }
 });
 reproducaoRouter.get("/indicadores", async c => {
-  try { const b=consultaIndicadoresSchema.parse({ ...c.req.query(), propriedadeId: await resolverEscopoLeitura(c) });
+  try { const escopo=await resolverEscopoLeitura(c);
+    // Consolidado: contagens somadas por sítio e taxas recalculadas.
+    if(escopo===null){ const { propriedadeId: _ignorado, ...query } = c.req.query(); return c.json(await consultarIndicadoresConsolidado(query)); }
+    const b=consultaIndicadoresSchema.parse({ ...c.req.query(), propriedadeId: escopo });
     return c.json(await consultarIndicadoresReprodutivos(b)); }
   catch(e) { return falhaV4(c,e); }
 });
 reproducaoRouter.get("/relatorios/partos", async c => {
   try { const b=periodoRelatorioPartosSchema.parse({inicio:c.req.query("inicio"),fim:c.req.query("fim")});
-    return c.json(await emitirRelatorioPartos({ ...b, propriedadeId:s.sitio.parse(await resolverEscopoLeitura(c)) })); }
+    const escopo=await resolverEscopoLeitura(c);
+    // Consolidado: partos de todos os sítios ativos, com o sítio de cada linha.
+    return c.json(escopo===null ? await emitirRelatorioPartosConsolidado(b) : await emitirRelatorioPartos({ ...b, propriedadeId:s.sitio.parse(escopo) })); }
   catch(e) { return falhaV4(c,e); }
 });
 reproducaoRouter.get("/relatorios/emissoes", async c => {

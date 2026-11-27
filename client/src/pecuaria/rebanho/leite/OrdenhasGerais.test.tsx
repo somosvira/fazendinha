@@ -36,7 +36,7 @@ it("abre na consulta, distingue zero de ausência e mantém o período ao abrir 
   await screen.findAllByText("Manhã");
   expect(screen.queryByLabelText("Data da ordenha")).toBeNull();
   expect(screen.getAllByText("0 L").length).toBeGreaterThan(0);
-  fireEvent.click(screen.getAllByRole("button", { name: "Continuar confirmação" })[0]);
+  fireEvent.click(screen.getAllByRole("button", { name: /Editar registro|Consultar/ })[0]);
   await screen.findByLabelText("Data da ordenha");
   expect(new URLSearchParams(location.search).get("registroId")).toBe("s1");
   fireEvent.click(screen.getByRole("button", { name: "Voltar à consulta" }));
@@ -93,7 +93,7 @@ it("consulta classificação pendente como estado separado das três naturezas",
 it("encaminha sessão individual ao controle individual preservando data, ordenha e filtros", async () => {
   vi.mocked(consultarParcelas).mockResolvedValue({ ...lista, itens: [{ ...lista.itens[0], fonteProducao: "INDIVIDUAL", litros: 117 }] });
   render(<OrdenhasGerais podeLancar />);
-  fireEvent.click((await screen.findAllByRole("button", { name: "Continuar confirmação" }))[0]);
+  fireEvent.click((await screen.findAllByRole("button", { name: /Editar registro|Consultar/ }))[0]);
   const params = new URLSearchParams(location.search);
   expect(params.get("leiteModo")).toBe("individual");
   expect(params.get("dataOperacional")).toBe("2026-10-24");
@@ -117,7 +117,7 @@ it("consulta seis por padrão e muda tamanho explicitamente sem perder filtros o
   render(<OrdenhasGerais podeLancar={false} />);
   await screen.findByText("1–6 de 30 ordenhas");
   expect(vi.mocked(consultarParcelas).mock.lastCall?.[1].get("porPagina")).toBe("6");
-  expect(screen.getAllByRole("listitem")).toHaveLength(6);
+  expect(screen.getAllByRole("button", { name: /Editar registro|Consultar/ })).toHaveLength(6);
   fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
   await screen.findByText("7–12 de 30 ordenhas");
   await selecionarCampoLeite("Ordenhas por página", "12");
@@ -129,19 +129,14 @@ it("consulta seis por padrão e muda tamanho explicitamente sem perder filtros o
   expect(query?.get("natureza")).toBe("COMERCIAL");
   expect(new URLSearchParams(location.search).get("ordenhasTamanho")).toBe("12");
   expect(new URLSearchParams(location.search).get("paginaOrdenhas")).toBeNull();
-  const chamadas = vi.mocked(consultarParcelas).mock.calls.length;
-  fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
   expect(screen.getByRole("table", { name: "Ordenhas registradas" })).toBeTruthy();
-  expect(vi.mocked(consultarParcelas)).toHaveBeenCalledTimes(chamadas);
-  expect(new URLSearchParams(location.search).get("ordenhasTamanho")).toBe("12");
-  fireEvent.click(screen.getByRole("button", { name: "Cartões" }));
-  expect(screen.getAllByRole("listitem")).toHaveLength(12);
+  expect(screen.getAllByRole("button", { name: /Editar registro|Consultar/ })).toHaveLength(12);
 });
 it.each(["6", "12", "20", "0", "7", "abc"])("valida tamanho vindo da URL: %s", async tamanho => {
   paginarFixtures();
   history.replaceState(null, "", `/?ordenhasTamanho=${tamanho}`);
   render(<OrdenhasGerais podeLancar={false} />);
-  await screen.findByRole("list", { name: "Ordenhas registradas" });
+  await screen.findByRole("table", { name: "Ordenhas registradas" });
   const esperado = ["6", "12", "20"].includes(tamanho) ? tamanho : "6";
   expect(vi.mocked(consultarParcelas).mock.lastCall?.[1].get("porPagina")).toBe(esperado);
   expect(screen.getByRole("combobox", { name: "Ordenhas por página" }).textContent).toContain(esperado);
@@ -151,7 +146,7 @@ it("retoma página e tamanho ao abrir e voltar de um registro", async () => {
   history.replaceState(null, "", "/?leiteModo=geral&ordenhasInicio=2026-10-01&ordenhasFim=2026-10-24&ordenhasTamanho=12&paginaOrdenhas=2");
   render(<OrdenhasGerais podeLancar />);
   await screen.findByText("13–24 de 30 ordenhas");
-  fireEvent.click(screen.getAllByRole("button", { name: "Continuar confirmação" })[0]);
+  fireEvent.click(screen.getAllByRole("button", { name: /Editar registro|Consultar/ })[0]);
   await screen.findByLabelText("Data da ordenha");
   fireEvent.click(screen.getByRole("button", { name: "Voltar à consulta" }));
   await screen.findByText("13–24 de 30 ordenhas");
@@ -166,7 +161,7 @@ it("reconsulta a última página válida quando a página da URL excede os resul
   await screen.findByText("13–13 de 13 ordenhas");
   expect(new URLSearchParams(location.search).get("paginaOrdenhas")).toBe("3");
   expect(vi.mocked(consultarParcelas).mock.lastCall?.[1].get("pagina")).toBe("3");
-  expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  expect(screen.getAllByRole("button", { name: /Editar registro|Consultar/ })).toHaveLength(1);
 });
 
 it("mostra o dia atual como abertura padrão sem criar um filtro removível", async () => {
@@ -186,12 +181,12 @@ it("remover período personalizado volta ao dia atual e retira o chip", async ()
 });
 it("retorna o foco ao acionador depois de fechar a ordenha em modal", async () => {
   render(<OrdenhasGerais podeLancar />);
-  const abrir = (await screen.findAllByRole("button", { name: "Continuar confirmação" }))[0];
+  const abrir = (await screen.findAllByRole("button", { name: /Editar registro|Consultar/ }))[0];
   abrir.focus(); fireEvent.click(abrir);
   await screen.findByLabelText("Data da ordenha");
   expect(screen.getByRole("dialog").getAttribute("data-slot")).toBe("dialog-content");
   fireEvent.click(screen.getByRole("button", {name:"Voltar à consulta"}));
-  await waitFor(()=>expect(document.activeElement).toBe(screen.getAllByRole("button", { name:"Continuar confirmação" })[0]));
+  await waitFor(()=>expect(document.activeElement).toBe(screen.getAllByRole("button", { name:/Editar registro|Consultar/ })[0]));
 });
 it("retorna ao botão de novo registro ao fechar sem descartar o rascunho local", async () => {
   render(<OrdenhasGerais podeLancar />);

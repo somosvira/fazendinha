@@ -24,13 +24,14 @@ it("consulta ordenhas por período com escopo do servidor e paginação validada
   expect((await app().request("/geral/consulta?inicio=2026-02-30&fim=2026-10-24")).status).toBe(422);
   expect((await app([], ["financeiro"]).request("/geral/consulta?inicio=2026-10-01&fim=2026-10-24")).status).toBe(403);
 });
-it("estoque exige sítio e repassa a máscara financeira independentemente", async () => {
+it("estoque aceita Consolidado e repassa a máscara financeira independentemente", async () => {
   expect((await app().request("/estoque/resumo")).status).toBe(200);
   expect(mocks.estoque).toHaveBeenLastCalledWith(3, expect.objectContaining({ pagina: 1, porPagina: 20 }), false);
   await app(["verValores"], ["pecuaria", "financeiro"]).request("/estoque/resumo");
   expect(mocks.estoque).toHaveBeenLastCalledWith(3, expect.anything(), true);
   mocks.escopo.mockResolvedValue(null);
-  expect((await app().request("/estoque/resumo")).status).toBe(422);
+  expect((await app().request("/estoque/resumo")).status).toBe(200);
+  expect(mocks.estoque).toHaveBeenLastCalledWith(null, expect.anything(), false);
 });
 
 
@@ -43,5 +44,6 @@ it("vendas unificadas permitem metadados na Pecuária e mascaram valores no serv
   expect((await app([], ["financeiro"]).request("/comercial/vendas-unificadas")).status).toBe(403);
   expect((await app().request("/comercial/vendas-unificadas?porPagina=101")).status).toBe(422);
   mocks.escopo.mockResolvedValue(null);
-  expect((await app().request("/comercial/vendas-unificadas")).status).toBe(422);
+  expect((await app().request("/comercial/vendas-unificadas")).status).toBe(200);
+  expect(mocks.vendas).toHaveBeenLastCalledWith(null, expect.anything(), false);
 });

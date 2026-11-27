@@ -1,6 +1,5 @@
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { Ellipsis, FileText, Plus, Wallet } from "lucide-react";
-import { CartaoVendaVisual } from "./VisuaisConsultaLeite";
 import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { useEffect, useRef, useState } from "react";
@@ -18,8 +17,8 @@ import { formatarLitros } from "./modelo";
 import { BarraComercialLeite, DialogComercialLeite, filtrosComerciaisIniciais, lerFiltrosComerciais, preservarFiltrosComerciais } from "./ComercialConsultaLeite";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { EsqueletoFormulario } from "../../../components/Esqueleto";
-interface VendaUnificada { id: string; modalidade: "PERIODO" | "AVULSA"; comercialId: string | null; operacaoId: string | null; referencia: string; inicio: string; fim: string; data: string; parceiroId: string | null; parceiroNome: string | null; quantidadeLitros: string; valorTotal: string | null; situacao: string; versaoComercial: number | null }
-interface Consulta { propriedadeId: number; itens: VendaUnificada[]; total: number; pagina: number; porPagina: number; resumo: { totalLitros: string; valorTotal: string | null; vendas: number; precoPendente: number } }
+interface VendaUnificada { propriedadeId?: number; sitio?: string | null; id: string; modalidade: "PERIODO" | "AVULSA"; comercialId: string | null; operacaoId: string | null; referencia: string; inicio: string; fim: string; data: string; parceiroId: string | null; parceiroNome: string | null; quantidadeLitros: string; valorTotal: string | null; situacao: string; versaoComercial: number | null }
+interface Consulta { propriedadeId: number | null; consolidado?: boolean; itens: VendaUnificada[]; total: number; pagina: number; porPagina: number; resumo: { totalLitros: string; valorTotal: string | null; vendas: number; precoPendente: number } }
 const situacoes: Record<string,string> = { ABERTA: "Aberta", FECHADA: "Fechada", CONFIRMADA: "Confirmada", CANCELADA: "Cancelada" };
 const dataPt = (v: string) => v.split("-").reverse().join("/");
 export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolean; podeFinanceiro: boolean }) {
@@ -56,7 +55,7 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
   function fecharDetalhe() { setSelecionada(null); setNova(false); const url = new URL(location.href); url.searchParams.delete("operacaoLeiteId"); url.searchParams.delete("novaOperacaoLeite"); history.replaceState(null, "", url); }
   function abrir(v: VendaUnificada) { if (v.comercialId) { setSelecionada(v.comercialId); const url = new URL(location.href); url.searchParams.set("operacaoLeiteId", v.comercialId); history.replaceState(null,"",url); } else setHistorico(v); }
   return <section className="leite-operacoes leite-comercial-consulta" aria-label="Vendas do leite">
-    <CabecalhoRotinaLeite titulo="Vendas de leite" acao={<div className="leite-vendas-acoes">
+    <CabecalhoRotinaLeite titulo="Vendas de leite" acao={dados?.consolidado ? undefined : <div className="leite-vendas-acoes">
       {podeLancar && (podeFinanceiro
         ? <Button onClick={() => setAvulsa(true)}><Plus aria-hidden />Venda avulsa</Button>
         : <Button onClick={() => setNova(true)}><Plus aria-hidden />Nova operação por período</Button>)}
@@ -78,20 +77,20 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
       </Empty>
     ) : <>
       <dl className="leite-consulta-resumo"><div><dt>Operações no recorte</dt><dd>{dados.resumo.vendas}</dd></div><div><dt>Volume do recorte<AjudaCampo rotulo="Sobre o volume comercial do recorte" texto="Volume retirado nas operações abertas e avulsas mais o volume reconhecido nos fechamentos, pelo período inteiro de cada acordo. Não é a produção dos dias filtrados."/></dt><dd>{formatarLitros(Number(dados.resumo.totalLitros))}</dd></div><div><dt>Preço pendente</dt><dd>{dados.resumo.precoPendente}</dd></div><div><dt>Total comercial conhecido</dt><dd>{!podeFinanceiro ? "Restrito" : dados.resumo.valorTotal === null ? "Sem valor" : Number(dados.resumo.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</dd></div></dl>
-      <ListaConsultaLeite icone={Wallet} layout="grade" renderizarVisual={v => <CartaoVendaVisual item={v} podeVerValores={podeFinanceiro} acao={<Button variant="outline" onClick={() => abrir(v)}>Abrir operação</Button>}/>} preferencia="vendasLeiteVisualizacao" rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
+      <ListaConsultaLeite icone={Wallet} rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
         { chave: "referencia", titulo: "Operação", principal: true, larguraMinima: 160, celula: v => <strong>{v.referencia}</strong> },
         { chave: "comprador", titulo: "Comprador", larguraMinima: 150, celula: v => v.parceiroNome ?? "Não informado" },
+        ...(dados.consolidado ? [{ chave: "sitio", titulo: "Sítio", larguraMinima: 130, celula: (v: VendaUnificada) => v.sitio ?? "—" }] : []),
         { chave: "periodo", titulo: "Período", larguraMinima: 185, celula: v => v.modalidade === "AVULSA" ? dataPt(v.data) : `${dataPt(v.inicio)} a ${dataPt(v.fim)}` },
         { chave: "modalidade", titulo: "Modalidade", larguraMinima: 115, celula: v => v.modalidade === "PERIODO" ? "Por período" : "Avulsa" },
         { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: v => formatarLitros(Number(v.quantidadeLitros)) },
         { chave: "valor", titulo: "Total comercial", alinhamento: "direita", celula: v => !podeFinanceiro ? "Restrito" : v.valorTotal === null ? "Preço pendente" : Number(v.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) },
         { chave: "situacao", titulo: "Situação", larguraMinima: 130, celula: v => <Pill tone={v.situacao === "ABERTA" ? "amber" : v.situacao === "CANCELADA" ? "red" : "green"}>{situacoes[v.situacao] ?? v.situacao}</Pill> },
         { chave: "acao", titulo: "Ação", acoes: true, larguraMinima: 150, celula: v => <Button variant="outline" onClick={() => abrir(v)}>Abrir operação</Button> },
-      ]} />
-      <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de vendas" substantivo="vendas" idSelect="pagina-vendas-leite" onPagina={setPagina} />
+      ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de vendas" substantivo="vendas" idSelect="pagina-vendas-leite" onPagina={setPagina} />} />
     </>}
     <DialogComercialLeite titulo={nova ? "Nova operação por período" : "Detalhe da operação"} aberto={!!selecionada || nova} onFechar={fecharDetalhe}>
-      <OperacoesComerciaisLeite key={nova ? "nova" : selecionada!} integrado operacaoId={selecionada} iniciarNova={nova} podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} onMudou={id => { setRevisao(r => r + 1); setSelecionada(id); setNova(false); const url = new URL(location.href); url.searchParams.delete("novaOperacaoLeite"); if (id) url.searchParams.set("operacaoLeiteId", id); history.replaceState(null,"",url); }} />
+      <OperacoesComerciaisLeite key={nova ? "nova" : selecionada!} integrado operacaoId={selecionada} iniciarNova={nova} podeLancar={podeLancar && dados?.consolidado !== true} podeFinanceiro={podeFinanceiro} onMudou={id => { setRevisao(r => r + 1); setSelecionada(id); setNova(false); const url = new URL(location.href); url.searchParams.delete("novaOperacaoLeite"); if (id) url.searchParams.set("operacaoLeiteId", id); history.replaceState(null,"",url); }} />
     </DialogComercialLeite>
     {avulsa && podeFinanceiro && podeLancar && (config
       ? <NovaVendaAvulsaLeite sitio={dados?.propriedadeId ?? sitio} config={config} produtos={cadastros.produtos} onCancelar={() => setAvulsa(false)} onSalvar={() => { setAvulsa(false); setRevisao(r => r + 1); setAviso("Retirada e venda registradas. Acompanhe o recebimento no Financeiro."); }} />

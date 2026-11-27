@@ -166,7 +166,6 @@ export function ConfiguracaoReprodutiva({
           className="space-y-4"
         >
           <fieldset disabled={ocupado} className="space-y-4 min-w-0">
-          <p className="text-sm">As alterações valem a partir da vigência informada. Os ciclos existentes conservam suas regras. </p>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label>
@@ -250,7 +249,6 @@ export function ConfiguracaoReprodutiva({
             <label className="my-3 flex items-center gap-2"><input type="checkbox" checked={diasAvaliacao !== null} onChange={e => setDiasAvaliacao(e.target.checked ? 45 : null)}/>Solicitar avaliação após parto comprovado</label>
             {diasAvaliacao !== null && <label>Dias após parto comprovado<Input required type="number" min={0} max={2000} value={diasAvaliacao} onChange={e => setDiasAvaliacao(Number(e.target.value))}/><span className="text-sm text-muted-foreground">Referência: 45 dias. Ajuste explicitamente com o responsável pelo manejo.</span></label>}
             <div className="mt-5 grid gap-8 lg:grid-cols-2"><CriteriosAptidaoFormulario titulo="Vacas" valor={vacas} onChange={setVacas}/><CriteriosAptidaoFormulario titulo="Novilhas" valor={novilhas} onChange={setNovilhas}/></div>
-            <p className="mt-3 text-sm text-muted-foreground">Sem critérios de disparo, o agendamento continua manual. Pesos sem precisão informada não são aceitos como medida.</p>
             <label className="mt-4 block">Motivo da alteração<Input required minLength={5} maxLength={1000} value={motivoVersao} onChange={e => setMotivoVersao(e.target.value)}/></label>
           </div>
           <fieldset>
@@ -347,7 +345,7 @@ export function ConfiguracaoReprodutiva({
                 </dd>
               </div>
             </dl>
-            {p.parametros.criteriosAptidao && <div className="mt-4 space-y-3 border-t pt-3"><p>{p.parametros.criteriosAptidao.diasAvaliacaoPosParto === null ? "Sem disparo por dias pós-parto." : `Avaliação devida após ${p.parametros.criteriosAptidao.diasAvaliacaoPosParto} dias de parto comprovado.`}</p><ResumoCriteriosAptidao titulo="Vacas" valor={p.parametros.criteriosAptidao.vacas}/><ResumoCriteriosAptidao titulo="Novilhas" valor={p.parametros.criteriosAptidao.novilhas}/><p className="text-sm">Critérios geram aviso para avaliação. A aptidão vem do exame e das condições vigentes.</p></div>}
+            {p.parametros.criteriosAptidao && <div className="mt-4 space-y-3 border-t pt-3"><p>{p.parametros.criteriosAptidao.diasAvaliacaoPosParto === null ? "Sem disparo por dias pós-parto." : `Avaliação devida após ${p.parametros.criteriosAptidao.diasAvaliacaoPosParto} dias de parto comprovado.`}</p><ResumoCriteriosAptidao titulo="Vacas" valor={p.parametros.criteriosAptidao.vacas}/><ResumoCriteriosAptidao titulo="Novilhas" valor={p.parametros.criteriosAptidao.novilhas}/></div>}
             <p className="mt-3 text-sm text-muted-foreground">
               Base IDEAGRI/IILB — política de critérios {p.parametros.versao === 2 ? "com critérios de aviso" : "histórica"}
             </p>

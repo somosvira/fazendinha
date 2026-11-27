@@ -1,3 +1,4 @@
+import { escopoSitiosTx } from "./escopo-consolidado.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../../db.js";
@@ -15,9 +16,12 @@ const texto = (d: Date) => d.toISOString().slice(0, 10);
 const MAX_FATOS = 50_000;
 
 /** Quantidades operacionais pela data do fato físico; sem preços, caixa ou inferência clínica. */
-export async function consultarResumoOperacionalProducaoLeite(propriedadeId: number, raw: Filtro) {
+/** `escopoId` null = Consolidado: soma consumo, descarte e vendas de todos os sítios ativos. */
+export async function consultarResumoOperacionalProducaoLeite(escopoId: number | null, raw: Filtro) {
   const f = consultaResumoOperacionalProducaoSchema.parse(raw);
   return prisma.$transaction(async tx => {
+    const escopo = await escopoSitiosTx(tx, escopoId);
+    const propriedadeId = escopo.propriedadeId;
     const periodo = { gte: new Date(f.inicio), lte: new Date(f.fim) };
     const fatoWhere = { propriedadeId, data: periodo, status: "CONFIRMADO", movimento: { propriedadeId, status: "CONFIRMADO" as const } };
     const nutricaoWhere = { propriedadeId, data: periodo, status: "CONFIRMADO" };
@@ -102,7 +106,7 @@ export async function consultarResumoOperacionalProducaoLeite(propriedadeId: num
       comprador.litros = comprador.litros.plus(v.quantidade); c.compradores.set(chave, comprador);
       if (comercial?.status === "ABERTA") c.coletasSemPreco++;
     }
-    return { propriedadeId, periodo: { inicio: f.inicio, fim: f.fim }, dias: [...dias].map(([data, d]) => {
+    return { propriedadeId: escopoId, consolidado: escopo.consolidado, periodo: { inicio: f.inicio, fim: f.fim }, dias: [...dias].map(([data, d]) => {
       const c = d.consumo, x = d.descarte, v = d.vendas;
       const valor = (presente: boolean, n: Prisma.Decimal) => presente ? n.toString() : null;
       return { data,

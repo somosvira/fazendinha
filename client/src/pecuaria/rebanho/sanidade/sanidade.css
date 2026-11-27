@@ -8,8 +8,6 @@
 .sanidade-ciclo-clicavel { cursor: pointer; }
 .sanidade-ciclo-clicavel:hover { background: var(--muted); }
 .sanidade-ciclo-clicavel:focus-visible { position: relative; z-index: 1; outline: 2px solid var(--ring); outline-offset: -2px; }
-.sanidade-ciclo-ativo { background: color-mix(in srgb, var(--pos) 6%, var(--surface)); border-left: 1px solid var(--pos); }
-.sanidade-ciclo-detalhe { margin: 0 1rem 1rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
 .sanidade-ciclo-ativo { background: color-mix(in srgb, var(--pos) 6%, var(--card)); border-left: 1px solid var(--pos); }
 .sanidade-ciclo-detalhe { margin: 0 1rem 1rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
 @media (max-width: 720px) { .sanidade-ciclo-linha { grid-template-columns: 1fr 1fr; } .sanidade-ciclo-cabecalho { display: none; } .sanidade-ciclo-detalhe { margin: 0 .5rem .5rem; padding: .75rem; } }
@@ -94,3 +92,5 @@
  .sanidade-pagina .sanidade-lista > .consulta-barra .consulta-controles { gap:8px; }
  .sanidade-pagina .sanidade-lista > .consulta-barra .consulta-acoes { flex-wrap:wrap; gap:8px; }
 }
+
+/* Agenda por dia: faixa de 14 dias + seções Atrasadas / Hoje / Amanhã / ... */

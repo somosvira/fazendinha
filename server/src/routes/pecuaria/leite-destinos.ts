@@ -1,3 +1,5 @@
+import { prisma } from "../../db.js";
+import { sitioDoRegistro } from "./escopo-registro.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { Prisma } from "@prisma/client";
@@ -42,11 +44,11 @@ export const leiteDestinosRouter = new Hono()
     catch (erro) { return falha(c, erro); }
   })
   .get("/destinos", query(consultaDestinosLeiteSchema), async c => {
-    try { return c.json(await destinos.listarDestinos(await sitio(c), c.req.valid("query"))); }
+    try { return c.json(await destinos.listarDestinos(await resolverEscopoLeitura(c), c.req.valid("query"))); }
     catch (erro) { return falha(c, erro); }
   })
   .get("/destinos/:id", async c => {
-    try { const id = z.string().uuid().parse(c.req.param("id")); return c.json(await destinos.consultarDestino(id, await sitio(c))); }
+    try { const id = z.string().uuid().parse(c.req.param("id")); return c.json(await destinos.consultarDestino(id, await sitioDoRegistro(c, () => prisma.destinoInternoLeite.findUnique({ where: { id }, select: { propriedadeId: true } }), "Destino interno"))); }
     catch (erro) { return falha(c, erro); }
   })
   .post("/destinos", exigePermissao("lancar"), validar(destinoInternoLeiteSchema), async c => {

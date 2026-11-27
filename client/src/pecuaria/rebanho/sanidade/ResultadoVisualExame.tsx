@@ -1,3 +1,4 @@
+import "@/components/consulta-visual.css";
 import { camposExameParaExibicao } from "./nomeExame";
 import { resultadoExameSanitario } from "./rotulos";
 import type { ExameResultado } from "./ResultadoExame";

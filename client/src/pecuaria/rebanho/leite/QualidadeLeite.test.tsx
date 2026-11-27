@@ -245,3 +245,13 @@ it("abre uma amostra por ID recebido da busca mesmo fora da página listada", as
   expect(consultarLeite).toHaveBeenCalledWith("/qualidade/amostras/amostra", null);
   cleanup(); history.replaceState(null, "", "/");
 });
+it("em Consolidado lista amostras com o sítio e não oferece registro nem resultados por sítio", async () => {
+  vi.mocked(consultarLeite).mockImplementation(async caminho => caminho.includes("/formatos") ? [formato] : { propriedadeId: null, consolidado: true, itens: [{ ...amostra, sitio: "Arrendado" }], total: 1 });
+  render(<QualidadeLeite podeLancar />);
+  expect(await tela.findByText("Arrendado")).toBeTruthy();
+  expect(screen.getByRole("columnheader", { name: "Sítio" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Registrar amostra" })).toBeNull();
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Resultados" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Resultados" }));
+  expect(await tela.findByRole("heading", { name: "Escolha um sítio na barra lateral" })).toBeTruthy();
+});

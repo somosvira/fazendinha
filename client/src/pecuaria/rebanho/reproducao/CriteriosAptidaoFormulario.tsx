@@ -8,7 +8,6 @@ export function CriteriosAptidaoFormulario({ titulo, valor, onChange }: { titulo
   </div>;
   const usaPeso = valor.pesoMinimoKg !== null || valor.percentualPesoAdulto !== null;
   return <fieldset className="min-w-0"><legend className="text-lg font-semibold">{titulo}</legend>
-    <p className="text-sm text-muted-foreground">Parâmetros para avisar que o animal pode ser avaliado. Não são requisitos obrigatórios para aptidão.</p>
     {campo("idadeMinimaMeses", "Idade mínima", "Meses", 360)}
     {campo("percentualPesoAdulto", "Percentual do peso adulto", "Percentual", 100)}
     {campo("pesoMinimoKg", "Peso absoluto", "Quilos", 2000)}

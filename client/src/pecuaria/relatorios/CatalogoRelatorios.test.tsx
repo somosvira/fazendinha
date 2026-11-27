@@ -11,3 +11,13 @@ beforeEach(()=>{vi.mocked(consultarFonte).mockResolvedValue(r)});afterEach(()=>{
 it('posição atual não apresenta seletor de período e CSV é explicitamente da página',async()=>{render(<CatalogoRelatorios propriedadeId={1} fonte="animais" selecionar={vi.fn()} personalizar={vi.fn()} podeExportar/>);await screen.findByText('Posição atual');expect(screen.queryByLabelText('Início')).toBeNull();await abrirMenuRelatorio();expect(await screen.findByRole('menuitem',{name:'Exportar página CSV'})).toBeTruthy();fireEvent.keyDown(screen.getByRole('menu'),{key:'Escape'});fireEvent.click(screen.getByRole('button',{name:'Próxima'}));await waitFor(()=>expect(consultarFonte).toHaveBeenLastCalledWith('animais',1,expect.any(String),expect.any(String),2,expect.any(Object)))});
 it('fonte com contexto obrigatório só consulta após seleção',async()=>{render(<CatalogoRelatorios propriedadeId={1} fonte="custos" selecionar={vi.fn()} personalizar={vi.fn()} podeExportar={false}/>);expect(consultarFonte).not.toHaveBeenCalled();expect(screen.queryByRole('button',{name:/Exportar/})).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Escolher animal de teste'}));await waitFor(()=>expect(consultarFonte).toHaveBeenCalledWith('custos',1,expect.any(String),expect.any(String),1,expect.objectContaining({animalId:'animal-a'})))});
 it('troca de fonte não mostra dados atrasados da consulta anterior',async()=>{let resolver!:(v:ResultadoBuilder)=>void;vi.mocked(consultarFonte).mockImplementationOnce(()=>new Promise(r=>resolver=r)).mockResolvedValue({...r,linhas:[]});const props={propriedadeId:1,selecionar:vi.fn(),personalizar:vi.fn(),podeExportar:false};const {rerender}=render(<CatalogoRelatorios {...props} fonte="animais"/>);rerender(<CatalogoRelatorios {...props} fonte="lotes"/>);await screen.findByText('Nenhum registro neste recorte');resolver(r);await waitFor(()=>expect(screen.queryByText('Camila')).toBeNull())});
+it('em Consolidado mostra a coluna Sítio e pede sítio para relatório por animal',async()=>{
+ vi.mocked(consultarFonte).mockResolvedValue({...r,escopoConsolidado:true,linhas:[{...r.linhas[0],sitioConsulta:'Arrendado'}]});
+ render(<CatalogoRelatorios propriedadeId={null} fonte="animais" selecionar={vi.fn()} personalizar={vi.fn()} podeExportar={false}/>);
+ // "Cadastro e situação atual" já mostra o sítio: a coluna não se repete.
+ expect((await screen.findAllByRole('columnheader',{name:/^Sítio/})).length).toBe(1);
+ expect(vi.mocked(consultarFonte).mock.calls.at(-1)?.[1]).toBeNull();
+ cleanup();
+ render(<CatalogoRelatorios propriedadeId={null} fonte="custos" selecionar={vi.fn()} personalizar={vi.fn()} podeExportar={false}/>);
+ expect(await screen.findByText(/escolha um sítio na barra lateral/)).toBeTruthy();
+});

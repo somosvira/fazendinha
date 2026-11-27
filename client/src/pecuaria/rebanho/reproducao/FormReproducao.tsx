@@ -370,7 +370,7 @@ export function FormReproducao({
     required = true,
     rotuloVazio = "Selecione",
   ) => (
-    <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required} ajuda={id === "servico" ? "A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente." : id === "classe-reprodutiva" ? "A classificação não registra um parto nem libera o animal para reprodução." : undefined}>
+    <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required} ajuda={id === "servico" ? "A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente." : id === "classe-reprodutiva" ? "A classificação não registra um parto nem libera o animal para reprodução." : id === "material" ? (tipo === "TE" ? "O animal selecionado é a receptora. A doadora do embrião define a filiação genética da cria. Uso habitual: 1 embrião por receptora; a unidade cadastrada é conferida antes de confirmar." : "Uso habitual: 1 dose por inseminação; a unidade cadastrada é conferida antes de confirmar.") : undefined}>
       {(p) => (
         <SelectCampo
           key={id === "tipo-exame" ? `${id}:${opcoes.length}` : id}
@@ -705,12 +705,6 @@ export function FormReproducao({
                   ]),
                 origem === "ESTOQUE",
               )}
-            {tipo === "TE" && (
-              <p className="text-sm text-ink-3">
-                O animal selecionado é a receptora. A doadora do material mantém
-                a filiação genética da cria.
-              </p>
-            )}
             {seletor(
               "touro",
               "Touro",
@@ -728,7 +722,7 @@ export function FormReproducao({
               ],
               tipo === "COBERTURA",
             )}
-            {tipo !== "COBERTURA" && <><p className="text-sm">Uso habitual: {tipo === "TE" ? "1 embrião por receptora" : "1 dose por inseminação"}. A unidade cadastrada será conferida antes de confirmar.</p><Button variant="outline" type="button" aria-expanded={quantidadeAberta} onClick={() => setQuantidadeAberta(v => !v)}>Quantidade excepcional ou registro histórico</Button>{quantidadeAberta && <div className="grid gap-3">{campo("quantidade", "Quantidade efetivamente utilizada", quantidade, setQuantidade, false, "number")}{campo("motivo-quantidade", "Motivo da quantidade excepcional", motivoQuantidadeExcepcional, setMotivoQuantidadeExcepcional, !!quantidade && Number(quantidade) !== 1)}<p className="text-sm text-ink-3">Perdas de estoque não aumentam a dose do animal. Registre a quantidade histórica sem converter a unidade.</p></div>}</>}
+            {tipo !== "COBERTURA" && <><Button variant="outline" type="button" aria-expanded={quantidadeAberta} onClick={() => setQuantidadeAberta(v => !v)}>Quantidade excepcional ou registro histórico</Button>{quantidadeAberta && <div className="grid gap-3">{campo("quantidade", "Quantidade efetivamente utilizada", quantidade, setQuantidade, false, "number")}{campo("motivo-quantidade", "Motivo da quantidade excepcional", motivoQuantidadeExcepcional, setMotivoQuantidadeExcepcional, !!quantidade && Number(quantidade) !== 1)}</div>}</>}
             {origem === "ESTOQUE" && (
               <>
                 {partidas.length > 0 &&
@@ -820,7 +814,7 @@ export function FormReproducao({
               if (mudanca.sexoFetal !== undefined) setSexoFetal((mudanca.sexoFetal ?? "") as "F" | "M" | "");
               if (mudanca.conduta !== undefined) { setConduta(mudanca.conduta as AvaliacaoInput["conduta"]); if(decisaoIatf === "INDICAR") setDecisaoIatf(null); }
             }} />}
-            {!contextuais.avaliacaoContextual&&resultado === "NEGATIVO" && <div className="grid gap-2">{seletor("decisao-iatf", "Indicação para nova IATF", decisaoIatf ?? "", valor => { const decisao = (valor || null) as AvaliacaoInput["decisaoIatf"]; setDecisaoIatf(decisao); if(decisao === "INDICAR") setConduta("IATF"); else if(conduta === "IATF") setConduta(null); }, [["INDICAR","Indicar para nova IATF"],["NAO_INDICAR","Não indicar neste atendimento"]], false)}<p className="text-sm text-ink-3">Sem seleção, a decisão fica pendente. Indicar não inicia outro protocolo; a inclusão exige preparação e confirmação próprias.</p></div>}
+            {!contextuais.avaliacaoContextual&&resultado === "NEGATIVO" && <div className="grid gap-2">{seletor("decisao-iatf", "Indicação para nova IATF", decisaoIatf ?? "", valor => { const decisao = (valor || null) as AvaliacaoInput["decisaoIatf"]; setDecisaoIatf(decisao); if(decisao === "INDICAR") setConduta("IATF"); else if(conduta === "IATF") setConduta(null); }, [["INDICAR","Indicar para nova IATF"],["NAO_INDICAR","Não indicar neste atendimento"]], false)}</div>}
             {!contextuais.avaliacaoContextual&&tipoExame?.campos?.some(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)) && resultado !== "NAO_AVALIADO" && (pagina ? <details className="border-t border-border pt-4"><summary className="cursor-pointer font-semibold">Detalhes do exame · {nomeExame(tipoExame.id, tipoExame.nome)}</summary><div className="pt-4"><CamposResultadoExame campos={camposExameParaExibicao(tipoExame.id, tipoExame.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)))} valores={resultados} onChange={valores => { rascunhoAlterado.current = true; setResultados(valores); }} /></div></details> : <CamposResultadoExame campos={camposExameParaExibicao(tipoExame.id, tipoExame.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)))} valores={resultados} onChange={valores => { rascunhoAlterado.current = true; setResultados(valores); }} />)}
             {seletor(
               "tentativa",
@@ -842,25 +836,6 @@ export function FormReproducao({
                 setMotivoVinculo,
                 true,
               )}
-            {conduta === "IATF" && (
-              <p className="text-sm text-ink-3">
-                Esta indicação não inicia protocolo nem confirma aplicação ou
-                inseminação.
-              </p>
-            )}
-            {conduta === "DESCARTE" && (
-              <p className="text-sm text-ink-3">
-                Restringe a reprodução. A vaca permanece cadastrada; não há
-                baixa ou secagem automática.
-              </p>
-            )}
-            {exigeMotivo && (
-              <p className="text-sm text-ink-3">
-                O negativo após diagnóstico positivo exige registrar a perda
-                gestacional ou corrigir o diagnóstico anterior antes de
-                confirmar.
-              </p>
-            )}
             {campo("anotacao", "Anotação original", anotacao, setAnotacao)}
             {campo(
               "retorno",
@@ -974,6 +949,5 @@ function ConferenciaAvaliacao({ input, animal, tipoExame, expandirVinculos }: { 
     <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">{itens.map(([rotulo, valor]) => <div key={rotulo}><dt className="text-sm text-ink-3">{rotulo}</dt><dd className="font-medium">{valor}</dd></div>)}</dl>
     {expandirVinculos ? <section className="border-t border-border pt-4"><h3 className="font-semibold">Detalhes e vínculos do exame</h3>{vinculos}</section>
       : <details className="border-t border-border pt-4"><summary className="cursor-pointer font-semibold">Detalhes e vínculos do exame</summary>{vinculos}</details>}
-    <p className="text-sm text-ink-3">Confirme apenas o que foi observado. Um encaminhamento para protocolo exige programação e confirmação próprias.</p>
   </section>;
 }

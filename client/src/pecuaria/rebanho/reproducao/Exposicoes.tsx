@@ -87,10 +87,6 @@ export function Exposicoes({ podeLancar, propriedadeId }: { podeLancar: boolean;
       />
       <div className="p-4 space-y-3">
         <ErrorBox erro={erro} />
-        <p className="text-sm text-ink-3">
-          Registra lote e período de exposição; não presume coberturas
-          individuais.
-        </p>
         {lista.map((e) => (
           <div
             className="text-sm border-t border-border pt-3 flex flex-wrap justify-between gap-3"

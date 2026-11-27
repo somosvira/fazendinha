@@ -22,6 +22,8 @@ export type ItemCatalogoProduto = {
   usoSanitario: boolean; usoNutricional: boolean; usoGenetico: boolean; produtoId: string | null;
 };
 export type PaginaCatalogoProdutos = { itens: ItemCatalogoProduto[]; total: number; pagina: number; porPagina: number };
-export const listarCatalogoProdutos = (filtro: { busca?: string; pagina?: number; porPagina?: number } = {}) => consultar<PaginaCatalogoProdutos>('catalogo', filtro);
+export type UsoCatalogo = 'sanitario' | 'nutricional' | 'genetico';
+export type NaFazendaCatalogo = 'sim' | 'nao';
+export const listarCatalogoProdutos = (filtro: { busca?: string; pagina?: number; porPagina?: number; uso?: UsoCatalogo; naFazenda?: NaFazendaCatalogo } = {}) => consultar<PaginaCatalogoProdutos>('catalogo', filtro);
 
 export const obterReferenciaCatalogo = (id: string) => consultar<ItemCatalogoProduto>("catalogo/" + encodeURIComponent(id), {});

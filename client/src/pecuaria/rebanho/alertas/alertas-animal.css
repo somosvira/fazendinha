@@ -1,4 +1,4 @@
-.alertas-animal-disposicoes,.alertas-animal-filtros,.alertas-animal-visual{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.alertas-animal-disposicoes,.alertas-animal-filtros{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .alertas-animal-disposicoes{margin-bottom:16px}
 .alertas-animal-filtros{gap:12px;margin-bottom:16px}
 .alertas-animal-filtros>.busca-lista{flex:1;min-width:200px}

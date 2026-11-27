@@ -7,6 +7,7 @@ import { useConsulta } from "./consulta";
 import { LinkNutricional, rotaNutricao } from "./componentes";
 import { quantidadeNutricional } from "./quantidades";
 import { DIAS_ATENCAO, textoCobertura } from "./coberturaEstoque";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 const qtd = (n: number) => quantidadeNutricional(String(Math.round(n * 1000) / 1000));
 type Uso = { loteId: string; lote: string; sitio: string; propriedadeId: number; receita: string; versao: number; porCabeca: number; animais: number; porDia: number; unidade: string };
@@ -34,7 +35,7 @@ export function UsoProdutoDietas({ produtoId, propriedadeId, saldo, unidade }: {
       {usos.length > 0 && <p>As dietas vigentes consomem <strong>{qtd(porDia)} {unidade}/dia</strong>{dias != null && <>; o saldo exibido dá para <strong className={dias < DIAS_ATENCAO ? "text-destructive" : undefined}>{textoCobertura(dias)}</strong></>}.</p>}
     </header>
     {consulta.carregando ? <EsqueletoTabela label="Carregando uso nas dietas" colunas={4} linhas={2} /> : consulta.erro ? <p role="alert" className="text-sm">Não foi possível consultar as dietas agora.</p> :
-      <ConsultaOperacional rotulo="Lotes de animais que usam o produto" itens={usos} chaveDe={u => u.loteId} colunas={[
+      <ConsultaOperacional icone={ICONES_TABELA.lote} rotulo="Lotes de animais que usam o produto" itens={usos} chaveDe={u => u.loteId} colunas={[
         { chave: "lote", titulo: "Lote de animais", principal: true, celula: (u: Uso) => <><LinkNutricional className="font-medium text-primary underline-offset-4 hover:underline" href={rotaNutricao({ loteId: u.loteId })}>{u.lote}</LinkNutricional>{variosSitios && <p className="text-xs text-ink-3">{u.sitio}</p>}</> },
         { chave: "receita", titulo: "Receita", celula: (u: Uso) => `${u.receita} · v${u.versao}` },
         { chave: "cabeca", titulo: "Por cabeça/dia", alinhamento: "direita", celula: (u: Uso) => `${qtd(u.porCabeca)} ${unidade}` },

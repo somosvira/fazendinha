@@ -9,8 +9,7 @@
 .catalogo-modelos-inativos { display:flex; align-items:center; gap:6px; min-height:40px; font-size:14px; white-space:nowrap; }
 .catalogo-modelos-inativos input { width:17px; height:17px; accent-color:var(--primary); }
 .catalogo-modelos-estado { display:grid; gap:8px; padding:0 16px 12px; font-size:14px; color:var(--muted-foreground); }
-.catalogo-modelos-cartoes { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:12px; padding:0 16px 16px; }
-.modelo-cartao { display:flex; flex-direction:column; gap:10px; min-width:0; padding:14px; border:1px solid var(--border); border-radius:12px; background:var(--card); }
+
 .modelo-identidade { display:grid; grid-template-columns:28px minmax(0,1fr); gap:6px 8px; align-items:center; }
 .modelo-identidade > div { min-width:0; }
 :root .catalogo-modelos .modelo-identidade h3 { font:700 16px/1.4 var(--font-display); overflow-wrap:anywhere; }
@@ -30,8 +29,7 @@
 .modelo-previa strong { font-weight:550; overflow-wrap:anywhere; }
 .modelo-previa small { color:var(--muted-foreground); font-size:14px; }
 .modelo-previa-mais { font-size:14px; color:var(--muted-foreground); }
-.modelo-cartao > footer { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:auto; padding-top:8px; border-top:1px solid var(--border); }
-.modelo-cartao > footer > button { background:transparent; color:var(--primary); border-color:transparent; padding-inline:6px; }
+
 .modelo-acoes-tabela { display:flex; justify-content:flex-end; align-items:center; gap:4px; white-space:nowrap; }
 .modelo-acoes-tabela > button:first-child { padding-inline:6px; background:transparent; border-color:transparent; color:var(--primary); }
 :root .catalogo-modelos button.modelo-mais-acoes { flex-shrink:0; width:36px; min-width:36px; height:36px; min-height:36px; padding:0; }
@@ -53,9 +51,9 @@
   .catalogo-modelos-cabecalho { padding:12px; }
   .catalogo-modelos-cabecalho h1 { font-size:var(--fin-titulo-pagina-movel,22px); }
   .catalogo-modelos-barra { padding:12px; gap:8px; }
-  .catalogo-modelos-cartoes { padding:0 12px 12px; }
+  
   .catalogo-modelos-estado { padding-inline:12px; }
-  .catalogo-modelos-cabecalho > button,.modelo-cartao > footer button,.modelo-acoes-tabela > button { min-height:44px; }
+  .catalogo-modelos-cabecalho > button,.modelo-acoes-tabela > button { min-height:44px; }
   :root .catalogo-modelos button.modelo-mais-acoes { width:44px; min-width:44px; height:44px; }
 }
 

@@ -80,7 +80,12 @@ const ordemCatalogo = [{ nomeNormalizado: "asc" as const }, { apresentacao: "asc
 /** Aba de consulta do catálogo: itens ativos, paginados, indicando o produto da fazenda que já o adotou. */
 export async function listarCatalogo(input: ConsultaCatalogoProdutos) {
   return prisma.$transaction(async (tx) => {
-    const where: Prisma.ProdutoCatalogoWhereInput = { ativo: true, ...filtroBusca(input.busca) };
+    const where: Prisma.ProdutoCatalogoWhereInput = {
+      ativo: true,
+      ...filtroBusca(input.busca),
+      ...(input.uso ? { [USO_CAMPO[input.uso]]: true } : {}),
+      ...(input.naFazenda ? { produtoDaFazenda: input.naFazenda === "sim" ? { isNot: null } : { is: null } } : {}),
+    };
     const total = await tx.produtoCatalogo.count({ where });
     const pagina = Math.min(input.pagina, Math.max(1, Math.ceil(total / input.porPagina)));
     const [itens, categorias] = await Promise.all([

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), formatos: vi.fn(), criarFormato: vi.fn(), editarFormato: vi.fn(), registrar: vi.fn(), corrigir: vi.fn(), listar: vi.fn(), obter: vi.fn(), historico: vi.fn(), origens: vi.fn(), parametros: vi.fn(), upload: vi.fn(), confirmarUpload: vi.fn(), baixar: vi.fn() }));
-vi.mock("../../db.js", () => ({ prisma: {} }));
+const m = vi.hoisted(() => ({ amostra: vi.fn(), leitura: vi.fn(), escrita: vi.fn(), formatos: vi.fn(), criarFormato: vi.fn(), editarFormato: vi.fn(), registrar: vi.fn(), corrigir: vi.fn(), listar: vi.fn(), obter: vi.fn(), historico: vi.fn(), origens: vi.fn(), parametros: vi.fn(), upload: vi.fn(), confirmarUpload: vi.fn(), baixar: vi.fn() }));
+vi.mock("../../db.js", () => ({ prisma: { amostraQualidadeLeite: { findUnique: m.amostra } } }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: m.leitura, resolverEscopoEscrita: m.escrita }));
 vi.mock("../../services/pecuaria/leite/qualidade.js", () => ({ listarFormatosQualidade: m.formatos, criarFormatoQualidade: m.criarFormato, editarFormatoQualidade: m.editarFormato, registrarQualidade: m.registrar, corrigirQualidade: m.corrigir, listarAmostrasQualidade: m.listar, obterAmostraQualidade: m.obter, historicoQualidade: m.historico, listarOrigensQualidade: m.origens, consultarParametrosQualidade: m.parametros }));
 vi.mock("../../services/pecuaria/leite/qualidade.laudos.js", () => ({ solicitarLaudoQualidade: m.upload, confirmarLaudoQualidade: m.confirmarUpload, baixarLaudoQualidade: m.baixar }));
@@ -32,11 +32,17 @@ describe("autorização e escopo das rotas de qualidade do leite", () => {
     expect((await app().request(`/amostras/${uid}/laudos/${uid}/download`)).status).toBe(200);
     expect(m.baixar).toHaveBeenCalledWith(uid, uid, 2);
   });
-  it("consolidado sem sítio é recusado antes de ler amostra, histórico ou documento", async () => {
+  it("em Consolidado lista todos os sítios, abre a amostra pelo sítio dela e recusa origens sem sítio", async () => {
     m.leitura.mockResolvedValue(null);
-    for (const path of ["/amostras", `/amostras/${uid}`, `/amostras/${uid}/historico`, `/amostras/${uid}/laudos/${uid}/download`, "/origens?data=2026-10-19"])
-      expect((await app().request(path)).status).toBe(422);
-    expect(m.obter).not.toHaveBeenCalled(); expect(m.baixar).not.toHaveBeenCalled();
+    expect((await app().request("/amostras")).status).toBe(200);
+    expect(m.listar).toHaveBeenCalledWith(null, expect.anything());
+    m.amostra.mockResolvedValue({ propriedadeId: 5 }); m.obter.mockResolvedValue({ id: uid });
+    expect((await app().request(`/amostras/${uid}`)).status).toBe(200);
+    expect(m.obter).toHaveBeenCalledWith(uid, 5);
+    m.amostra.mockResolvedValue(null);
+    expect((await app().request(`/amostras/${uid}/laudos/${uid}/download`)).status).toBe(404);
+    expect(m.baixar).not.toHaveBeenCalled();
+    expect((await app().request("/origens?data=2026-10-19")).status).toBe(422);
   });
   it("registra origem coletiva explícita com sítio autorizado e autor", async () => {
     expect((await app({ lancar: true }).request("/amostras", post(coleta))).status).toBe(201);

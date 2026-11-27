@@ -116,7 +116,7 @@ describe("VisaoGeral do rebanho", () => {
     expect(document.querySelector(".pec-indicadores")).toBeNull();
     expect(screen.getByRole("tab", { name: "Lotes" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Consultar lotes" })).toBeNull();
-    expect(screen.getByText("6 baixas · últimos 30 dias")).toBeTruthy();
+    expect(screen.getByText("baixas nos últimos 30 dias").closest("li")?.textContent).toBe("6baixas nos últimos 30 dias");
   });
 
   it("reúne baixas por tipo e motivos em detalhes, sem duplicar mortes", async () => {
@@ -163,7 +163,7 @@ describe("VisaoGeral do rebanho", () => {
     vi.mocked(obterPainelRebanho).mockResolvedValueOnce(painelMock).mockResolvedValueOnce({ ...painelMock, periodoDias: 365, baixasPorTipo: [{ tipo: "VENDA", qtd: 20 }] });
     await montar();
     fireEvent.click(screen.getByRole("button", { name: "12 meses" }));
-    await screen.findByText("20 baixas · últimos 365 dias");
+    expect((await screen.findByText("baixas nos últimos 365 dias")).closest("li")?.textContent).toBe("20baixas nos últimos 365 dias");
     fireEvent.click(screen.getByRole("button", { name: "Ver animais baixados" }));
     const { pathname, params } = paramsDe(vi.mocked(navegarPara).mock.calls[0][0]);
     expect(pathname).toBe("/pecuaria/rebanho/animais");
@@ -211,6 +211,26 @@ describe("VisaoGeral do rebanho", () => {
     expect(screen.getByRole("heading", { name: "Por sítio" })).toBeTruthy();
     expect(document.querySelector(".pec-composicao-grid--sitio")).toBeNull();
   });
+  it("atividade recente diz o fato: nascimento, compra, tipo da saída e baixa desfeita, com sítio no Consolidado", async () => {
+    vi.mocked(obterPainelRebanho).mockResolvedValue({ ...painelMock, ultimosEventos: [
+      { tipo: "CADASTRO", origem: "NASCIDO", animalId: "a1", brinco: "1023", nome: null, sitio: "Sede", data: "2026-11-17" },
+      { tipo: "CADASTRO", origem: "COMPRADO", animalId: "a2", brinco: "1024", nome: "Mimosa", sitio: "Arrendado", data: "2026-11-16" },
+      { tipo: "BAIXA", tipoBaixa: "MORTE", animalId: "a3", brinco: "0981", nome: null, sitio: "Sede", data: "2026-11-15" },
+      { tipo: "ESTORNO", tipoBaixa: "VENDA", animalId: "a4", brinco: "0982", nome: null, sitio: null, data: "2026-11-14" },
+    ] });
+    await montar();
+    const lista = screen.getByRole("heading", { name: "Atividade recente" }).closest("section, div.overflow-hidden")!.parentElement!;
+    expect(within(lista).getByRole("button", { name: /^1023: Nascimento · Sede, 17\/11\/2026/ }).querySelector(".pec-evento-entrada")).toBeTruthy();
+    expect(within(lista).getByRole("button", { name: /^1024 Mimosa: Compra · Arrendado/ })).toBeTruthy();
+    expect(within(lista).getByRole("button", { name: /^0981: Morte · Sede/ }).querySelector(".pec-evento-perda")).toBeTruthy();
+    expect(within(lista).getByRole("button", { name: /^0982: Venda desfeita,/ }).querySelector(".pec-evento-estorno")).toBeTruthy();
+  });
+  it("com um sítio escolhido a atividade recente não repete o nome do sítio", async () => {
+    setPropriedadeAtiva(1);
+    vi.mocked(obterPainelRebanho).mockResolvedValue({ ...painelMock, ultimosEventos: [{ tipo: "BAIXA", tipoBaixa: "VENDA", animalId: "a3", brinco: "0981", nome: null, sitio: "Sede", data: "2026-11-15" }] });
+    await montar();
+    expect(screen.getByRole("button", { name: /^0981: Venda, 15\/11\/2026/ }).querySelector(".pec-evento-saida")).toBeTruthy();
+  });
   it("receptoras e consulta do efetivo mantêm os filtros reais da lista", async () => {
     await montar();
     fireEvent.click(screen.getByRole("button", { name: "Consultar 40 receptoras de 100 fêmeas ativas" }));
@@ -243,7 +263,7 @@ describe("VisaoGeral do rebanho", () => {
     expect(screen.getByRole("button", { name: "Venda: 4 baixas" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Ver animais baixados" })).toHaveProperty("disabled", true);
     liberar({ ...painelMock, periodoDias: 365 });
-    await screen.findByText("6 baixas · últimos 365 dias");
+    expect((await screen.findByText("baixas nos últimos 365 dias")).closest("li")?.textContent).toBe("6baixas nos últimos 365 dias");
     expect(screen.getByRole("button", { name: "Ver animais baixados" })).toHaveProperty("disabled", false);
   });
 });

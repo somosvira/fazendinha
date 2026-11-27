@@ -24,7 +24,7 @@ export function HistoricoColostro({sitio,revisao,params,mudar}: {sitio:number;re
 function ListaHistorico({tipo,sitio,revisao,params,mudar}: {tipo:'destinacoes'|'enriquecimentos';sitio:number;revisao:number;params:URLSearchParams;mudar:Navegar}) {
   const parametro=tipo==='destinacoes'?'paginaDestinacoes':'paginaEnriquecimentos',pagina=Math.max(1,Number(params.get(parametro))||1);
   const consulta=useConsultaBezerreiro<Pagina<RegistroHistorico>>(`/colostro/${tipo}${consultaBezerreiro({pagina,inicio:params.get('de'),fim:params.get('ate')})}`,sitio,revisao);
-  return <section className="bez-secao"><h3>{tipo==='destinacoes'?'Histórico de destinações':'Enriquecimentos registrados'}</h3><EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&<><ListaColostro destaque="status" rotulo={tipo==='destinacoes'?'Histórico de destinações':'Enriquecimentos registrados'} itens={consulta.dados.itens} chaveDe={r=>r.id} colunas={[
+  return <section className="bez-secao"><h3>{tipo==='destinacoes'?'Histórico de destinações':'Enriquecimentos registrados'}</h3><EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&<><ListaColostro rotulo={tipo==='destinacoes'?'Histórico de destinações':'Enriquecimentos registrados'} itens={consulta.dados.itens} chaveDe={r=>r.id} colunas={[
     {chave:'data',titulo:'Data',principal:true,celula:r=>formatarDataBR(r.data)}, {chave:'responsavel',titulo:'Responsável',celula:r=>r.responsavel??'Não informado'}, {chave:'status',titulo:'Situação',celula:r=>r.status==='ESTORNADO'?'Estornado':'Confirmado'}, {chave:'acao',titulo:'Ação',acoes:true,celula:r=><Button variant="outline" onClick={()=>mudar(parametrosDetalheColostro(tipo,r.id))}>Detalhes / regularizar</Button>},
   ]}/>{consulta.dados.total===0&&<p className="bez-estado">Nenhum registro neste período.</p>}<PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} tamanho={consulta.dados.tamanho??30} mudar={p=>mudar({[parametro]:String(p)})}/></>}</EstadoConsulta></section>;
 }
@@ -73,7 +73,7 @@ function OrigemDetalhada({origem,abrir}: {origem:DetalheOrigem;abrir:(tipo:Recur
     {chave:'status',titulo:'Situação',celula:u=>{const atual=origem.unidades.find(x=>x.codigo===u.codigo);return atual?rotuloUnidade(atual.status):'—';}},
     {chave:'data',titulo:'Congelada em',celula:u=>formatarDataBR(u.data)},
   ]}/></section>}
-  {origem.historico.destinacoes.length>0&&<section className="bez-secao"><h3>Destinações desta origem</h3><ListaColostro rotulo="Destinações desta origem" destaque="status" itens={origem.historico.destinacoes} chaveDe={d=>d.id} colunas={[
+  {origem.historico.destinacoes.length>0&&<section className="bez-secao"><h3>Destinações desta origem</h3><ListaColostro rotulo="Destinações desta origem" itens={origem.historico.destinacoes} chaveDe={d=>d.id} colunas={[
     {chave:'data',titulo:'Data',principal:true,celula:d=>formatarDataBR(d.data)},
     {chave:'responsavel',titulo:'Responsável',celula:d=>d.responsavel??'Não informado'},
     {chave:'status',titulo:'Situação',celula:d=>d.status==='ESTORNADO'?'Estornado':'Confirmado'},

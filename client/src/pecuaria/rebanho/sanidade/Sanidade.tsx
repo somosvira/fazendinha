@@ -1,12 +1,11 @@
 import { nomeExame } from "./nomeExame";
 import { AplicacoesTablet } from "./AplicacoesTablet";
+import { escalaRegistrada, ResultadoVisualExame } from "./ResultadoVisualExame";
 import { ConsultaExames, ConsultaCarencias } from "./ConsultasSanitariasVisuais";
 import { AgendaCuidados } from "./AgendaCuidados";
 import { AgendaCalendario } from "./AgendaCalendario";
 import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
-import { AlternarVisualizacaoSanitaria, useVisualizacaoSanitaria } from "./VisualizacaoSanitaria";
-import { AgendaSemanal } from "./AgendaSemanal";
-import { CartoesOcorrencias, type ResumoOcorrencias } from "./CartoesOcorrencias";
+import { CasosPorDoenca, type ResumoOcorrencias } from "./CasosPorDoenca";
 import type { ColunaTabela } from "@/financeiro/financeiro-ui";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -15,7 +14,7 @@ import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { linkFichaAnimal } from "../lib/navegacao";
 import { LinkInterno } from "../../../components/LinkInterno";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-import { RegularizacaoTarefa, rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
+import { RegularizacaoTarefa } from "./RegularizacaoTarefa";
 import type { EventoRegularizacao } from "../reproducao/RegularizarOrigem";
 import { DestinoConsumo, administracaoMantida, type SituacaoAdministracao, type DestinoConsumoSanitario } from "./DestinoConsumo";
 import { Button as UiButton } from "@/components/ui/button";
@@ -24,7 +23,7 @@ import { SubTabs } from "../../../components/SubTabs";
 import { navegarPara } from "../../../router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Check, Ban, MoreHorizontal, Search, SlidersHorizontal, X, ShieldCheck,
+  Check, Ban, ChevronDown, MoreHorizontal, Plus, Search, ShieldCheck,
 } from "lucide-react";
 import {
   Button,
@@ -144,11 +143,6 @@ const ABAS: Aba[] = [
   "exames",
   "carencias",
 ];
-function semanaAbertaNaUrl() {
-  const params = new URLSearchParams(window.location.search);
-  const agenda = params.get("agendaSanitaria");
-  return agenda === "semana" || (agenda === null && params.get("visualTarefas") === "visual" && params.has("semanaSanitaria"));
-}
 
 const estadoDaUrl = () => {
   const p = new URLSearchParams(window.location.search);
@@ -178,8 +172,7 @@ const estadoDaUrl = () => {
 import { DetalheSanitario } from "./DetalheSanitario";
 import { PainelDetalheSanitario } from "./PainelDetalheSanitario";
 import { dataAplicacaoSanitaria, dataSanitaria, nomeAnimalSanitario, resultadoExameSanitario } from "./rotulos";
-import { resumoCarencia } from "./CarenciasSanitarias";
-import { PrazoCarencia, EstadoSanitario, ResumoPaginaSanitaria, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
+import { PrazoCarencia, EstadoSanitario, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
 import { AgendaRodadas } from "./AgendaRodadas";
 import { FormRodada } from "./FormRodada";
 import { ExecutarEtapa } from "./ExecutarEtapa";
@@ -187,6 +180,7 @@ import type { TarefaRodada } from "./rodadas-api";
 import type { PaginaSanitaria } from "./rodadas-api";
 import { FormFatoSanitario, type TipoFatoSanitario } from "./FormFatoSanitario";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 export function Sanidade(props: { podeLancar: boolean }) {
   const [url,setUrl]=useState(() => window.location.pathname + window.location.search);
@@ -198,15 +192,7 @@ export function Sanidade(props: { podeLancar: boolean }) {
 function SanidadeRotina({ podeLancar }: { podeLancar: boolean }) {
   const participacaoRota = window.location.pathname.match(/^\/pecuaria\/sanidade\/participacoes\/([^/]+)\/?$/);
   if (participacaoRota) return <ParticipacaoProtocolo key={participacaoRota[1]} id={decodeURIComponent(participacaoRota[1])} tipo="SANITARIO" propriedadeId={Number(new URLSearchParams(window.location.search).get("sitio")) || getPropriedadeAtiva() || undefined} podeLancar={podeLancar} />;
-  const usuario = getUsuario();
-  const acessosTablet = [
-    ["enviarAplicacoesTablet", "", "Aplicações no tablet"],
-    ["revisarAplicacoesTablet", "/aprovacao", "Aprovação do tablet"],
-    ["gerenciarTemplatesTablet", "/templates", "Templates do tablet"],
-  ].filter(([flag]) => usuario?.dono || usuario?.flags.includes(flag));
-  return <>{acessosTablet.length > 0 && <nav aria-label="Aplicações do tablet" className="mb-3 flex flex-wrap gap-2">
-    {acessosTablet.map(([flag, rota, rotulo]) => <Button key={flag} onClick={() => navegarPara("/pecuaria/sanidade/tablet" + rota)}>{rotulo}</Button>)}
-  </nav>}<ConteudoSanidade podeLancar={podeLancar}/></>;
+  return <ConteudoSanidade podeLancar={podeLancar}/>;
 }
 function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const [rateando, setRateando] = useState(false);
@@ -268,15 +254,6 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const [ocorrenciaId, setOcorrenciaId] = useState("");
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const [aplicacoes, setAplicacoes] = useState<AplicacaoSanitaria[]>([]);
-  const visualTarefas = useVisualizacaoSanitaria("visualTarefas", "visual");
-  const [mostrarSemana, setMostrarSemana] = useState(semanaAbertaNaUrl);
-  function alternarSemana() {
-    const url = new URL(window.location.href);
-    url.searchParams.set("agendaSanitaria", mostrarSemana ? "lista" : "semana");
-    window.history.replaceState(window.history.state, "", url);
-    setMostrarSemana(!mostrarSemana);
-  }
-  const visualOcorrencias = useVisualizacaoSanitaria("visualOcorrencias");
   const [doencaVisual, setDoencaVisual] = useState(() => new URLSearchParams(window.location.search).get("doencaId") ?? "");
   const [resumoOcorrencias, setResumoOcorrencias] = useState<ResumoOcorrencias | null>(null);
   const [totalOcorrencias, setTotalOcorrencias] = useState(0);
@@ -332,7 +309,6 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
       setAba(url.aba); setAnimalId(url.animalId); setLoteId(url.loteId); setBuscaAnimal(url.buscaAnimal);
       setDoencaVisual(new URLSearchParams(window.location.search).get("doencaId") ?? "");
       setVisaoAgenda(url.visaoAgenda);
-      setMostrarSemana(semanaAbertaNaUrl());
       setRodadaId(new URLSearchParams(window.location.search).get("rodadaId") ?? "");
       setDe(url.de); setAte(url.ate); setSituacao(url.situacao); setPagina(url.pagina);
       setAplicacaoId(url.aplicacaoId); setDetalhePropriedadeId(url.detalhePropriedadeId);
@@ -344,7 +320,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   useEffect(() => {
     const params = new URLSearchParams();
     const preferencias = new URLSearchParams(window.location.search);
-    for (const chave of ["visualCiclos", "visualTarefas", "visualOcorrencias", "semanaSanitaria", "agendaSanitaria"]) { const valor = preferencias.get(chave); if (valor) params.set(chave, valor); }
+    for (const chave of ["visualCiclos"]) { const valor = preferencias.get(chave); if (valor) params.set(chave, valor); }
     if (aba === "ocorrencias" && doencaVisual) params.set("doencaId", doencaVisual);
     if (aba === "agenda" && rodadaId) { const atual = new URLSearchParams(window.location.search); for (const chave of ["protocoloContexto", "protocoloBusca", "protocoloSituacao", "abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) { const v = atual.get(chave); if (v) params.set(chave, v); } }
     params.set("aba", aba);
@@ -460,7 +436,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
     }
     const q = "?" + params.toString();
     const requisicoes: Record<Aba, () => Promise<unknown>> = {
-      agenda: () => mostrarSemana ? Promise.resolve({itens:[],total:0}) : reqSanidade<PaginaSanitaria<Tarefa>>(`/tarefas${q}&paginado=true&ordenacaoTarefas=prioridade`),
+      agenda: () => reqSanidade<PaginaSanitaria<Tarefa>>(`/tarefas${q}&paginado=true&ordenacaoTarefas=prioridade`),
       ocorrencias: () => reqSanidade<PaginaSanitaria<Ocorrencia> & { resumo: ResumoOcorrencias }>(`/ocorrencias${q}&paginado=true`),
       aplicacoes: () => reqSanidade<AplicacaoSanitaria[]>(`/aplicacoes${q}`),
       exames: () => reqSanidade<Exame[]>(`/exames${q}`),
@@ -531,7 +507,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
     return () => {
       vivo = false;
     };
-  }, [aba, visaoAgenda, animalId, buscaAnimal, loteId, de, ate, situacao, pagina, revisao, doencaVisual, mostrarSemana]);
+  }, [aba, visaoAgenda, animalId, buscaAnimal, loteId, de, ate, situacao, pagina, revisao, doencaVisual]);
   useEffect(() => {
     setServicos([]);
     setServicoId("");
@@ -832,19 +808,41 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const qtdAbertas = resumoOcorrencias?.abertas ?? ocorrenciasVisiveis.filter(o => o.status !== "ANULADO" && !o.fim).length;
   const qtdEncerradas = resumoOcorrencias?.encerradas ?? ocorrenciasVisiveis.filter(o => o.status !== "ANULADO" && !!o.fim).length;
   const qtdAguardando = examesVisiveis.filter(e => e.status !== "ANULADO" && resultadoExameSanitario(e) === "Aguardando resultado").length;
-  const abasOcorrencias = <SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Situação das ocorrências" active={situacao} onSelect={v => { setSituacao(v); setPagina(1); }} tabs={[{ id: "ABERTA", label: `Abertas (${qtdAbertas})` }, { id: "ENCERRADA", label: `Já encerradas (${qtdEncerradas})` }]} />;
-  const abasExames = <SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Situação dos exames" active={situacao === "AGUARDANDO_RESULTADO" ? situacao : ""} onSelect={v => { setSituacao(v); setPagina(1); }} tabs={[{ id: "", label: "Todos" }, { id: "AGUARDANDO_RESULTADO", label: `Aguardando resultado (${qtdAguardando})` }]} />;
-  const resumoPagina = aba === "agenda" ? [
-    { nome: "pendentes", qtd: tarefasVisiveis.filter(t => t.situacao === "PENDENTE").length },
-    { nome: "atrasadas", qtd: tarefasVisiveis.filter(t => rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario) === "Atrasada").length },
-  ] : [];
-  const resumoUI = !(aba === "agenda" && visaoAgenda === "tarefas" && mostrarSemana) && !carregandoAba && !erroAba && resumoPagina.length > 0 && !(aba === "agenda" && visaoAgenda === "rodadas") ? <ResumoPaginaSanitaria itens={resumoPagina} /> : null;
+  const abasOcorrencias = <SubTabs variant="financeiro" aparencia="segmentado" ariaLabel="Situação das ocorrências" active={situacao} onSelect={v => { setSituacao(v); setPagina(1); }} tabs={[{ id: "ABERTA", label: `Abertas (${qtdAbertas})` }, { id: "ENCERRADA", label: `Já encerradas (${qtdEncerradas})` }]} />;
+  const abasExames = <SubTabs variant="financeiro" aparencia="segmentado" ariaLabel="Situação dos exames" active={situacao === "AGUARDANDO_RESULTADO" ? situacao : ""} onSelect={v => { setSituacao(v); setPagina(1); }} tabs={[{ id: "", label: "Todos" }, { id: "AGUARDANDO_RESULTADO", label: `Aguardando resultado (${qtdAguardando})` }]} />;
+  const [totalPendentesAgenda, setTotalPendentesAgenda] = useState(0);
+  const [qtdOcorrenciasAbertas, setQtdOcorrenciasAbertas] = useState<number | null>(null);
+  const [qtdEmCarencia, setQtdEmCarencia] = useState<number | null>(null);
+  const [pendenciasTablet, setPendenciasTablet] = useState(0);
+  const podeRevisarTablet = !!usuario && (usuario.dono || usuario.flags.includes("revisarAplicacoesTablet"));
+  useEffect(() => {
+    let vivo = true;
+    const sitio = getPropriedadeAtiva();
+    // Só o total de pendentes alimenta o contador da sub-aba Tarefas.
+    reqSanidade<PaginaSanitaria<Tarefa>>("/tarefas?situacao=PENDENTE&pagina=1&porPagina=1&paginado=true").then(p => { if (vivo) setTotalPendentesAgenda(p.total ?? 0); }).catch(() => {});
+    reqSanidade<{ resumo?: ResumoOcorrencias }>("/ocorrencias?paginado=true&pagina=1&porPagina=1").then(p => { if (vivo) setQtdOcorrenciasAbertas(p.resumo?.abertas ?? null); }).catch(() => {});
+    if (podeRevisarTablet && sitio) reqSanidade<{ revisadoEm?: string | null }[]>(`/tablet/envios?propriedadeId=${sitio}`).then(l => { if (vivo && Array.isArray(l)) setPendenciasTablet(l.filter(e => !e.revisadoEm).length); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [revisao, podeRevisarTablet]);
+  const naAbaCarencias = aba === "carencias";
+  useEffect(() => {
+    if (naAbaCarencias) return;
+    let vivo = true;
+    reqSanidade<CarenciaAnimal[]>("/carencias?pagina=1&porPagina=50").then(l => { if (vivo && Array.isArray(l)) { const agora = Date.now(); setQtdEmCarencia(l.filter(c => [c.leite, c.carne].some(p => p.estado === "CONHECIDO" && !p.prazoZero && new Date(p.ate).getTime() > agora)).length); } }).catch(() => {});
+    return () => { vivo = false; };
+  }, [revisao, naAbaCarencias]);
+  const acessosTablet = ([
+    ["enviarAplicacoesTablet", "", "Aplicações no tablet"],
+    ["revisarAplicacoesTablet", "/aprovacao", "Aprovação do tablet"],
+    ["gerenciarTemplatesTablet", "/templates", "Templates do tablet"],
+  ] as const).filter(([flag]) => usuario?.dono || usuario?.flags.includes(flag));
+  const resumoUI: ReactNode = null;
   const colunasTarefas: ColunaTabela<Tarefa>[] = [
                 { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: t => t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId) },
                 { chave: "protocolo", titulo: "Protocolo / ciclo", larguraMinima: 260, celula: t => <>{t.execucao.protocolo.nome} · v{t.execucao.protocolo.versao}<div className="mt-1 text-sm text-muted-foreground">{t.execucao.rodada?.nome ?? t.rodada?.nome ?? "Sem ciclo"} · {t.parametros.tipoAplicacaoNomeSnapshot ?? (t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame")}</div></> },
                 { chave: "prevista", titulo: "Previsão / situação", larguraMinima: 150, celula: t => <div className="sanidade-previsao"><span>{dataSanitaria(t.previstaPara)}</span><EstadoSanitario tom={t.situacao === "PENDENTE" ? (rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario) === "Atrasada" ? "alerta" : "atencao") : t.situacao === "REALIZADA" ? "verde" : "neutro"}>{rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario)}</EstadoSanitario></div> },
                 ...(tarefas.some(t => t.regularizacaoPendente || t.historicoRegularizacao?.length) ? [{ chave:"regularizacao", titulo:"Regularização", larguraMinima:210, celula:(t: Tarefa) => <RegularizacaoTarefa tarefa={t} podeLancar={podeLancar} onMudou={async()=>setRevisao(v=>v+1)} /> }] : []),
-                { chave: "acoes", titulo: "Ações", acoes: true, larguraMinima: 210, celula: t => podeLancar && t.situacao === "PENDENTE" ? <div className="flex items-center gap-2"><Button secondary onClick={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); setExecutandoEtapa([{ ...t, parametros: { ...t.parametros, tipo: t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME" } }]); }}>Executar tarefa</Button><DropdownMenu><DropdownMenuTrigger asChild><UiButton variant="outline" size="icon" aria-label={`Mais ações da tarefa de ${t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId)}`}><MoreHorizontal aria-hidden /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end">{([['dispensar', 'Dispensar com motivo'], ['cancelar', 'Cancelar execução'], ['adiar', 'Adiar tarefa']] as const).map(([tipo, rotulo]) => <DropdownMenuItem key={tipo} onSelect={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo, id: tipo === 'cancelar' ? t.execucaoId : t.id }); }}>{rotulo}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></div> : null },
+                { chave: "acoes", titulo: "Ações", acoes: true, larguraMinima: 210, celula: t => podeLancar && t.situacao === "PENDENTE" ? <div className="flex items-center gap-2"><Button secondary onClick={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); setExecutandoEtapa([{ ...t, parametros: { ...t.parametros, tipo: t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME" } }]); }}>Registrar execução</Button><DropdownMenu><DropdownMenuTrigger asChild><UiButton variant="outline" size="icon" aria-label={`Mais ações da tarefa de ${t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : nomeAnimal(t.execucao.animalId)}`}><MoreHorizontal aria-hidden /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end">{([['adiar', 'Adiar tarefa'], ['dispensar', 'Dispensar com motivo'], ['cancelar', 'Cancelar execução']] as const).map(([tipo, rotulo]) => <DropdownMenuItem key={tipo} className={tipo === 'cancelar' ? 'text-destructive focus:text-destructive' : undefined} onSelect={() => { setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo, id: tipo === 'cancelar' ? t.execucaoId : t.id }); }}>{rotulo}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></div> : null },
   ];
   const colunasOcorrencias: ColunaTabela<Ocorrencia>[] = [
                 { chave: "animal", titulo: "Animal", principal: true, celula: (o) => <LinkInterno area="pecuaria" href={linkFichaAnimal(o.animalId)}>{nomeAnimal(o.animalId)}</LinkInterno> },
@@ -877,7 +875,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           }}
         />
       )}
-      {!(aba === "agenda" && visaoAgenda === "rodadas" && rodadaId) && <PageHeader titulo={<span className="flex items-center gap-3"><ShieldCheck size={28} aria-hidden />Sanidade</span>} acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => navegarPara("/pecuaria/sanidade/calendario")}>Calendário sanitário</Button><Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/sanidade/protocolos")}>Gerenciar protocolos</Button>{podeGerenciarServicos && <Button secondary onClick={() => setRateando(true)}>Gerenciar procedimentos</Button>}</div>} />}
+      {!(aba === "agenda" && visaoAgenda === "rodadas" && rodadaId) && <PageHeader titulo={<span className="flex items-center gap-3"><ShieldCheck size={28} aria-hidden />Sanidade</span>} acao={<div className="flex flex-wrap items-center gap-2">{acessosTablet.length > 0 && <DropdownMenu><DropdownMenuTrigger asChild><UiButton variant="outline" className="min-h-10 gap-2 rounded-lg px-4">{pendenciasTablet > 0 ? `Tablet (${pendenciasTablet})` : "Tablet"}<ChevronDown size={16} aria-hidden /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end">{acessosTablet.map(([flag, rota, rotulo]) => <DropdownMenuItem key={flag} onSelect={() => navegarPara("/pecuaria/sanidade/tablet" + rota)}>{rotulo}{flag === "revisarAplicacoesTablet" && pendenciasTablet > 0 ? ` (${pendenciasTablet})` : ""}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>}<DropdownMenu><DropdownMenuTrigger asChild><UiButton variant="outline" className="min-h-10 gap-2 rounded-lg px-4">Gerenciar<ChevronDown size={16} aria-hidden /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => navegarPara("/pecuaria/sanidade/calendario")}>Calendário sanitário</DropdownMenuItem><DropdownMenuItem onSelect={() => navegarPara("/configuracoes/pecuaria/sanidade/protocolos")}>Gerenciar protocolos</DropdownMenuItem>{podeGerenciarServicos && <DropdownMenuItem onSelect={() => setRateando(true)}>Gerenciar procedimentos</DropdownMenuItem>}</DropdownMenuContent></DropdownMenu>{podeLancar && ["agenda", "ocorrencias", "exames"].includes(aba) && <Button onClick={() => abrir({ tipo: aba === "agenda" ? "protocolo" : aba === "ocorrencias" ? "ocorrencia" : "exame" })}><Plus size={16} aria-hidden />{aba === "agenda" ? "Iniciar protocolo" : aba === "ocorrencias" ? "Nova ocorrência" : "Registrar coleta / exame"}</Button>}</div>} />}
       {!(aba === "agenda" && visaoAgenda === "rodadas" && rodadaId) && <div className="sanidade-navegacao" ref={abasSanidade}>
       <SubTabs variant="financeiro" ariaLabel="Sanidade"
         className="sanidade-abas-principais"
@@ -890,10 +888,10 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
         }}
         tabs={[
           { id: "agenda", label: "Agenda" },
-          { id: "ocorrencias", label: "Ocorrências" },
+          { id: "ocorrencias", label: qtdOcorrenciasAbertas ? `Ocorrências (${qtdOcorrenciasAbertas})` : "Ocorrências" },
           { id: "aplicacoes", label: "Aplicações" },
           { id: "exames", label: "Exames" },
-          { id: "carencias", label: "Carências" },
+          { id: "carencias", label: qtdEmCarencia ? `Carências (${qtdEmCarencia})` : "Carências" },
         ]}
       />
       </div>}
@@ -905,13 +903,13 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
         </Button>
       )}
       <Panel className="overflow-hidden sanidade-lista">
-        {aba === "agenda" && !rodadaId && <div className="sanidade-agenda-visoes"><SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Visão da agenda" active={visaoAgenda} onSelect={v => { setVisaoAgenda(v); setPagina(1); }} tabs={[{ id: "rodadas", label: "Ciclos" }, { id: "tarefas", label: "Tarefas" }, { id: "cuidados", label: "Todos os cuidados" }]} /></div>}
+        {aba === "agenda" && !rodadaId && <div className="sanidade-agenda-visoes"><SubTabs variant="financeiro" aparencia="segmentado" ariaLabel="Visão da agenda" active={visaoAgenda} onSelect={v => { setVisaoAgenda(v); setPagina(1); }} tabs={[{ id: "rodadas", label: "Ciclos" }, { id: "tarefas", label: totalPendentesAgenda ? `Tarefas (${totalPendentesAgenda})` : "Tarefas" }, { id: "cuidados", label: "Todos os cuidados" }]} /></div>}
         {!(aba === "agenda" && ["rodadas","cuidados"].includes(visaoAgenda)) && aba !== "aplicacoes" && <>
           {carenciasIndividuais ? <div className="sanidade-carencias-contexto">
             <strong>{animal ? nomeAnimalSanitario(animal) : "Animal selecionado"}</strong>
             <Button secondary onClick={() => { setAnimalId(""); setBuscaAnimal(""); setLoteId(""); setDe(""); setAte(""); setSituacao(""); setPagina(1); }}>Todos os animais</Button>
             <LinkInterno area="pecuaria" href={`${linkFichaAnimal(animalId)}#sanidade`}>Ver ficha do animal</LinkInterno>
-          </div> : filtrosTabela(podeLancar && aba !== "carencias" ? <Button onClick={() => abrir({ tipo: aba === "agenda" ? "protocolo" : aba === "ocorrencias" ? "ocorrencia" : "exame" })}>{aba === "agenda" ? "Iniciar protocolo" : aba === "ocorrencias" ? "Nova ocorrência" : "Registrar coleta / exame"}</Button> : undefined, resumoUI)}
+          </div> : filtrosTabela(undefined, resumoUI)}
         </>}
       {erroAba && (
         <div className="mt-4">
@@ -927,32 +925,22 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
             <>
 
               {visaoAgenda === "cuidados" ? <AgendaCuidados filtros={{animalId,busca:buscaAnimal,loteId,de,ate,pagina}} revisao={revisao} onFiltros={v=>{setAnimalId(v.animalId);setBuscaAnimal(v.busca);setLoteId(v.loteId);setDe(v.de);setAte(v.ate);setPagina(v.pagina)}}/> : visaoAgenda === "rodadas" ? <AgendaRodadas filtrosColunas={filtrosColunas} filtrosUI={(acao) => filtrosTabela(acao)} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 10 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={(id) => { const url = new URL(window.location.href); if (id) url.searchParams.set("rodadaId", id); else url.searchParams.delete("rodadaId"); for (const chave of ["protocoloContexto", "protocoloBusca", "protocoloSituacao", "abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) url.searchParams.delete(chave); navegarPara(url.pathname + url.search); setRodadaId(id); }} onExecutar={setExecutandoEtapa} /> : <>
-              <div className="san-visual-barra">
-                <Button secondary onClick={alternarSemana}>{mostrarSemana ? "Voltar à lista" : "Ver semana"}</Button>
-                {!mostrarSemana && <AlternarVisualizacaoSanitaria rotulo="Visualização das tarefas" {...visualTarefas}/>}
-              </div>
-              {mostrarSemana ? <AgendaSemanal<Tarefa> filtros={{animalId,buscaAnimal,loteId,de,ate,situacao}} revisao={revisao} podeLancar={podeLancar} acoes={t=>colunasTarefas.find(c=>c.chave==="acoes")!.celula(t)} regularizacao={t=><RegularizacaoTarefa tarefa={t} podeLancar={podeLancar} onMudou={async()=>setRevisao(v=>v+1)}/>} onExecutar={itens=>setExecutandoEtapa(itens.map(t=>({...t,parametros:{...t.parametros,tipo:t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME"}})))}/> : <>
-              <div className="san-tarefas-lista"><TabelaFinanceira compacta visualizacao={visualTarefas.modo === "visual" ? "cartoes" : "tabela"} filtrosColunas={filtrosColunas} rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).sort((a, b) => Number(b.situacao === "PENDENTE") - Number(a.situacao === "PENDENTE") || a.previstaPara.localeCompare(b.previstaPara) || a.id.localeCompare(b.id))} chaveDe={t => t.id} colunas={colunasTarefas} /></div>
+              <div className="san-tarefas-lista"><TabelaFinanceira iconeDe={t => t.parametros.tipo === "APLICACAO" ? ICONES_TABELA.aplicacao : ICONES_TABELA.exame} compacta filtrosColunas={filtrosColunas} rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).sort((a, b) => Number(b.situacao === "PENDENTE") - Number(a.situacao === "PENDENTE") || a.previstaPara.localeCompare(b.previstaPara) || a.id.localeCompare(b.id))} chaveDe={t => t.id} colunas={colunasTarefas} /></div>
               {!carregandoAba && !erroAba && !tarefas.length && (
                 <p className="p-4">
-                  Nenhuma tarefa planejada. Cadastre e publique um protocolo
-                  antes de iniciar uma execução.
+                  Nenhuma tarefa planejada.
                 </p>
               )}
               {totalTarefas > 0 && <Paginacao paginaAtual={pagina} totalPaginas={Math.max(1, Math.ceil(totalTarefas / 50))} totalItens={totalTarefas} itensPorPagina={50} onPaginaChange={setPagina} rotulo="tarefas" idSelect="agenda-pagina-tarefas" />}
-              <p className="p-4 text-sm text-ink-3">
-                Planejamento não consome estoque. Aplicações e exames são fatos
-                independentes.
-              </p>
-              </>}
               </>}
             </>
           )}
           {aba === "ocorrencias" && (
             <>
-              <div className="consulta-visual-barra sanidade-agenda-visoes">{abasOcorrencias}<AlternarVisualizacaoSanitaria rotulo="Visualização das ocorrências" {...visualOcorrencias}/></div>
-              {visualOcorrencias.modo === "visual" ? carregandoAba || erroAba ? null : <CartoesOcorrencias itens={ocorrenciasVisiveis} resumo={resumoOcorrencias} nomeAnimal={nomeAnimal} acoes={o=>colunasOcorrencias.find(c=>c.chave==="acoes")!.celula(o)} onAbrir={o=>abrirDetalhe("ocorrencia",o.id,o.propriedadeId)} doencaId={doencaVisual} onDoenca={id=>{setDoencaVisual(id);setPagina(1);}}/> : <>
-              <TabelaFinanceira visualizacao="tabela" filtrosColunas={filtrosColunas} rotulo="Ocorrências sanitárias" itens={ocorrenciasVisiveis} chaveDe={(o) => o.id} onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={colunasOcorrencias} /></>}
+              <div className="consulta-visual-barra sanidade-agenda-visoes">{abasOcorrencias}</div>
+              {situacao === "ABERTA" && resumoOcorrencias && !carregandoAba && !erroAba && <CasosPorDoenca resumo={resumoOcorrencias} doencaId={doencaVisual} onDoenca={id => { setDoencaVisual(id); setPagina(1); }} />}
+              {<>
+              <TabelaFinanceira icone={ICONES_TABELA.ocorrencia} filtrosColunas={filtrosColunas} rotulo="Ocorrências sanitárias" itens={ocorrenciasVisiveis} chaveDe={(o) => o.id} onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={colunasOcorrencias} /></>}
               {ocorrenciasPaginadas && totalOcorrencias > 0 && <Paginacao paginaAtual={pagina} totalPaginas={Math.max(1,Math.ceil(totalOcorrencias/50))} totalItens={totalOcorrencias} itensPorPagina={50} onPaginaChange={setPagina} rotulo="ocorrências" idSelect="pagina-ocorrencias"/>}
               {!carregandoAba && !erroAba && !ocorrencias.length && (
                 <Empty>Nenhuma ocorrência encontrada para os filtros atuais.</Empty>
@@ -988,7 +976,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           {carenciasIndividuais && <div className="sanidade-carencias-consulta"><SanidadeAnimal key={animalId} somenteCarencias animalId={animalId} propriedadeId={animal?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} onMudou={atualizarAplicacao} /></div>}
           {aba === "carencias" && !animalId && (
             <div className="sanidade-carencias-tabela">
-              <ConsultaCarencias filtrosColunas={filtrosColunas} cartaoComLinks rotulo="Carências sanitárias" itens={carencias.filter(c => !situacao || (situacao === "CARÊNCIA_VIGENTE" ? [c.leite, c.carne].some(p => p.estado === "CONHECIDO" && !p.prazoZero && new Date(p.ate).getTime() > agoraCarencias) : [c.leite, c.carne].some(p => p.estado === "NAO_INFORMADO")))} chaveDe={c => c.animal.id} onAbrir={c => navegarPara(`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`)} colunas={[
+              <ConsultaCarencias filtrosColunas={filtrosColunas} rotulo="Carências sanitárias" itens={carencias.filter(c => !situacao || (situacao === "CARÊNCIA_VIGENTE" ? [c.leite, c.carne].some(p => p.estado === "CONHECIDO" && !p.prazoZero && new Date(p.ate).getTime() > agoraCarencias) : [c.leite, c.carne].some(p => p.estado === "NAO_INFORMADO")))} chaveDe={c => c.animal.id} onAbrir={c => navegarPara(`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`)} colunas={[
                 { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 180, celula: c => <LinkInterno area="pecuaria" href={`/pecuaria/sanidade?aba=carencias&animalId=${c.animal.id}`}>{nomeAnimalSanitario(c.animal)}</LinkInterno> },
                 { chave: "leite", titulo: "Leite", larguraMinima: 240, larguraFlexivel: true, celula: c => <PrazoCarencia estado={c.leite} agora={agoraCarencias} revisao={c.revisaoLeitePendente} /> },
                 { chave: "carne", titulo: "Abate / carne", larguraMinima: 240, larguraFlexivel: true, celula: c => <PrazoCarencia estado={c.carne} agora={agoraCarencias} /> },
@@ -1004,7 +992,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
               <ConsultaExames abas={abasExames} nomeAnimal={e => nomeAnimal(e.animalId)} filtrosColunas={filtrosColunas} rotulo="Exames sanitários" itens={exames.filter((e) => noPeriodo(e.data, e.status, null, e.resultadoTexto ?? e.resultadoNumero ?? e.resultadoOpcao))} chaveDe={(e) => e.id} onAbrir={(e) => abrirDetalhe("exame", e.id, e.propriedadeId)} colunas={[
                 { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 180, celula: (e) => <LinkInterno area="pecuaria" href={linkFichaAnimal(e.animalId)}>{nomeAnimal(e.animalId)}</LinkInterno> },
                 { chave: "tipo", titulo: "Exame / coleta", larguraMinima: 200, celula: (e) => <><div>{nomeExame(e.tipoExameId ?? e.tipoExame.id, e.tipoExame.nome)}</div><div className="text-sm text-ink-3">{dataSanitaria(e.data)}</div></> },
-                { chave: "resultado", titulo: "Resultado / situação", larguraMinima: 240, larguraFlexivel: true, celula: (e) => <>{resultadoExameSanitario(e) !== "Aguardando resultado" && <div className="mb-1">{resultadoExameSanitario(e)}</div>}<EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : resultadoExameSanitario(e) === "Aguardando resultado" ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario></> },
+                { chave: "resultado", titulo: "Resultado / situação", larguraMinima: 240, larguraFlexivel: true, celula: (e) => <>{escalaRegistrada(e) ? <div className="mb-1 san-exame-escala"><ResultadoVisualExame exame={e} /></div> : resultadoExameSanitario(e) !== "Aguardando resultado" && <div className="mb-1">{resultadoExameSanitario(e)}</div>}<EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : resultadoExameSanitario(e) === "Aguardando resultado" ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario></> },
                 { chave: "acoes", titulo: "Ações", acoes: true, celula: (e) => <div className="sanidade-acoes-linha" onClick={(v) => v.stopPropagation()}>{podeLancar && e.status === "VALIDO" && <ResultadoExame exame={e} propriedadeId={e.propriedadeId} onSalvo={() => { setRevisao((v) => v + 1); setRecarregarDetalhe((v) => v + 1); }} />}</div> },
               ]} />
               {!carregandoAba && !erroAba && !exames.length && (

@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { AlternadorDoCabecalho, VisualizacaoNoCabecalho } from '@/components/VisualizacaoConsulta';
 import { BezerreiroModulo } from './BezerreiroModulo';
 import { AcompanhamentoBezerreiro } from './AcompanhamentoBezerreiro';
 import { consultarBezerreiro } from './api';
 import { setPropriedadeAtiva } from '../../../propriedadeScope';
+import { listarPropriedades } from '../../../api/propriedades';
 import type { AcompanhamentoAnimal, Configuracao, Participacao } from './types';
+vi.mock('../../../api/propriedades',()=>({listarPropriedades:vi.fn(async()=>[])}));
 vi.mock('./api',async()=>({...await vi.importActual<typeof import('./api')>('./api'),consultarBezerreiro:vi.fn()}));
 const config:Configuracao={vigente:null,coleiras:[],fases:[],perfis:[]};
 beforeEach(()=>{vi.clearAllMocks();setPropriedadeAtiva(1);history.replaceState(null,'','/pecuaria/bezerreiro?coleira=coleira-a&fase=fase-v1&historico=true');});
@@ -16,38 +17,9 @@ describe('Bezerreiro: consultas e acessos',()=>{
     vi.mocked(consultarBezerreiro).mockImplementation(async(path)=>path==='/configuracoes'?config:{itens:[],total:0,pagina:1,porPagina:20});
     render(<BezerreiroModulo podeLancar={false}/>);
     await screen.findByText('Nenhum animal corresponde aos filtros. Ajuste ou limpe os critérios.');
-    expect(screen.getByRole('heading',{name:'Histórico de saídas'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Remover filtro: Histórico de saídas'})).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Regularizar participação'})).toBeNull();
     expect(vi.mocked(consultarBezerreiro).mock.calls.some(([path,sitio])=>path.includes('historico=true')&&path.includes('coleiraId=coleira-a')&&path.includes('faseVersaoId=fase-v1')&&sitio===1)).toBe(true);
-  });
-  it('alterna o histórico pelo cabeçalho global e preserva os filtros', async () => {
-    const participacao: Participacao = {
-      id: 'participacao', animalId: 'animal', animal: { id: 'animal', brinco: '601', nome: 'Lua' },
-      perfilId: 'perfil', perfil: { id: 'perfil', loteId: 'lote', ativo: true, lote: { id: 'lote', nome: 'Bezerreiro' } },
-      desde: '2026-09-01', ate: '2026-10-20', motivoSaida: 'Desmame', versao: 2, fases: [],
-    };
-    vi.mocked(consultarBezerreiro).mockImplementation(async path =>
-      path === '/configuracoes' ? config : { itens: [participacao], total: 1, pagina: 1, porPagina: 20 },
-    );
-    const chave = 'terrano:consultas:teste-bezerreiro:visualizacao-global';
-    localStorage.setItem(chave, 'visual');
-    try {
-      render(<VisualizacaoNoCabecalho usuarioId="teste-bezerreiro">
-        <header><AlternadorDoCabecalho /></header>
-        <BezerreiroModulo podeLancar={false} />
-      </VisualizacaoNoCabecalho>);
-      const rotulo = 'Histórico de saídas do bezerreiro';
-      expect(await screen.findByRole('list', { name: rotulo })).toBeTruthy();
-      expect(screen.getByRole('button', { name: 'Ver histórico · Lua · 601' })).toBeTruthy();
-      fireEvent.click(screen.getByRole('button', { name: 'Tabela' }));
-      expect(await screen.findByRole('table', { name: rotulo })).toBeTruthy();
-      expect(screen.queryByRole('button', { name: 'Ver histórico · Lua · 601' })).toBeNull();
-      expect(new URLSearchParams(location.search).get('historico')).toBe('true');
-      expect(new URLSearchParams(location.search).get('coleira')).toBe('coleira-a');
-      expect(localStorage.getItem(chave)).toBe('tabela');
-    } finally {
-      localStorage.removeItem(chave);
-    }
   });
   it('mantém falha de consulta distinta de ausência e permite tentar novamente',async()=>{
     let falhar=true;vi.mocked(consultarBezerreiro).mockImplementation(async(path)=>{if(path==='/configuracoes')return config;if(falhar)throw new Error('Conexão indisponível');return {itens:[],total:0,pagina:1};});
@@ -57,7 +29,7 @@ describe('Bezerreiro: consultas e acessos',()=>{
   });
   it('troca de rotina mantém as cinco abas e o caminho canônico',async()=>{
     vi.mocked(consultarBezerreiro).mockImplementation(async(path)=>path==='/configuracoes'?config:{itens:[],total:0,pagina:1});
-    render(<BezerreiroModulo podeLancar={false}/>);await screen.findByRole('heading',{name:'Histórico de saídas'});
+    render(<BezerreiroModulo podeLancar={false}/>);await screen.findByRole('button',{name:'Remover filtro: Histórico de saídas'});
     expect(screen.getAllByRole('tab')).toHaveLength(5);
     fireEvent.click(screen.getByRole('tab',{name:'Sanidade'}));
     await waitFor(()=>expect(location.search).toBe('?aba=sanidade'));
@@ -72,5 +44,39 @@ describe('Bezerreiro: consultas e acessos',()=>{
     expect(screen.getByText(/Saída após desmame/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Alterar fase'})).toBeNull();
     expect(screen.queryByRole('button',{name:'Movimentar animal'})).toBeNull();
+  });
+});
+describe('Bezerreiro em Consolidado',()=>{
+  const participacao=(sitio:{id:number;nome:string})=>({id:`p${sitio.id}`,animalId:`a${sitio.id}`,animal:{id:`a${sitio.id}`,brinco:`B-${sitio.id}`,nome:`Bezerra ${sitio.id}`,dataNascimento:'2026-10-01'},perfilId:'perfil',perfil:{id:'perfil',loteId:'l',ativo:true,lote:{id:'l',nome:'Bezerreiro'},propriedade:sitio},desde:'2026-10-01',ate:null,motivoSaida:null,versao:1,fases:[]}) as unknown as Participacao;
+  it('com vários sítios lista bezerros de todos com a coluna Sítio e sem registrar; Acompanhar troca para o sítio do bezerro',async()=>{
+    setPropriedadeAtiva(null);history.replaceState(null,'','/pecuaria/bezerreiro?aba=animais');
+    vi.mocked(listarPropriedades).mockResolvedValue([{id:1,nome:'Sede',ativo:true},{id:2,nome:'Arrendado',ativo:true}] as never);
+    vi.mocked(consultarBezerreiro).mockImplementation(async()=>({itens:[participacao({id:2,nome:'Arrendado'})],total:1,pagina:1,porPagina:20}));
+    const selecionar=vi.fn();
+    render(<BezerreiroModulo podeLancar onSelecionarSitio={selecionar}/>);
+    expect(await screen.findByText('Arrendado')).toBeTruthy();
+    expect(screen.getByRole('columnheader',{name:'Sítio'})).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Regularizar participação'})).toBeNull();
+    expect(vi.mocked(consultarBezerreiro).mock.calls.every(([path,sitio])=>path!=='/configuracoes'&&sitio===null)).toBe(true);
+    fireEvent.click(screen.getByRole('button',{name:'Acompanhar'}));
+    expect(selecionar).toHaveBeenCalledWith(2);
+  });
+  it('Sanidade em Consolidado mostra a coluna Sítio e abrir o bezerro troca para o sítio dele',async()=>{
+    setPropriedadeAtiva(null);history.replaceState(null,'','/pecuaria/bezerreiro?aba=sanidade');
+    vi.mocked(listarPropriedades).mockResolvedValue([{id:1,nome:'Sede',ativo:true},{id:2,nome:'Arrendado',ativo:true}] as never);
+    vi.mocked(consultarBezerreiro).mockImplementation(async()=>({itens:[{id:'f1',animalId:'a2',brinco:'B-2',nome:'Bezerra 2',tipo:'EXAME',data:'2026-10-05',status:'VALIDO',descricao:'PTS',propriedadeId:2,sitio:'Arrendado'}],total:1,pagina:1,porPagina:20}));
+    const selecionar=vi.fn();
+    render(<BezerreiroModulo podeLancar onSelecionarSitio={selecionar}/>);
+    expect(await screen.findByText('Arrendado')).toBeTruthy();
+    expect(screen.getByRole('columnheader',{name:'Sítio'})).toBeTruthy();
+    fireEvent.click(screen.getByRole('button',{name:'B-2 · Bezerra 2'}));
+    expect(selecionar).toHaveBeenCalledWith(2);
+  });
+  it('com um único sítio entrega o sítio ao shell em vez de consolidar',async()=>{
+    setPropriedadeAtiva(null);history.replaceState(null,'','/pecuaria/bezerreiro?aba=animais');
+    vi.mocked(listarPropriedades).mockResolvedValue([{id:1,nome:'Sede',ativo:true}] as never);
+    const selecionar=vi.fn();
+    render(<BezerreiroModulo podeLancar onSelecionarSitio={selecionar}/>);
+    await waitFor(()=>expect(selecionar).toHaveBeenCalledWith(1));
   });
 });

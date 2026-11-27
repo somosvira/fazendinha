@@ -215,3 +215,14 @@ it("abre emissão por link de busca sem criar nova emissão", async () => {
   expect(registrarLeite).not.toHaveBeenCalled();
   cleanup(); history.replaceState(null, "", "/");
 });
+it("em Consolidado lista emissões de todos os sítios com a coluna Sítio e não emite", async () => {
+  vi.mocked(consultarLeite).mockResolvedValue({ ...lista, propriedadeId: null, consolidado: true, itens: [{ ...lista.itens[0], sitio: "Arrendado" }] });
+  render(<RelatoriosLeite podeExportar podeFinanceiro={false} />);
+  fireEvent.click(screen.getByRole("button", { name: "Período e emissão" }));
+  await waitFor(() => expect(consultarLeite).toHaveBeenCalled());
+  expect(screen.queryByRole("button", { name: "Emitir relatório preservado" })).toBeNull();
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+  await acionarMenuRelatorio("Emissões anteriores");
+  expect(await screen.findByText("Arrendado")).toBeTruthy();
+  expect(screen.getByRole("columnheader", { name: "Sítio" })).toBeTruthy();
+});

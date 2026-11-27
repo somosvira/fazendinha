@@ -14,6 +14,7 @@ import { dataCurta, REGIMES_RELATORIO } from "./lib/relatorios";
 import { GraficosCaixaRelatorio, PizzaComprasRelatorio } from "./RelatorioFinanceiroGraficos";
 import { RelatorioFinanceiroAnalises } from "./RelatorioFinanceiroAnalises";
 import { codigoOperacao } from "../estoque/navegacao";
+import { ICONES_TABELA } from "../components/iconesTabela";
 
 function OperacaoDaLinha({ linha }: { linha: LinhaComposicaoRelatorio }) {
   if (linha.operacaoNumero != null) return <>{codigoOperacao(linha.operacaoNumero)}</>;
@@ -131,7 +132,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
             </div>
             <div className={`relatorio-tabelas-resumo${snapshot.gerencial.saldoContas ? "" : " relatorio-tabelas-resumo-unica"}`}>
             {snapshot.gerencial.saldoContas && <section className="relatorio-saldos-resumo" aria-label="Saldo por conta"><div className="relatorio-secao-titulo"><h2>Saldo por conta</h2></div>
-              {snapshot.gerencial.saldoContas.contas.length ? <TabelaFinanceira compacta larguraMinimaParaTabela={420} rotulo="Saldo por conta" itens={snapshot.gerencial.saldoContas.contas} chaveDe={c => c.id} colunas={[
+              {snapshot.gerencial.saldoContas.contas.length ? <TabelaFinanceira icone={ICONES_TABELA.conta} compacta rotulo="Saldo por conta" itens={snapshot.gerencial.saldoContas.contas} chaveDe={c => c.id} colunas={[
                 { chave: "conta", titulo: "Conta", principal: true, larguraMinima: 110, celula: c => c.nome },
                 { chave: "inicial", titulo: "Saldo inicial", larguraMinima: 95, alinhamento: "direita", celula: c => brl(c.saldoInicial) },
                 { chave: "entradas", titulo: "Entradas", larguraMinima: 95, alinhamento: "direita", celula: c => brl(c.entradas) },
@@ -140,7 +141,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
               ]} /> : <Empty>Nenhuma conta salva nesta emissão.</Empty>}
             </section>}
             <section className="relatorio-operacoes" aria-label="Operações no período"><div className="relatorio-secao-titulo"><h2>Operações no período</h2><div className="relatorio-secao-acoes"><span>{snapshot.composicao.porTipo.reduce((total, tipo) => total + tipo.operacoes, 0)} operações</span><button className="relatorio-atalho" onClick={() => mudarAba("itens")}>Ver itens<ArrowRight size={15} aria-hidden="true" /></button></div></div>
-              {snapshot.composicao.porTipo.length ? <TabelaFinanceira compacta larguraMinimaParaTabela={420} rotulo="Operações por tipo" itens={snapshot.composicao.porTipo} chaveDe={t => t.tipo} colunas={[
+              {snapshot.composicao.porTipo.length ? <TabelaFinanceira icone={ICONES_TABELA.operacao} compacta rotulo="Operações por tipo" itens={snapshot.composicao.porTipo} chaveDe={t => t.tipo} colunas={[
                 { chave: "tipo", titulo: "Tipo de operação", principal: true, celula: t => t.rotulo },
                 { chave: "quantidade", titulo: "Quantidade", alinhamento: "centro", celula: t => t.operacoes },
                 { chave: "valor", titulo: "Valor das operações", alinhamento: "direita", celula: t => brl(t.total) },
@@ -157,7 +158,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
       <Panel className="fin-painel relatorio-itens"><div className="relatorio-itens-cabecalho"><div><h2>Itens das operações</h2></div><div className="relatorio-itens-contagem"><OrdenarConsulta controle={ordemItens.controle}/><span>{linhas.length} {linhas.length === 1 ? "item salvo" : "itens salvos"}</span></div></div>
         {snapshot.composicao.truncado && <p className="relatorio-itens-aviso" role="note">As primeiras {linhas.length} de {snapshot.composicao.totalLinhas} linhas ficaram salvas; os totais consideram todas.</p>}
         {snapshot.composicao.linhas.length
-          ? <TabelaFinanceira ordenacao={ordemItens.controle} compacta rotulo="Itens das operações" colunas={colunasItens} itens={linhas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)} chaveDe={(l) => l.indice} />
+          ? <TabelaFinanceira icone={ICONES_TABELA.operacao} ordenacao={ordemItens.controle} compacta rotulo="Itens das operações" colunas={colunasItens} itens={linhas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)} chaveDe={(l) => l.indice} />
           : <Empty>Nenhum item no recorte.</Empty>}
         {linhas.length > 0 && <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(linhas.length / POR_PAGINA))} total={linhas.length} porPagina={POR_PAGINA} rotulo="Paginação dos itens do relatório" substantivo="itens salvos" idSelect="pagina-itens-relatorio" onPagina={setPagina} />}
       </Panel>

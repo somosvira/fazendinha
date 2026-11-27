@@ -29,11 +29,11 @@ it("separa tentativas e partos do restante histórico, conserva paginação e ex
  expect(contagemTentativas()).toBe("12");
  expect(screen.queryByRole("heading", { name: /Tentativas deste ciclo/ })).toBeNull();
  expect(screen.queryByText("Fim do PEV")).toBeNull();
- expect(within(secao("Tentativas reprodutivas")).getAllByRole("button", { name: "Detalhes" })).toHaveLength(20);
+ expect(within(secao("Tentativas reprodutivas")).getAllByRole("button", { name: "Detalhes" })).toHaveLength(10);
  expect(within(secao("Histórico reprodutivo")).getAllByRole("button", { name: "Detalhes" })).toHaveLength(1);
  expect(within(secao("Histórico de partos")).queryAllByRole("button", { name: "Detalhes" })).toHaveLength(0);
  fireEvent.click(within(secao("Tentativas reprodutivas")).getByRole("button", { name: "Próxima" }));
- expect(within(secao("Tentativas reprodutivas")).getAllByRole("button", { name: "Detalhes" })).toHaveLength(4);
+ expect(within(secao("Tentativas reprodutivas")).getAllByRole("button", { name: "Detalhes" })).toHaveLength(2);
  await abrirFiltrosConsulta(secao("Tentativas reprodutivas"));
  fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Avaliações"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
  await aplicarFiltrosConsulta();
@@ -50,7 +50,8 @@ it("conserva deep links e detalhes, filtra período e mantém rascunho ao atuali
  fireEvent.change(criterio, { target: { value: "alterado" } });
  expect((screen.getByLabelText("Critérios completos") as HTMLInputElement).value).toBe("alterado");
  expect(screen.getByText("Não aferido")).toBeTruthy();
- fireEvent.click(within(secao("Tentativas reprodutivas")).getByRole("button", {name:"Período do histórico reprodutivo"}));
+ await abrirFiltrosConsulta(secao("Tentativas reprodutivas"));
+ fireEvent.click(screen.getByRole("button", {name:"Período do histórico reprodutivo"}));
  fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2020-09-10" } });
  fireEvent.click(screen.getByRole("button", {name:"Aplicar período"}));
  expect(screen.getByText("1–3 de 3 registros")).toBeTruthy();
@@ -114,7 +115,7 @@ it.each([0,1,2,3])("conserva %s tentativas factuais sem completar lacunas", asyn
  await abrirFiltrosConsulta(secao("Tentativas reprodutivas"));
  fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Tentativas"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
  await aplicarFiltrosConsulta();
- expect(within(secao("Tentativas reprodutivas")).queryAllByRole("button",{name:"Detalhes"})).toHaveLength(quantidade*2);
+ expect(within(secao("Tentativas reprodutivas")).queryAllByRole("button",{name:"Detalhes"})).toHaveLength(quantidade);
 });
 const paginaDemandas = <T extends { estado: string },>(itens: T[]) => ({ itens, total: itens.length, pagina: 1, porPagina: 10, resumo: { total: itens.length, pendentes: itens.filter(d => d.estado === "PENDENTE").length, resolvidas: itens.filter(d => d.estado === "RESOLVIDA").length, encerradas: 0, semData: 0 } });
 const demandaPendente = { id:"d", finalidade:"DIAGNOSTICO",ocorrencia:1,tentativaId:"t0",gestacaoId:null,previstaPara:"2020-10-01",estado:"PENDENTE",motivoEncerramento:null,regraSnapshot:{politicaVersao:1},exameResolucaoId:null };

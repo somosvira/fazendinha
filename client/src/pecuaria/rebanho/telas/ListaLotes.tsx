@@ -1,12 +1,9 @@
-import { CartoesLotes } from "./CartoesLotes";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { useOrdenacaoTabela } from "@/financeiro/OrdenarConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { CampoFiltro } from "@/financeiro/PainelFiltros";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-import { DatePicker } from "@/components/DatePicker";
 import { Checkbox } from "@/components/ui/checkbox";
 // Lista de lotes — duas seções empilhadas (Lotes · Histórico de movimentações),
 // no padrão das seções de DetalheLote.tsx (Panel com cabeçalho <h2 className=
@@ -18,7 +15,6 @@ import { ArrowRightLeft, Layers, Plus } from "lucide-react";
 import { MultiSelect } from "../../../components/MultiSelect";
 import { dataValida } from "../reproducao/periodo-consulta";
 import { DateRangePicker, dateFromIso, isoDate } from "../../../components/DateRangePicker";
-import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { usePropriedades } from "../../../api/propriedades";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -34,6 +30,7 @@ import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 import { BuscaLista } from "../../../components/BuscaLista";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 type Painel = { modo: "novo" } | { modo: "editar"; id: string } | null;
 const LOTES_POR_PAGINA = 15;
@@ -54,7 +51,6 @@ export function mensagemDesativar(lote: Lote): string {
 }
 
 export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: boolean; onAbrirLote: (id: string) => void }) {
-  const visual = useVisualizacaoConsulta("visualLotes");
   const sitioGlobal = getPropriedadeAtiva();
   const [mostrarInativos, setMostrarInativos] = useState(() => new URLSearchParams(window.location.search).get("lotesInativos") === "true");
   const [filtroSitio, setFiltroSitio] = useState(() => sitioGlobal == null ? new URLSearchParams(window.location.search).get("sitioLote") ?? "" : "");
@@ -109,16 +105,21 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const [movimentacaoAbertaId, setMovimentacaoAbertaId] = useState<string | null>(null);
 
   const edicaoHistorico = useRascunhoConsulta({ sitios: sitiosHistorico, lotes: lotesHistorico, desfeitas: mostrarDesfeitas }, { sitios: [] as string[], lotes: [] as string[], desfeitas: false }, v => { setSitiosHistorico(v.sitios); setLotesHistorico(v.lotes); setMostrarDesfeitas(v.desfeitas); setPaginaHistorico(1); });
+  const [buscaHistorico, setBuscaHistorico] = useState("");
+  const [buscaHistoricoAplicada, setBuscaHistoricoAplicada] = useState("");
+  // Busca enquanto digita; a espera evita uma consulta por tecla.
+  useEffect(() => { const t = setTimeout(() => { setBuscaHistoricoAplicada(buscaHistorico.trim()); setPaginaHistorico(1); }, 300); return () => clearTimeout(t); }, [buscaHistorico]);
   const carregarHistorico = useCallback((pagina: number) => (dataDeHistorico && !dataValida(dataDeHistorico)) || (dataAteHistorico && !dataValida(dataAteHistorico)) ? Promise.reject(new Error("Informe datas válidas para o histórico de movimentações.")) : dataDeHistorico && dataAteHistorico && dataDeHistorico > dataAteHistorico ? Promise.reject(new Error("A data final não pode anteceder a inicial.")) : listarMovimentacoes({
     propriedadeIds: sitiosHistorico.length ? sitiosHistorico.map(Number) : undefined, loteIds: lotesHistorico.length ? lotesHistorico : undefined,
     dataDe: dataDeHistorico || undefined,
     dataAte: dataAteHistorico || undefined,
+    busca: buscaHistoricoAplicada || undefined,
     incluirDesfeitas: mostrarDesfeitas,
     page: pagina,
     pageSize: 20,
-  }), [dataDeHistorico, dataAteHistorico, mostrarDesfeitas, sitiosHistorico, lotesHistorico]);
+  }), [dataDeHistorico, dataAteHistorico, buscaHistoricoAplicada, mostrarDesfeitas, sitiosHistorico, lotesHistorico]);
 
-  const recarregarTokenHistorico = `${dataDeHistorico}|${dataAteHistorico}|${mostrarDesfeitas}|${historicoRefresh}|${sitiosHistorico.join(",")}|${lotesHistorico.join(",")}`;
+  const recarregarTokenHistorico = `${dataDeHistorico}|${dataAteHistorico}|${buscaHistoricoAplicada}|${mostrarDesfeitas}|${historicoRefresh}|${sitiosHistorico.join(",")}|${lotesHistorico.join(",")}`;
 
   const lotesDoSitioHistorico = useMemo(
     () => (catalogos?.lotes ?? []).filter((lote) => edicaoHistorico.rascunho.sitios.length ? edicaoHistorico.rascunho.sitios.includes(String(lote.propriedadeId)) : true),
@@ -166,7 +167,6 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const edicaoLotes = useRascunhoConsulta({busca,sitio:filtroSitio,inativos:mostrarInativos},{busca:"",sitio:"",inativos:false},v=>{setBusca(v.busca);setFiltroSitio(v.sitio);setMostrarInativos(v.inativos);setPaginaLotes(1);});
   const camposLotes: CampoConsulta[] = [
     {chave:"lote", naBarra: true,ativo:!!busca,limpar:()=>edicaoLotes.editar("busca",""),conteudo:<CampoFiltro rotulo="Lote ou sítio"><input aria-label="Buscar lote no filtro" className="w-full rounded-lg border border-border px-3" value={edicaoLotes.rascunho.busca} onChange={e=>edicaoLotes.editar("busca",e.target.value)}/></CampoFiltro>},
-    ...(sitioGlobal == null ? [{chave:"sitio",ativo:!!filtroSitio,limpar:()=>edicaoLotes.editar("sitio",""),conteudo:<CampoFiltro rotulo="Sítio"><SelectCampo aria-label="Filtrar por sítio" value={edicaoLotes.rascunho.sitio} onValueChange={v=>edicaoLotes.editar("sitio",v)}><option value="">Todos os sítios</option>{sitiosAtivos.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</SelectCampo></CampoFiltro>}] : []),
     {chave:"situacao",ativo:mostrarInativos,limpar:()=>edicaoLotes.editar("inativos",false),conteudo:<label className="flex items-center gap-2 text-sm"><Checkbox checked={edicaoLotes.rascunho.inativos} onCheckedChange={v=>edicaoLotes.editar("inativos",v===true)}/>Mostrar inativos</label>},
   ];
   const ordemLotes = useOrdenacaoTabela<Lote>([{chave:"nome",rotulo:"Lote",tipo:"texto",obter:l=>l.nome},{chave:"animais",rotulo:"Animais ativos",tipo:"numero",obter:l=>l.animaisAtivos}], "ordemLotes", ()=>setPaginaLotes(1));
@@ -177,26 +177,23 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const lotesDaPagina = lotesFiltrados.slice((paginaLotesAtual - 1) * LOTES_POR_PAGINA, paginaLotesAtual * LOTES_POR_PAGINA);
   useEffect(() => { if (lotes !== null) setPaginaLotes((pagina) => Math.min(pagina, totalPaginasLotes)); }, [totalPaginasLotes, lotes]);
   /* pré-seleciona o sítio ativo no seletor global (comPropriedade), quando houver, na criação de lote */
-  const camposHistorico: CampoConsulta[] = [{chave:"origem",colunas:["origem","destino","situacao"],ativo:!!sitiosHistorico.length||!!lotesHistorico.length||mostrarDesfeitas,limpar:edicaoHistorico.limpar,conteudo: <div className="filtros-modal-grade"><MultiSelect compacto label="Sítios da movimentação" contentClassName="z-[1300]" options={sitiosAtivos.map(s=>({value:String(s.id),label:s.nome}))} value={edicaoHistorico.rascunho.sitios} onValueChange={v=>{edicaoHistorico.editar("sitios",v);edicaoHistorico.editar("lotes",[]);}}/><MultiSelect compacto label="Lotes da movimentação" contentClassName="z-[1300]" options={lotesDoSitioHistorico.map(l=>({value:l.id,label:l.nome}))} value={edicaoHistorico.rascunho.lotes} onValueChange={v=>edicaoHistorico.editar("lotes",v)}/><label className="flex items-center gap-2"><input type="checkbox" checked={edicaoHistorico.rascunho.desfeitas} onChange={e=>edicaoHistorico.editar("desfeitas",e.target.checked)}/>Incluir desfeitas</label></div>}];
+  const camposHistorico: CampoConsulta[] = [{chave:"origem",colunas:["origem","destino","situacao"],ativo:!!sitiosHistorico.length||!!lotesHistorico.length||mostrarDesfeitas,limpar:edicaoHistorico.limpar,conteudo: <div className="filtros-modal-grade"><MultiSelect compacto label="Lotes da movimentação" contentClassName="z-[1300]" options={lotesDoSitioHistorico.map(l=>({value:l.id,label:l.nome}))} value={edicaoHistorico.rascunho.lotes} onValueChange={v=>edicaoHistorico.editar("lotes",v)}/><label className="flex items-center gap-2"><input type="checkbox" checked={edicaoHistorico.rascunho.desfeitas} onChange={e=>edicaoHistorico.editar("desfeitas",e.target.checked)}/>Incluir desfeitas</label></div>}];
   const propriedadeInicial = getPropriedadeAtiva() ?? sitiosAtivos[0]?.id ?? null;
 
   return <PaginaFinanceira>
-    <PageHeader titulo={<span className="rotina-titulo"><span><Layers aria-hidden/></span>Lotes</span>} acao={podeLancar ? <Button onClick={abrirNovo}><Plus size={16} /> Novo lote</Button> : undefined} />
-    <NavRebanho ativa="lotes" />
+    <PageHeader titulo={<span className="rotina-titulo"><span><Layers aria-hidden/></span>Lotes</span>} acao={podeLancar ? <div className="flex flex-wrap gap-2"><Button secondary onClick={() => setSelecionandoAnimais(true)}><ArrowRightLeft size={16} /> Movimentar animais</Button><Button onClick={abrirNovo}><Plus size={16} /> Novo lote</Button></div> : undefined} />
+    <NavRebanho ativa="lotes" contagens={{ lotes: lotes?.filter(l => l.ativo !== false).length }} />
     <ErrorBox erro={erro} />
 
     <Panel className="mt-5 overflow-hidden">
       {/* filtros ficam fora do fieldset de escrita — quem só pode ver continua podendo filtrar (K7) */}
-      <BarraConsulta ordenacao={ordemLotes.controle} campos={camposLotes} edicaoFiltros={edicaoLotes} criterios={[...(filtroSitio?[{id:"sitio",rotulo:`Sítio: ${sitiosAtivos.find(s=>String(s.id)===filtroSitio)?.nome ?? "Selecionado"}`,limpar:()=>{setFiltroSitio("");setPaginaLotes(1);}}]:[]),...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>{setMostrarInativos(false);setPaginaLotes(1);}}]:[])]} acao={podeLancar ? <div className="flex flex-wrap gap-2">
-      <Button secondary onClick={() => setSelecionandoAnimais(true)}><ArrowRightLeft size={16} /> Movimentar animais</Button>
-    </div> : undefined}>
+      <BarraConsulta ordenacao={ordemLotes.controle} campos={camposLotes} edicaoFiltros={edicaoLotes} criterios={[...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>{setMostrarInativos(false);setPaginaLotes(1);}}]:[])]}>
         <BuscaLista rotulo="Buscar lote" placeholder="Buscar lote ou sítio" valor={busca} onChange={valor => { setBusca(valor); setPaginaLotes(1); }} />
       </BarraConsulta>
-      <div className="consulta-visual-barra"><span>{lotesFiltrados.length} lotes no recorte</span><AlternarVisualizacaoConsulta rotulo="Visualização dos lotes" {...visual}/></div>
       <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
         {lotes === null
           ? <EsqueletoTabela label="Carregando lotes" className="p-6" />
-          : visual.modo === "visual" ? <CartoesLotes lotes={lotesDaPagina} todos={lotesFiltrados} onAbrir={onAbrirLote} acoes={l=>podeLancar?<AcoesLinha nome={l.nome} ativo={l.ativo} onEditar={()=>editar(l)} onAlternar={()=>alternar(l)}/>:null}/> : <TabelaFinanceira visualizacao="tabela" ordenacao={ordemLotes.controle} filtrosColunas={filtrosDasColunas(camposLotes,edicaoLotes)} rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar).filter(c=>podeLancar||!c.acoes)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
+          : <TabelaFinanceira icone={ICONES_TABELA.lote} ordenacao={ordemLotes.controle} filtrosColunas={filtrosDasColunas(camposLotes,edicaoLotes)} rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar).filter(c=>podeLancar||!c.acoes)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
       </fieldset>
       {lotes !== null && <Paginacao paginaAtual={paginaLotesAtual} totalPaginas={totalPaginasLotes} totalItens={lotesFiltrados.length} itensPorPagina={LOTES_POR_PAGINA} onPaginaChange={setPaginaLotes} rotulo="lotes" idSelect="pagina-lista-lotes" />}
     </Panel>
@@ -205,7 +202,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
 
     <Panel className="mt-5 overflow-hidden">
       <div className="border-b border-border p-5"><h2 className="font-sans text-xl">Histórico de movimentações</h2></div>
-      <BarraConsulta campos={camposHistorico} edicaoFiltros={edicaoHistorico}><DateRangePicker value={{start:dataValida(dataDeHistorico)?dateFromIso(dataDeHistorico):null,end:dataValida(dataAteHistorico)?dateFromIso(dataAteHistorico):null}} onChange={r=>{setPaginaHistorico(1);setDataDeHistorico(r.start?isoDate(r.start):"");setDataAteHistorico(r.end?isoDate(r.end):"");}} triggerAriaLabel="Período das movimentações" triggerLabel={!dataDeHistorico&&!dataAteHistorico?"Todo o histórico":undefined}/></BarraConsulta>
+      <BarraConsulta campos={camposHistorico} edicaoFiltros={edicaoHistorico}><BuscaLista rotulo="Buscar movimentação" placeholder="Buscar animal, lote ou motivo" valor={buscaHistorico} onChange={setBuscaHistorico}/><DateRangePicker value={{start:dataValida(dataDeHistorico)?dateFromIso(dataDeHistorico):null,end:dataValida(dataAteHistorico)?dateFromIso(dataAteHistorico):null}} onChange={r=>{setPaginaHistorico(1);setDataDeHistorico(r.start?isoDate(r.start):"");setDataAteHistorico(r.end?isoDate(r.end):"");}} triggerAriaLabel="Período das movimentações" triggerLabel={!dataDeHistorico&&!dataAteHistorico?"Todo o histórico":undefined}/></BarraConsulta>
       {(sitiosHistorico.length>0||lotesHistorico.length>0)&&<div className="flex flex-wrap gap-2 p-4 border-b border-border">{sitiosHistorico.map(id=><Button secondary key={id} onClick={()=>{setPaginaHistorico(1);setSitiosHistorico(v=>v.filter(x=>x!==id));setLotesHistorico([]);}}>Sítio: {sitiosAtivos.find(s=>String(s.id)===id)?.nome??"Selecionado"} ×</Button>)}{lotesHistorico.map(id=><Button secondary key={id} onClick={()=>{setPaginaHistorico(1);setLotesHistorico(v=>v.filter(x=>x!==id));}}>Lote: {catalogos?.lotes.find(l=>l.id===id)?.nome??"Selecionado"} ×</Button>)}</div>}
 
       <HistoricoMovimentacoes filtrosColunas={filtrosDasColunas(camposHistorico,edicaoHistorico)}

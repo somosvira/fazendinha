@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { consultarVendasUnificadasLeiteTx, consultaVendasUnificadasLeiteSchema } from "./vendas-unificadas.js";
 vi.mock("../../../db.js", () => ({ prisma: {} }));
 const D = (v: number) => new Prisma.Decimal(v), dia = (v: string) => new Date(v);
-const db = { operacaoComercialLeite: { findMany: vi.fn() }, versaoComercialVendaLeite: { findMany: vi.fn() }, retiradaOperacaoLeite: { findMany: vi.fn() } };
+const db = { operacaoComercialLeite: { findMany: vi.fn() }, versaoComercialVendaLeite: { findMany: vi.fn() }, retiradaOperacaoLeite: { findMany: vi.fn() }, propriedade: { findMany: vi.fn() } };
 const tx = db as unknown as Prisma.TransactionClient;
 const periodo = (id: string, fechada = false) => ({ id, status: fechada ? "FECHADA" : "ABERTA", referencia: "Outubro", inicio: dia("2026-10-01"), fim: dia("2026-10-31"), parceiroId: "comprador", parceiro: { nome: "Cooperativa" },
   fechamentos: fechada ? [{ operacaoId: "financeira", versao: 2, volumeReconhecido: D(90), operacao: { data: dia("2026-11-02"), status: "CONFIRMADA", valorTotal: D(180) } }] : [] });
@@ -52,4 +52,13 @@ it("modalidade restringe consultas e exceder limite recusa totais truncados", as
   db.operacaoComercialLeite.findMany.mockResolvedValue(Array.from({ length: 5001 }, (_, i) => periodo(`p${i}`)));
   await expect(consultarVendasUnificadasLeiteTx(tx, 3, {}, true)).rejects.toMatchObject({ code: "VALIDACAO" });
   expect(consultaVendasUnificadasLeiteSchema.safeParse({ de: "2026-02-30" }).success).toBe(false);
+});
+it("Consolidado consulta todos os sítios ativos e identifica o sítio de cada venda", async () => {
+  db.propriedade.findMany.mockResolvedValue([{ id: 3, nome: "Sede" }, { id: 4, nome: "Arrendado" }]);
+  db.operacaoComercialLeite.findMany.mockResolvedValue([{ ...periodo("aberta"), propriedadeId: 4 }]);
+  db.versaoComercialVendaLeite.findMany.mockResolvedValue([]);
+  const r = await consultarVendasUnificadasLeiteTx(tx, null, {}, true);
+  expect(r.consolidado).toBe(true);
+  expect(db.operacaoComercialLeite.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ propriedadeId: { in: [3, 4] } }) }));
+  expect(r.itens[0]).toMatchObject({ id: "aberta", propriedadeId: 4, sitio: "Arrendado" });
 });

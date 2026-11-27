@@ -15,6 +15,7 @@ import { FiltrosSelecaoLivre } from "./FiltrosSelecaoLivre";
 import { camposNumericos, camposValores, obterOpcoesSelecao, previaGrupo, type AnimalPlanner, type CriteriosSelecao, type OpcoesSelecao } from "./planner-api";
 import { Paginacao } from "../ui";
 import "./visitas-fluxo.css";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 const animaisPorPagina = 10;
 
@@ -122,8 +123,8 @@ export function SelecaoAnimaisProgramacao({ propriedadeId, data, inicio, selecio
     )}
     {!data && <p>Informe a data de início para consultar os animais no sítio.</p>}
     <ErrorBox erro={erro} />{data && carregando && <p role="status">Consultando animais na data de referência…</p>}
-    {data && !carregando && !erro && <><TabelaFinanceira visualizacao="tabela" rotulo="Animais disponíveis" itens={animais} chaveDe={a=>a.animalId} onAbrir={alternarAnimal}
-      classeLinha={a => selecionados.includes(a.animalId) ? "bg-accent" : ""} compacta cartaoComLinks colunas={[
+    {data && !carregando && !erro && <><TabelaFinanceira icone={ICONES_TABELA.animal} rotulo="Animais disponíveis" itens={animais} chaveDe={a=>a.animalId} onAbrir={alternarAnimal}
+      classeLinha={a => selecionados.includes(a.animalId) ? "bg-accent" : ""} compacta colunas={[
       {chave:"selecao",titulo:"",celula:a=><Checkbox
         aria-label={`Selecionar ${a.brinco ?? a.nome ?? "animal"}`}
         checked={selecionados.includes(a.animalId)}

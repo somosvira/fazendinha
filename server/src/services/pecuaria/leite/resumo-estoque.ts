@@ -13,9 +13,9 @@ export const consultaResumoEstoqueLeiteSchema = z.object({
 export type ConsultaResumoEstoqueLeite = z.input<typeof consultaResumoEstoqueLeiteSchema>;
 const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
 
-/** Recorte do razão compartilhado. Catálogo em litros, isoladamente, não identifica leite. */
-export async function consultarResumoEstoqueLeiteTx(tx: Prisma.TransactionClient, propriedadeId: number, input: ConsultaResumoEstoqueLeite, verValores: boolean) {
-  const filtro = consultaResumoEstoqueLeiteSchema.parse(input);
+type FiltroResumo = z.output<typeof consultaResumoEstoqueLeiteSchema>;
+/** Itens de um sítio, sem paginação. Catálogo em litros, isoladamente, não identifica leite. */
+async function itensSitioTx(tx: Prisma.TransactionClient, propriedadeId: number, filtro: FiltroResumo, verValores: boolean) {
   const produtos = await tx.produto.findMany({ where: {
     ...(filtro.produtoId ? { id: filtro.produtoId } : {}),
     ...(filtro.busca ? { nome: { contains: filtro.busca, mode: "insensitive" } } : {}),
@@ -72,6 +72,10 @@ export async function consultarResumoEstoqueLeiteTx(tx: Prisma.TransactionClient
       valorTotal: verValores && confiavel && !custoPendente ? origens.reduce((s, o) => s.plus(o.valor ?? 0), D(0)).toFixed(2) : null,
     };
   });
+  return itens;
+}
+type ItemResumo = Awaited<ReturnType<typeof itensSitioTx>>[number];
+function resumir(itens: ItemResumo[], verValores: boolean) {
   const confiavel = itens.length > 0 && itens.every(i => i.confiavel);
   const soma = (valores: (string | null)[], casas?: number) => {
     if (!valores.length || valores.some(v => v === null)) return null;
@@ -86,8 +90,26 @@ export async function consultarResumoEstoqueLeiteTx(tx: Prisma.TransactionClient
     estadoValor: !verValores ? "OCULTO" : confiavel && itens.every(i => i.estadoValor === "APURADO") ? "APURADO" : "PENDENTE",
     valorTotal: soma(itens.map(i => i.valorTotal), 2),
   };
-  return { propriedadeId, resumo, itens: itens.slice((filtro.pagina - 1) * filtro.porPagina, filtro.pagina * filtro.porPagina), total: itens.length, pagina: filtro.pagina, porPagina: filtro.porPagina };
+  return resumo;
 }
-export function consultarResumoEstoqueLeite(propriedadeId: number, input: ConsultaResumoEstoqueLeite, verValores: boolean) {
+
+/**
+ * Recorte do razão compartilhado. `propriedadeId` null = Consolidado: uma linha por produto e sítio,
+ * resumo somando todos os sítios ativos (litros e valores; qualquer parcela desconhecida mantém o total desconhecido).
+ */
+export async function consultarResumoEstoqueLeiteTx(tx: Prisma.TransactionClient, propriedadeId: number | null, input: ConsultaResumoEstoqueLeite, verValores: boolean) {
+  const filtro = consultaResumoEstoqueLeiteSchema.parse(input);
+  const paginar = <T,>(itens: T[]) => itens.slice((filtro.pagina - 1) * filtro.porPagina, filtro.pagina * filtro.porPagina);
+  if (propriedadeId != null) {
+    const itens = await itensSitioTx(tx, propriedadeId, filtro, verValores);
+    return { propriedadeId, consolidado: false as const, resumo: resumir(itens, verValores), itens: paginar(itens), total: itens.length, pagina: filtro.pagina, porPagina: filtro.porPagina };
+  }
+  const sitios = await tx.propriedade.findMany({ where: { ativo: true }, select: { id: true, nome: true }, orderBy: [{ principal: "desc" }, { nome: "asc" }] });
+  const itens = [];
+  for (const sitio of sitios) itens.push(...(await itensSitioTx(tx, sitio.id, filtro, verValores)).map(i => ({ ...i, propriedadeId: sitio.id, sitio: sitio.nome })));
+  if (itens.length > 2000) throw new RebanhoError("VALIDACAO", "Refine a consulta: limite de dois mil produtos leiteiros");
+  return { propriedadeId: null, consolidado: true as const, resumo: resumir(itens, verValores), itens: paginar(itens), total: itens.length, pagina: filtro.pagina, porPagina: filtro.porPagina };
+}
+export function consultarResumoEstoqueLeite(propriedadeId: number | null, input: ConsultaResumoEstoqueLeite, verValores: boolean) {
   return prisma.$transaction(tx => consultarResumoEstoqueLeiteTx(tx, propriedadeId, input, verValores), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }

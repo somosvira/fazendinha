@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../../../db.js";
 import { RebanhoError } from "../rebanho/regras.js";
 import { dataLeiteSchema } from "./schemas.js";
+import { escopoSitiosTx } from "./escopo-consolidado.js";
 
 export const consultaVendasUnificadasLeiteSchema = z.object({
   propriedadeId: z.coerce.number().int().positive().max(2147483647).optional(),
@@ -19,6 +20,8 @@ export interface VendaUnificadaLeiteDTO {
   referencia: string; inicio: string; fim: string; data: string;
   parceiroId: string | null; parceiroNome: string | null; quantidadeLitros: string;
   valorTotal: string | null; situacao: string; versaoComercial: number | null;
+  /** Em Consolidado identifica o sítio da linha. */
+  propriedadeId?: number; sitio?: string | null;
 }
 const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
 const data = (v: string) => new Date(`${v}T00:00:00Z`);
@@ -28,16 +31,17 @@ function exigirLimite(quantidade: number) {
   if (quantidade > limite) throw new RebanhoError("VALIDACAO", "Refine a consulta de vendas: limite de cinco mil registros; nenhum total foi truncado");
 }
 /** Lista operacional: consulta de valores é independente do acesso aos metadados. */
-export async function consultarVendasUnificadasLeiteTx(tx: Prisma.TransactionClient, propriedadeId: number, input: ConsultaVendasUnificadasLeite, verValores: boolean) {
+export async function consultarVendasUnificadasLeiteTx(tx: Prisma.TransactionClient, propriedadeId: number | null, input: ConsultaVendasUnificadasLeite, verValores: boolean) {
   const f = consultaVendasUnificadasLeiteSchema.parse(input);
+  const escopo = await escopoSitiosTx(tx, propriedadeId);
   const numeroBuscado = f.busca && /^(?:Venda\s*#?|#)?(\d+)$/i.exec(f.busca)?.[1];
   const [periodos, versoes] = await Promise.all([
     f.modalidade === "AVULSA" ? [] : tx.operacaoComercialLeite.findMany({ where: {
-      propriedadeId, ...(f.parceiroId ? { parceiroId: f.parceiroId } : {}),
+      propriedadeId: escopo.propriedadeId, ...(f.parceiroId ? { parceiroId: f.parceiroId } : {}),
       ...(f.busca ? { OR: [{ referencia: { contains: f.busca, mode: "insensitive" as const } }, { parceiro: { nome: { contains: f.busca, mode: "insensitive" as const } } }] } : {}),
       ...(f.de ? { fim: { gte: data(f.de) } } : {}), ...(f.ate ? { inicio: { lte: data(f.ate) } } : {}),
     }, select: {
-      id: true, status: true, referencia: true, inicio: true, fim: true, parceiroId: true,
+      id: true, status: true, referencia: true, inicio: true, fim: true, parceiroId: true, propriedadeId: true,
       parceiro: { select: { nome: true } },
       fechamentos: { orderBy: { versao: "desc" }, take: 1, select: {
         operacaoId: true, versao: true, volumeReconhecido: true,
@@ -45,21 +49,21 @@ export async function consultarVendasUnificadasLeiteTx(tx: Prisma.TransactionCli
       } },
     }, orderBy: [{ inicio: "desc" }, { id: "desc" }], take: limite + 1 }),
     f.modalidade === "PERIODO" ? [] : tx.versaoComercialVendaLeite.findMany({ where: {
-      operacao: { propriedadeId, fechamentoComercialLeite: null,
+      operacao: { propriedadeId: escopo.propriedadeId, fechamentoComercialLeite: null,
         ...(f.parceiroId ? { parceiroId: f.parceiroId } : {}),
         ...(f.busca ? { OR: [{ parceiro: { nome: { contains: f.busca, mode: "insensitive" as const } } }, ...(numeroBuscado && Number.isSafeInteger(Number(numeroBuscado)) ? [{ numero: Number(numeroBuscado) }] : [])] } : {}),
         ...(f.de || f.ate ? { data: { ...(f.de ? { gte: data(f.de) } : {}), ...(f.ate ? { lte: data(f.ate) } : {}) } } : {}),
       }, retirada: { retiradaOperacaoLeite: null },
     }, select: {
       id: true, operacaoId: true, versao: true,
-      operacao: { select: { numero: true, data: true, status: true, parceiroId: true, parceiro: { select: { nome: true } }, valorTotal: true } },
+      operacao: { select: { numero: true, data: true, status: true, parceiroId: true, parceiro: { select: { nome: true } }, valorTotal: true, propriedadeId: true } },
       retirada: { select: { quantidade: true, versoesComerciaisLeite: { orderBy: { versao: "desc" }, take: 1, select: { id: true } } } },
     }, orderBy: [{ criadoEm: "desc" }, { id: "desc" }], take: limite + 1 }),
   ]);
   exigirLimite(periodos.length + versoes.length);
   const abertas = periodos.filter(o => o.status === "ABERTA" && !o.fechamentos.length).map(o => o.id);
   const retiradas = abertas.length ? await tx.retiradaOperacaoLeite.findMany({ where: {
-    comercialId: { in: abertas }, movimento: { propriedadeId, status: "CONFIRMADO", reversaoDeId: null },
+    comercialId: { in: abertas }, movimento: { propriedadeId: escopo.propriedadeId, status: "CONFIRMADO", reversaoDeId: null },
   }, select: { comercialId: true, movimento: { select: { quantidade: true } } }, take: 50001 }) : [];
   if (retiradas.length > 50000) throw new RebanhoError("VALIDACAO", "Refine a consulta: limite de 50 mil coletas; nenhum total foi truncado");
   const volumes = new Map<string, Prisma.Decimal>();
@@ -73,6 +77,7 @@ export async function consultarVendasUnificadasLeiteTx(tx: Prisma.TransactionCli
       valorTotal: verValores && fechamento ? fechamento.operacao.valorTotal.toFixed(2) : null,
       situacao: fechamento?.operacao.status === "CANCELADA" ? "CANCELADA" : o.status,
       versaoComercial: fechamento?.versao ?? null,
+      ...(escopo.consolidado ? { propriedadeId: o.propriedadeId, sitio: escopo.nome(o.propriedadeId) } : {}),
     };
   });
   // O comprador pode mudar numa correção. Selecionar comprador antes da última
@@ -83,6 +88,7 @@ export async function consultarVendasUnificadasLeiteTx(tx: Prisma.TransactionCli
     parceiroId: v.operacao.parceiroId, parceiroNome: v.operacao.parceiro?.nome ?? null,
     quantidadeLitros: v.retirada.quantidade.toString(), valorTotal: verValores ? v.operacao.valorTotal.toFixed(2) : null,
     situacao: v.operacao.status, versaoComercial: v.versao,
+    ...(escopo.consolidado && v.operacao.propriedadeId != null ? { propriedadeId: v.operacao.propriedadeId, sitio: escopo.nome(v.operacao.propriedadeId) } : {}),
   }));
   const busca = f.busca?.toLocaleLowerCase("pt-BR");
   const linhas = [...porPeriodo, ...avulsas].filter(l =>
@@ -95,8 +101,8 @@ export async function consultarVendasUnificadasLeiteTx(tx: Prisma.TransactionCli
     valorTotal: verValores && vigentes.every(l => l.valorTotal !== null) ? vigentes.reduce((s, l) => s.plus(l.valorTotal!), D(0)).toFixed(2) : null,
     precoPendente: vigentes.filter(l => l.modalidade === "PERIODO" && l.operacaoId === null).length,
   };
-  return { propriedadeId, itens: linhas.slice((f.pagina - 1) * f.porPagina, f.pagina * f.porPagina), total: linhas.length, pagina: f.pagina, porPagina: f.porPagina, resumo };
+  return { propriedadeId, consolidado: escopo.consolidado, itens: linhas.slice((f.pagina - 1) * f.porPagina, f.pagina * f.porPagina), total: linhas.length, pagina: f.pagina, porPagina: f.porPagina, resumo };
 }
-export function consultarVendasUnificadasLeite(propriedadeId: number, input: ConsultaVendasUnificadasLeite, verValores: boolean) {
+export function consultarVendasUnificadasLeite(propriedadeId: number | null, input: ConsultaVendasUnificadasLeite, verValores: boolean) {
   return prisma.$transaction(tx => consultarVendasUnificadasLeiteTx(tx, propriedadeId, input, verValores), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }

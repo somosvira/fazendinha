@@ -7,6 +7,7 @@ import { criarTipoExameTx, editarTipoExame, registrarExameTx, corrigirExameTx, t
 import { ocultarCustosDetalhe } from "../sanidade/detalhes.js";
 import { camposExameSchema, validarObservacoesExame } from "../exames/formatos.js";
 import { conferirSitioLeiteTx } from "./configuracoes.js";
+import { escopoSitiosTx } from "./escopo-consolidado.js";
 import { hashFormatoExame } from "../exames/formato-snapshot.js";
 import {
   criarFormatoQualidadeSchema, editarFormatoQualidadeSchema, registrarQualidadeSchema, corrigirQualidadeSchema,
@@ -158,14 +159,16 @@ export async function corrigirQualidade(id: string, input: CorrigirQualidadeInpu
     return amostraQualidadeDTO(await obterAmostraQualidadeTx(tx, resposta.id, input.propriedadeId));
   });
 }
-export async function listarAmostrasQualidade(propriedadeId: number, filtro: ConsultaQualidade) {
+/** `propriedadeId` null = Consolidado: amostras de todos os sítios ativos, cada uma com o nome do sítio. */
+export async function listarAmostrasQualidade(propriedadeId: number | null, filtro: ConsultaQualidade) {
   filtro = consultarQualidadeSchema.parse(filtro);
-  const where: Prisma.AmostraQualidadeLeiteWhereInput = { propriedadeId,
+  return prisma.$transaction(async tx => {
+  const escopo = await escopoSitiosTx(tx, propriedadeId);
+  const where: Prisma.AmostraQualidadeLeiteWhereInput = { propriedadeId: escopo.propriedadeId,
     ...(filtro.sujeito ? { sujeito: filtro.sujeito } : {}), ...(filtro.animalId ? { exameAnimal: { animalId: filtro.animalId } } : {}),
     ...(filtro.inicio || filtro.fim ? { data: { ...(filtro.inicio ? { gte: dia(filtro.inicio) } : {}), ...(filtro.fim ? { lte: dia(filtro.fim) } : {}) } } : {}) };
-  return prisma.$transaction(async tx => {
     const [lista, total] = await Promise.all([tx.amostraQualidadeLeite.findMany({ where, include: incluirAmostra, orderBy: [{ data: "desc" }, { criadoEm: "desc" }, { id: "desc" }], skip: (filtro.pagina - 1) * filtro.tamanho, take: filtro.tamanho }), tx.amostraQualidadeLeite.count({ where })]);
-    return { propriedadeId, itens: lista.map(amostraQualidadeDTO), total, pagina: filtro.pagina, tamanho: filtro.tamanho };
+    return { propriedadeId, consolidado: escopo.consolidado, itens: lista.map(a => ({ ...amostraQualidadeDTO(a), ...(escopo.consolidado ? { sitio: escopo.nome(a.propriedadeId) } : {}) })), total, pagina: filtro.pagina, tamanho: filtro.tamanho };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }
 export async function historicoQualidade(id: string, propriedadeId: number, pagina = 1, tamanho = 20) {

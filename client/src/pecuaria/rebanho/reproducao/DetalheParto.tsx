@@ -30,6 +30,7 @@ import { AnularFato } from "./AnularFato";
 import { ColostroCria } from "./ColostroCria";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { EsqueletoFicha } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "@/components/iconesTabela";
 export type PartoOperacional = Omit<PartoRelatorio, "crias"> & {
   propriedadeId: number;
   status: string;
@@ -108,6 +109,7 @@ function Lista<T extends { id: string }>({
   return (
     <>
       <ConsultaOperacional
+        icone={ICONES_TABELA.cria}
         rotulo={rotulo}
         itens={itens.slice((atual - 1) * 10, atual * 10)}
         chaveDe={(x) => x.id}

@@ -21,6 +21,7 @@ vi.mock("./RegrasSanitarias", () => ({RegrasSanitarias:()=>null}));
 vi.mock("./AcompanhamentoReprodutivo", () => ({AcompanhamentoReprodutivo:()=>null}));
 vi.mock("./FormReproducao", () => ({FormReproducao:({animalInicial,acao}:{animalInicial:string;acao:string})=><p>Formulário {acao} {animalInicial}</p>}));
 vi.mock("./DetalheFato", () => ({DetalheFato:({fato}:{fato:{id:string}})=><p>Origem {fato.id}</p>}));
+vi.mock("./DetalheParto", () => ({DetalheParto:({id,propriedadeId}:{id:string;propriedadeId:number})=><p>Parto {id} do sítio {propriedadeId}</p>}));
 afterEach(() => { cleanup(); vi.clearAllMocks(); setPropriedadeAtiva(null); });
 it("popstate entre consultas da mesma página troca animal, origem e abre parto", async()=>{
   const base={animais:[],tentativas:[],avaliacoes:[],partos:[],restricoes:[]};
@@ -57,14 +58,20 @@ it("troca rotina pela URL preservando filtros e deep links e responde ao histór
   expect(screen.queryByRole("tab", { name: "Política reprodutiva" })).toBeNull();
   expect(screen.queryByRole("link", { name: "Política reprodutiva" })).toBeNull();
 });
-it.each(["partos", "indicadores"])("consolidado oferece seletor dentro da página para %s", async rotina => {
+it.each([["partos", "Partos do sítio"], ["indicadores", "Indicadores do sítio"]])("consolidado soma os sítios em %s, sem seletor na página", async (rotina, texto) => {
   setPropriedadeAtiva(null);
   window.history.replaceState(null, "", `/pecuaria/reproducao?rotina=${rotina}`);
   render(<Reproducao podeLancar />);
-  const seletor = await screen.findByLabelText("Sítio da consulta");
-  await screen.findByText("Escolha um sítio");
-  await alterarControle(seletor, { target: { value: "7" } });
-  await screen.findByText(rotina === "partos" ? "Partos do sítio 7" : "Indicadores do sítio 7");
+  expect((await screen.findByText(new RegExp(texto))).textContent?.trim()).toBe(texto);
+  expect(screen.queryByRole("heading", { name: "Escolha um sítio na barra lateral" })).toBeNull();
+  expect(screen.queryByLabelText("Sítio da consulta")).toBeNull();
+});
+it("consolidado orienta a escolha do sítio pela sidebar nas rotinas de operação", async () => {
+  setPropriedadeAtiva(null);
+  window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=geral");
+  render(<Reproducao podeLancar />);
+  await screen.findByRole("heading", { name: "Escolha um sítio na barra lateral" });
+  expect(screen.queryByText(/Visão geral operacional/)).toBeNull();
   expect(obterReproducao).not.toHaveBeenCalled();
 });
 it("elegibilidade individual recebe localização comprovada mesmo com outro sítio ativo", async () => {
@@ -133,4 +140,19 @@ it("programa protocolo pelo cabeçalho da visão geral preservando o sítio e os
   await waitFor(() => expect(vi.mocked(Iatf).mock.lastCall?.[0]).toMatchObject({ propriedadeId: 7, solicitarProgramacao: true, paginaProgramacao: true, acaoProgramarNoCabecalho: true }));
   expect(window.location.pathname).toBe("/pecuaria/reproducao/programacoes/nova");
   expect(new URLSearchParams(window.location.search).get("retorno")).toBe("/pecuaria/reproducao?rotina=geral&iatfBusca=Grupo#consulta");
+});
+it("em Consolidado, abrir um parto passa a sidebar para o sítio do parto", async () => {
+  setPropriedadeAtiva(null);
+  window.history.replaceState(null, "", "/pecuaria/reproducao/partos/p1?sitio=8");
+  const onSelecionarSitio = vi.fn();
+  render(<Reproducao podeLancar onSelecionarSitio={onSelecionarSitio} />);
+  await waitFor(() => expect(onSelecionarSitio).toHaveBeenCalledWith(8));
+});
+it("com um sítio já escolhido, abrir um parto não troca a sidebar", async () => {
+  setPropriedadeAtiva(7);
+  window.history.replaceState(null, "", "/pecuaria/reproducao/partos/p1?sitio=8");
+  const onSelecionarSitio = vi.fn();
+  render(<Reproducao podeLancar onSelecionarSitio={onSelecionarSitio} />);
+  await screen.findByRole("heading", { name: "Parto e pós-parto" });
+  expect(onSelecionarSitio).not.toHaveBeenCalled();
 });

@@ -19,10 +19,11 @@ export const consultaProducaoLeiteSchema = z.object({
   "Consulte até 366 dias, com início anterior ao fim");
 export type ConsultaProducaoLeite = z.infer<typeof consultaProducaoLeiteSchema>;
 
-/** Consulta medições pela data de produção; retirada e fechamento não são fontes de litros. */
-export async function consultarProducaoLeite(propriedadeId: number, input: ConsultaProducaoLeite, exportacao = false) {
-  const filtro = consultaProducaoLeiteSchema.parse(input);
-  return prisma.$transaction(async tx => {
+type FiltroProducao = ConsultaProducaoLeite & { pagina: number; tamanho: number };
+type EstadoDia = "FINALIDADE_PENDENTE" | "SEM_ANIMAIS_ELEGIVEIS" | "SEM_FOLHA" | "SEM_PARTICIPANTES" | "COMPLETA" | "PARCIAL";
+
+/** Linhas, ritmo diário e ordenhas de um sítio, sem paginação. */
+async function calcularSitioTx(tx: Prisma.TransactionClient, propriedadeId: number, filtro: FiltroProducao) {
     const where = { propriedadeId, dataOperacional: { gte: new Date(filtro.inicio), lte: new Date(filtro.fim) } };
     const quantidade = await tx.medicaoLeite.count({ where: { sessao: { dia: where } } });
     if (quantidade > 50_000) throw new RebanhoError("VALIDACAO", "Consulte um período menor: limite de 50 mil medições");
@@ -51,21 +52,29 @@ export async function consultarProducaoLeite(propriedadeId: number, input: Consu
       const temFolha = folhas.some(f => f.dataOperacional === data);
       const geral = !filtro.animalId && folhas.some(f => f.dataOperacional === data && f.configuracao?.fonteProducao === "GERAL");
       const pendente = !geral && (contexto.estado === "FINALIDADE_PENDENTE" || celulas.some(c => c.finalidade && c.finalidade.estado !== "COMPROVADA"));
-      const estado = pendente ? "FINALIDADE_PENDENTE" : !temFolha
+      const estado: EstadoDia = pendente ? "FINALIDADE_PENDENTE" : !temFolha
         ? contexto.estado === "SEM_ANIMAIS_ELEGIVEIS" ? "SEM_ANIMAIS_ELEGIVEIS" : "SEM_FOLHA"
         : !celulas.length ? !geral && contexto.estado === "SEM_ANIMAIS_ELEGIVEIS" ? "SEM_ANIMAIS_ELEGIVEIS" : "SEM_PARTICIPANTES" : totais.completa ? "COMPLETA" : "PARCIAL";
       ritmo.push({ data, ...totais, estado });
     }
-    const agrupar = (chave: (linha: typeof linhas[number]) => string) => {
-      const grupos = new Map<string, typeof linhas>();
-      for (const linha of linhas) { const id = chave(linha); const grupo = grupos.get(id) ?? []; grupo.push(linha); grupos.set(id, grupo); }
-      return [...grupos].map(([id, grupo]) => ({ id, ...resumirProducao(grupo) }));
-    };
     // Posições e rótulos vêm de cada folha histórica. Nenhum turno é fixado no cliente.
     const ordenhas = [...new Map(folhas.flatMap(f => f.sessoes.map(s => [s.posicaoId, {
       posicaoId: s.posicaoId, nome: s.nome, ordem: s.ordem,
     }] as const))).values()].sort((a, b) => a.ordem - b.ordem || a.posicaoId.localeCompare(b.posicaoId));
-    const gruposPorPeriodo = new Map<string, typeof ritmo>();
+    return { linhas, ritmo, ordenhas };
+}
+type LinhaProducao = Awaited<ReturnType<typeof calcularSitioTx>>["linhas"][number];
+type DiaRitmo = Awaited<ReturnType<typeof calcularSitioTx>>["ritmo"][number];
+type Ordenha = Awaited<ReturnType<typeof calcularSitioTx>>["ordenhas"][number];
+
+/** Agrupamentos, cobertura e paginação a partir das linhas já filtradas (um sítio ou vários). */
+function montarConsulta(filtro: FiltroProducao, linhas: LinhaProducao[], ritmo: DiaRitmo[], ordenhas: Ordenha[], exportacao: boolean) {
+    const agrupar = (chave: (linha: LinhaProducao) => string) => {
+      const grupos = new Map<string, LinhaProducao[]>();
+      for (const linha of linhas) { const id = chave(linha); const grupo = grupos.get(id) ?? []; grupo.push(linha); grupos.set(id, grupo); }
+      return [...grupos].map(([id, grupo]) => ({ id, ...resumirProducao(grupo) }));
+    };
+    const gruposPorPeriodo = new Map<string, DiaRitmo[]>();
     for (const dia of ritmo) {
       const chave = filtro.agrupamento === "MES" ? dia.data.slice(0, 7) : dia.data;
       const grupo = gruposPorPeriodo.get(chave) ?? [];
@@ -80,15 +89,14 @@ export async function consultarProducaoLeite(propriedadeId: number, input: Consu
       const resumo = resumirProducao(selecionadas);
       const completa = diasGrupo.every(d => d.estado === "COMPLETA" || d.estado === "SEM_ANIMAIS_ELEGIVEIS");
       const mediaPorVaca = completa && vacasOrdenhadas !== null && vacasOrdenhadas > 0 && resumo.litros !== null ? new Prisma.Decimal(resumo.litros).div(vacasOrdenhadas).toNumber() : null;
-      return { periodo, ...resumo, vacasOrdenhadas, mediaPorVaca,
-        completa: diasGrupo.every(d => d.estado === "COMPLETA" || d.estado === "SEM_ANIMAIS_ELEGIVEIS"),
+      return { periodo, ...resumo, vacasOrdenhadas, mediaPorVaca, completa,
         turnos: ordenhas.filter(o => !filtro.posicaoId || filtro.posicaoId === o.posicaoId).map(o => ({
           ...o, ...resumirProducao(selecionadas.filter(l => l.posicaoId === o.posicaoId)),
         })),
       };
     });
     const hoje = hojeFazendaDate().toISOString().slice(0, 10);
-    return { propriedadeId, periodo: { inicio: filtro.inicio, fim: filtro.fim },
+    return { periodo: { inicio: filtro.inicio, fim: filtro.fim },
       mesEmAndamento: filtro.inicio.slice(0, 7) === hoje.slice(0, 7) || filtro.fim.slice(0, 7) === hoje.slice(0, 7),
       totais: resumirProducao(linhas), ritmo,
       agrupamento: filtro.agrupamento ?? "DIA", ordenhas, grupos,
@@ -97,5 +105,54 @@ export async function consultarProducaoLeite(propriedadeId: number, input: Consu
       itens: exportacao ? linhas : linhas.slice((filtro.pagina - 1) * filtro.tamanho, filtro.pagina * filtro.tamanho),
       total: linhas.length, pagina: filtro.pagina, tamanho: filtro.tamanho,
     };
+}
+
+/**
+ * Situação consolidada de um dia: completa só quando todo sítio com animais está completo;
+ * qualquer pendência de finalidade prevalece; sem folha em nenhum sítio continua sem folha.
+ */
+export function combinarEstadosDia(estados: EstadoDia[]): EstadoDia {
+  if (estados.includes("FINALIDADE_PENDENTE")) return "FINALIDADE_PENDENTE";
+  if (estados.every(e => e === "SEM_ANIMAIS_ELEGIVEIS")) return "SEM_ANIMAIS_ELEGIVEIS";
+  if (estados.every(e => e === "COMPLETA" || e === "SEM_ANIMAIS_ELEGIVEIS")) return "COMPLETA";
+  if (estados.every(e => e === "SEM_FOLHA" || e === "SEM_ANIMAIS_ELEGIVEIS")) return "SEM_FOLHA";
+  if (estados.every(e => e === "SEM_PARTICIPANTES" || e === "SEM_FOLHA" || e === "SEM_ANIMAIS_ELEGIVEIS")) return "SEM_PARTICIPANTES";
+  return "PARCIAL";
+}
+
+/**
+ * Consulta medições pela data de produção; retirada e fechamento não são fontes de litros.
+ * `propriedadeId` null = Consolidado: soma os sítios ativos, agrupa ordenhas pelo nome do turno
+ * e devolve a produção de cada sítio em `porSitio`.
+ */
+export async function consultarProducaoLeite(propriedadeId: number | null, input: ConsultaProducaoLeite, exportacao = false) {
+  const filtro = consultaProducaoLeiteSchema.parse(input);
+  return prisma.$transaction(async tx => {
+    if (propriedadeId != null) {
+      const { linhas, ritmo, ordenhas } = await calcularSitioTx(tx, propriedadeId, filtro);
+      return { propriedadeId, consolidado: false as const, ...montarConsulta(filtro, linhas, ritmo, ordenhas, exportacao) };
+    }
+    const sitios = await tx.propriedade.findMany({ where: { ativo: true }, select: { id: true, nome: true }, orderBy: [{ principal: "desc" }, { nome: "asc" }] });
+    const chaveTurno = (nome: string) => `turno:${nome.trim().toLocaleLowerCase("pt-BR")}`;
+    const porSitioCalculado: Array<{ sitio: { id: number; nome: string }; ritmo: DiaRitmo[]; ordenhas: Ordenha[]; linhas: Array<LinhaProducao & { propriedadeId: number; sitio: string }> }> = [];
+    for (const sitio of sitios) {
+      const calculo = await calcularSitioTx(tx, sitio.id, { ...filtro, posicaoId: undefined });
+      const nomeDaPosicao = new Map(calculo.ordenhas.map(o => [o.posicaoId, o.nome]));
+      porSitioCalculado.push({ sitio, ...calculo, linhas: calculo.linhas.map(l => ({ ...l, propriedadeId: sitio.id, sitio: sitio.nome, posicaoId: chaveTurno(nomeDaPosicao.get(l.posicaoId) ?? l.ordenha) })) });
+    }
+    const turnos = new Map<string, Ordenha>();
+    for (const o of porSitioCalculado.flatMap(c => c.ordenhas)) {
+      const id = chaveTurno(o.nome), atual = turnos.get(id);
+      if (!atual || o.ordem < atual.ordem) turnos.set(id, { posicaoId: id, nome: o.nome, ordem: o.ordem });
+    }
+    const ordenhas = [...turnos.values()].sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
+    const linhas = porSitioCalculado.flatMap(c => c.linhas).filter(l => !filtro.posicaoId || l.posicaoId === filtro.posicaoId)
+      .sort((a, b) => a.data.localeCompare(b.data) || a.ordenha.localeCompare(b.ordenha) || a.sitio.localeCompare(b.sitio) || a.brinco.localeCompare(b.brinco));
+    const ritmo = (porSitioCalculado[0]?.ritmo ?? []).map(dia => ({
+      data: dia.data, ...resumirProducao(linhas.filter(l => l.data === dia.data)),
+      estado: combinarEstadosDia(porSitioCalculado.map(c => c.ritmo.find(r => r.data === dia.data)!.estado)),
+    }));
+    return { propriedadeId: null, consolidado: true as const, ...montarConsulta(filtro, linhas, ritmo, ordenhas, exportacao),
+      porSitio: porSitioCalculado.map(c => ({ propriedadeId: c.sitio.id, nome: c.sitio.nome, ...resumirProducao(c.linhas.filter(l => !filtro.posicaoId || l.posicaoId === filtro.posicaoId)) })) };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }

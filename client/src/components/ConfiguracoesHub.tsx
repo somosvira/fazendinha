@@ -70,10 +70,11 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, p
   // As views trazem a própria casca (shell-wide). Alinhamos a barra de sub-abas a ela.
   return (
     <>
-      {!/^\/configuracoes\/pecuaria\/reproducao\/protocolos\/novo\/?$/.test(path) && <div className="configuracoes-navegacao px-[var(--gutter)] pt-5">
+      {!/^\/configuracoes\/pecuaria\/reproducao\/protocolos\/novo\/?$/.test(path) && <><div className="shell-wide pagina-financeira" style={{ paddingBottom: 0 }}><PageHeader titulo="Configurações" /></div>
+      <div className="configuracoes-navegacao px-[var(--gutter)] pt-2">
         <SubTabs tabs={tabs} active={atual} ariaLabel="Áreas de configurações" variant="financeiro" onSelect={(id) => id === "pecuaria" ? navegarPara("/configuracoes/pecuaria") : onNav(TAB_BY_SUB[id])} />
-      </div>}
-      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido">{path.split("/").filter(Boolean).length <= 2 && <PageHeader titulo={<span className="rotina-titulo"><span><Settings/></span>Configurações da Pecuária</span>} />}<ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} podeGerenciarAlertas={podeGerenciarAlertas} /></div>}
+      </div></>}
+      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido"><ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} podeGerenciarAlertas={podeGerenciarAlertas} /></div>}
       {atual === "categorias" && <PlanoContas onNav={onNav} />}
       {atual === "sitios" && isAdmin && <Sitios />}
       {atual === "acessos" && isAdmin && <Acessos />}

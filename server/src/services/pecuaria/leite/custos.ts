@@ -293,3 +293,64 @@ export function consultarCustosLeite(
     },
   );
 }
+
+type ResultadoCustosSitio = Awaited<ReturnType<typeof consultarCustosLeiteTx>>;
+type CustosResumo = ResultadoCustosSitio["consolidado"]["custos"];
+const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
+
+/** Soma custos de sítios distintos: total conhecido somado, cobertura completa só se todos estiverem completos. */
+function somarCustos(partes: CustosResumo[], verValores: boolean): CustosResumo {
+  const coberturas = partes.map(p => p.cobertura);
+  const cobertura = !partes.length || coberturas.every(c => c === "DESCONHECIDO") ? "DESCONHECIDO"
+    : coberturas.every(c => c === "COMPLETO") ? "COMPLETO" : "PARCIAL";
+  const conhecidos = partes.filter(p => p.totalConhecido !== null);
+  return { ...(partes[0] ?? { rotulo: "Custo direto registrado", limitacoes: [] }), cobertura, situacao: verValores ? cobertura : "OCULTO",
+    totalConhecido: verValores && conhecidos.length ? conhecidos.reduce((s, p) => s.plus(p.totalConhecido!), D(0)).toFixed(2) : null,
+    componentesPendentes: partes.reduce((s, p) => s + p.componentesPendentes, 0),
+    componentes: partes.flatMap(p => p.componentes) } as CustosResumo;
+}
+
+/**
+ * Custos do leite em Consolidado: cada sítio é apurado com as próprias regras e os resultados são somados.
+ * Custo por litro = custo total conhecido ÷ litros totais (nunca média dos custos por litro dos sítios);
+ * qualquer motivo de não apuração em um sítio torna o consolidado não apurado.
+ */
+export async function consultarCustosLeiteConsolidadoTx(tx: Prisma.TransactionClient, input: ConsultaCustosLeite, verValores: boolean) {
+  const sitios = await tx.propriedade.findMany({ where: { ativo: true }, select: { id: true, nome: true }, orderBy: [{ principal: "desc" }, { nome: "asc" }] });
+  const resultados: Array<{ sitio: { id: number; nome: string }; r: ResultadoCustosSitio }> = [];
+  for (const sitio of sitios) resultados.push({ sitio, r: await consultarCustosLeiteTx(tx, sitio.id, input, verValores) });
+  return combinarCustosSitios(resultados, verValores);
+}
+/** Combinação pura dos resultados por sítio (exportada para teste). */
+export function combinarCustosSitios(todos: Array<{ sitio: { id: number; nome: string }; r: Pick<ResultadoCustosSitio, "consolidado" | "porClassificacao" | "periodo"> }>, verValores: boolean) {
+  // Sítio sem leite e sem custo no período (ex.: só cria ou recria) não participa da soma: o
+  // "sem volume" dele não pode travar o custo por litro da fazenda. Continua listado em porSitio.
+  const comAtividade = todos.filter(({ r: { consolidado: c } }) => c.producao.esperadas > 0 || (c.producao.litros ?? 0) > 0
+    || c.custos.totalConhecido !== null || c.custos.componentes.length > 0 || c.custos.componentesPendentes > 0);
+  const resultados = comAtividade.length ? comAtividade : todos;
+  const resumos = resultados.map(x => x.r.consolidado);
+  const producao = resumos.reduce((s, r) => ({
+    litros: r.producao.litros === null ? s.litros : (s.litros ?? 0) + r.producao.litros,
+    esperadas: s.esperadas + r.producao.esperadas, medidas: s.medidas + r.producao.medidas, naoOrdenhadas: s.naoOrdenhadas + r.producao.naoOrdenhadas,
+    resolvidas: s.resolvidas + r.producao.resolvidas, pendentes: s.pendentes + r.producao.pendentes,
+    completa: s.completa && (r.producao.completa || r.producao.esperadas === 0),
+  }), { litros: null as number | null, esperadas: 0, medidas: 0, naoOrdenhadas: 0, resolvidas: 0, pendentes: 0, completa: true });
+  const custos = somarCustos(resumos.map(r => r.custos), verValores);
+  const motivos = [...new Set(resumos.flatMap(r => r.motivos))];
+  const custoPorLitro = verValores && !motivos.length && custos.totalConhecido !== null && producao.litros !== null && producao.litros > 0
+    ? D(custos.totalConhecido).div(producao.litros).toFixed(2) : null;
+  const finalidades = [...new Set(resultados.flatMap(x => x.r.porClassificacao.map(p => p.finalidade)))];
+  return {
+    propriedadeId: null, escopoConsolidado: true as const,
+    periodo: todos[0]?.r.periodo ?? null,
+    porClassificacao: finalidades.map(finalidade => ({ finalidade,
+      custos: somarCustos(resultados.flatMap(x => x.r.porClassificacao.filter(p => p.finalidade === finalidade).map(p => p.custos)), verValores) })),
+    consolidado: { custos, producao, animaisSemComponentes: resumos.flatMap(r => r.animaisSemComponentes), custoPorLitro,
+      situacao: !verValores ? "OCULTO" as const : motivos.length ? "NAO_APURADO" as const : "APURADO" as const, motivos },
+    porSitio: todos.map(({ sitio, r }) => ({ propriedadeId: sitio.id, nome: sitio.nome, custoPorLitro: r.consolidado.custoPorLitro,
+      totalConhecido: r.consolidado.custos.totalConhecido, litros: r.consolidado.producao.litros, situacao: r.consolidado.situacao })),
+  };
+}
+export function consultarCustosLeiteConsolidado(input: ConsultaCustosLeite, verValores: boolean) {
+  return prisma.$transaction(tx => consultarCustosLeiteConsolidadoTx(tx, input, verValores), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+}

@@ -1,3 +1,4 @@
+import { prisma } from "../../db.js";
 import {Hono} from 'hono';
 import {z} from 'zod';
 import {exigeArea,getUsuario} from '../../middleware/permissao.js';
@@ -9,7 +10,7 @@ import {consultarRelatoriosNutricaoCustos} from '../../services/pecuaria/relator
 import {buscarAnimaisHistoricosRelatorio} from '../../services/pecuaria/relatorios/animais-historicos.js';
 import {falhaV4} from './reproducao.js';
 import {consultarRelatoriosAnteriores} from '../../services/pecuaria/relatorios/anteriores.js';
-import {consultarRelatorioFiltrado} from '../../services/pecuaria/relatorios/consulta-filtrada.js';
+import {consultarRelatorioConsolidado,consultarRelatorioFiltrado} from '../../services/pecuaria/relatorios/consulta-filtrada.js';
 import {camposFiltroRelatorio,filtrosRelatorioSchema,ErroFiltroRelatorio} from '../../services/pecuaria/relatorios/filtros.js';
 const listaCsv=(v:unknown)=>typeof v==='string'?v.split(','):v;
 const filtrosJson=z.string().max(30000).transform((v,ctx)=>{try{return JSON.parse(v) as unknown;}catch{ctx.addIssue({code:'custom',message:'Filtros devem ser um JSON válido.'});return z.NEVER;}}).pipe(filtrosRelatorioSchema);
@@ -27,11 +28,18 @@ export const relatoriosOperacionaisRouter=new Hono().use('*',exigeArea('pecuaria
  if(!entrada.success)return c.json({error:entrada.error.issues[0].message,code:'VALIDACAO'},422);
  try{
   const propriedadeId=await resolverEscopoLeitura(c);
-  if(propriedadeId==null)return c.json({error:'Selecione um sítio para consultar o relatório.',code:'VALIDACAO'},422);
-  if(entrada.data.propriedadeId!=null&&entrada.data.propriedadeId!==propriedadeId)return c.json({error:'O sítio da consulta não corresponde ao escopo autorizado.',code:'SEM_PERMISSAO'},403);
-  const usuario=getUsuario(c),q={...entrada.data,propriedadeId,podeVerValores:podeVerValoresFinanceiros(usuario),podeConsultarCustos:podeConsultarCustosPecuaria(usuario)};
-  if(q.fonte==='custos'&&!q.podeConsultarCustos)return c.json({error:'Sem permissão para consultar custos diretos.'},403);
-  const r=await consultarRelatorioFiltrado(q,[consultarRelatoriosRebanho,consultarRelatoriosSanidadeLeite,consultarRelatoriosNutricaoCustos,consultarRelatoriosAnteriores]);
+  if(propriedadeId!=null&&entrada.data.propriedadeId!=null&&entrada.data.propriedadeId!==propriedadeId)return c.json({error:'O sítio da consulta não corresponde ao escopo autorizado.',code:'SEM_PERMISSAO'},403);
+  const usuario=getUsuario(c),base={...entrada.data,podeVerValores:podeVerValoresFinanceiros(usuario),podeConsultarCustos:podeConsultarCustosPecuaria(usuario)};
+  if(base.fonte==='custos'&&!base.podeConsultarCustos)return c.json({error:'Sem permissão para consultar custos diretos.'},403);
+  const consultores=[consultarRelatoriosRebanho,consultarRelatoriosSanidadeLeite,consultarRelatoriosNutricaoCustos,consultarRelatoriosAnteriores];
+  if(propriedadeId==null){
+   // Consolidado: linhas de todos os sítios ativos com a coluna Sítio.
+   const sitios=await prisma.propriedade.findMany({where:{ativo:true},select:{id:true,nome:true},orderBy:[{principal:'desc'},{nome:'asc'}]});
+   const r=await consultarRelatorioConsolidado(base,sitios,consultores);
+   if(r)return c.json({...r,propriedadeId:null,escopoConsolidado:true});
+   return c.json({error:'Fonte de relatório desconhecida.',code:'VALIDACAO'},422);
+  }
+  const r=await consultarRelatorioFiltrado({...base,propriedadeId},consultores);
   if(r)return c.json({...r,propriedadeId});
   return c.json({error:'Fonte de relatório desconhecida.',code:'VALIDACAO'},422);
  }catch(e){if(e instanceof ErroFiltroRelatorio)return c.json({error:e.message,code:e.status===403?'SEM_PERMISSAO':'VALIDACAO'},e.status);return falhaV4(c,e)}
@@ -43,9 +51,9 @@ relatoriosOperacionaisRouter.get('/filtros',async c=>{
  const entrada=camposConsultaSchema.safeParse(c.req.query());
  if(!entrada.success)return c.json({error:'Fonte ou sítio inválido.',code:'VALIDACAO'},422);
  try{
+  // Campos de filtro não dependem do sítio: valem também em Consolidado.
   const propriedadeId=await resolverEscopoLeitura(c);
-  if(propriedadeId==null)return c.json({error:'Selecione um sítio para consultar filtros.',code:'VALIDACAO'},422);
-  if(entrada.data.propriedadeId!=null&&entrada.data.propriedadeId!==propriedadeId)return c.json({error:'O sítio da consulta não corresponde ao escopo autorizado.',code:'SEM_PERMISSAO'},403);
+  if(propriedadeId!=null&&entrada.data.propriedadeId!=null&&entrada.data.propriedadeId!==propriedadeId)return c.json({error:'O sítio da consulta não corresponde ao escopo autorizado.',code:'SEM_PERMISSAO'},403);
   const usuario=getUsuario(c);
   if(entrada.data.fonte==='custos'&&!podeConsultarCustosPecuaria(usuario))return c.json({error:'Sem permissão para consultar custos diretos.'},403);
   return c.json({campos:camposFiltroRelatorio(entrada.data.fonte,podeVerValoresFinanceiros(usuario)),populacao:['indicadores','iep','perdas','espera','concepcoes'].includes(entrada.data.fonte)});

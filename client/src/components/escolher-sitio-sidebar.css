@@ -1,0 +1,6 @@
+.escolher-sitio-sidebar{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:40px 20px;min-height:260px;justify-content:center}
+.escolher-sitio-sidebar h2{font-size:19px;font-weight:600;margin:4px 0 0}
+.escolher-sitio-sidebar p{margin:0;color:var(--muted-foreground);font-size:14px}
+.escolher-sitio-sidebar>button{margin-top:6px}
+.escolher-sitio-simbolo{height:48px;width:48px;display:grid;place-items:center;background:var(--muted);color:var(--muted-foreground);border-radius:12px}
+@media(max-width:700px){.escolher-sitio-sidebar{padding:28px 8px;min-height:200px}}

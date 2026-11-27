@@ -1,3 +1,4 @@
+import { Empty } from "@/financeiro/financeiro-ui";
 import { DatePicker } from "../../../components/DatePicker";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -75,7 +76,8 @@ export function OperacoesComerciaisLeite({
       return;
     }
     void Promise.all([
-      consultarLeite<typeof dados>(
+      // No modo integrado só o detalhe é exibido: a lista do período não é consultada.
+      integrado ? Promise.resolve(null) : consultarLeite<typeof dados>(
         `/comercial/operacoes?${new URLSearchParams({ de, ate, pagina: String(pagina) })}`,
         sitio,
       ),
@@ -125,12 +127,12 @@ export function OperacoesComerciaisLeite({
   useEffect(() => {
     let ativa = true;
     setDetalheExterno(null);
-    if (!selecionada || !dados || dados.itens.some(o => o.id === selecionada)) return;
+    if (!selecionada || (!integrado && !dados) || dados?.itens.some(o => o.id === selecionada)) return;
     void consultarLeite<OperacaoComercialLeiteDTO>(`/comercial/operacoes/${selecionada}`, sitio)
       .then(o => { if (ativa) setDetalheExterno(o); })
       .catch(e => { if (ativa) setErro(e instanceof Error ? e.message : "Não foi possível abrir a operação selecionada"); });
     return () => { ativa = false; };
-  }, [selecionada, dados, sitio]);
+  }, [selecionada, dados, sitio, integrado]);
   const o = dados?.itens.find((o) => o.id === selecionada) ?? detalheExterno,
     escopo = sitio ?? dados?.propriedadeId ?? null;
   function atualizar(id: string | null = selecionada) {
@@ -270,10 +272,7 @@ export function OperacoesComerciaisLeite({
         </form>
       )}
       {!integrado && <>{dados && !dados.itens.length && (
-        <p>
-          Nenhuma operação neste período. Abra uma operação para registrar as
-          coletas com preço pendente.
-        </p>
+        <Empty><strong>Nenhuma operação neste período</strong><p>Abra uma operação para registrar as coletas com preço pendente.</p></Empty>
       )}
       <div
         className="leite-tabela-scroll"

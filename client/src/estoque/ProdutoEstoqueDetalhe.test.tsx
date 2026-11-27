@@ -64,14 +64,12 @@ describe("ficha do produto", () => {
     fireEvent.submit(form);
     await waitFor(() => expect(renomearLoteProduto).toHaveBeenCalledTimes(2));
   });
-  it("monta o resumo consolidado e troca o sítio sem criar estoque", async () => {
+  it("monta o resumo consolidado sem criar estoque", async () => {
     render(<ProdutoEstoqueDetalhe produtoId="p" />);
     await screen.findByText("Saldo consolidado");
     expect(screen.getByText("25 kg")).toBeTruthy();
     expect(screen.queryByText(/Custo médio:/)).toBeNull();
-    await alterarControle(screen.getByLabelText("Sítio da ficha"), { target: { value: "2" } });
-    await waitFor(() => expect(obterProdutoEstoque).toHaveBeenLastCalledWith("p", 2));
-    await screen.findByText("Saldo em Sítio Novo");
+    expect(screen.queryByLabelText("Sítio da ficha")).toBeNull();
   });
   it("pagina lotes e abre origens filtradas por lote", async () => {
     render(<ProdutoEstoqueDetalhe produtoId="p" />); await screen.findByText("Saldo consolidado");
