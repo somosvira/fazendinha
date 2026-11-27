@@ -51,7 +51,7 @@ export function EscolhaModeloProgramacao({ valor, onChange, propriedadeId, onEsc
     <Popover open={aberto} onOpenChange={mudarAberto}>
       <PopoverTrigger asChild>
         <button type="button" aria-labelledby={idRotulo}
-          className="flex h-10 min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-left text-sm">
+          className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-left text-sm">
           <span className="truncate">{selecionado ? `${selecionado.nome} · v${selecionado.versao}` : "Selecionar modelo"}</span>
           <ChevronDown size={16} className="shrink-0" aria-hidden />
         </button>

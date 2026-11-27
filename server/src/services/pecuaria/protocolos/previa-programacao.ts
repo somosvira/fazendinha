@@ -4,7 +4,8 @@ import { converterQuantidade, UNIDADES } from "../../estoque/unidades.js";
 import { preverAutomacoesAdesao } from "./automacao.js";
 import { z } from "zod";
 import { transacaoPecuaria, timeoutTransacaoAnimais } from "../transacao.js";
-import { AvisoAptidaoProgramacao } from "../reproducao/elegibilidade.js";
+import { AvisoAptidaoProgramacao, obterElegibilidadesNaDataTx } from "../reproducao/elegibilidade.js";
+import { obterContextosAnimaisNaDataTx } from "../reproducao/contexto-animal.js";
 import { conferirDisponibilidadeTx } from "../reproducao/registros.js";
 import { dataDisponibilidadeIatf, lerDataIatf } from "../reproducao/horarios.calc.js";
 import { RebanhoError } from "../rebanho/regras.js";
@@ -27,6 +28,11 @@ export async function preverProgramacaoColetiva(entrada: unknown) {
       select: { id: true, brinco: true, nome: true, localizacoes: { where: { propriedadeId: input.propriedadeId, desde: { lte: referencia }, OR: [{ ate: null }, { ate: { gt: referencia } }] }, select: { lote: { select: { nome: true } } }, take: 1 } },
     });
     const porId = new Map(encontrados.map(animal => [animal.id, animal]));
+    const idsComLocalNaData = encontrados.filter(a => a.localizacoes.length > 0).map(a => a.id);
+    const [contextos, aptidoes] = await Promise.all([
+      obterContextosAnimaisNaDataTx(tx, idsComLocalNaData, referencia),
+      obterElegibilidadesNaDataTx(tx, idsComLocalNaData, input.propriedadeId, referencia),
+    ]);
     const participantes = [];
     const avisosAptidao: { animalId: string; mensagem: string; descricao: string; motivos: string[] }[] = [];
     const impedimentos: { animalId: string; descricao: string; codigo: string }[] = [];
@@ -43,7 +49,11 @@ export async function preverProgramacaoColetiva(entrada: unknown) {
         if (erro instanceof AvisoAptidaoProgramacao) avisosAptidao.push({ animalId: id, mensagem, descricao: erro.message, motivos: erro.motivos });
         else impedimentos.push({ animalId: id, descricao: erro.message, codigo: erro.code });
       }
-      participantes.push({ id: animal.id, brinco: animal.brinco, nome: animal.nome, loteNome: animal.localizacoes?.[0]?.lote?.nome ?? null });
+      const contexto = contextos.get(id);
+      participantes.push({ id: animal.id, brinco: animal.brinco, nome: animal.nome, loteNome: animal.localizacoes?.[0]?.lote?.nome ?? null,
+        situacao: contexto?.situacaoReprodutiva ?? null, situacaoProdutiva: contexto?.situacaoProdutiva ?? null, del: contexto?.del ?? null,
+        ultimoParto: contexto?.ultimoParto?.data ?? null, partos: contexto?.partosRealizados ?? null, tentativasCiclo: contexto?.tentativasCiclo ?? null,
+        aptidao: aptidoes.get(id)?.aptidao.estado ?? null });
     }
     return { participantes, avisosAptidao, impedimentos };
   }, { timeout: timeoutTransacaoAnimais(animaisIds.length) });
@@ -64,13 +74,16 @@ export async function preverProgramacaoColetiva(entrada: unknown) {
     }
     return { etapas, saldos };
   });
+  const procedimentosComAutomacao = procedimentos.map(procedimento => {
+    const automatica = automaticas.itens.find(a => a.etapaId === procedimento.id);
+    return automatica ? { ...procedimento, previstaPara: automatica.programadaPara, precisaoTemporal: "HORA" as const } : procedimento;
+  });
   const grupos = new Map<string, { id: string; nome: string; legado: boolean; procedimentos: typeof procedimentos }>();
-  for (const procedimento of procedimentos) {
+  for (const procedimento of procedimentosComAutomacao) {
     const etapa = estrutura.etapas.find(e => e.id === procedimento.id);
     const chave = etapa?.momentoId ?? procedimento.id;
     const grupo = grupos.get(chave) ?? { id: chave, nome: etapa?.momento?.nome ?? procedimento.nome, legado: !etapa?.momentoId, procedimentos: [] };
-    const automatica = automaticas.itens.find(a => a.etapaId === procedimento.id);
-    grupo.procedimentos.push(automatica ? { ...procedimento, previstaPara: automatica.programadaPara, precisaoTemporal: "HORA" as const } : procedimento);
+    grupo.procedimentos.push(procedimento);
     grupos.set(chave, grupo);
   }
   const todos = [...grupos.values()];
@@ -93,6 +106,6 @@ export async function preverProgramacaoColetiva(entrada: unknown) {
     atual.quantidade = atual.quantidade.plus(valor); insumos.set(produto.id, atual);
   }
   const paginaLegada = Math.min(input.pagina, Math.max(1, Math.ceil(previa.total / input.porPagina)));
-  return { protocolo: {nome:previa.protocolo.nome,versao:previa.protocolo.versao}, itens: procedimentos.slice((paginaLegada - 1) * input.porPagina, paginaLegada * input.porPagina), grupos: todos.slice((pagina - 1) * input.porPagina, pagina * input.porPagina), totalGrupos: todos.length, paginaGrupos: pagina, total: previa.total, pagina: paginaLegada, porPagina: input.porPagina, participantes, avisosAptidao, impedimentos,
+  return { dataReferenciaContexto: referencia.toISOString().slice(0, 10), protocolo: {nome:previa.protocolo.nome,versao:previa.protocolo.versao}, itens: procedimentosComAutomacao.slice((paginaLegada - 1) * input.porPagina, paginaLegada * input.porPagina), grupos: todos.slice((pagina - 1) * input.porPagina, pagina * input.porPagina), todosGrupos: todos, totalGrupos: todos.length, paginaGrupos: pagina, total: previa.total, pagina: paginaLegada, porPagina: input.porPagina, participantes, avisosAptidao, impedimentos,
     consumoPrevisto: { itens: [...insumos.values()].map(i => ({ produtoId: i.produtoId, produto: i.produto, unidade: i.unidade, quantidade: i.quantidade.toString(), saldo: i.saldo?.toString() ?? null, falta: i.saldo == null ? null : Prisma.Decimal.max(i.quantidade.minus(i.saldo), 0).toString() })), pendentes }, avisos: [] };
 }
