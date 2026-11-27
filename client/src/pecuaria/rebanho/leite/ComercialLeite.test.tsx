@@ -280,9 +280,9 @@ describe("comercial do leite", () => {
     mudarCampo(screen.getByLabelText("Vínculo da entrega"), {
       target: { value: "NOVA_VENDA" },
     });
-    mudarCampo(screen.getByLabelText("Produto de leite"), {
-      target: { value: "leite" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Produto de leite" }));
+    fireEvent.click(await screen.findByRole("radio", { name: /Leite/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar seleção" }));
     mudarCampo(screen.getByLabelText("Volume expedido (L)"), {
       target: { value: "100" },
     });

@@ -11,6 +11,7 @@ const idsSchema = (campo: string) =>
     .refine((ids) => new Set(ids).size === ids.length, `${campo} repetidos`);
 
 const produtoBaseSchema = z.object({
+  produtoCatalogoId: z.string().uuid().optional(),
   codigoReferencia: z.string().trim().max(80).nullable().optional(),
   apresentacao: z.string().trim().max(200).nullable().optional(),
   observacao: z.string().trim().max(2000).nullable().optional(),
@@ -44,7 +45,7 @@ export type ProdutoInput = z.infer<typeof produtoSchema>;
 
 // Produto adotado do catálogo: null em apresentacao/fabricanteId/classificacaoTecnicaId restaura a herança;
 // `restaurarNome` volta ao nome do catálogo (docs/produtos.md, Herança).
-export const patchProdutoSchema = produtoBaseSchema.partial().extend({
+export const patchProdutoSchema = produtoBaseSchema.omit({ produtoCatalogoId: true }).partial().extend({
   ativo: z.boolean().optional(),
   restaurarNome: z.literal(true).optional(),
 });

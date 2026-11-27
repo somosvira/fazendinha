@@ -1,9 +1,8 @@
-import { useEffect, useId, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useEffect, useId, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { SeletorProdutoCatalogo, type ProdutoEscolhido } from "../../../estoque/SeletorProdutoCatalogo";
 import { SelectBuscavel } from "../../../components/SelectBuscavel";
 import { opcoesProtocolo } from "./opcoesProtocolo";
 import { Button } from "../../../financeiro/financeiro-ui";
-import { PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { listarCategorias } from "../../../estoque/api";
 import type { Categoria } from "../../../financeiro/novo-api";
 import { rotuloUnidade, type UnidadeMedida } from "../../../lib/unidades";
@@ -52,6 +51,8 @@ export function EditorModeloReprodutivo({ origemCadastro, cargaPersistida, etapa
   const idCampos = useId();
   const [containerPopover, setContainerPopover] = useState<HTMLElement | null>(null);
   const [catalogo, setCatalogo] = useState<number | null>(null);
+  const gatilhoCatalogo = useRef<HTMLButtonElement | null>(null);
+  const gatilhosCatalogo = useRef(new Map<number, HTMLButtonElement>());
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [erroCategorias, setErroCategorias] = useState("");
   const [produtoLocalResolvido, setProdutoLocalResolvido] = useState<{ id: string; nome: string } | null>(null);
@@ -105,7 +106,7 @@ export function EditorModeloReprodutivo({ origemCadastro, cargaPersistida, etapa
             via: produto?.perfilSanitario?.viaPadrao ?? null, tipoAplicacaoId: produto?.perfilSanitario?.tipoAplicacaoId ?? null,
           })}
         />
-        <Button secondary type="button" onClick={() => setCatalogo(indice)}>Ver catálogo</Button>
+        <Button ref={el => { if (el) gatilhosCatalogo.current.set(indice, el); else gatilhosCatalogo.current.delete(indice); }} secondary type="button" onClick={() => { gatilhoCatalogo.current = gatilhosCatalogo.current.get(indice) ?? null; setCatalogo(indice); }}>Ver catálogo</Button>
       </div>
       {plano?.produtoCatalogoId && <>
         <p>Produto do catálogo · será adotado ao salvar</p>
@@ -256,5 +257,5 @@ export function EditorModeloReprodutivo({ origemCadastro, cargaPersistida, etapa
                     {(t.tipo === "AVALIACAO" || t.tipo === "EXAME") && <label>Contexto do modelo de exame<SelectCampo className={classeInput} value={t.tipo === "AVALIACAO" ? "REPRODUTIVO" : "SANITARIO"} onValueChange={(valor) => setEtapas(es => es.map((acao, j) => j === i ? { ...acao, tipo: valor === "REPRODUTIVO" ? "AVALIACAO" : "EXAME", planoAvaliacao: undefined, planoExame: undefined } : acao))}><option value="REPRODUTIVO">Reprodutivo</option><option value="SANITARIO">Sanitário</option></SelectCampo></label>}
                     {t.tipo === "APLICACAO" ? camposAplicacao(t, i) : <PlanoEtapa propriedadeId={sitioEfetivo ?? undefined} etapa={t} contratoNovo={contratoNovo} tipoDefinido onChange={novo => setEtapas(es => es.map((acao, j) => j === i ? novo : acao))} />}
                   </div>}
-                />{catalogo !== null && <PainelCadastro aberto titulo="Catálogo de produtos" camada="sobreDetalhe" rascunhoPersistido onFechar={() => setCatalogo(null)} rodape={<Button type="button" onClick={() => setCatalogo(null)}>Concluir</Button>}><p>O produto do catálogo será adotado ao salvar o protocolo.</p><SeletorProdutoCatalogo permitirCadastro={false} limpavel={false} rotulo="Produto planejado" uso="sanitario" value={escolhaCatalogo} onChange={escolherNoCatalogo} /></PainelCadastro>}</>;
+                />{catalogo !== null && <SeletorProdutoCatalogo abertoInicial abaInicial="catalogo" retornoFoco={gatilhoCatalogo} aoFechar={() => setCatalogo(null)} propriedadeId={sitioEfetivo ?? undefined} permitirCadastro={false} limpavel={false} rotulo="Produto planejado" contexto="O produto do catálogo será adotado ao salvar o protocolo." uso="sanitario" value={escolhaCatalogo} onChange={escolherNoCatalogo} />}</>;
 }

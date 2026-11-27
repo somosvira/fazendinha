@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { FormAplicacaoServico } from "./FormAplicacaoServico";
 import { listarComprasDiretas, listarServicos, reqSanidade } from "./api";
-import { buscarProdutosUnificado, listarCategorias, listarProdutos } from "../../../estoque/api";
+import { buscarPaginaProdutos, listarCategorias, listarProdutos } from "../../../estoque/api";
 import { listarPartidasNutricionais } from "../nutricao/api";
 import { buscarFichaAnimal } from "../api";
 import { getPropriedadeAtiva, setPropriedadeAtiva } from "../../../propriedadeScope";
@@ -26,6 +26,7 @@ vi.mock("../../../estoque/api", () => ({
     { id: "cat-san", nome: "Sanidade", ativo: true, ordem: 5, usoSanitario: true },
   ]),
   listarProdutos: vi.fn().mockResolvedValue([{ id: "produto", nome: "Medicamento teste", unidade: "ML", usoSanitario: true, rastrearPartidas: false, perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48 } }]),
+  buscarPaginaProdutos: vi.fn(async ({ origem }) => ({ itens: origem === "meus" ? [{ id: "produto", nome: "Medicamento teste", unidade: "ML", usoSanitario: true }] : [ITEM_CATALOGO], total: 1, pagina: 1, porPagina: 10 })),
   buscarProdutosUnificado: vi.fn().mockResolvedValue({ meus: [{ id: "produto", nome: "Medicamento teste", unidade: "ML", usoSanitario: true }], catalogo: [ITEM_CATALOGO] }),
 }));
 vi.mock("../nutricao/api", () => ({ listarPartidasNutricionais: vi.fn().mockResolvedValue([]) }));
@@ -34,9 +35,20 @@ vi.mock("../../../components/DatePicker", () => ({ DatePicker: ({ value, onChang
 afterEach(() => { cleanup(); setPropriedadeAtiva(null); });
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(reqSanidade).mockResolvedValue([]); });
 
+async function escolherEstoque() {
+  fireEvent.click(screen.getByRole("button", { name: /Medicamento do estoque/ }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Medicamento teste/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar seleção" }));
+}
+async function escolherCatalogo() {
+  fireEvent.click(screen.getByRole("button", { name: /Produto cadastrado/ }));
+  fireEvent.click(screen.getByRole("tab", { name: "Catálogo" }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Biomox/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar seleção" }));
+}
 async function preencher() {
   await alterarControle(screen.getByLabelText(/Tipo de aplicação/), { target: { value: "tipo" } });
-  await alterarControle(screen.getByLabelText(/Medicamento do estoque/), { target: { value: "produto" } });
+  await escolherEstoque();
   await alterarControle(screen.getByLabelText(/^Quantidade aplicada$/), { target: { value: "10" } });
   await alterarControle(screen.getByLabelText(/^Data/), { target: { value: "2026-09-10" } });
   await alterarControle(screen.getByLabelText(/Hora/), { target: { value: "10:00" } });
@@ -96,7 +108,7 @@ describe("aplicação sanitária V3", () => {
     await waitFor(() => expect(botao()).toHaveProperty("disabled", false));
     expect(envios()[2].chave).not.toBe(envios()[0].chave);
     expect(envios()[2].itens[0].dose).toBe("7");
-    expect(screen.getByLabelText(/Medicamento do estoque/)).toHaveProperty("value", "produto");
+    expect(screen.getByRole("button", { name: /Medicamento do estoque/ }).textContent).toContain("Medicamento teste");
     expect(onSalvo).not.toHaveBeenCalled();
   });
   it("aplica estoque sem Serviço com prazo zero informado e confirmação idempotente", async () => {
@@ -104,7 +116,7 @@ describe("aplicação sanitária V3", () => {
     await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" });
     expect(screen.queryByText("Inativo")).toBeNull();
     await alterarControle(screen.getByLabelText(/Tipo de aplicação/), { target: { value: "tipo" } });
-    await alterarControle(screen.getByLabelText(/Medicamento do estoque/), { target: { value: "produto" } });
+    await escolherEstoque();
     await alterarControle(screen.getByLabelText(/Quantidade aplicada/), { target: { value: "10" } });
     await alterarControle(screen.getByLabelText(/^Data/), { target: { value: "2026-09-10" } });
     await alterarControle(screen.getByLabelText(/Hora/), { target: { value: "10:00" } });
@@ -189,10 +201,12 @@ describe("aplicação sanitária V3", () => {
     await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
     expect(screen.getByLabelText(/Medicamento utilizado/)).toHaveProperty("value", "");
     expect(screen.getByLabelText(/^Leite$/)).toHaveProperty("value", "NAO_INFORMADO");
-    fireEvent.click(screen.getByRole("combobox", { name: /Produto cadastrado/ }));
-    fireEvent.click(await screen.findByRole("option", { name: /Medicamento teste/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Produto cadastrado/ }));
+    fireEvent.click(await screen.findByRole("radio", { name: /Medicamento teste/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar seleção" }));
     expect(screen.queryByLabelText(/Medicamento utilizado/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Limpar produto cadastrado/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Produto cadastrado/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Limpar seleção" }));
     expect(screen.getByLabelText(/Medicamento utilizado/)).toHaveProperty("value", "");
   });
   it("item do catálogo no insumo incluso preenche unidade, sem diálogo, e envia produtoCatalogoId sem produtoId", async () => {
@@ -200,10 +214,7 @@ describe("aplicação sanitária V3", () => {
     await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" }); await preencher();
     await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
     await alterarControle(screen.getByLabelText(/Serviço/), { target: { value: "servico" } });
-    fireEvent.click(screen.getByRole("combobox", { name: /Produto cadastrado/ }));
-    const lista = await screen.findByRole("listbox", { name: /Produto cadastrado/ });
-    expect(within(lista).getAllByRole("group").map((g) => g.textContent)).toEqual([expect.stringContaining("Meus produtos"), expect.stringContaining("Catálogo")]);
-    fireEvent.click(screen.getByRole("option", { name: /Biomox 20% PS \(sachê 100 g\)/ }));
+    await escolherCatalogo();
     expect(screen.getAllByRole("dialog")).toHaveLength(1); // só o formulário: nenhum diálogo extra
     expect(screen.queryByLabelText(/Medicamento utilizado/)).toBeNull();
     expect(screen.getByLabelText(/Unidade/)).toHaveProperty("value", expect.stringMatching(/G/i));
@@ -212,15 +223,14 @@ describe("aplicação sanitária V3", () => {
     expect(cargaAplicacao().itens[0].produtoId).toBeUndefined();
   });
   it("item do catálogo sem categoria sugerida exige categoria ativa (uso sanitário primeiro) e a envia como categoriaId", async () => {
-    vi.mocked(buscarProdutosUnificado).mockResolvedValue({ meus: [], catalogo: [{ ...ITEM_CATALOGO, categoriaSugeridaId: null }] } as never);
+    vi.mocked(buscarPaginaProdutos).mockResolvedValue({ itens: [{ ...ITEM_CATALOGO, categoriaSugeridaId: null }], total: 1, pagina: 1, porPagina: 10 } as never);
     try {
       render(<FormAplicacaoServico animalId="animal" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
       await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" }); await preencher();
       await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
       await alterarControle(screen.getByLabelText(/Serviço/), { target: { value: "servico" } });
       expect(screen.queryByLabelText(/Categoria do produto novo/)).toBeNull();
-      fireEvent.click(screen.getByRole("combobox", { name: /Produto cadastrado/ }));
-      fireEvent.click(await screen.findByRole("option", { name: /Biomox/ }));
+      await escolherCatalogo();
       await screen.findByRole("combobox", { name: /Categoria do produto novo/ });
       await screen.findByRole("option", { hidden: true, name: "Administrativo" });
       const nomes = screen.getAllByRole("option", { hidden: true }).map((o) => o.textContent ?? "");
@@ -231,14 +241,13 @@ describe("aplicação sanitária V3", () => {
       await alterarControle(screen.getByRole("combobox", { name: /Categoria do produto novo/ }), { target: { value: "cat-san" } });
       submeter();
       await waitFor(() => expect(cargaAplicacao().itens[0]).toMatchObject({ produtoCatalogoId: "catalogo-1", categoriaId: "cat-san" }));
-    } finally { vi.mocked(buscarProdutosUnificado).mockResolvedValue({ meus: [{ id: "produto", nome: "Medicamento teste", unidade: "ML", usoSanitario: true }], catalogo: [ITEM_CATALOGO] } as never); }
+    } finally { vi.mocked(buscarPaginaProdutos).mockImplementation(async ({ origem }) => ({ itens: origem === "meus" ? [{ id: "produto", nome: "Medicamento teste", unidade: "ML", usoSanitario: true }] : [ITEM_CATALOGO], total: 1, pagina: 1, porPagina: 10 }) as never); }
   });
   it("com categoria sugerida não pede categoria nem lista categorias", async () => {
     render(<FormAplicacaoServico animalId="animal" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
     await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" });
     await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
-    fireEvent.click(screen.getByRole("combobox", { name: /Produto cadastrado/ }));
-    fireEvent.click(await screen.findByRole("option", { name: /Biomox/ }));
+    await escolherCatalogo();
     expect(screen.queryByLabelText(/Categoria do produto novo/)).toBeNull();
     expect(listarCategorias).not.toHaveBeenCalled();
   });
@@ -247,12 +256,12 @@ describe("aplicação sanitária V3", () => {
     await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" });
     if (comDesvio) fireEvent.click(screen.getByRole("button", { name: "Registrar desvio" }));
     await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
-    const seletor = screen.getByRole("combobox", { name: /Produto cadastrado/ });
+    const seletor = screen.getByRole("button", { name: /Produto cadastrado/ });
     if (!comDesvio) { expect(seletor).toHaveProperty("disabled", true); return; }
     fireEvent.click(seletor);
-    const lista = await screen.findByRole("listbox", { name: /Produto cadastrado/ });
-    expect(within(lista).getAllByRole("group").map((g) => g.textContent)).toEqual([expect.stringContaining("Meus produtos")]);
-    expect(screen.queryByRole("option", { name: /Biomox/ })).toBeNull();
+    await screen.findByRole("radio", { name: /Medicamento teste/ });
+    expect(screen.queryByRole("tab", { name: "Catálogo" })).toBeNull();
+    expect(screen.queryByRole("radio", { name: /Biomox/ })).toBeNull();
   });
   it("conflito de nome na adoção mostra a mensagem e 'Usar produto existente' troca para o produto da fazenda", async () => {
     vi.mocked(reqSanidade).mockImplementation(async (path) => { if (path === "/aplicacoes/coletivas") throw Object.assign(new Error("Já existe um produto da fazenda chamado “Biomox”."), { campo: "itens.0.produtoCatalogoId", code: "CONFLITO", produtoExistente: { id: "produto", nome: "Medicamento teste" } }); return []; });
@@ -260,12 +269,11 @@ describe("aplicação sanitária V3", () => {
     await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" }); await preencher();
     await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
     await alterarControle(screen.getByLabelText(/Serviço/), { target: { value: "servico" } });
-    fireEvent.click(screen.getByRole("combobox", { name: /Produto cadastrado/ }));
-    fireEvent.click(await screen.findByRole("option", { name: /Biomox/ }));
+    await escolherCatalogo();
     submeter();
     fireEvent.click(await screen.findByRole("button", { name: "Usar produto existente" }));
     expect(screen.queryByRole("button", { name: "Usar produto existente" })).toBeNull();
-    expect(screen.getByRole("combobox", { name: /Produto cadastrado/ })).toHaveProperty("value", "Medicamento teste");
+    expect(screen.getByRole("button", { name: /Produto cadastrado/ }).textContent).toContain("Medicamento teste");
     expect(screen.queryByLabelText(/Medicamento utilizado/)).toBeNull();
   });
   it("compra direta deriva o nome do item e apaga vínculo ao trocar origem", async () => {
@@ -286,7 +294,7 @@ describe("aplicação sanitária V3", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/^Quantidade aplicada$/)));
     expect(document.getElementById("san-dose-erro")?.textContent).toContain("Saldo de estoque insuficiente");
     expect(screen.getByLabelText(/^Quantidade aplicada$/)).toHaveProperty("value", "10");
-    expect(screen.getByLabelText(/Medicamento do estoque/)).toHaveProperty("value", "produto");
+    expect(screen.getByRole("button", { name: /Medicamento do estoque/ }).textContent).toContain("Medicamento teste");
   });
   it("erro coletivo foca carência sempre visível e mantém quantidades revisadas enquanto dados comuns são corrigidos", async () => {
     vi.mocked(reqSanidade).mockImplementation(async (path) => { if (path === "/aplicacoes/coletivas") throw Object.assign(new Error("Informe o prazo em horas inteiras"), { campo: "itens.1.carenciaLeiteHoras" }); return []; });
@@ -327,7 +335,7 @@ it("aplicação coordenada pela IATF não solicita outra hora nem fabrica aplica
   render(<FormAplicacaoServico animalId="animal" propriedadeId={1} momentoIatf="2026-09-10" dataInicial="2026-09-10" onRegistrar={registrar} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" });
   await alterarControle(screen.getByLabelText(/Tipo de aplicação/), {target:{value:"tipo"}});
-  await alterarControle(screen.getByLabelText(/Medicamento do estoque/), {target:{value:"produto"}});
+  await escolherEstoque();
   await alterarControle(screen.getByLabelText(/^Quantidade aplicada$/), {target:{value:"2"}});
   const hora=screen.getByLabelText(/Horário não informado na IATF/) as HTMLInputElement;
   expect(hora.required).toBe(false);expect(hora.disabled).toBe(true);expect(hora.value).toBe("");
@@ -344,7 +352,7 @@ it("preenche parâmetros da visita sem criar vínculo sanitário e conserva sít
     parametrosIniciais={{ produtoId: "produto", tipoAplicacaoId: "tipo", dose: "2.5", unidade: "ML", via: "IM" }}
     onRegistrar={registrar} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" });
-  expect(screen.getByLabelText(/Medicamento do estoque/)).toHaveProperty("value", "produto");
+  expect(screen.getByRole("button", { name: /Medicamento do estoque/ }).textContent).toContain("Medicamento teste");
   expect(screen.getByLabelText(/^Quantidade aplicada$/)).toHaveProperty("value", "2.5");
   submeter();
   await waitFor(() => expect(registrar).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 7, dose: "2.5", produtoId: "produto", via: "IM", aplicadaEm: "2026-10-14T12:00:00.000Z" })));

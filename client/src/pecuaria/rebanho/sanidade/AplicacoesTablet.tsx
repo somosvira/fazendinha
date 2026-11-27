@@ -1,16 +1,16 @@
+import { criarFiltroMedicamentos } from "./busca-medicamentos";
+import { SeletorProdutosMultiplos } from "../../../estoque/SeletorProdutosMultiplos";
 import { ConteudoReferenciaMedicamento, PendenciasMedicamento, type ConferenciaBula, type ReferenciaMedicamento } from "@/estoque/ReferenciaMedicamento";
 import { rotuloUnidade, type UnidadeMedida } from "@/lib/unidades";
-import { useEffect, useState } from "react";
-import { ChevronDown, Info, MapPin, Plus, Stethoscope, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Info, MapPin, Plus, Stethoscope, X } from "lucide-react";
 import { SubTabs } from "@/components/SubTabs";
 import { lerSitioTablet, MemorizarSitioTablet } from "./SitioTablet";
 import { EmptyState } from "@/components/EmptyState";
 import { DatePicker } from "@/components/DatePicker";
 import { AjustesTouchTablet } from "./AjustesTouchTablet";
 import { CampoNumericoTablet, numeroDigitadoTablet } from "./CampoNumericoTablet";
-import { criarFiltroMedicamentos } from "./busca-medicamentos";
 import { HorarioAplicacao } from "./HorarioAplicacao";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getUsuario } from "@/lib/auth";
@@ -118,7 +118,7 @@ function Registro({ sitio, autor, nomeSitio }: { sitio: number; autor: string; n
   const [medicamentoAberto, setMedicamentoAberto] = useState<Produto | null>(null);
   const [template, setTemplate] = useState<{ nome: string; produtos: Produto[]; quantidades: QuantidadesTemplate } | null>(null);
   const [escolhendoDoenca, setEscolhendoDoenca] = useState(false);
-  const [marcados, setMarcados] = useState<string[]>([]);
+  const gatilhoDoenca = useRef<HTMLButtonElement>(null);
   const [aplicadaEm, setAplicadaEm] = useState(horarioLocal);
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const [ocupado, setOcupado] = useState(false);
@@ -173,7 +173,7 @@ function Registro({ sitio, autor, nomeSitio }: { sitio: number; autor: string; n
   return <>
     <header className="tablet-registro-cabecalho">
       <div><h1>Registrar aplicações</h1><p className="tablet-secundario">{nomeSitio} · {autor}</p></div>
-      {etapa === 1 && <Button type="button" variant="outline" disabled={!opcoes} onClick={() => { repetir(); setEscolhendoDoenca(true); }}><Stethoscope size={20} aria-hidden />Selecionar doença</Button>}
+      {etapa === 1 && <Button ref={gatilhoDoenca} type="button" variant="outline" disabled={!opcoes} onClick={() => { repetir(); setEscolhendoDoenca(true); }}><Stethoscope size={20} aria-hidden />Selecionar doença</Button>}
     </header>
     {aviso && <p role="status" className="tablet-aviso">{aviso}</p>}
     {etapa === 0 && erroDevolvidos && <p role="alert">Não foi possível carregar os envios devolvidos. {erroDevolvidos}</p>}
@@ -249,47 +249,18 @@ function Registro({ sitio, autor, nomeSitio }: { sitio: number; autor: string; n
         {erroOpcoes ? <div role="alert">{erroOpcoes} <Button type="button" variant="outline" onClick={repetir}>Tentar novamente</Button></div> : <><div className="tablet-pilha">{opcoes?.templates.filter(t => t.produtoIds.length).map(t => {
           const nome = opcoes.doencas.find(d => d.id === t.doencaId)?.nome;
           if (!nome) return null;
-          return <Button type="button" key={t.doencaId} variant="outline" onClick={() => { setEscolhendoDoenca(false); setTemplate({ nome, produtos: catalogo.filter(p => t.produtoIds.includes(p.id)), quantidades: t.quantidades ?? {} }); setMarcados(t.produtoIds); }}>{nome} ({t.produtoIds.length})</Button>;
+          return <Button type="button" key={t.doencaId} variant="outline" onClick={() => { setEscolhendoDoenca(false); setTemplate({ nome, produtos: catalogo.filter(p => t.produtoIds.includes(p.id)), quantidades: t.quantidades ?? {} }); }}>{nome} ({t.produtoIds.length})</Button>;
         })}</div>
         {!opcoes?.templates.some(t => t.produtoIds.length && opcoes.doencas.some(d => d.id === t.doencaId)) && <EmptyState compacto icon={Stethoscope} titulo="Nenhum template cadastrado" descricao="Este sítio ainda não possui templates por doença. Você pode escolher os medicamentos diretamente na lista." />}</>}
       </DialogContent>
     </Dialog>
-    <Dialog open={!!template} onOpenChange={aberto => { if (!aberto) setTemplate(null); }}>
-      <DialogContent className="tablet-dialogo tablet-dialogo-template" aria-describedby={undefined}><DialogHeader><DialogTitle>{template?.nome}</DialogTitle></DialogHeader>
-        <div className="tablet-pilha">
-        {template?.produtos.map(p => <label className="tablet-check" key={p.id}><input type="checkbox" checked={marcados.includes(p.id)} onChange={e => setMarcados(e.target.checked ? [...marcados, p.id] : marcados.filter(id => id !== p.id))} />{p.nome}{template.quantidades[p.id] && <span className="tablet-template-quantidade">{template.quantidades[p.id].quantidade} {rotuloUnidade(template.quantidades[p.id].unidade)}</span>}</label>)}
-        </div>
-        <div className="tablet-acoes"><Button disabled={!marcados.length} onClick={() => { adicionar(marcados, template?.quantidades); setTemplate(null); }}>Usar itens marcados</Button></div>
-      </DialogContent>
-    </Dialog>
+    {template && <SeletorProdutosMultiplos abertoInicial retornoFoco={gatilhoDoenca} detalheOpcao={p => { const q = template.quantidades[p.id]; return q ? `${q.quantidade} ${rotuloUnidade(q.unidade)}` : undefined; }} rotulo={template.nome} opcoes={template.produtos} valor={template.produtos.map(p => p.id)} corresponde={(nome, termo) => criarFiltroMedicamentos(termo)(nome)} onChange={ids => { if (ids.length) adicionar(ids, template.quantidades); }} onFechar={() => setTemplate(null)} />}
+
   </>;
 }
 
-function SeletorMedicamentos({ produtos, selecionados, alterar }: {
-  produtos: Produto[]; selecionados: Record<string, string>; alterar: (id: string, marcado: boolean) => void;
-}) {
-  const [aberto, setAberto] = useState(false);
-  const [termo, setTermo] = useState("");
-  const corresponde = criarFiltroMedicamentos(termo);
-  const filtrados = produtos.filter(p => corresponde(p.nome));
-  return <Popover open={aberto} onOpenChange={valor => { setAberto(valor); if (!valor) setTermo(""); }}>
-    <PopoverTrigger asChild><Button type="button" variant="outline" className="tablet-medicamentos-trigger">
-      Adicionar medicamentos<ChevronDown size={20} aria-hidden />
-    </Button></PopoverTrigger>
-    <PopoverContent align="start" side="bottom" avoidCollisions collisionPadding={12} className="tablet-medicamentos-dropdown" aria-label="Medicamentos do estoque">
-      <div className="tablet-busca-campo"><input type="search" inputMode="search" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} enterKeyHint="search" className={entrada} aria-label="Pesquisar medicamento" placeholder="Pesquisar medicamento…"
-        value={termo} onChange={e => setTermo(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} />
-        {termo && <Button type="button" variant="ghost" className="tablet-busca-limpar" aria-label="Limpar pesquisa de medicamento" onClick={e => { setTermo(""); e.currentTarget.parentElement?.querySelector("input")?.focus(); }}><X size={18} aria-hidden /></Button>}
-      </div>
-      <div className="tablet-medicamentos-lista">
-        {filtrados.map(p => <label className="tablet-medicamento-opcao" key={p.id}>
-          <input type="checkbox" checked={p.id in selecionados} onChange={e => alterar(p.id, e.target.checked)} />
-          <span>{p.nome}</span><small>{rotuloUnidade(p.unidade)}</small>
-        </label>)}
-        {!filtrados.length && <p role="status">{produtos.length ? "Nenhum medicamento disponível para esta busca." : "Nenhum medicamento disponível no estoque deste sítio."}</p>}
-      </div>
-    </PopoverContent>
-  </Popover>;
+function SeletorMedicamentos({ produtos, selecionados, alterar }: { produtos: Produto[]; selecionados: Record<string, string>; alterar: (id: string, marcado: boolean) => void }) {
+  return <SeletorProdutosMultiplos corresponde={(nome, termo) => criarFiltroMedicamentos(termo)(nome)} opcoes={produtos} valor={Object.keys(selecionados)} rotulo="Adicionar medicamentos" onChange={ids => { for (const id of Object.keys(selecionados)) if (!ids.includes(id)) alterar(id, false); for (const id of ids) if (!(id in selecionados)) alterar(id, true); }} />;
 }
 
 function ListaItens({ itens }: { itens: Item[] }) {
@@ -433,11 +404,9 @@ function Templates({ sitio, nomeSitio }: { sitio: number; nomeSitio: string }) {
   const [doenca, setDoenca] = useState("");
   const [ids, setIds] = useState<string[]>([]);
   const [quantidades, setQuantidades] = useState<Record<string, string>>({});
-  const [termo, setTermo] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState("");
   const [erroGravacao, setErroGravacao] = useState("");
-  const corresponde = criarFiltroMedicamentos(termo);
   async function salvar(e: React.FormEvent) {
     e.preventDefault(); setOcupado(true); setAviso(""); setErroGravacao("");
     try {
@@ -451,15 +420,11 @@ function Templates({ sitio, nomeSitio }: { sitio: number; nomeSitio: string }) {
       <form onSubmit={salvar} className="tablet-pilha">
         <fieldset disabled={ocupado} className="tablet-pilha">
           <label>Doença<select className={entrada} required value={doenca} onChange={e => {
-            setDoenca(e.target.value); setIds(opcoes.templates.find(t => t.doencaId === e.target.value)?.produtoIds ?? []); setQuantidades(Object.fromEntries(Object.entries(opcoes.templates.find(t => t.doencaId === e.target.value)?.quantidades ?? {}).map(([id, q]) => [id, String(q.quantidade).replace(".", ",")]))); setTermo(""); setAviso(""); setErroGravacao("");
+            setDoenca(e.target.value); setIds(opcoes.templates.find(t => t.doencaId === e.target.value)?.produtoIds ?? []); setQuantidades(Object.fromEntries(Object.entries(opcoes.templates.find(t => t.doencaId === e.target.value)?.quantidades ?? {}).map(([id, q]) => [id, String(q.quantidade).replace(".", ",")]))); setAviso(""); setErroGravacao("");
           }}><option value="">Selecione a doença</option>{opcoes.doencas.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}</select></label>
           {doenca && <>
-            <label>Buscar medicamento<input type="search" inputMode="search" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} enterKeyHint="search" className={entrada} value={termo} onChange={e => setTermo(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} /></label>
-            {opcoes.catalogo.filter(p => ids.includes(p.id) || termo.trim() && corresponde(p.nome)).map(p =>
-              <div key={p.id} className="tablet-linha">
-                <label className="tablet-check"><input type="checkbox" checked={ids.includes(p.id)} onChange={e => setIds(e.target.checked ? [...ids, p.id] : ids.filter(id => id !== p.id))} />{p.nome}</label>
-                {ids.includes(p.id) && <label className="tablet-medicamento-quantidade">Qtd. ({rotuloUnidade(p.unidade)})<CampoNumericoTablet className={entrada} rotulo={`Quantidade padrão de ${p.nome}`} inteiro={["UN", "CX", "SC"].includes(p.unidade)} valor={quantidades[p.id] ?? ""} placeholder="—" onChange={valor => setQuantidades(atual => ({ ...atual, [p.id]: valor }))} /></label>}
-              </div>)}
+            <SeletorProdutosMultiplos corresponde={(nome, termo) => criarFiltroMedicamentos(termo)(nome)} opcoes={opcoes.catalogo} valor={ids} onChange={setIds} />
+            {opcoes.catalogo.filter(p => ids.includes(p.id)).map(p => <div key={p.id} className="tablet-linha"><span>{p.nome}</span><label className="tablet-medicamento-quantidade">Qtd. ({rotuloUnidade(p.unidade)})<CampoNumericoTablet className={entrada} rotulo={`Quantidade padrão de ${p.nome}`} inteiro={["UN", "CX", "SC"].includes(p.unidade)} valor={quantidades[p.id] ?? ""} placeholder="—" onChange={valor => setQuantidades(atual => ({ ...atual, [p.id]: valor }))} /></label></div>)}
             <Button type="submit">{ids.length ? "Salvar template" : "Remover template"}</Button>
           </>}
         </fieldset>

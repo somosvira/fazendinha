@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { StrictMode } from "react";
+import { createPortal } from "react-dom";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PaginaCadastroProtocolo } from "./PaginaCadastroProtocolo";
@@ -16,8 +17,8 @@ vi.mock("../reproducao/api", () => ({ reqV4: vi.fn() }));
 vi.mock("../sanidade/api", () => ({ reqSanidade: vi.fn() }));
 vi.mock("../../../router", () => ({ navegarPara: vi.fn() }));
 vi.mock("../../../estoque/SeletorProdutoCatalogo", () => ({
-  SeletorProdutoCatalogo: ({ onChange, value, permitirCadastro, limpavel }: { onChange: (v: unknown) => void; value?: { nomeCompleto?: string; nome?: string } | null; permitirCadastro?: boolean; limpavel?: boolean }) =>
-    <><span data-testid="cadastro-permitido">{String(permitirCadastro)}</span><span data-testid="seletor-limpavel">{String(limpavel)}</span><span>Seleção atual: {value?.nomeCompleto ?? value?.nome ?? "nenhuma"}</span><button onClick={() => onChange({ tipo: "catalogo", produtoCatalogoId: "c1", nomeCompleto: "Insumo de catálogo", unidadeSugerida: "ML", categoriaSugeridaId: "cat1" })}>Escolher item de catálogo</button></>,
+  SeletorProdutoCatalogo: ({ onChange, value, permitirCadastro, limpavel, aoFechar, retornoFoco }: { onChange: (v: unknown) => void; value?: { nomeCompleto?: string; nome?: string } | null; permitirCadastro?: boolean; limpavel?: boolean; aoFechar: () => void; retornoFoco: { current: HTMLButtonElement | null } }) =>
+    createPortal(<div role="dialog" aria-label="Selecionar produto"><span data-testid="cadastro-permitido">{String(permitirCadastro)}</span><span data-testid="seletor-limpavel">{String(limpavel)}</span><span>Seleção atual: {value?.nomeCompleto ?? value?.nome ?? "nenhuma"}</span><button onClick={() => { onChange({ tipo: "catalogo", produtoCatalogoId: "c1", nomeCompleto: "Insumo de catálogo", unidadeSugerida: "ML", categoriaSugeridaId: "cat1" }); retornoFoco.current?.focus(); }}>Escolher item de catálogo</button><button onClick={() => { aoFechar(); retornoFoco.current?.focus(); }}>Cancelar</button></div>, document.body),
 }));
 vi.mock("../../../estoque/api", () => ({ listarCategorias: async () => [{ id: "cat1", nome: "Medicamentos", ativo: true }] }));
 const meta: CadastroProtocoloMeta = { id: "p1", nome: "Controle", tipo: "SANITARIO", finalidade: "SANITARIO", versao: 2, proximaVersao: 5, publicado: true, publicadoEm: "2026-10-01", ativo: true, utilizada: true, atualizadoEm: "2026-10-23T12:00:00Z", descricao: "Descrição da base", totalEtapas: 1 };
@@ -425,7 +426,7 @@ it("mantém o produto de catálogo no controle, restaura ao cancelar e permite l
   expect(within(etapa).getByLabelText("Quantidade por animal")).toHaveProperty("value", "");
   expect(within(etapa).queryByLabelText("Categoria do produto")).toBeNull();
   fireEvent.click(within(etapa).getByRole("button", { name: "Ver catálogo" }));
-  expect(within(screen.getByRole("dialog", { name: "Catálogo de produtos" })).getByText("Seleção atual: Produto da fazenda")).toBeTruthy();
+  expect(within(screen.getByRole("dialog", { name: "Selecionar produto" })).getByText("Seleção atual: Produto da fazenda")).toBeTruthy();
 });
 
 it("resolve pelo ID o nome do produto da fazenda herdado da versão-base ao abrir o catálogo", async () => {
@@ -445,9 +446,9 @@ it("resolve pelo ID o nome do produto da fazenda herdado da versão-base ao abri
   fireEvent.click(screen.getByRole("button", { name: "Editar Aplicação · ação legada" }));
   const etapa = screen.getByRole("dialog", { name: "Editar etapa · Ação legada" });
   fireEvent.click(within(etapa).getByRole("button", { name: "Ver catálogo" }));
-  const catalogo = screen.getByRole("dialog", { name: "Catálogo de produtos" });
+  const catalogo = screen.getByRole("dialog", { name: "Selecionar produto" });
   expect(await within(catalogo).findByText("Seleção atual: Produto da versão-base")).toBeTruthy();
-  fireEvent.click(within(catalogo).getByRole("button", { name: "Concluir" }));
+  fireEvent.click(within(catalogo).getByRole("button", { name: "Cancelar" }));
   expect(within(etapa).getByLabelText("Quantidade por animal")).toHaveProperty("value", "3");
 });
 

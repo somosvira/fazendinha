@@ -1,3 +1,4 @@
+import { SeletorProdutoLocal } from "../../../estoque/SeletorProdutoLocal";
 import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
 import { useEffect, useId, useRef, useState } from "react";
@@ -43,7 +44,7 @@ export function NovaVendaAvulsaLeite({ sitio, config, produtos, onSalvar, onCanc
     <legend>Registrar retirada e venda avulsa</legend>
     
     <div className="leite-form-inline">
-      <label>Produto de leite<SelectCampo required value={produto} onValueChange={setProduto}><option value="">Selecione</option>{produtos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
+      <label>Produto de leite<SeletorProdutoLocal rotulo="Produto de leite" obrigatorio valor={produto} opcoes={produtos} onChange={setProduto} /></label>
       <label>Comprador<SelectCampo required value={parceiro} onValueChange={setParceiro}><option value="">Selecione</option>{config.parceiros.filter(p => p.ativo).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
       <label>Data da retirada<DatePicker required max={hojeOperacional()} value={data} onChange={(valor) => setData(valor)} /></label>
       <label>Litros retirados<input required inputMode="decimal" value={litros} onChange={e => setLitros(e.target.value)} /></label>

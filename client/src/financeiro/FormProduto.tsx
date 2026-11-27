@@ -12,6 +12,7 @@ import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
 import { UNIDADES_ORDENADAS, rotuloUnidadeCompleto, type UnidadeMedida } from "../lib/unidades";
 import { PartidasProduto } from "../estoque/PartidasProduto";
 import { SelectBuscavel } from "../components/SelectBuscavel";
+import { SeletorProdutoCatalogo, type ProdutoEscolhido } from "../estoque/SeletorProdutoCatalogo";
 import { SeletorCatalogoProduto } from '../estoque/CatalogosProdutos';
 import { LinkInterno } from '../components/LinkInterno';
 import { Package } from "lucide-react";
@@ -104,7 +105,13 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const [classificacaoTecnicaId, setClassificacaoTecnicaId] = useState(produto?.classificacaoTecnicaId ?? produto?.classificacaoTecnica?.id ?? '');
   const [catalogoAlterado, setCatalogoAlterado] = useState(false);
   // Produto adotado do catálogo: origem de cada campo herdável e o valor efetivo recebido (sem alteração, a herança é preservada ao salvar).
-  const adotado = !!produto?.produtoCatalogoId;
+  const identidadeManual = useRef<{ nome: string; apresentacao: string; fabricanteId: string; classificacaoTecnicaId: string; unidade: UnidadeMedida; usos: { usoGenetico: boolean; usoSanitario: boolean; usoNutricional: boolean } } | null>(null);
+  const categoriaEditada = useRef(false);
+  const categoriaManual = useRef("");
+  const unidadeEditada = useRef(false);
+  const usosEditados = useRef({ usoGenetico: false, usoSanitario: false, usoNutricional: false });
+  const [referencia, setReferencia] = useState<ProdutoEscolhido | null>(null);
+  const adotado = !!produto?.produtoCatalogoId || !!referencia;
   const [origem, setOrigem] = useState<Record<CampoHerdavel, "catalogo" | "fazenda">>(() => ({ nome: "fazenda", apresentacao: "fazenda", fabricante: "fazenda", classificacaoTecnica: "fazenda", ...produto?.origemCampos }));
   const [efetivosBase, setEfetivosBase] = useState(() => ({ apresentacao: produto?.apresentacao ?? '', fabricanteId: produto?.fabricanteId ?? produto?.fabricante?.id ?? '', classificacaoTecnicaId: produto?.classificacaoTecnicaId ?? produto?.classificacaoTecnica?.id ?? '' }));
   const [restaurando, setRestaurando] = useState(false);
@@ -143,6 +150,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     e.preventDefault();
     if (somenteLeitura) return;
     const novosErros: Record<string, string> = {};
+    if (nome.trim().length > 80) novosErros.nome = "O nome da referência ultrapassa 80 caracteres. Edite o nome para criar o produto.";
     if (nome.trim().length < 2) novosErros.nome = "Informe um nome com pelo menos 2 caracteres";
     if (minimo && Number(minimo) < 0) novosErros.minimoEstoque = "O estoque mínimo não pode ser negativo";
     if (!categoriaId) novosErros.categoriaId = "Produto precisa de uma categoria";
@@ -161,6 +169,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     }
     const dados: ProdutoInput = {
       nome: nome.trim(), unidade,
+      ...(!produto && referencia?.tipo === "catalogo" ? { produtoCatalogoId: referencia.produtoCatalogoId } : {}),
       codigoReferencia: codigoReferencia.trim() || null,
       observacao: observacao.trim() || null, conservacao: conservacao.trim() || null,
       // Campo herdado e não alterado fica fora do envio: gravá-lo copiaria o valor do catálogo e encerraria a herança.
@@ -185,6 +194,14 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
 
   /** Restaurar grava `null` (ou `restaurarNome`) na hora; o painel continua aberto com o valor do catálogo. */
   const restaurar = async (campo: CampoHerdavel) => {
+    if (!produto && referencia?.tipo === "catalogo" && referencia.item) {
+      const item = referencia.item;
+      if (campo === "nome") setNome(item.nomeCompleto);
+      if (campo === "apresentacao") setApresentacao(item.apresentacao ?? "");
+      if (campo === "fabricante") setFabricanteId(item.fabricante?.id ?? "");
+      if (campo === "classificacaoTecnica") setClassificacaoTecnicaId(item.classificacaoTecnica?.id ?? "");
+      setOrigem(o => ({ ...o, [campo]: "catalogo" })); return;
+    }
     if (!produto || restaurando || emCurso.current) return;
     setRestaurando(true); setErroGeral("");
     try {
@@ -200,7 +217,11 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     } catch (erro) { setErroGeral(erro instanceof Error ? erro.message : String(erro)); }
     finally { setRestaurando(false); }
   };
-  const marca = (campo: CampoHerdavel) => adotado ? <OrigemCampo campo={campo} origem={origem[campo]} ocupado={restaurando || salvando} somenteLeitura={somenteLeitura} onRestaurar={restaurar} /> : null;
+  const marca = (campo: CampoHerdavel) => {
+    const limparAoSalvar = !!produto?.produtoCatalogoId && origem[campo] === "fazenda" && ((campo === "apresentacao" && !apresentacao) || (campo === "fabricante" && !fabricanteId) || (campo === "classificacaoTecnica" && !classificacaoTecnicaId));
+    if (limparAoSalvar) return <p className="text-xs text-ink-3">Do catálogo após salvar</p>;
+    return adotado ? <OrigemCampo campo={campo} origem={origem[campo]} ocupado={restaurando || salvando} somenteLeitura={somenteLeitura} onRestaurar={restaurar} /> : null;
+  };
 
   const formId = "form-produto-financeiro";
   return <PainelCadastro icon={Package} alteracoesExternas={catalogoAlterado || JSON.stringify(centroCustoIds) !== JSON.stringify(produto?.centroCustoIds ?? []) || JSON.stringify(fornecedorIds) !== JSON.stringify(produto?.fornecedores?.map(f => f.id) ?? [])} bloqueado={salvando} aberto titulo={produto ? `${somenteLeitura ? "Consultar" : "Editar"} ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
@@ -213,18 +234,47 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       {carregando && <p className="text-sm text-ink-3">Carregando fornecedores, categorias e centros de custo…</p>}
       <section className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
         <h3 className="text-sm font-semibold text-ink sm:col-span-2">Identificação comercial</h3>
-      <div className="grid content-start gap-1"><CampoFormulario id="produto-nome" rotulo="Nome do produto" obrigatorio erro={erros.nome}>{(p) => <Input {...p} maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ração 22%" className={classeInput} />}</CampoFormulario>{marca("nome")}</div>
-      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio erro={erros.categoriaId}>{(p) => <SelectCampo {...p} value={categoriaId} onValueChange={(valor) => setCategoriaId(valor)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</SelectCampo>}</CampoFormulario>
+      {!produto && <div className="sm:col-span-2"><label htmlFor="produto-referencia" className="text-sm font-medium">Referência do catálogo (opcional)</label><SeletorProdutoCatalogo id="produto-referencia" rotulo="Referência do catálogo" somenteCatalogo invalido={!!erros.produtoCatalogoId} descricaoId={erros.produtoCatalogoId ? "produto-referencia-erro" : undefined} value={referencia} onChange={escolha => {
+        if (!escolha && identidadeManual.current) {
+          const manual = identidadeManual.current;
+          if (origem.nome === "catalogo") setNome(manual.nome);
+          if (origem.apresentacao === "catalogo") setApresentacao(manual.apresentacao);
+          if (origem.fabricante === "catalogo") setFabricanteId(manual.fabricanteId);
+          if (origem.classificacaoTecnica === "catalogo") setClassificacaoTecnicaId(manual.classificacaoTecnicaId);
+          if (!unidadeEditada.current) setUnidade(manual.unidade);
+          setUsos(atuais => ({ usoGenetico: usosEditados.current.usoGenetico ? atuais.usoGenetico : manual.usos.usoGenetico, usoSanitario: usosEditados.current.usoSanitario ? atuais.usoSanitario : manual.usos.usoSanitario, usoNutricional: usosEditados.current.usoNutricional ? atuais.usoNutricional : manual.usos.usoNutricional }));
+          if (!categoriaEditada.current) setCategoriaId(categoriaManual.current);
+          identidadeManual.current = null;
+        }
+        if (!referencia && escolha?.tipo === "catalogo") { identidadeManual.current = { nome, apresentacao, fabricanteId, classificacaoTecnicaId, unidade, usos }; categoriaManual.current = categoriaId; }
+        setReferencia(escolha);
+        if (escolha?.tipo !== "catalogo" || !escolha.item) return;
+        const item = escolha.item;
+        if (!categoriaEditada.current && !categoriaManual.current) setCategoriaId(item.categoriaSugeridaId && categorias.some(c => c.id === item.categoriaSugeridaId && c.ativo) ? item.categoriaSugeridaId : "");
+        if (!referencia || origem.nome === "catalogo") setNome(item.nomeCompleto);
+        if (!referencia || origem.apresentacao === "catalogo") setApresentacao(item.apresentacao ?? "");
+        if (!referencia || origem.fabricante === "catalogo") setFabricanteId(item.fabricante?.id ?? "");
+        if (!referencia || origem.classificacaoTecnica === "catalogo") setClassificacaoTecnicaId(item.classificacaoTecnica?.id ?? "");
+        if (!unidadeEditada.current) setUnidade(item.unidadeSugerida);
+        setEfetivosBase({ apresentacao: item.apresentacao ?? "", fabricanteId: item.fabricante?.id ?? "", classificacaoTecnicaId: item.classificacaoTecnica?.id ?? "" });
+        setOrigem(atual => referencia ? atual : { nome: "catalogo", apresentacao: "catalogo", fabricante: "catalogo", classificacaoTecnica: "catalogo" });
+        setUsos(atuais => {
+          return { usoGenetico: !usosEditados.current.usoGenetico ? item.usoGenetico : atuais.usoGenetico, usoSanitario: !usosEditados.current.usoSanitario ? item.usoSanitario : atuais.usoSanitario, usoNutricional: !usosEditados.current.usoNutricional ? item.usoNutricional : atuais.usoNutricional };
+        });
+        setCatalogoAlterado(true);
+      }} />{erros.produtoCatalogoId && <p id="produto-referencia-erro" role="alert" className="mt-1 text-xs text-destructive">{erros.produtoCatalogoId}</p>}<p className="mt-1 text-xs text-ink-3">Opcional. A referência fornece identificação comercial; categoria, unidade, usos e demais complementos pertencem à fazenda e são salvos somente ao criar o produto.</p></div>}
+      <div className="grid content-start gap-1"><CampoFormulario id="produto-nome" rotulo="Nome do produto" obrigatorio erro={erros.nome}>{(p) => <Input {...p} maxLength={80} value={nome} onChange={(e) => { setNome(e.target.value); setOrigem(o => ({ ...o, nome: "fazenda" })); }} placeholder="Ex.: Ração 22%" className={classeInput} />}</CampoFormulario>{marca("nome")}</div>
+      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio erro={erros.categoriaId}>{(p) => <SelectCampo {...p} value={categoriaId} onValueChange={(valor) => { categoriaEditada.current = true; setCategoriaId(valor); }} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</SelectCampo>}</CampoFormulario>
       <CampoFormulario id="produto-codigo" rotulo="Código de referência">{p => <Input {...p} maxLength={80} value={codigoReferencia} onChange={e => setCodigoReferencia(e.target.value)} className={classeInput} />}</CampoFormulario>
-      <div className="grid content-start gap-1"><CampoFormulario id="produto-apresentacao" rotulo="Apresentação">{p => <Input {...p} maxLength={200} value={apresentacao} onChange={e => setApresentacao(e.target.value)} placeholder="Ex.: frasco de 500 mL" className={classeInput} />}</CampoFormulario>{marca("apresentacao")}</div>
-      <div className="grid content-start gap-1"><SeletorCatalogoProduto tipo="fabricantes" rotulo="Fabricante" valor={fabricanteId} onChange={id => { setFabricanteId(id); setCatalogoAlterado(true); }} somenteLeitura={somenteLeitura} />{marca("fabricante")}</div>
-      <div className="grid content-start gap-1"><SeletorCatalogoProduto tipo="classificacoes-tecnicas" rotulo="Classificação técnica" valor={classificacaoTecnicaId} onChange={id => { setClassificacaoTecnicaId(id); setCatalogoAlterado(true); }} somenteLeitura={somenteLeitura} />{marca("classificacaoTecnica")}</div>
-      {adotado && <section aria-labelledby="produto-principios" className="grid gap-1 text-sm sm:col-span-2"><h4 id="produto-principios" className="font-medium">Princípios ativos</h4>{produto?.principiosAtivos?.length ? <ul className="flex flex-wrap gap-2">{produto.principiosAtivos.map(pa => <li key={pa.id} className="rounded-md border border-border bg-muted px-2 py-1 text-xs">{pa.nome}</li>)}</ul> : <p className="text-ink-3">Nenhum princípio ativo informado no catálogo.</p>}<p className="text-xs text-ink-3">Do catálogo; a fazenda não edita.</p></section>}
+      <div className="grid content-start gap-1"><CampoFormulario id="produto-apresentacao" rotulo="Apresentação">{p => <Input {...p} maxLength={200} value={apresentacao} onChange={e => { setApresentacao(e.target.value); setOrigem(o => ({ ...o, apresentacao: "fazenda" })); }} onBlur={() => { if (referencia && !apresentacao) { setApresentacao(efetivosBase.apresentacao); setOrigem(o => ({ ...o, apresentacao: "catalogo" })); } }} placeholder="Ex.: frasco de 500 mL" className={classeInput} />}</CampoFormulario>{marca("apresentacao")}</div>
+      <div className="grid content-start gap-1"><SeletorCatalogoProduto tipo="fabricantes" rotulo="Fabricante" valor={fabricanteId} onChange={id => { setFabricanteId(referencia && !id ? efetivosBase.fabricanteId : id); setOrigem(o => ({ ...o, fabricante: referencia && !id ? "catalogo" : "fazenda" })); setCatalogoAlterado(true); }} somenteLeitura={somenteLeitura} />{marca("fabricante")}</div>
+      <div className="grid content-start gap-1"><SeletorCatalogoProduto tipo="classificacoes-tecnicas" rotulo="Classificação técnica" valor={classificacaoTecnicaId} onChange={id => { setClassificacaoTecnicaId(referencia && !id ? efetivosBase.classificacaoTecnicaId : id); setOrigem(o => ({ ...o, classificacaoTecnica: referencia && !id ? "catalogo" : "fazenda" })); setCatalogoAlterado(true); }} somenteLeitura={somenteLeitura} />{marca("classificacaoTecnica")}</div>
+      {produto?.produtoCatalogoId && <section aria-labelledby="produto-principios" className="grid gap-1 text-sm sm:col-span-2"><h4 id="produto-principios" className="font-medium">Princípios ativos</h4>{produto?.principiosAtivos?.length ? <ul className="flex flex-wrap gap-2">{produto.principiosAtivos.map(pa => <li key={pa.id} className="rounded-md border border-border bg-muted px-2 py-1 text-xs">{pa.nome}</li>)}</ul> : <p className="text-ink-3">Nenhum princípio ativo informado no catálogo.</p>}<p className="text-xs text-ink-3">Do catálogo; a fazenda não edita.</p></section>}
       <CampoFormulario id="produto-observacao" rotulo="Observações do produto">{p => <textarea {...p} maxLength={2000} value={observacao} onChange={e => setObservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
       </section>
-      <fieldset className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3"><legend className="px-1 text-sm font-semibold">Tipos de uso</legend>{TIPOS.map((t) => <div key={t.campo}><label className="flex items-center gap-2 text-sm"><Checkbox id={t.campo} aria-invalid={!!erros[t.campo]} aria-describedby={erros[t.campo] ? `${t.campo}-erro` : undefined}  checked={usos[t.campo]} onCheckedChange={(checked) => setUsos({ ...usos, [t.campo]: checked === true })} />{t.nome}</label>{erros[t.campo] && <p id={`${t.campo}-erro`} role="alert" className="text-xs text-destructive">{erros[t.campo]}</p>}</div>)}</fieldset>
+      <fieldset className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3"><legend className="px-1 text-sm font-semibold">Tipos de uso</legend>{TIPOS.map((t) => <div key={t.campo}><label className="flex items-center gap-2 text-sm"><Checkbox id={t.campo} aria-invalid={!!erros[t.campo]} aria-describedby={erros[t.campo] ? `${t.campo}-erro` : undefined}  checked={usos[t.campo]} onCheckedChange={(checked) => { usosEditados.current[t.campo] = true; setUsos({ ...usos, [t.campo]: checked === true }); }} />{t.nome}</label>{erros[t.campo] && <p id={`${t.campo}-erro`} role="alert" className="text-xs text-destructive">{erros[t.campo]}</p>}</div>)}</fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio ajuda="Unidade em que o produto é comprado e baixado. Não pode mudar depois que houver movimento." erro={erros.unidade}>{(p) => <SelectCampo {...p} value={unidade} onValueChange={(valor) => setUnidade(valor as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</SelectCampo>}</CampoFormulario>
+        <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio ajuda="Unidade em que o produto é comprado e baixado. Não pode mudar depois que houver movimento." erro={erros.unidade}>{(p) => <SelectCampo {...p} value={unidade} onValueChange={(valor) => { unidadeEditada.current = true; setUnidade(valor as UnidadeMedida); }} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</SelectCampo>}</CampoFormulario>
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" ajuda="Abaixo dessa quantidade o produto aparece com alerta na tela de Estoque." erro={erros.minimoEstoque}>{(p) => <Input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
       {usos.usoSanitario && <fieldset className="grid gap-4 rounded-lg border border-border p-3 sm:col-span-2">
