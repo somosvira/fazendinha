@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../db.js", () => {
   const tx = {
+    $executeRaw: vi.fn().mockResolvedValue(0),
     periodoFinanceiro: { findUnique: mocks.periodo },
     parceiro: { findFirst: mocks.parceiro },
     contaFinanceira: { findFirst: mocks.conta },

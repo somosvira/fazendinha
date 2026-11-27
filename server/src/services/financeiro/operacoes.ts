@@ -1,3 +1,4 @@
+import { conferirSaldoNegativo, travarContasSaldo, type CienciaSaldo } from "./saldo-negativo.js";
 import { quantidadeDaEmbalagem } from "../estoque/embalagem.js";
 import { transacaoValidada } from "../../lib/transacao-validada.js";
 import { Prisma, type ItemOperacao, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
@@ -63,10 +64,13 @@ async function criarTransacaoComMovimento(
     tipo: TipoTransacaoFinanceira; data: Date; valor: Prisma.Decimal.Value; descricao?: string; operacaoId?: string;
     parceiroId?: string; propriedadeId: number; contaId: string; formaPagamento?: z.infer<typeof transacaoAvulsaSchema>["formaPagamento"];
     usuarioId?: number | null;
+    conferenciaSaldo?: { intencao: unknown; ciencia: CienciaSaldo };
   },
 ) {
   const valor = exigirPositivo(input.valor);
   await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
+  if (input.conferenciaSaldo) await conferirSaldoNegativo(tx, { propriedadeId: input.propriedadeId, contaId: input.contaId, valor, ...input.conferenciaSaldo });
+  else await travarContasSaldo(tx, [input.contaId], input.propriedadeId);
   await exigirContaAtiva(tx, input.contaId, input.propriedadeId);
   return tx.transacaoFinanceira.create({
     data: {
@@ -121,7 +125,7 @@ function exigirCatalogoPermitido(entrada: OperacaoInput) {
   if (indice >= 0) throw new FinanceiroError("VALIDACAO", "Produto do catálogo só pode ser usado em compra de estoque, inventário inicial ou bonificação. Cadastre o produto na fazenda antes", `itens.${indice}.produtoCatalogoId`);
 }
 
-async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoInput, leite?: EfeitoLeite) {
+async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoInput, leite?: EfeitoLeite, ciencia?: CienciaSaldo) {
     let input = entrada;
     if (input.tipo === "AJUSTE_ESTOQUE") throw new FinanceiroError("VALIDACAO", "Use a conferência de ajuste do Estoque para preservar a base de valor", "tipo");
     if (["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(input.tipo) && !input.documentacaoValor) throw new FinanceiroError("VALIDACAO", "Informe referência e evidência do valor disponibilizado, inclusive quando for zero", "documentacaoValor");
@@ -370,6 +374,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
         tipo: tipoTransacao(input.tipo), data: input.data, valor, descricao: input.descricao, operacaoId: operacao.id,
         parceiroId: input.parceiroId, propriedadeId: input.propriedadeId, contaId: input.financeiro.contaId,
         formaPagamento: input.financeiro.formaPagamento, usuarioId: input.usuarioId,
+        ...(ciencia && ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO"].includes(input.tipo) ? { conferenciaSaldo: { intencao: entrada, ciencia } } : {}),
       });
     }
 
@@ -400,14 +405,26 @@ export function simularParcelas(input: SimulacaoParcelasInput) {
   };
 }
 
-export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: OperacaoInput) {
-  return criarOperacaoTx(tx, input);
+export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: OperacaoInput, ciencia?: CienciaSaldo) {
+  return criarOperacaoTx(tx, input, undefined, ciencia);
 }
 
-export async function criarOperacao(input: OperacaoInput) {
+export async function criarOperacao(input: OperacaoInput, ciencia?: CienciaSaldo) {
   // Com animais, a escrita também é do Rebanho: mesma isolação serializável e repetição dele.
-  if (envolveAnimais(input)) return transacaoPecuaria((tx) => criarOperacaoTx(tx, input), { timeout: timeoutTransacaoAnimais(contarItensAnimais(input)) });
-  return transacaoValidada((tx) => criarOperacaoTx(tx, input));
+  if (envolveAnimais(input)) {
+    try {
+      return await transacaoPecuaria((tx) => criarOperacaoTx(tx, input, undefined, ciencia), { timeout: timeoutTransacaoAnimais(contarItensAnimais(input)) });
+    } catch (erro) {
+      // Um snapshot Serializable pode anteceder o commit de um reenvio idêntico;
+      // após rollback, só um recibo completo e compatível autoriza recuperá-lo.
+      if (input.chave) {
+        const anterior = await transacaoValidada(tx => conferirReenvioOperacaoTx(tx, input));
+        if (anterior) return anterior;
+      }
+      throw erro;
+    }
+  }
+  return transacaoValidada((tx) => criarOperacaoTx(tx, input, undefined, ciencia));
 }
 
 /** Quantidade de animais ligados à operação (0 = não toca o Rebanho). */
@@ -514,6 +531,8 @@ export async function liquidarCompromisso(compromissoId: string, input: Liquidac
   return transacaoValidada(async (tx) => {
     const valor = exigirPositivo(input.valor);
     const { compromisso } = await compromissoParaLiquidar(tx, compromissoId, valor, input.propriedadeId);
+    await bloquearOperacao(tx, compromisso.operacaoId);
+    const { restante } = await compromissoParaLiquidar(tx, compromissoId, valor, input.propriedadeId);
     const tipo = compromisso.tipo === "PAGAR" ? "PAGAMENTO" : "RECEBIMENTO";
     const transacao = await criarTransacaoComMovimento(tx, {
       tipo, data: input.data, valor, descricao: input.descricao ?? `Liquidação do compromisso #${compromisso.seq}`,
@@ -521,10 +540,6 @@ export async function liquidarCompromisso(compromissoId: string, input: Liquidac
       propriedadeId: compromisso.operacao.propriedadeId, contaId: input.contaId,
       formaPagamento: input.formaPagamento, usuarioId: input.usuarioId,
     });
-    await bloquearOperacao(tx, compromisso.operacaoId);
-    // Releitura após o bloqueio: uma liquidação concorrente pode ter consumido o saldo.
-    // A transação e seus movimentos ainda não estão confirmados; uma falha reverte tudo.
-    const { restante } = await compromissoParaLiquidar(tx, compromissoId, valor, input.propriedadeId);
     await tx.liquidacao.create({ data: { compromissoId, transacaoId: transacao.id, valor } });
     const novoRestante = restante.minus(valor);
     await tx.compromissoFinanceiro.update({ where: { id: compromissoId }, data: { status: novoRestante.isZero() ? "LIQUIDADO" : "PARCIAL" } });
@@ -537,6 +552,7 @@ export async function transferir(input: TransferenciaInput) {
   if (input.contaOrigemId === input.contaDestinoId) throw new FinanceiroError("VALIDACAO", "As contas de origem e destino devem ser diferentes");
   return transacaoValidada(async (tx) => {
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
+    await travarContasSaldo(tx, [input.contaOrigemId, input.contaDestinoId], input.propriedadeId);
     await exigirContaAtiva(tx, input.contaOrigemId, input.propriedadeId);
     await exigirContaAtiva(tx, input.contaDestinoId, input.propriedadeId);
     const valor = exigirPositivo(input.valor);
@@ -577,6 +593,7 @@ async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: string, mot
     if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Transação não encontrada");
     if (original.status === "REVERTIDA" || original.revertidaPor) throw new FinanceiroError("JA_REVERTIDO", "A transação já foi estornada");
     await exigirPeriodoAberto(tx, original.propriedadeId, new Date());
+    await travarContasSaldo(tx, original.movimentos.map(m => m.contaId));
     const estorno = await tx.transacaoFinanceira.create({ data: {
       tipo: "REVERSAO", data: new Date(), valorTotal: original.valorTotal, descricao: `Estorno #${original.seq}: ${motivo}`,
       propriedadeId: original.propriedadeId, operacaoId: original.operacaoId, parceiroId: original.parceiroId,
@@ -634,6 +651,8 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
     if (comAnimais) await estornarAnimaisTx(tx, operacao, motivo, contexto.usuarioId);
 
+    const contasEstorno = await tx.movimentoConta.findMany({ where: { transacaoId: { in: operacao.transacoes.filter(t => t.status === "CONFIRMADA" && t.tipo !== "REVERSAO").map(t => t.id) } }, select: { contaId: true } });
+    await travarContasSaldo(tx, contasEstorno.map(m => m.contaId));
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {
       await estornarTransacaoTx(tx, transacao.id, `${PREFIXO_CANCELAMENTO_OPERACAO}${operacao.numero}: ${motivo}`, contexto);
     }

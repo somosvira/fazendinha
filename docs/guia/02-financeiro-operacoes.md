@@ -37,6 +37,12 @@ Considere uma compra de R$ 1.000, recebida integralmente, com R$ 300 pagos no at
 
 Compra totalmente paga no ato não precisa criar compromisso para depois liquidá-lo artificialmente. Em pagamento a menor, o restante continua devido; a liquidação atual não possui abatimento automático do saldo.
 
+## Conferir o saldo antes de pagar
+
+Em **Nova operação**, ao pagar uma compra ou serviço à vista ou em parte, selecione a **Conta financeira**. Com permissão para ver valores, confira o saldo atual da conta, o valor que sai agora e o saldo após o pagamento. No pagamento parcial, a projeção considera só a parcela paga no ato.
+
+Se o saldo projetado ficar negativo, use **Revisar conta** para voltar ao seletor com o formulário preenchido. Para prosseguir, clique em **Confirmar com saldo negativo**. A operação é gravada e sua ficha abre após a confirmação. Se o saldo mudar durante a conferência e a projeção continuar ou ficar negativa, confira os valores atualizados antes de confirmar.
+
 ## Comprar animais ou devolver cabeças
 
 Na compra de animais, informe o fornecedor e os animais que entraram. Confira o sítio, a identificação das cabeças e a condição de pagamento antes de confirmar. Ao usar **Valor do lote**, confira a parcela atribuída a cada cabeça. O ECC opcional informado no cadastro de uma cabeça é registrado como exame de escala 1–5 na confirmação, na data de entrada; o rascunho não cria o exame.

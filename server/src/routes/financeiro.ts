@@ -1,3 +1,4 @@
+import { SaldoNegativoError } from "../services/financeiro/saldo-negativo.js";
 import { detalheErroProduto } from "../services/estoque/produtos-catalogo.js";
 import { conflitoTransacaoValidada } from "../lib/transacao-validada.js";
 import { ValorizacaoError } from "../services/estoque/valorizacao.calc.js";
@@ -82,6 +83,7 @@ function exigirUsuarioId(c: Context): number {
 }
 
 function falha(c: Context, erro: unknown) {
+  if (erro instanceof SaldoNegativoError) return c.json({ error: erro.message, code: erro.code, campo: erro.campo, saldoNegativo: erro.saldoNegativo }, 409);
   if (conflitoTransacaoValidada(erro)) return c.json({ error: "Os dados mudaram. Recarregue e confirme novamente.", code: "CONFLITO" }, 409);
   if (erro instanceof ValorizacaoError) return c.json({ error: erro.message, code: erro.code }, erro.code === "VALIDACAO" ? 422 : 409);
   if (erro instanceof EstoqueError) {
@@ -222,14 +224,14 @@ export const financeiroRouter = new Hono()
     try { await rascunhos.descartarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c)); return c.body(null, 204); }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/rascunho/confirmacao", exigePermissao("lancar"), zValidator("json", z.object({ versao: z.number().int().positive().optional(), chave: z.string().uuid().optional() })), async (c) => {
+  .post("/financeiro/operacoes/rascunho/confirmacao", exigePermissao("lancar"), zValidator("json", z.object({ versao: z.number().int().positive().optional(), chave: z.string().uuid().optional(), cienciaSaldoNegativo: z.string().max(128).optional() })), async (c) => {
     try {
       const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
       const previa = await rascunhos.lerPreviaRascunho(propriedadeId, uid);
       const semAcesso = exigirPecuariaParaAnimais(c, previa.envolveAnimais);
       if (semAcesso) return semAcesso;
       const usuario = getUsuario(c);
-      return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(propriedadeId, uid, body.versao, body.chave, { permitirAnimais: !usuario || temArea(usuario, "pecuaria"), previa })), 201);
+      return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(propriedadeId, uid, body.versao, body.chave, { permitirAnimais: !usuario || temArea(usuario, "pecuaria"), previa, conferirSaldo: podeVerValores(c), cienciaSaldoNegativo: body.cienciaSaldoNegativo })), 201);
     }
     catch (e) { return falha(c, e); }
   })
@@ -282,14 +284,14 @@ export const financeiroRouter = new Hono()
     }
     catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes", exigePermissao("lancar"), zValidator("json", operacaoSchema), async (c) => {
+  .post("/financeiro/operacoes", exigePermissao("lancar"), zValidator("json", operacaoSchema.and(z.object({ cienciaSaldoNegativo: z.string().max(128).optional() }))), async (c) => {
     try {
-      const input = c.req.valid("json");
+      const { cienciaSaldoNegativo, ...input } = c.req.valid("json");
       if (input.corrigeOperacaoId && !podeVerValores(c)) return c.json({ error: "É necessário poder ver valores para corrigir uma operação." }, 403);
       const semAcesso = exigirPecuariaParaAnimais(c, operacoes.envolveAnimais(input));
       if (semAcesso) return semAcesso;
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
-      return c.json(apresentarValores(c, await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) }), valoresOperacao), 201);
+      return c.json(apresentarValores(c, await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) }, podeVerValores(c) ? { origem: "direta", token: cienciaSaldoNegativo } : undefined), valoresOperacao), 201);
     } catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), exigePermissao("verValores"), zValidator("json", estornoSchema), async (c) => {

@@ -40,7 +40,7 @@ describe("rascunho único de operação", () => {
       rascunhoOperacao: { findUnique: vi.fn().mockResolvedValue({ id: uid(9), versao: 2, dados: { operacao: {
         tipo: "SERVICO", data: "2026-09-07", descricao: "Manutenção do trator", valorTotal: 500,
         parceiroId: uid(1), itens: [], financeiro: { condicao: "A_PRAZO", parcelas: [{ valor: 500, dataVencimento: "2026-10-07" }] },
-      } }, documentos: [{ id: uid(12) }] }), delete: mocks.delete },
+      } }, documentos: [{ id: uid(12) }] }), deleteMany: mocks.delete.mockResolvedValue({ count: 1 }) },
       documentoFinanceiro: { updateMany: mocks.documentoUpdateMany },
       operacao: { findUniqueOrThrow: mocks.operacaoFindUniqueOrThrow },
     };
@@ -49,6 +49,6 @@ describe("rascunho único de operação", () => {
     mocks.operacaoFindUniqueOrThrow.mockResolvedValue({ id: uid(20), status: "CONFIRMADA" });
     await expect(confirmarRascunho(7, 3, 2)).resolves.toMatchObject({ id: uid(20) });
     expect(mocks.documentoUpdateMany).toHaveBeenCalledWith({ where: { rascunhoId: uid(9) }, data: { rascunhoId: null, operacaoId: uid(20) } });
-    expect(mocks.delete).toHaveBeenCalledWith({ where: { id: uid(9) } });
+    expect(mocks.delete).toHaveBeenCalledWith({ where: { id: uid(9), versao: 2 } });
   });
 });
