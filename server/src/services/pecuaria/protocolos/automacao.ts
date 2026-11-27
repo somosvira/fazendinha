@@ -330,7 +330,7 @@ export async function ativarAutomacoesAdesaoTx(tx: Tx, participacaoId: string, p
   for (const [momentoId, itens] of grupos) await ativarAutomacaoTx(tx, { participacaoId, propriedadeId, momentoId, itens }, usuarioId);
 }
 
-export const previaAutomacoesAdesaoSchema = z.object({ propriedadeId: z.number().int().positive(), protocoloId: z.string().uuid(), animais: z.array(z.object({ animalId: z.string().uuid(), inicioPrevisto: z.string().refine(v => /^\d{4}-\d{2}-\d{2}(T.*)?$/.test(v) && Number.isFinite(Date.parse(v)), "Data inválida") }).strict()).min(1).max(100) }).strict();
+export const previaAutomacoesAdesaoSchema = z.object({ propriedadeId: z.number().int().positive(), protocoloId: z.string().uuid(), animais: z.array(z.object({ animalId: z.string().uuid(), inicioPrevisto: z.string().refine(v => /^\d{4}-\d{2}-\d{2}(T.*)?$/.test(v) && Number.isFinite(Date.parse(v)), "Data inválida") }).strict()).min(1) }).strict();
 export async function preverAutomacoesAdesao(entrada: unknown) {
   const input = previaAutomacoesAdesaoSchema.parse(entrada);
   const { deslocarCalendario } = await import("./calendario.calc.js");

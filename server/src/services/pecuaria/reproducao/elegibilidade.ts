@@ -191,7 +191,7 @@ const motivosAvisoProgramacao = new Set([
 ]);
 
 export class AvisoAptidaoProgramacao extends RebanhoError {
-  constructor(mensagem: string) {
+  constructor(mensagem: string, public readonly motivos: string[] = [mensagem]) {
     super("VALIDACAO", mensagem, "animalId");
   }
 }
@@ -215,7 +215,7 @@ export async function conferirAptidaoParaAcaoTx(tx: Prisma.TransactionClient, an
   const detalhes = bloqueios.length ? `. Bloqueios vigentes: ${[...new Set(bloqueios)].join("; ")}` : "";
   const mensagem = `Animal sem aptidão confirmada nesta data: ${motivos.join("; ") || "avaliação pendente"}${detalhes}`;
   if (motivos.length && motivos.every(motivo => motivosAvisoProgramacao.has(motivo))) {
-    throw new AvisoAptidaoProgramacao(mensagem);
+    throw new AvisoAptidaoProgramacao(mensagem, motivos.slice().sort());
   }
   erro(mensagem, "animalId");
 }

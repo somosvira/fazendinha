@@ -160,7 +160,8 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   if (caminho === "/pecuaria/reproducao/programacoes/nova") {
     const retorno = new URLSearchParams(consultaUrl).get("retorno");
     const voltar = () => navegarPara(retorno?.startsWith("/pecuaria/") ? retorno : urlConsultaComSitio("/pecuaria/reproducao?rotina=programacoes", propriedadeId ?? undefined));
-    return <PaginaFinanceira><ConsultaPorSitio>{sitioId => <ConteudoReproducao secao="programacoes" propriedadeId={sitioId} podeLancar={podeLancar} paginaProgramacao solicitarProgramacao onCancelarProgramacao={voltar}/>}</ConsultaPorSitio></PaginaFinanceira>;
+    const sitioIndicado = new URLSearchParams(consultaUrl).get("acao") === "prepararIatf" ? Number(new URLSearchParams(consultaUrl).get("sitio")) : null;
+    return <PaginaFinanceira>{propriedadeId && (!sitioIndicado || sitioIndicado === propriedadeId) ? <ConteudoReproducao secao="programacoes" propriedadeId={propriedadeId} podeLancar={podeLancar} paginaProgramacao solicitarProgramacao onCancelarProgramacao={voltar}/> : <p>Selecione na barra lateral o sítio dos animais para preparar a programação.</p>}</PaginaFinanceira>;
   }
   const detalheRota = caminho.match(/^\/pecuaria\/reproducao\/(programacoes|partos)\/([^/]+)\/?$/);
   if(detalheRota) {
@@ -322,7 +323,7 @@ function ConteudoReproducao({
     <ErrorBox erro={erro}/>
     {erro && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
     {carregando && <EsqueletoTabela label="Carregando programações" />}
-    {!carregando && painel && <Iatf paginaProgramacao={paginaProgramacao} onCancelarProgramacao={onCancelarProgramacao} solicitarProgramacao={solicitarProgramacao} onProgramacaoAberta={onProgramacaoAberta} acaoProgramarNoCabecalho={!programacaoId} programacaoId={programacaoId} onFecharDetalhe={onFecharDetalhe} onMudou={carregar} animais={painel.animais} propriedadeId={propriedadeId ?? undefined} painel={painel} podeLancar={podeLancar} onAbrirProgramacao={id=>navegarPara(urlConsultaComSitio(`/pecuaria/reproducao/programacoes/${id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`,propriedadeId??undefined))}/>}
+    {!carregando && painel && <Iatf paginaProgramacao={paginaProgramacao} onCancelarProgramacao={onCancelarProgramacao} solicitarProgramacao={solicitarProgramacao} onProgramacaoAberta={onProgramacaoAberta} acaoProgramarNoCabecalho={!programacaoId} programacaoId={programacaoId} onFecharDetalhe={onFecharDetalhe} onMudou={carregar} animais={painel.animais} propriedadeId={propriedadeId ?? undefined} painel={painel} podeLancar={podeLancar} onAbrirProgramacao={id=>{ const retorno = paginaProgramacao ? new URLSearchParams(window.location.search).get("retorno") : window.location.pathname+window.location.search; navegarPara(urlConsultaComSitio(`/pecuaria/reproducao/programacoes/${id}?retorno=${encodeURIComponent(retorno?.startsWith("/pecuaria/") ? retorno : "/pecuaria/reproducao?rotina=programacoes")}`,propriedadeId??undefined)); }}/>}
   </div>;
   return (
     <div className="space-y-5">

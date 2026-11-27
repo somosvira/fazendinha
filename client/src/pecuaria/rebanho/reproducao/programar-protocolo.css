@@ -291,3 +291,9 @@
     grid-column: 1 / -1;
   }
 }
+
+@media (max-width: 760px) {
+  .programar-protocolo { padding-bottom: 6rem; }
+  .programacao-revisao .programacao-acoes { position: fixed; bottom: 0; inset-inline: 0; z-index: 20; display: flex; flex-direction: row; gap: .5rem; padding: .75rem 1rem max(.75rem, env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--border); }
+  .programacao-revisao .programacao-acoes button { flex: 1; min-width: 0; white-space: normal; }
+}

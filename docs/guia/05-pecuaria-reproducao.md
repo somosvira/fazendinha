@@ -99,6 +99,14 @@ Protocolo é uma versão de planejamento. Momentos agrupam ações; participaç�
 3. Em **Etapas**, use **Adicionar etapa** para configurar o dia e os procedimentos. Clique na etapa para editar seus dados ou no lápis para editar o procedimento. O quadro organiza as etapas por dia. Se uma etapa herdada tem intervalos distintos, sua posição é definida pelo menor intervalo previsto. Etapas pendentes e acompanhamentos que dependem de um evento aparecem ao final. Consulte no resumo a soma das quantidades por produto e unidade. A retirada de dispositivo fica fora desse total.
 4. Em **Conferência**, revise identificação, calendário e quantidades e escolha **Salvar protocolo**. Salvar publica a versão do modelo. O estoque é movimentado pelos registros de consumo no atendimento.
 
+### Programar e acompanhar um grupo
+
+Em **Reprodução → Protocolos → Programar protocolo**, escolha o sítio na barra lateral, informe nome, início e versão publicada e selecione os animais. **Ver etapas** permite consultar a estrutura da versão sem descartar a preparação. A tabela de selecionados permite retirar e desfazer a retirada, inclusive fora do recorte atual do seletor. A entrada por indicações preserva o conjunto recebido; o seletor de filtros ainda limita a seleção manual a 100 animais até sua atualização própria.
+
+Em **Conferência**, consulte Calendário, Insumos, Participantes e Avisos. Os avisos de aptidão exigem ciência por grupo de animais; impedimentos exigem corrigir a seleção. A confirmação reavalia a disponibilidade e os motivos aceitos. O consumo previsto usa as quantidades da versão e o saldo físico do sítio, informa itens a definir e não reserva nem baixa estoque. O atendimento volta a conferir unidade, lote, validade e saldo.
+
+O prazo de DG depende da tentativa registrada e da regra aplicável da versão ou do sítio. Sem tentativa ou prazo, a data permanece pendente; datas individuais anteriores são preservadas. Após confirmar, a programação abre na execução. Cada marcador corresponde à etapa publicada e seus procedimentos podem ser escolhidos separadamente; ações antigas sem agrupamento explícito permanecem identificadas dessa forma.
+
 Aplicação, exame, tentativa, avaliação, manejo e retirada de dispositivo são registrados no atendimento. Confira a prévia e veja quais tarefas ficaram concluídas. Adiar ou não atender não administra produto, não insemina e não diagnostica.
 
 Na consulta histórica, **Sem tentativa vinculada** descreve a ausência de vínculo registrado com a participação. **IA não prevista neste modelo histórico** depende das etapas da versão, sem dedução pelo nome do protocolo: um modelo com TE ou somente preparação não fica incompleto por não ter IA. Etapas e fatos avulsos posteriores permanecem separados; datas próximas não atribuem vínculo nem sucesso ao protocolo. O acesso à ficha preserva o contexto de retorno e permite consultar os mesmos fatos.
