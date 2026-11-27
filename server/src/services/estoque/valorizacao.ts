@@ -50,6 +50,24 @@ async function saldoFisicoTx(tx: Db, produtoId: string, propriedadeId: number, p
     return s.plus(m.tipo === "SAIDA" ? qtd.negated() : qtd);
   }, D(0));
 }
+/** Cobertura física e valorizada no mesmo corte, incluindo grupos sem base. */
+export async function coberturaSaldoTx(tx: Db, produtoId: string, propriedadeId: number, data: Date) {
+  const produto = await tx.produto.findUniqueOrThrow({ where: { id: produtoId }, select: { rastrearPartidas: true } });
+  const bases = await saldosBasesTx(tx, produtoId, propriedadeId, data);
+  const fisico = await saldoFisicoTx(tx, produtoId, propriedadeId, null, undefined, data);
+  const valorizado = bases.reduce((s, b) => s.plus(b.quantidade), D(0));
+  let completa = fisico.eq(valorizado);
+  if (produto.rastrearPartidas) {
+    const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId, status: estadosSaldo, ...await escopo(tx, propriedadeId), data: { lte: data } }, include: { alocacaoPartidaEstoques: { include: { partida: { select: { lotePrincipalId: true } } } } } });
+    const ids = new Set([...bases.map(b => b.partidaId), ...movimentos.flatMap(m => m.alocacaoPartidaEstoques.map(a => a.partida.lotePrincipalId ?? a.partidaId))]);
+    for (const id of ids) {
+      if (id == null) { completa = false; continue; }
+      const quantidadeFisica = await saldoFisicoTx(tx, produtoId, propriedadeId, id, undefined, data);
+      if (quantidadeFisica.lt(0) || !quantidadeFisica.eq(bases.filter(b => b.partidaId === id).reduce((s, b) => s.plus(b.quantidade), D(0)))) completa = false;
+    }
+  }
+  return { fisico, completa, quantidade: valorizado, valor: bases.reduce((s, b) => s.plus(b.valor), D(0)) };
+}
 async function conferirLastroTx(tx: Db, produtoId: string, propriedadeId: number, excluirMovimentoId?: string) {
   const bases = await saldosBasesTx(tx, produtoId, propriedadeId);
   const fisico = await saldoFisicoTx(tx, produtoId, propriedadeId, null, excluirMovimentoId);

@@ -1,8 +1,7 @@
-import { contemSql, funcaoSql } from "../../../test/sql-baseline.js";
-import { readFileSync } from "node:fs";
+import { baselineSql, contemSql, funcaoSql } from "../../../test/sql-baseline.js";
 import { describe, expect, it } from "vitest";
 
-const sql = readFileSync(new URL("../../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
+const sql = baselineSql;
 describe("segregação física por medição inteira no SQL", () => {
   it("libera vários grupos por sessão e impede dupla confirmação da medição entre quaisquer produtos", () => {
     expect(sql).not.toContain('CREATE UNIQUE INDEX \"EntradaLeite_sessao_confirmada\"');

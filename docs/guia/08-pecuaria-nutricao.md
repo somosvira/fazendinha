@@ -13,10 +13,14 @@ Receita não baixa estoque. Dieta vigente não prova fornecimento. Fechamento n�
 3. Atribua a dieta ao lote com início de vigência comprovado.
 4. Abra Conferir consumo para o lote/período.
 5. Confira permanências, quantidades sugeridas, alterações reais, origens e cobertura de custo.
-6. Confirme. O fechamento registra consumo, saídas e participações atomicamente.
+6. Confirme. O fechamento registra consumo, saídas e a parcela atribuída a cada animal.
 7. Consulte os detalhes por lote e animal; corrija pelo estorno/novo fechamento quando permitido.
 
 Mudança de dieta cria outra vigência, sem editar retroativamente o consumo confirmado. Períodos e segmentações devem respeitar as vigências e os fechamentos existentes. Alteração retroativa de localização/dieta que afete consumo confirmado exige tratamento das dependências.
+
+## Escolher como conferir o consumo
+
+Consulte o modelo vigente para o sítio e veja se o lote tem uma exceção. No modelo **Diário manual**, confira os dias e confirme as quantidades. No **Diário automático**, confira quais dias foram processados antes de ajustar uma diferença. No **Mensal**, o consumo estimado aparece antes da baixa física, que ocorre ao confirmar o mês. Em todos os casos, verifique se o período já foi confirmado antes de registrar outra saída.
 
 ## Animal-dias e rateio
 
@@ -32,16 +36,16 @@ O cálculo conserva unidades mínimas e centavos por maiores restos, com desempa
 |---|---|---|
 | Receita/versão | Planejamento disponível e composição preservada | Não representa consumo |
 | Vigência no lote | Receita aplicável na data | Não prova que o fechamento foi feito |
-| Fechamento | `CONFIRMADO` ou `ESTORNADO` | Estornado conserva história e inversos |
+| Fechamento | Confirmado ou Estornado | Estornado conserva história e inversos |
 | Participação | Dias, quantidades e custos atribuídos | Não é ingestão medida |
 | Custo | Conhecido, parcial ou não apurado | Não usar zero por falta de dados |
 | Consulta vazia | Nenhum consumo atribuído no recorte | Não afirmar que o animal não tem dieta |
 
-Não existe um único enum nutricional no Animal que resuma tudo isso. Se futuramente houver alertas como “consumo atrasado”, precisam de calendário/critério próprios; não se deduzem automaticamente de uma tela vazia.
+Se faltar um fechamento, consulte o lote, a dieta vigente e o período antes de interpretar o consumo.
 
 ## Leite na dieta
 
-A V5 permite consumo de leite por origens leiteiras comprovadas, conservando natureza, litros, parcelas por animal e estoque. Fechamentos são segmentados por mês/vigência quando exigido. Quantidades atribuídas são conservadas em mililitros; o leite não é comprado outra vez para aparecer como ingrediente.
+Registre o consumo de leite por origens leiteiras comprovadas, conservando natureza, litros, parcelas por animal e estoque. Fechamentos são segmentados por mês/vigência quando exigido. Quantidades atribuídas são conservadas em mililitros; o leite não é comprado outra vez para aparecer como ingrediente.
 
 Não comercial é natureza operacional; descarte físico é eliminação. Leite usado na alimentação não recebe uma segunda saída como descarte. Colostragem tem fato próprio e não deve ser duplicada pelo fechamento da dieta.
 
@@ -49,30 +53,22 @@ O custo produtivo acompanha a apuração das origens. Enquanto alguma parcela n�
 
 ## Referência comercial não é custo produtivo
 
-R07 é uma referência gerencial do leite usado internamente. Pode vir de um fechamento comercial vigente comprovado; ausência ou multiplicidade deixa pendência. Revisões explícitas preservam fonte, versão, motivo e autoria, sem alterar litros ou dinheiro.
+O preço comercial de referência é uma medida gerencial do leite usado internamente. Pode vir de um fechamento comercial vigente comprovado; ausência ou multiplicidade deixa pendência. Revisões explícitas preservam fonte, versão, motivo e autoria, sem alterar litros ou dinheiro.
 
 Para 60 L, referência de R$ 2,50/L representa R$ 150. Revisá-la para R$ 2,70/L mostra R$ 162. Se o custo produtivo for R$ 84, ele continua R$ 84: não se soma R$ 84 + R$ 162 como gasto. Referência, custo e receita têm significados distintos.
 
-A consulta operacional de custos atribuídos segue a política pecuária. Referência comercial monetária exige acesso financeiro/valores. Ocultar valores no cliente não substitui a máscara do servidor.
+A consulta operacional de custos atribuídos segue a política pecuária. Referência comercial monetária exige acesso financeiro/valores. Para consultar preços e documentos financeiros relacionados, use uma conta com o acesso correspondente.
 
 ## Estorno e dependências
 
 Estornar um fechamento conserva o original e cria os movimentos inversos correspondentes uma vez. As origens exatas do leite são recompostas quando o estorno é permitido. Não altera colostragem independente nem remove restrição da natureza leiteira.
 
-Consumos posteriores ainda confirmados, estoque utilizado e períodos fechados podem impedir regularização isolada. O sistema deve validar o conjunto antes de confirmar; reenvio idempotente não deve duplicar fechamento ou inverso.
+Consumos posteriores ainda confirmados, estoque utilizado e períodos fechados podem impedir regularização isolada. Confira os lançamentos vinculados antes de tentar corrigir o período.
 
 ## Interface e indicadores
 
-Nutrição apresenta panorama, receitas, vigências e fechamentos; a ficha do lote oferece a rotina no contexto. A ficha animal apresenta sua participação atribuída. O resumo usa agregação do servidor e não baixa todo o histórico para calcular no navegador.
+Nutrição apresenta panorama, receitas, vigências e fechamentos; a ficha do lote oferece a rotina no contexto. A ficha animal apresenta sua participação atribuída.
 
 Calendário de fechamentos e comparação de ingredientes são alternativas à tabela. Quantidades mantêm unidade; custos mostram cobertura; estornados não entram no total atual. O volume conhecido não é um diagnóstico de adequação da dieta.
 
 Não há formulação automática, recomendação nutricional, previsão de ganho ou balanço de nutrientes completos apenas por registrar o consumo. O aplicativo registra e reconcilia a prática; o planejamento técnico precisa de sua fonte profissional e dos dados adequados.
-
-## Implementação e verificações
-
-Rotas em `server/src/routes/pecuaria/nutricao.ts`; serviços `dietas.ts`, `consumo.ts`, `resumo.ts`, `animalDias.calc.ts` e `atribuicao.calc.ts` em `server/src/services/pecuaria/nutricao/`. A integração leiteira usa `server/src/services/pecuaria/leite/nutricao.ts`.
-
-Dieta/ItemDieta → VigenciaDietaLote → FechamentoConsumo/ItemFechamentoConsumo → ParticipacaoConsumoAnimal organizam o domínio. FornecimentoNutricionalLeite, suas parcelas/movimentos e ReferenciaGerencialLeite conservam o leite fornecido e a referência separada.
-
-Testes de permanência, atribuição, estorno, resumo e integrações verificam conservação e dependências. Fonte contratual: [Pecuária](../pecuaria/README.md) e [leite na dieta](../pecuaria/leite.md#leite-na-dieta-e-referência-gerencial).

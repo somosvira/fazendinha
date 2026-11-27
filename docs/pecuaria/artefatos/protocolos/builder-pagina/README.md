@@ -15,11 +15,11 @@ O fluxo possui uma única ação **Salvar protocolo**, com validação completa.
 
 ## Implementação vigente
 
-A proposta aprovada foi incorporada aos cadastros sanitário e reprodutivo, nas rotas de Configurações terminadas em `/protocolos/novo`. O contrato atual, os limites e a compatibilidade legada estão em [Protocolos e exames](../../../protocolos-exames.md#cadastro-de-modelos-finalidade-parâmetros-e-compatibilidade). A página real está em `PaginaCadastroProtocolo.tsx`; os HTMLs desta pasta permanecem como referência ilustrativa, sem persistência.
+A proposta aprovada foi incorporada aos cadastros sanitário e reprodutivo, nas rotas de Configurações terminadas em `/protocolos/novo`. Os limites e a compatibilidade documentados naquela entrega estão em [Protocolos e exames](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/protocolos-exames.md). A página real está em `PaginaCadastroProtocolo.tsx`; os HTMLs desta pasta permanecem como referência ilustrativa, sem persistência.
 
 ## Limites da demonstração
 
-As consultas são simuladas. Não há saldo, preços, cópia de banco ou gravação real. Os exemplos não prescrevem manejo clínico. A revisão visual usa Impeccable; a skill `frontend-design` mencionada em `AGENTS.md` não foi localizada no ambiente. `mobile.html` apresenta o mesmo documento em um iframe de 390 px para conferir as regras responsivas, sem simular um dispositivo real.
+As consultas são simuladas. Não há saldo, preços, cópia de banco ou gravação real. Os exemplos não prescrevem manejo clínico. A revisão desta prévia usou Impeccable. Os recursos para novos mockups estão no [fluxo por ambiente](../../../../../AGENTS.md#ferramentas-para-definir-e-criar-mockups). Na sessão original, a skill `frontend-design` estava indisponível. `mobile.html` apresenta o mesmo documento em um iframe de 390 px para conferir as regras responsivas, sem simular um dispositivo real.
 
 ## Verificação do mockup
 

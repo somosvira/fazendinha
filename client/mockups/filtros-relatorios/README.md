@@ -21,4 +21,4 @@ A auditoria em `output/filtros-ideagri/` contém escolhas salvas e códigos, nã
 
 Regressões por fonte para valores ausentes/zero, unidades, datas, combinação AND entre critérios, múltiplos valores OR do mesmo critério, escopo histórico, autorização monetária e filtro anterior à paginação. Testes dos motores preservam denominadores e histórico. Navegação/cancelamento, respostas obsoletas, exportação e modelos inválidos também precisam de cobertura.
 
-A proposta foi aprovada. O painel operacional e os templates foram implementados; o estado vigente, regras e limites estão no [contrato de relatórios](../../../docs/pecuaria/relatorios.md#filtros-e-templates-de-critérios). Este mockup continua ilustrativo.
+A proposta foi aprovada. O painel operacional e os templates foram implementados; as regras e os limites da entrega foram descritos no [contrato de relatórios](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/relatorios.md). Este mockup continua ilustrativo.

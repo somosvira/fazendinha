@@ -15,7 +15,7 @@ Servir `client` como raiz estática e abrir `/mockups/stg/`. Não iniciar `dev:s
 
 ## Direção visual e revisão
 
-Proposta para extensão das superfícies existentes, não aprovação de padrão global. Modo Operar; prioridade desktop. Paleta base: ação petróleo `#006f68`, detalhe `#009c91`, fundo `#f7f8fa`, navegação `#dce8e5`, texto `#263c3a` e aviso `#fff8e8`. Manrope conserva continuidade com o projeto. Títulos e campos alinhados à esquerda, formulários em duas colunas e evidências próximas da ação; faixas e divisórias substituem cartões repetidos.
+Proposta para extensão das superfícies existentes, não aprovação de padrão global. Modo Operar; prioridade desktop. Paleta base: ação petróleo `#006f68`, detalhe `#009c91`, fundo `#f7f8fa`, navegação `#dce8e5`, texto `#263c3a` e aviso `#fff8e8`. Manrope pertence a esta prévia histórica; a tipografia vigente está nos [princípios de design](../../DESIGN.md#typography). Títulos e campos alinhados à esquerda, formulários em duas colunas e evidências próximas da ação; faixas e divisórias substituem cartões repetidos.
 
 Revisão com as orientações de `impeccable` e `frontend-design`: hierarquia por tarefa, ausência de liberação automática sugerida, resultados clínicos separados de impedimentos, estados desconhecidos preservados, foco visível, controles nativos e largura móvel sem rolagem horizontal da página. O detector apontou 25 recomendações de cores/tamanhos fora das escalas documentadas e um alerta de borda: este último corresponde ao sublinhado da aba selecionada, não a uma borda de cartão arredondado. Os valores são propostos neste mockup e não alteram os tokens do aplicativo.
 

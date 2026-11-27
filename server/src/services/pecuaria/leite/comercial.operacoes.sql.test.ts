@@ -1,13 +1,6 @@
-import { contemSql } from "../../../test/sql-baseline.js";
-import { readFileSync } from "node:fs";
+import { baselineSql, contemSql } from "../../../test/sql-baseline.js";
 import { expect, it } from "vitest";
-const sql = readFileSync(
-  new URL(
-    "../../../../prisma/migrations/20261025000000_base_unificada/migration.sql",
-    import.meta.url,
-  ),
-  "utf8",
-);
+const sql = baselineSql;
 it("instala o estado final sem faturar histórico; SQL estrutural não comprova PostgreSQL", () => {
   expect(contemSql(sql, "'RETIRADA_LEITE'")).toBe(true);
   expect(contemSql(sql, '"OperacaoComercialLeite_propriedadeId_parceiroId_inicio_fim_key"')).toBe(true);

@@ -17,12 +17,13 @@ export const pesoPartoSchema = z.discriminatedUnion("acao", [
   z.object({ acao: z.literal("REGISTRAR"), data, pesoKg: peso, observacao: texto }).strict(),
   z.object({ acao: z.literal("DESVINCULAR"), vinculoId: uuid, motivo }).strict(),
 ]);
-const dadosEscore = { data, valor: z.number().finite(), escalaMin: z.number().finite(), escalaMax: z.number().finite(), escalaDescricao: z.string().trim().max(300).nullish(), responsavel: z.string().trim().max(160).nullish() };
+const dadosEscore = { data: data.optional(), valor: z.number().finite(), escalaMin: z.number().finite().optional(), escalaMax: z.number().finite().optional(), escalaDescricao: z.string().trim().max(300).nullish(), responsavel: z.string().trim().max(160).nullish() };
 export const escorePartoSchema = z.discriminatedUnion("acao", [
   z.object({ acao: z.literal("REGISTRAR"), ...dadosEscore }).strict(),
-  z.object({ acao: z.literal("SUBSTITUIR"), exameId: uuid, motivo, ...dadosEscore }).strict(),
+  z.object({ acao: z.literal("SUBSTITUIR"), exameId: uuid, motivo, ...dadosEscore, data }).strict(),
   z.object({ acao: z.literal("ANULAR"), exameId: uuid, motivo }).strict(),
-]);
+]).superRefine((v, ctx) => { if (v.acao !== "ANULAR" && ((v.escalaMin === undefined) !== (v.escalaMax === undefined))) ctx.addIssue({ code: "custom", message: "Informe ambos os limites da escala" }); });
+export const adicionarEscorePartoSchema = z.object({ propriedadeId: z.number().int().positive(), chave: uuid, data, valor: z.number().finite() }).strict();
 const campos = {
   gestacaoId: uuid.nullish(), tipo: z.enum(["NORMAL", "DISTOCICO", "ABORTO", "NATIMORTO", "NASCIMENTO"]).optional(),
   desfecho: z.enum(["NASCIMENTO", "ABORTO"]).nullish(), induzido: z.boolean().nullish(), dificuldade: z.boolean().nullish(),
@@ -49,6 +50,6 @@ export const partoAmpliadoSchema = z.object({
 export const correcaoPartoAmpliadaSchema = z.object({
   propriedadeId: z.number().int().positive(), chave: uuid.optional(), motivo, versaoEsperada: z.number().int().positive().optional(), ...campos,
   pesosCrias: z.array(z.object({ criaId: uuid, peso: pesoPartoSchema.optional(), pesoKg: peso.nullable().optional() }).strict()).max(10).optional(),
-}).strict();
+}).strict().superRefine((v, ctx) => { if (v.escoreMatriz?.acao === "REGISTRAR" && !v.escoreMatriz.data) ctx.addIssue({ code: "custom", path: ["escoreMatriz", "data"], message: "Informe a data real da avaliação" }); });
 export type PartoAmpliadoInput = z.infer<typeof partoAmpliadoSchema>;
 export type CorrecaoPartoAmpliadaInput = z.infer<typeof correcaoPartoAmpliadaSchema>;

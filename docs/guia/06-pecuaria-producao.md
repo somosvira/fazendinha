@@ -2,15 +2,15 @@
 
 ## Conceito: medir, guardar, destinar e vender
 
-A V5 acompanha leite por sítio, data operacional e ordenha. Medição, confirmação no estoque, natureza, destino, coleta, venda, demonstrativo e recebimento são fatos distintos. Uma medição salva não é saldo disponível; uma coleta não é pagamento; uma amostra de qualidade não libera automaticamente leite para venda.
+A rotina acompanha leite por sítio, data operacional e ordenha. Medição, confirmação no estoque, natureza, destino, coleta, venda, demonstrativo e recebimento são fatos distintos. Uma medição salva não é saldo disponível; uma coleta não é pagamento; uma amostra de qualidade não libera automaticamente leite para venda.
 
 O menu **Leite** tem sete entradas: Ordenhas, Produção, Estoque, Coletas, Qualidade, Vendas e Alimentação e descarte. Configurações, relatórios e conferência histórica têm acessos próprios.
 
 ## Configurar a rotina
 
-A configuração tem vigência, fonte dos totais GERAL/INDIVIDUAL, posições da ordenha, horários opcionais, intervalo de aferição individual e critério de colostro. Admite de uma a doze posições. Nome e ordem não substituem a identidade da posição. Alterar a rotina não reescreve um dia já registrado.
+Em **Configurações de produção**, indique a partir de quando vale a rotina, se os totais vêm da medição geral ou individual e quais ordenhas ocorrem no dia. Informe, quando aplicável, horários, intervalo de aferição por animal e critério de colostro. Uma alteração conserva o registro dos dias anteriores.
 
-Para sítio sem configuração, a rotina virtual inicia geral, mensal e Manhã/Tarde/Noite. Configurações históricas conservam sua fonte; clientes antigos que omitem fonte na criação mantêm a compatibilidade individual. “Mensal” não significa trinta dias fixos e não impede uma medição extra.
+Ao configurar um sítio pela primeira vez, confira a fonte dos totais, o intervalo de controle individual e os turnos sugeridos. “Mensal” não significa trinta dias fixos e não impede uma medição extra.
 
 A operação relatada usa produção geral em cada ordenha e aferição individual periódica. O controle individual acompanha cada animal; não estima automaticamente os dias intermediários nem soma seus litros de novo ao tanque.
 
@@ -30,7 +30,7 @@ O cadastro do tanque preserva versões, capacidade, identificação e pontos de 
 
 ## Quem pode ser origem
 
-Finalidade LEITE precisa estar comprovada na data. CORTE, REPRODUCAO, lacuna ou sobreposição impedem identificar o animal como participante leiteiro. Localização, sexo, entrada/baixa, lactação e carência continuam sendo verificações separadas.
+A finalidade Leite precisa estar comprovada na data. Finalidade Corte ou Reprodução, períodos ausentes ou sobrepostos impedem identificar o animal como participante leiteiro. Localização, sexo, entrada/baixa, lactação e carência continuam sendo verificações separadas.
 
 Sugestões automáticas gerais usam lactação vigente única e DEL maior que zero. D0 pode participar do contexto de colostro quando existe parto/lactação compatível e declaração necessária. Ausência de lactação não é completada com parto inventado. A exceção explícita de lactação desconhecida mantém pendência e não comprova população de custo.
 
@@ -42,13 +42,13 @@ O dia congela configuração e população histórica na primeira gravação. Ca
 
 | Estado | O que informar | Como entra nos totais |
 |---|---|---|
-| `MEDIDO` | Litros, inclusive zero explícito | Soma a quantidade medida |
-| `NAO_ORDENHADO` | Motivo | Informa a ocorrência, sem presumir volume |
-| `PENDENTE` | Informação ainda ausente | Reduz cobertura; não vira zero |
+| Medido | Litros, inclusive zero explícito | Soma a quantidade medida |
+| Não ordenhado | Motivo | Informa a ocorrência, sem presumir volume |
+| Pendente | Informação ainda ausente | Reduz cobertura; não vira zero |
 
-Salvar animal envia sua célula; salvar ordenha envia as demais alterações. Rascunhos conservam o contexto, a chave de reenvio e diferenças entre salvo, falha e edição local. Versão vencida impede sobrescrever outra aba silenciosamente. Inclusão/exclusão de participantes exige motivo e preserva o histórico.
+Use **Salvar animal** para guardar a edição daquela vaca ou **Salvar ordenha** para guardar as demais alterações. Se outra pessoa tiver atualizado a folha, confira os dados salvos antes de refazer sua edição. Para incluir ou retirar um participante, informe o motivo.
 
-Na fonte INDIVIDUAL, grupos de medições positivas inteiras da mesma sessão podem gerar origens segregadas. Uma medição não pode entrar em duas origens nem ser fracionada arbitrariamente. Na fonte GERAL, o controle individual não gera outra entrada.
+Na medição individual, grupos de medições positivas inteiras da mesma sessão podem gerar origens segregadas. Uma medição não pode entrar em duas origens nem ser fracionada arbitrariamente. Na medição geral, o controle individual não gera outra entrada.
 
 ## Histórico documental de leite
 
@@ -56,20 +56,20 @@ A ficha de Produção também mostra **Controles históricos do animal**. Esses 
 
 Em Leite → Produção, **Agregados históricos do sítio** mostra os meses documentados no sítio e período selecionados, com paginação própria. O mês permanece integral mesmo quando apenas parte dele se sobrepõe ao filtro. O agregado não é distribuído por dias ou animais, e o filtro de natureza não o reclassifica. Quilogramas não são convertidos em litros. Esses documentos não criam saldo, venda, custo ou recebimento e não entram nos totais, médias ou cobertura das aferições operacionais.
 
-Documentos individuais também protegem o contexto histórico: uma baixa anterior ao controle, um cadastro/localização incompatível ou uma alteração de lactação que retire o controle de seu intervalo é recusada. Isso vale mesmo quando o controle não tem lactação vinculada, para as guardas de cadastro e baixa. A correção exige reconciliar o fato correspondente; o sistema não apaga o documento para aceitar a mudança. Documentos externos conservam sua origem e não são atribuídos a um sítio interno por suposição.
+Se uma correção de baixa, localização ou lactação conflitar com um controle histórico, confira a origem do documento e as datas antes de corrigir o registro.
 
 ## Confirmação e natureza do leite
 
-Confirmar usa versão esperada, produto, motivo e chaves idempotentes. Falha de uma parcela do conjunto desfaz a confirmação inteira. Só volumes positivos geram entrada; zero medido continua registrado. Sessões/parcelas confirmadas têm proteção contra correção até regularizar entradas e consumidores.
+Antes de confirmar, confira as parcelas, o produto e o motivo. Falha de uma parcela do conjunto desfaz a confirmação inteira. Só volumes positivos geram entrada; zero medido continua registrado. Sessões/parcelas confirmadas têm proteção contra correção até regularizar entradas e consumidores.
 
 | Natureza | Significado operacional | Consequência |
 |---|---|---|
-| Comercial | Declaração explícita com origens e guardas satisfeitas | Candidata a venda; custo pode estar pendente |
+| Comercial | Origens identificadas e carências conferidas | Candidata a venda; custo pode estar pendente |
 | Não comercial | Leite segregado e restrito comercialmente | Não pode ser vendido pelo fluxo comercial |
 | Colostro | Natureza explicitamente declarada | Destinos próprios e vínculo de colostragem quando aplicável |
 | Não informada | Classificação ainda sem prova suficiente em contextos históricos | Não equivale a comercial; cobertura permanece pendente |
 
-No fluxo novo, a confirmação declara a natureza na mesma transação; o marco inicial não informado é preservado no histórico. COLOSTRO e NAO_COMERCIAL são restrições terminais na implementação atual. Estornar um fornecimento não transforma a sobra em leite comercial.
+Na confirmação, declare a natureza de cada parcela. O colostro e o leite não comercial conservam a restrição à venda. Estornar um fornecimento não transforma a sobra em leite comercial.
 
 Carência ativa, prazo desconhecido e administração em revisão impedem a declaração comercial. A conferência considera a data/horário da produção e revalida nas novas vendas. Liberar o animal depois não libera retrospectivamente o leite produzido durante a restrição.
 
@@ -77,7 +77,7 @@ Carência ativa, prazo desconhecido e administração em revisão impedem a decl
 
 Critério de colostro pode ser primeira ordenha ou janela de dias por vigência. A janela inclui D0 e exclui a fronteira final. Primeira ordenha exige declaração explícita: a primeira medição registrada no software não prova que foi a primeira ordenha da vaca. A mesma declaração não pode se repetir para o mesmo parto/animal.
 
-Destino interno informa origem e quantidades explícitas por animal. De 10 L, fornecer 3 L a uma cria e 4 L a outra deixa 3 L. Não há divisão igual automática nem saída adicional do restante. Colostro para cria de parto pode criar/vincular FornecimentoColostro sem duplicação; leite comum não cria esse fato.
+Destino interno informa origem e quantidades explícitas por animal. De 10 L, fornecer 3 L a uma cria e 4 L a outra deixa 3 L. Não há divisão igual automática nem saída adicional do restante. Colostro para cria de parto pode criar/vincular o registro de fornecimento de colostro sem duplicação; leite comum não cria esse fato.
 
 Leite não comercial disponível para uso interno não significa leite fisicamente descartado. **Descarte físico** é outra saída, com origem, quantidade e justificativa. Alimentação não deve ser registrada novamente como descarte. Registrar a prática não certifica adequação clínica ou nutricional do uso.
 
@@ -85,7 +85,7 @@ Estornos conservam a origem e o inverso, respeitando dependências. Leite realme
 
 ## Estoque e apuração posterior
 
-A entrada usa MovimentoEstoque compartilhado e pode ter valor pendente. Alocações identificam os litros de cada origem consumidos por saída, em FIFO ou seleção explícita suportada. Apuração documentada distribui valor entre saídas e remanescente, com versões, sem criar dinheiro ou outra despesa.
+Ao abrir o estoque, confira de quais ordenhas vieram os litros utilizados. O estoque pode ter litros disponíveis e custo ainda pendente. Quando houver valor documentado, a apuração atribui esse custo às saídas e ao volume restante.
 
 O saldo físico deve fechar: produção confirmada = saídas líquidas + remanescente. A consulta mostra cobertura de valor e quantidade comercial separadas. Tanque de origem não é um mapa de localização atual de todo o saldo.
 
@@ -95,7 +95,7 @@ O saldo físico deve fechar: produção confirmada = saídas líquidas + remanes
 
 **Operação por comprador/período:** abre com preço desconhecido. Cada coleta baixa litros comerciais e preserva data, produto, referência e comprovantes. Não cria venda de R$ 0, obrigação ou caixa antes da negociação.
 
-No fechamento, reconheça cada coleta, informe preço e ajuste monetário justificado. Duas coletas de 100 L e 150 L reconhecidas integralmente a R$ 2,50/L geram R$ 625, sem outra saída física. A fórmula usa Decimal: arredondar(litros reconhecidos × preço, 2) + ajuste. Reconhecimento integral zero ou total não positivo exige regularização, sem venda fictícia.
+No fechamento, reconheça cada coleta, informe preço e ajuste monetário justificado. Duas coletas de 100 L e 150 L reconhecidas integralmente a R$ 2,50/L geram R$ 625, sem outra saída física. Confira o valor dos litros reconhecidos, arredondado para centavos, e o ajuste informado. Reconhecimento integral zero ou total não positivo exige regularização, sem venda fictícia.
 
 Receber depois usa os compromissos e liquidações do Financeiro. A coleta é física; aceite é conferência; venda é negociação; faturamento é documental; recebimento é dinheiro. Diferença no volume aceito não devolve litros automaticamente.
 
@@ -121,18 +121,10 @@ Custo por litro usa custos e litros dos mesmos animais e período. No consolidad
 
 Cobertura incompleta, custo desconhecido, população sem comprovação, dia sem folha ou denominador sem volume positivo mantêm o indicador não apurado. Não dividir todo o custo mensal pelos poucos litros de um controle individual mensal; não extrapolar os dias ausentes.
 
-Na fonte geral, exige-se cobertura de sessões e conciliação da união das origens com a população elegível. Filtrar uma natureza não cria vínculo monetário de cada componente com aquela parcela: o custo/L permanece não apurado com `NATUREZA_SEM_VINCULO`. Referência comercial R07 da Nutrição é separada e não entra outra vez no custo produtivo.
+Na produção geral, confira se todas as ordenhas e os animais do período estão cobertos. Se o filtro por natureza mostrar custo não apurado, falta identificar quanto do custo pertence àquela parcela. O preço comercial de referência usado na Nutrição é consultado separadamente.
 
 ## Conferência física e relatórios
 
 Observar 10 L onde o razão mostra 12 L produz diferença de −2 L; a conferência não ajusta estoque automaticamente. Zero observado exige declaração. Uma observação antiga não vira saldo de abertura atual por suposição.
 
 Produção diária/mensal soma volumes medidos e informa cobertura do calendário. Coletas usam data física; vendas usam comprador/período comercial. Relatórios emitidos preservam fontes, filtros, versão do cálculo e corte. CSV/exportação exige autorização e conserva lacunas e máscara monetária.
-
-Prévia histórica confere dados de funcionários, brinco literal, unidade e conflitos. Não executa importação automática nem cria estoque retroativo de leite já vendido. IDEAGRI é referência para carga/reconciliação, não sincronização operacional.
-
-## Implementação e verificações
-
-Prefixo HTTP: `/api/pecuaria/rebanho/leite`; rotas `server/src/routes/pecuaria/leite*.ts`; serviços `server/src/services/pecuaria/leite/`; interface `client/src/pecuaria/rebanho/leite/`. ConfiguracaoOrdenha → DiaProducaoLeite → SessaoOrdenha → MedicaoGeralLeite/MedicaoLeite organizam a produção. EntradaProducaoLeite e AlocacaoLeiteEstoque ligam a origem aos movimentos compartilhados. OperacaoComercialLeite, RetiradaOperacaoLeite e FechamentoOperacaoLeite conservam o percurso comercial.
-
-Contratos especializados: [produção](../pecuaria/leite.md), [estoque](../pecuaria/leite-decisoes-estoque.md), [comercial](../pecuaria/leite-comercial.md), [qualidade](../pecuaria/leite-qualidade.md) e [relatórios](../pecuaria/leite-relatorios.md). Testes de cálculos, serviços, rotas, componentes e SQL estrutural acompanham esses módulos; execução SQL real, R2 e homologação de campo são evidências próprias.

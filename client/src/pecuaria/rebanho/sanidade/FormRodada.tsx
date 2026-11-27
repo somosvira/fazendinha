@@ -1,3 +1,4 @@
+import { nomeExame } from "./nomeExame";
 import { SelectBuscavel } from "../../../components/SelectBuscavel";
 import { consultaProtocolo, reqProtocolo } from "../protocolos/api";
 import type { PaginaProtocolo } from "../protocolos/EtapasProtocolo";
@@ -116,7 +117,7 @@ export function FormRodada({ rodada, animalInicial, animaisIniciais, onFechar, o
         </section>
       </fieldset>
       <div ref={setPortal} />
-      {previa && <section className="grid gap-3" aria-label="Calendário previsto"><h3 className="font-semibold">Calendário previsto por animal</h3>{previa.avisos?.map((a, i) => <p key={i} role="alert">{a}</p>)}<ListaRascunho itens={previa.itens} rotulo="animais do calendário" texto={i => animais.find(a => a.id === i.animalId)?.brinco ?? i.animalId} renderizar={i => <div key={i.animalId}><strong>{animais.find((a) => a.id === i.animalId)?.brinco ?? i.animalId}</strong>{i.avisos?.map((a, n) => <p key={n} role="alert">{a}</p>)}<ListaRascunho itens={i.tarefas} rotulo="etapas previstas" renderizar={t => <p key={t.etapaId}>{dataSanitaria(t.previstaPara)} · {t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame"} · {t.parametros.dose ? `${t.parametros.produtoNomeSnapshot ?? "Produto planejado"} · ${t.parametros.dose} ${unidadeSanitaria(t.parametros.unidade ?? "")}` : t.parametros.tipoExameNomeSnapshot}</p>} /></div>} /></section>}
+      {previa && <section className="grid gap-3" aria-label="Calendário previsto"><h3 className="font-semibold">Calendário previsto por animal</h3>{previa.avisos?.map((a, i) => <p key={i} role="alert">{a}</p>)}<ListaRascunho itens={previa.itens} rotulo="animais do calendário" texto={i => animais.find(a => a.id === i.animalId)?.brinco ?? i.animalId} renderizar={i => <div key={i.animalId}><strong>{animais.find((a) => a.id === i.animalId)?.brinco ?? i.animalId}</strong>{i.avisos?.map((a, n) => <p key={n} role="alert">{a}</p>)}<ListaRascunho itens={i.tarefas} rotulo="etapas previstas" renderizar={t => <p key={t.etapaId}>{dataSanitaria(t.previstaPara)} · {t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame"} · {t.parametros.dose ? `${t.parametros.produtoNomeSnapshot ?? "Produto planejado"} · ${t.parametros.dose} ${unidadeSanitaria(t.parametros.unidade ?? "")}` : nomeExame(t.parametros.tipoExameId, t.parametros.tipoExameNomeSnapshot)}</p>} /></div>} /></section>}
     </form>
   </PainelCadastro>;
 }

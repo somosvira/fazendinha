@@ -1,6 +1,6 @@
 # Reprodução — referência visual aprovada
 
-Segunda proposta, incorporando os 17 comentários da primeira revisão. **Aprovada pelo usuário para implementação.** Prévia independente com dados fictícios; não consulta APIs, banco ou armazenamento do navegador. A implementação está descrita no [contrato de Reprodução](../../../pecuaria/reproducao.md); esta pasta conserva a referência visual e suas fixtures independentes.
+Segunda proposta, incorporando os 17 comentários da primeira revisão. **Aprovada pelo usuário para implementação.** Prévia independente com dados fictícios; não consulta APIs, banco ou armazenamento do navegador. A implementação está descrita no [contrato de Reprodução](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/reproducao.md); esta pasta conserva a referência visual e suas fixtures independentes.
 
 ## Abrir
 
@@ -14,7 +14,7 @@ O processo serve somente estes arquivos. Não inicia API, Vite, migrations ou se
 
 ## Direção e cobertura
 
-Identidade Terrano preservada: petróleo `#006f68`, lateral sálvia `#dce8e5`, fundo `#f7f8fa`, superfícies brancas e cabeçalho tabular `#e2e7ea`. Manrope em títulos e DM Sans em controles/dados. A referência é o sistema descrito em `client/PRODUCT.md` e `client/DESIGN.md`; a prévia independente não reutiliza os componentes React/Radix e não comprova equivalência funcional.
+Identidade Terrano preservada: petróleo `#006f68`, lateral sálvia `#dce8e5`, fundo `#f7f8fa`, superfícies brancas e cabeçalho tabular `#e2e7ea`. Manrope e DM Sans pertencem aos arquivos desta prévia histórica. Para uma implementação atual, use a [tipografia do produto](../../../../client/DESIGN.md#typography); a prévia independente não reutiliza os componentes React/Radix e não comprova equivalência funcional.
 
 - **Animais:** abre em Todas; Situação fica no modal de filtros. Pendências aparecem no topo com ação que filtra os animais. Foram retirados os seletores grandes e “Consultar todos”.
 - **Agenda:** busca ocupa a largura disponível; controles seguem a barra de consulta.
@@ -50,4 +50,4 @@ Revisão orientada pelas skills Impeccable e frontend-design, preservando o sist
 
 Verificados no mockup: sintaxe JS; asserções do cálculo por base, lote, período, tipo e falta de base; exclusão dos pendentes dos numeradores; navegação das cinco abas; aplicar/cancelar filtro; alternância Cartões/Tabela; identificação da cria; modal de escore. Console sem erros na coleta. Usar exclusivamente `capturas-v2/` como referência visual desta revisão; parte dos arquivos de `capturas/` foi sobrescrita durante a coleta.
 
-As verificações de cálculo usam os dados fictícios desta prévia. Estas evidências pertencem somente à prévia; a validação da implementação é separada. Capturas móveis não equivalem a homologação em aparelho físico. As decisões vigentes foram incorporadas ao [contrato de Reprodução](../../../pecuaria/reproducao.md).
+As verificações de cálculo usam os dados fictícios desta prévia. Estas evidências pertencem somente à prévia; a validação da implementação é separada. Capturas móveis não equivalem a homologação em aparelho físico. As decisões daquela entrega foram registradas no [contrato de Reprodução](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/reproducao.md).

@@ -1,6 +1,6 @@
 # Bezerreiro — prévia e planejamento
 
-Prévia estática revisada em 28/10/2026, com dados fictícios e sem conexão com API/banco. A implementação React/API está em `client/src/pecuaria/rebanho/bezerreiro` e `server/src/services/pecuaria/bezerreiro`; comportamento e limites estão no [contrato](../../pecuaria/bezerreiro.md). As migrations aditivas foram entregues, sem aplicação local nesta etapa.
+Prévia estática revisada em 28/10/2026, com dados fictícios e sem conexão com API/banco. A implementação React/API está em `client/src/pecuaria/rebanho/bezerreiro` e `server/src/services/pecuaria/bezerreiro`; o comportamento e os limites da entrega foram registrados no [contrato](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/bezerreiro.md). As migrations aditivas foram entregues, sem aplicação local nesta etapa.
 
 ## Artefatos
 
@@ -49,4 +49,4 @@ Astra revisou código, contratos e reparos de produto/padrões; não executou Po
 
 ## Continuidade visual
 
-O desenho preserva DM Sans/Manrope locais, verde principal, sidebar sálvia, filtros com rascunho, tabelas compactas e ações em botões. Bezerreiro é item próprio da sidebar; Banco e Enriquecer integram Colostragem. A aplicação usa os componentes compartilhados de Rebanho/Nutrição; o HTML é referência visual, não um catálogo de componentes React. O protótipo anterior em `../leite/colostro/` permanece como referência histórica, sem ser necessário para simular o percurso integrado atual.
+O protótipo usou fontes locais DM Sans/Manrope e a paleta daquela revisão. As decisões de interação abrangem filtros com rascunho, tabelas compactas e ações em botões. A implementação segue o [design do produto](../../../client/DESIGN.md). Bezerreiro é item próprio da sidebar; Banco e Enriquecer integram Colostragem. A aplicação usa os componentes compartilhados de Rebanho/Nutrição; o HTML é referência visual, não um catálogo de componentes React. O protótipo anterior em `../leite/colostro/` permanece como referência histórica, sem ser necessário para simular o percurso integrado atual.

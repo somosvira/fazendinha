@@ -1,7 +1,11 @@
+import { PainelCadastro, classeInput } from "../../../financeiro/PainelCadastro";
+import { DatePicker } from "../../../components/DatePicker";
+import { Input } from "../../../components/ui/input";
+import { nomeExame } from "../sanidade/nomeExame";
 import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { Button } from "../../../components/ui/button";
 import { IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button as BotaoAcao } from "../../../components/ui/button";
 import "./reproducao-consultas.css";
 import {
@@ -42,6 +46,7 @@ export type PartoOperacional = Omit<PartoRelatorio, "crias"> & {
     id: string;
     data: string;
     tipo: string;
+    tipoExameId?: string;
     realizacao: string;
     status: string;
   }>;
@@ -125,6 +130,29 @@ function Lista<T extends { id: string }>({
     </>
   );
 }
+function CadastroEscore({ parto, propriedadeId, onFechar, onSalvo }: { parto: PartoOperacional; propriedadeId: number; onFechar: () => void; onSalvo: () => void }) {
+  const [data, setData] = useState("");
+  const [valor, setValor] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const envio = useRef<{ payload: string; chave: string } | null>(null);
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!data || data < parto.data.slice(0, 10)) { setErro("A data da avaliação deve ser igual ou posterior à data do parto."); return; }
+    if (!valor.trim() || !/^[+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+)$/.test(valor.trim()) || !Number.isFinite(Number(valor.replace(",", ".")))) { setErro("Informe um valor numérico para o escore."); return; }
+    const dados = { propriedadeId, data, valor: Number(valor.replace(",", ".")) };
+    const payload = JSON.stringify(dados);
+    if (envio.current?.payload !== payload) envio.current = { payload, chave: crypto.randomUUID() };
+    setSalvando(true); setErro(null);
+    try { await reqV4(`/reproducao/partos/${encodeURIComponent(parto.id)}/escore`, { ...dados, chave: envio.current.chave }, "POST", propriedadeId); onSalvo(); }
+    catch (e) { setErro(e instanceof Error ? e.message : "Não foi possível registrar o escore."); }
+    finally { setSalvando(false); }
+  }
+  return <PainelCadastro aberto compacto titulo="Registrar escore de condição corporal (ECC)" onFechar={onFechar} bloqueado={salvando} alteracoesExternas={!!valor || !!data} rodape={<><Button variant="outline" onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form="cadastro-ecc-parto" disabled={salvando}>Registrar escore</Button></>}>
+    <form id="cadastro-ecc-parto" onSubmit={salvar} className="grid gap-4"><ErrorBox erro={erro}/><dl className="grid grid-cols-2 gap-3"><div><dt>Matriz</dt><dd>{parto.matriz.brinco}{parto.matriz.nome ? ` · ${parto.matriz.nome}` : ""}</dd></div><div><dt>Data do parto</dt><dd>{formatBRDateISO(parto.data)}</dd></div></dl><label className="grid gap-1 text-sm">Data real da avaliação<DatePicker value={data} onChange={setData}/></label><label className="grid gap-1 text-sm">Valor do escore<Input inputMode="decimal" className={classeInput} value={valor} onChange={e => setValor(e.target.value)}/></label></form>
+  </PainelCadastro>;
+}
+
 export function DetalheParto({
   id,
   propriedadeId,
@@ -138,12 +166,14 @@ export function DetalheParto({
     [erro, setErro] = useState<string | null>(null),
     [revisao, setRevisao] = useState(0);
   const [acao, setAcao] = useState<"corrigir" | "anular" | null>(null);
+  const [cadastroEscore, setCadastroEscore] = useState(false);
   const [criaAberta, setCriaAberta] = useState<CriaRelatorio | null>(null);
-  const [complemento, setComplemento] = useState<"escore" | "peso" | "retencao" | undefined>();
+  const [complemento, setComplemento] = useState<"peso" | "retencao" | undefined>();
   const [criaColostro, setCriaColostro] = useState<string | null>(null);
   useEffect(() => {
     let ativo = true;
     setParto(null);
+    setCadastroEscore(false);
     setCriaAberta(null);
     setCriaColostro(null);
     setComplemento(undefined);
@@ -278,7 +308,7 @@ export function DetalheParto({
           ]}
         />
       </SecaoFicha>
-      <SecaoFicha titulo="Escore corporal da matriz">
+      <SecaoFicha titulo="Escore de condição corporal (ECC) da matriz">
         <Lista
           rotulo="Escores da matriz"
           itens={escores}
@@ -377,7 +407,7 @@ export function DetalheParto({
           ]}
         />
       </SecaoFicha>
-      <SecaoFicha titulo="Avaliações pós-parto" acoes={podeEditar ? <Button variant="outline" onClick={()=>{setComplemento("escore");setAcao("corrigir");}}>Registrar avaliação de escore</Button> : undefined}>
+      <SecaoFicha titulo="Avaliações pós-parto" acoes={podeEditar && !p.escoresMatriz.length ? <Button variant="outline" onClick={()=>setCadastroEscore(true)}>Registrar escore de condição corporal (ECC)</Button> : undefined}>
         <Lista
           rotulo="Avaliações vinculadas ao parto"
           itens={p.acompanhamentos ?? []}
@@ -392,7 +422,7 @@ export function DetalheParto({
               chave: "tipo",
               titulo: "Avaliação",
               larguraFlexivel: true,
-              celula: (e) => e.tipo,
+              celula: (e) => nomeExame(e.tipoExameId, e.tipo),
             },
             {
               chave: "realizacao",
@@ -427,6 +457,7 @@ export function DetalheParto({
         />
       </SecaoFicha>
       </div>
+      {podeEditar && cadastroEscore && <CadastroEscore parto={p} propriedadeId={propriedadeId} onFechar={() => setCadastroEscore(false)} onSalvo={() => { setCadastroEscore(false); atualizar(); }}/>}
       {podeEditar && acao === "corrigir" && <CorrigirFato complementoInicial={complemento} tipo="parto" id={p.id} animalId={p.matriz.id} propriedadeId={propriedadeId} tipoPartoInicial={p.tipo ?? undefined} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
       {podeEditar && acao === "anular" && <AnularFato tipo="partos" id={p.id} propriedadeId={propriedadeId} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
       {criaAberta && <Modal titulo={`Cria ${criaAberta.ordem}`} eyebrow="" onClose={()=>setCriaAberta(null)}><div className="p-5"><p>{criaAberta.viva ? "Viva · identificação provisória" : "Sem vida · sem cadastro de animal ativo"}</p><p className="mt-2">Sexo: {texto(criaAberta.sexo)}</p><p className="mt-2">Peso informado: {texto(registro(criaAberta.filiacaoSnapshot).pesoKg)}</p></div></Modal>}

@@ -1,3 +1,4 @@
+import { isListaAnimaisRebanho } from "../../../router";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ReactNode } from "react";
 import { VacaIcon } from "../../../components/icons/VacaIcon";
@@ -250,8 +251,9 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busca, propriedadeId, loteId, categoriaId, aptidao, papelReprodutivo, situacao, sexo, origem, racaId, idadeMinMeses, idadeMaxMeses, mostrarBaixa, tipoBaixa, baixaDe, baixaAte, opcaoOrdenacao, pagina, revisao, multiplos, sitioGlobal]);
 
+  const contextoAntesModal = useRef<string | null>(null);
   useEffect(() => {
-    const restaurar = () => { const f = lerFiltrosDaUrl(); setMultiplos(lerMultiplos()); setTextoBusca(f.busca); setBusca(f.busca); setPropriedadeId(sitioGlobal != null ? String(sitioGlobal) : f.propriedadeId); setLoteId(f.loteId); setCategoriaId(f.categoriaId); setAptidao(f.aptidao); setPapelReprodutivo(f.papelReprodutivo); setSituacao(f.situacao); setSexo(f.sexo); setOrigem(f.origem); setRacaId(f.racaId); setIdadeMinMeses(f.idadeMinMeses); setIdadeMaxMeses(f.idadeMaxMeses); setTipoBaixa(f.tipoBaixa); setBaixaDe(f.baixaDe); setBaixaAte(f.baixaAte); setOrdenacao(f.ordenacao); setPagina(Math.max(1, Number(new URLSearchParams(window.location.search).get("page")) || 1)); setSelecionados(new Map()); };
+    const restaurar = () => { if (!isListaAnimaisRebanho(window.location.pathname)) { const retorno = new URLSearchParams(window.location.search).get("retorno"); contextoAntesModal.current = retorno; return; } const mesmoContexto = contextoAntesModal.current === window.location.pathname + window.location.search + window.location.hash; contextoAntesModal.current = null; const f = lerFiltrosDaUrl(); setMultiplos(lerMultiplos()); setTextoBusca(f.busca); setBusca(f.busca); setPropriedadeId(sitioGlobal != null ? String(sitioGlobal) : f.propriedadeId); setLoteId(f.loteId); setCategoriaId(f.categoriaId); setAptidao(f.aptidao); setPapelReprodutivo(f.papelReprodutivo); setSituacao(f.situacao); setSexo(f.sexo); setOrigem(f.origem); setRacaId(f.racaId); setIdadeMinMeses(f.idadeMinMeses); setIdadeMaxMeses(f.idadeMaxMeses); setTipoBaixa(f.tipoBaixa); setBaixaDe(f.baixaDe); setBaixaAte(f.baixaAte); setOrdenacao(f.ordenacao); setPagina(Math.max(1, Number(new URLSearchParams(window.location.search).get("page")) || 1)); if (!mesmoContexto) setSelecionados(new Map()); };
     window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar);
   }, [sitioGlobal]);
   // busca só dispara depois de 300 ms sem digitar
@@ -263,6 +265,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   // mantém a query string em sincronia com os filtros ativos, sem tocar no pathname
   // (o roteamento por aba olha só `window.location.pathname` — ver router.ts)
   useEffect(() => {
+    if (!isListaAnimaisRebanho(window.location.pathname)) return;
     const params = new URLSearchParams();
     if (busca) params.set("busca", busca);
     if (sitioGlobal == null && propriedadeId) params.set("propriedadeId", propriedadeId);

@@ -1,9 +1,10 @@
+import { SeletorGenitor } from "./SeletorGenitor";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 // Campo "Mãe"/"Pai" compartilhado por FormFiliacao (ficha do animal) e NovoAnimal
 // (cadastro): três modos — animal da fazenda, genitor externo ou desconhecida/o.
 // Emite o resultado já no formato de FiliacaoInput (um dos dois lados, ou nenhum).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listarGenitores } from "../api";
 import type { FiliacaoLadoDTO, GenitorDTO, Sexo } from "../types";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -11,7 +12,7 @@ import { BuscaAnimal, type AnimalSelecionado } from "./BuscaAnimal";
 
 export type ValorGenitor =
   | { tipo: "ANIMAL"; id: string; brinco: string; nome: string | null }
-  | { tipo: "EXTERNO"; id: string }
+  | { tipo: "EXTERNO"; id: string; nome?: string; fornecedor?: string | null }
   | { tipo: "NENHUM" };
 
 type Modo = "ANIMAL" | "EXTERNO" | "NENHUM";
@@ -31,7 +32,7 @@ export function mensagemGenitorIncompleto(rotulo: string, sexo: Sexo): string {
   return `Escolha ${sexo === "F" ? "a" : "o"} ${rotulo.toLowerCase()} ou marque ${sexo === "F" ? "Desconhecida" : "Desconhecido"}`;
 }
 
-export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor, onChange, obrigatorio = false, erro, idBase = "campo-genitor" }: {
+export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor, onChange, obrigatorio = false, erro, compacto = false, propriedadeId, idBase = "campo-genitor" }: {
   rotulo: string;
   sexo: Sexo;
   /** ficha atual (edição) — se ausente, começa em "Desconhecida/o" */
@@ -43,16 +44,20 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
   /** sem a opção "Desconhecida/o" (ex.: touro e doadora de material genético) */
   obrigatorio?: boolean;
   erro?: string;
+  compacto?: boolean;
+  propriedadeId?: number;
   /** prefixo do id do campo (`<idBase>-mae`/`-pai`); muda quando a tela abriga outro cadastro */
   idBase?: string;
 }) {
+  const [expandido, setExpandido] = useState(false);
+  const botaoCompacto = useRef<HTMLButtonElement>(null);
   const [interno, setInterno] = useState<ValorGenitor>(() => valor ?? ladoParaValor(ladoInicial ?? null));
   const [genitoresExternos, setGenitoresExternos] = useState<GenitorDTO[] | null>(null);
 
   const atual = valor ?? interno;
   const modo: Modo = atual.tipo;
 
-  useEffect(() => { listarGenitores({ sexo }).then(setGenitoresExternos).catch(() => setGenitoresExternos([])); }, [sexo]);
+  useEffect(() => { if (compacto && (atual.tipo !== "EXTERNO" || atual.nome)) return; let vigente = true; listarGenitores({ sexo }).then(r => { if (vigente) setGenitoresExternos(r); }).catch(() => { if (vigente) setGenitoresExternos([]); }); return () => { vigente = false; }; }, [sexo, compacto, atual.tipo, atual.tipo === "EXTERNO" ? atual.nome : undefined]);
 
   const definir = (v: ValorGenitor) => { setInterno(v); onChange(v); };
 
@@ -64,6 +69,18 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
   };
 
   const animalSelecionado: AnimalSelecionado | null = atual.tipo === "ANIMAL" && atual.id ? { id: atual.id, brinco: atual.brinco, nome: atual.nome } : null;
+
+  if (compacto) {
+    const nome = atual.tipo === "NENHUM" ? (sexo === "F" ? "Desconhecida" : "Desconhecido") : atual.tipo === "ANIMAL" ? (atual.nome || "Sem nome") : atual.nome ?? genitoresExternos?.find(g => g.id === atual.id)?.nome ?? "Genitor externo";
+    const detalhe = atual.tipo === "ANIMAL" && atual.id ? `Brinco ${atual.brinco} · Animal da fazenda` : atual.tipo === "EXTERNO" && atual.id ? ["Genitor externo", atual.fornecedor].filter(Boolean).join(" · ") : "";
+    return <div id={`${idBase}-${sexo === "F" ? "mae" : "pai"}`} tabIndex={-1} className="outline-none">
+      <button ref={botaoCompacto} type="button" className="flex min-h-14 w-full items-center gap-4 rounded-lg border border-border px-4 py-2 text-left text-sm" onClick={() => setExpandido(true)}>
+        <strong className="w-12 shrink-0">{rotulo}</strong><span className="min-w-0 flex-1"><strong className="block break-words">{nome}</strong>{detalhe && <span className="block text-ink-3">{detalhe}</span>}</span><span className="font-semibold text-mast">{atual.tipo === "NENHUM" ? `Selecionar ${rotulo.toLowerCase()}` : "Trocar"}</span>
+      </button>
+      {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
+      {expandido && <SeletorGenitor retornoFoco={botaoCompacto.current} rotulo={rotulo} sexo={sexo} valor={atual} propriedadeId={propriedadeId} onFechar={() => setExpandido(false)} onConfirmar={novo => { definir(novo); setExpandido(false); }} />}
+    </div>;
+  }
 
   return <div id={`${idBase}-${sexo === "F" ? "mae" : "pai"}`} tabIndex={-1} className="space-y-2 outline-none">
     <span className="block text-sm font-medium">{rotulo}</span>

@@ -1,3 +1,5 @@
+import { buscaNomeExameOficial } from "../sanidade/nome-exame.js";
+import { TIPO_EXAME_ESCORE_CORPORAL } from "../reproducao/escore-corporal.calc.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../../db.js";
@@ -29,7 +31,7 @@ export async function listarOpcoesClinicas(tarefaId:string,propriedadeId:number|
   const id=f.selecionadoId?{id:f.selecionadoId}:{};
   if(f.opcao==="TIPO_EXAME"){
    if(acao==="TENTATIVA")throw new RebanhoError("VALIDACAO","Tentativa não usa tipo de exame");
-   const where:Prisma.TipoExameWhereInput={...id,ativo:true,contexto:{in:acao==="AVALIACAO"?["REPRODUTIVO","COMPARTILHADO"]:["SANITARIO","COMPARTILHADO"]},...(acao==="AVALIACAO"?{tipoResultado:"MULTIPLO"}:{}),nome:{contains:f.busca,mode:"insensitive"}};
+   const where:Prisma.TipoExameWhereInput={...id,ativo:true,contexto:{in:acao==="AVALIACAO"?["REPRODUTIVO","COMPARTILHADO"]:["SANITARIO","COMPARTILHADO"]},...(acao==="AVALIACAO"?{tipoResultado:"MULTIPLO"}:{}),OR:[{nome:{contains:f.busca,mode:"insensitive"}},...(buscaNomeExameOficial(f.busca)?[{id:TIPO_EXAME_ESCORE_CORPORAL}]:[])]};
    return paginas(()=>tx.tipoExame.count({where}),async(skip,take)=>(await tx.tipoExame.findMany({where,orderBy:[{nome:"asc"},{id:"asc"}],skip,take,select:{id:true,nome:true,tipoResultado:true,unidade:true,opcoes:true,campos:true,versaoFormato:true}})).map(t=>({...t,formatoExameHash:hashFormatoExame(t)})));
   }
   if(f.opcao==="MATERIAL"){
@@ -76,7 +78,7 @@ export async function listarExamesTarefaClinica(tarefaId:string,propriedadeId:nu
   if(!tarefa)throw new RebanhoError("NAO_ENCONTRADO","Tarefa não encontrada neste sítio");
   const where:Prisma.ExameAnimalWhereInput={...(propriedadeId==null?{}:{propriedadeId}),OR:[{tarefaId},{demandaAcompanhamento:{tarefaId}}]};
   const total=await tx.exameAnimal.count({where});const pagina=paginaOperacao(total,f.pagina,f.porPagina);
-  const itens=await tx.exameAnimal.findMany({where,orderBy:[{data:"desc"},{criadoEm:"desc"},{id:"asc"}],skip:(pagina-1)*f.porPagina,take:f.porPagina,select:{id:true,animalId:true,propriedadeId:true,data:true,status:true,realizacao:true,formatoSnapshot:true,tarefaId:true,demandaAcompanhamentoId:true,observacao:true,responsavel:true,resultadoTexto:true,resultadoNumero:true,resultadoOpcao:true,resultados:{where:{vigente:true},select:{campo:true,valor:true}},interpretacao:{select:{tentativaId:true,gestacaoId:true,conduta:true,retornoEm:true}}}});
+  const itens=await tx.exameAnimal.findMany({where,orderBy:[{data:"desc"},{criadoEm:"desc"},{id:"asc"}],skip:(pagina-1)*f.porPagina,take:f.porPagina,select:{id:true,animalId:true,propriedadeId:true,tipoExameId:true,data:true,status:true,realizacao:true,formatoSnapshot:true,tarefaId:true,demandaAcompanhamentoId:true,observacao:true,responsavel:true,resultadoTexto:true,resultadoNumero:true,resultadoOpcao:true,resultados:{where:{vigente:true},select:{campo:true,valor:true}},interpretacao:{select:{tentativaId:true,gestacaoId:true,conduta:true,retornoEm:true}}}});
   return{itens,total,pagina,porPagina:f.porPagina};
  },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
 }

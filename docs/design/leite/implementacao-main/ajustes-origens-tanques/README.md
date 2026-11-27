@@ -1,6 +1,6 @@
 # Ajustes aprovados de origens e escolha do tanque
 
-Os componentes React da V5 incorporam a revisão do mockup: seleção de um tanque por vez, pré-seleção histórica de origens e ações apresentadas por componentes compartilhados. Origens e gestão de tanques usam `PainelCadastro`, `Button`, `Checkbox` e `SelectCampo`. Os detalhes secundários usam `SecaoDetalhesLeite`, baseado em `Collapsible` e `Button`, preservando o conteúdo ao recolher. As regras operacionais e os limites estão no [contrato de leite](../../../../pecuaria/leite.md).
+Os componentes React da V5 incorporam a revisão do mockup: seleção de um tanque por vez, pré-seleção histórica de origens e ações apresentadas por componentes compartilhados. Origens e gestão de tanques usam `PainelCadastro`, `Button`, `Checkbox` e `SelectCampo`. Os detalhes secundários usam `SecaoDetalhesLeite`, baseado em `Collapsible` e `Button`, preservando o conteúdo ao recolher. As regras operacionais e os limites estão no [contrato de leite](https://github.com/somosvira/fazendinha/blob/4271f29952902fa1e4ccb30909b6c11afa35d607/docs/pecuaria/leite.md).
 
 ## Conferência visual
 

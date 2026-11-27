@@ -92,3 +92,9 @@ it("resposta atrasada de uma página de procedimentos não substitui a primeira 
   resolver(pagina([{...procedimento,id:"tardia",referencia:"Resposta tardia"}],11,2));
   await waitFor(()=>expect(screen.getAllByText("Produto congelado")).toBeTruthy());expect(screen.queryByText("Resposta tardia")).toBeNull();
 });
+it("identifica prazo factual do diagnóstico sem apresentá-lo como D0", async () => {
+  vi.mocked(obterEstruturaCadastro).mockResolvedValue(pagina([{...etapa,procedimentos:pagina([{...procedimento, nome:"DG", procedimento:"Diagnóstico", referenciaPrazoDiagnostico:true}])}]));
+  render(<DetalheModeloProtocolo origem={modelo} onClose={vi.fn()}/>);
+  expect(await screen.findAllByText("Após a tentativa")).toHaveLength(2);
+  expect(screen.queryByText("D0")).toBeNull();
+});

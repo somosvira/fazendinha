@@ -1,3 +1,4 @@
+import { chaveCacheAnimal, contextoCacheAnimal, removerCacheAnimal, removerCachesAnimal, vincularCachesAnimal } from "./cacheCadastroAnimal";
 import { animalArremateSimulado } from "./ArremateSimulado";
 import { AjudaCampo } from "@/components/Dica";
 import { useDescarteTrabalhoAtivo } from "./descarteTrabalhoAtivo";
@@ -109,6 +110,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const atalhoAjuste = !operacaoBase && tipoInicial === TIPO_AJUSTE;
   const podeRascunho = podeVerValoresFinanceiros();
   const [confirmarSaida, setConfirmarSaida] = useState(false);
+  const [rascunhoCacheId, setRascunhoCacheId] = useState<string | null>(() => rascunho?.id ?? null);
+  const rascunhoCacheIdRef = useRef(rascunhoCacheId);
   const [recuperacaoInicial] = useState(() => podeRascunho && !operacaoBase && !atalhoAjuste ? estadoRascunhoAtivo().recuperacao : null);
   const inicial = (podeRascunho && !operacaoBase && !atalhoAjuste ? recuperacaoInicial?.dados.formulario ?? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
   // Correção de uma compra de animais: os animais são os da original (itens com `animalId`), sem cadastro novo.
@@ -277,6 +280,9 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   }, [sitioAtivoId, podeRascunho, contaId, tipo, condicao]);
   const sitioFinanceiroId = sitioAtivoId ?? sitioPrincipalId;
   const sitioCompra = !ehCompraAnimais || sitiosAtivos === null ? null : sitioAtivoId != null ? sitiosAtivos.find((sitio) => sitio.id === sitioAtivoId) ?? null : sitiosAtivos.length === 1 ? sitiosAtivos[0] : null;
+  const contextoCache = contextoCacheAnimal(sitioAtivoId ?? (sitiosAtivos?.length === 1 ? sitiosAtivos[0].id : null), podeRascunho && !operacaoBase && !atalhoAjuste);
+  const contextoCacheRef = useRef(contextoCache);
+  contextoCacheRef.current = contextoCache;
   const motivoSemSitio = sitiosAtivos === null ? "Carregando o sítio da compra…" : sitioAtivoId == null && sitiosAtivos.length >= 2 ? "Selecione uma fazenda no seletor do topo para cadastrar os animais — a compra é feita em uma fazenda por vez." : "Não foi possível identificar o sítio da compra. Atualize a página ou escolha a fazenda no seletor do topo.";
   const valoresAnimais = useMemo(() => ehCompraAnimais ? valoresDosAnimais(unidadePrecoAnimal, valorLote, animais) : [], [ehCompraAnimais, unidadePrecoAnimal, valorLote, animais]);
   // Sem sítio ativo e com mais de um sítio, o saldo lido soma todos os sítios mas o
@@ -448,6 +454,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     try {
       const salvo = await requisicao;
       versaoRef.current = salvo.versao;
+      if (contextoRascunho() && !rascunhoCacheIdRef.current && salvo.id) { vincularCachesAnimal(contextoCacheRef.current, salvo.id); rascunhoCacheIdRef.current = salvo.id; setRascunhoCacheId(salvo.id); }
       if (contextoRascunho()) concluirEdicaoRascunho(dadosRascunho);
       if (ultimaEdicaoRef.current.dados === dadosRascunho) { setEstadoSalvamento("SALVO"); setErro(null); }
       return salvo;
@@ -856,6 +863,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         catch (falha) { falhas.push(`${anexo.arquivo.name}: ${falha instanceof Error ? falha.message : String(falha)}`); }
       }
       concluidaRef.current = true;
+      removerCachesAnimal(contextoCacheRef.current, rascunhoCacheIdRef.current);
       onSalvo(operacao, falhas.length ? `A operação ${codigoOperacao(operacao.numero)} foi criada, mas alguns anexos falharam: ${falhas.join("; ")}` : undefined);
     } catch (falha) {
       if (podeRascunho && falha instanceof ApiError && falha.status === 409 && falha.code === "SALDO_NEGATIVO" && falha.saldoNegativo && falha.saldoNegativo.contaId === contaId) {
@@ -926,7 +934,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     try {
       if (autosaveTimerRef.current != null) window.clearTimeout(autosaveTimerRef.current);
       if (salvamentoEmCursoRef.current) await salvamentoEmCursoRef.current.catch(() => undefined);
-      await enfileirarSalvamentoRascunho(() => descartarRascunhoOperacao()); concluidaRef.current = true; window.location.reload();
+      await enfileirarSalvamentoRascunho(() => descartarRascunhoOperacao()); removerCachesAnimal(contextoCacheRef.current, rascunhoCacheIdRef.current); concluidaRef.current = true; window.location.reload();
     }
     catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); setSalvando(false); }
   };
@@ -942,6 +950,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         if (!contextoRascunho()) throw new Error("O sítio ou a sessão mudou. Reabra a operação no contexto original.");
         return descartarRascunhoOperacao();
       });
+      removerCachesAnimal(contextoCacheRef.current, rascunhoCacheIdRef.current);
     } catch (falha) {
       concluidaRef.current = false; setSalvando(false);
       if (contextoRascunho()) guardarEdicaoRascunho(ultimaEdicaoRef.current.dados);
@@ -998,13 +1007,13 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         </section>
         {ehAjuste ? secaoAjuste : comItens ? <>{ehCompraAnimais && <SecaoAnimais
           animais={animais} valores={valoresAnimais} unidade={unidadePrecoAnimal} valorLote={valorLote} sitio={sitioCompra} motivoSemSitio={motivoSemSitio} dataOperacao={data}
-          config={config} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erros={errosAnimais} correcao={modoCorrecao}
+          config={config} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erros={errosAnimais} correcao={modoCorrecao} contextoCache={contextoCache} rascunhoCacheId={rascunhoCacheId}
           onUnidade={(unidade) => { if (unidade === unidadePrecoAnimal) return; if (unidade === "LOTE" && !valorLote && modoCorrecao) setValorLote(String(valoresAnimais.reduce((soma, valor) => soma + (valor?.centavos ?? 0), 0) / 100)); setUnidadePrecoAnimal(unidade); setAnimais((atuais) => atuais.map((animal) => { const original = modoCorrecao && unidade === animaisOriginais?.unidade ? animaisOriginais.animais.find((item) => item.animalId === animal.animalId) : undefined; return original ? { ...animal, preco: original.preco, pesoPago: original.pesoPago } : { ...animal, preco: "" }; })); setErrosAnimais({}); limparCampoInvalido("valorLote"); }}
           onValorLote={setValorLote}
           onAdicionar={(novo) => { setAnimais((atuais) => [...atuais, { ...novo, id: Math.max(0, ...atuais.map((animal) => animal.id)) + 1 }]); setErrosAnimais({}); limparCampoInvalido("animais"); }}
           onSalvar={(id, dados) => { setAnimais((atuais) => atuais.map((animal) => animal.id === id ? { ...animal, ...dados } : animal)); setErrosAnimais({}); limparCampoInvalido(`animal-${id}`); }}
           onAtualizar={(id, patch) => { setAnimais((atuais) => atuais.map((animal) => animal.id === id ? { ...animal, ...patch } : animal)); setErrosAnimais(({ [animais.findIndex((animal) => animal.id === id)]: _descartado, ...resto }) => resto); }}
-          onRemover={(id) => { setAnimais((atuais) => atuais.filter((animal) => animal.id !== id)); setErrosAnimais({}); limparCampoInvalido(`animal-${id}`); }}
+          onRemover={(id) => { if (contextoCache) removerCacheAnimal(chaveCacheAnimal(contextoCache, rascunhoCacheId, `edicao:${id}`)); setAnimais((atuais) => atuais.filter((animal) => animal.id !== id)); setErrosAnimais({}); limparCampoInvalido(`animal-${id}`); }}
         />}<ItensOperacao compraAnimais={ehCompraAnimais} deslocamento={ehCompraAnimais ? animais.length : 0} dataFato={data} itens={itens} setItens={alterarListaItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} saidaEstoque={tipo === "VENDA" || tipo === "DEVOLUCAO"} atualizarItem={atualizarItem} alterarProduto={alterarProduto} escolherProdutoItem={escolherProdutoItem} usarProdutoExistente={usarProdutoExistente} conflitosCatalogo={conflitosCatalogo} aceitaCatalogo={TIPOS_COM_CATALOGO.has(tipo)} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erroPartidas={erroPartidas} /></> :<section><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><ArrowUpDown aria-hidden /></span>Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<Input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
         {["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(tipo) && <section className="grid gap-3 rounded-lg border border-border p-4"><h3 className="font-semibold">Evidência do valor disponibilizado</h3><p className="text-sm text-ink-3">Informe o valor comprovado nos itens, inclusive zero quando documentado. Este registro não cria uma compra ou pagamento.</p><label className="text-sm">Referência do inventário ou origem<Input aria-label="Referência do inventário ou origem" required minLength={2} maxLength={200} value={referenciaValor} onChange={e=>setReferenciaValor(e.target.value)} /></label><label className="text-sm">Evidência do valor do inventário<Textarea aria-label="Evidência do valor do inventário" required minLength={5} maxLength={2000} value={evidenciaValor} onChange={e=>setEvidenciaValor(e.target.value)} /></label></section>}
         {compraComComposicao && <section aria-label="Desconto e frete da nota" className="grid items-start gap-4 md:grid-cols-2">

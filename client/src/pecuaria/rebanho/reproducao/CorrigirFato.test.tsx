@@ -90,9 +90,9 @@ it("substitui escore explicitamente mantendo escala declarada e histórico do ex
   vi.mocked(reqV4).mockReset().mockResolvedValue({});
   render(<CorrigirFato tipo="parto" id="p" animalId="a" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
   await esperarOpcao("Substituir escore de 2026-10-14");
-  await alterarControle(screen.getByLabelText("Revisão do escore corporal"),{target:{value:"SUBSTITUIR:e"}});
-  expect((screen.getByLabelText("Mínimo da escala") as HTMLInputElement).value).toBe("1");
-  await alterarControle(screen.getByLabelText("Valor do escore"),{target:{value:"3.5"}});
+  await alterarControle(screen.getByLabelText("Revisão do Escore de condição corporal (ECC)"),{target:{value:"SUBSTITUIR:e"}});
+  expect((screen.getByLabelText("Mínimo da escala *") as HTMLInputElement).value).toBe("1");
+  await alterarControle(screen.getByLabelText("Valor do escore *"),{target:{value:"3.5"}});
   await alterarControle(screen.getByLabelText("Motivo da correção"),{target:{value:"Conferência da leitura original"}});
   fireEvent.click(screen.getByRole("button",{name:"Salvar correção"}));
   await waitFor(()=>expect(reqV4).toHaveBeenCalled());
@@ -112,10 +112,10 @@ it("carrega correção e complementos pelo sítio do fato com outro sítio ativo
   await alterarControle(screen.getByLabelText("Retenção de placenta"), { target: { value: "SIM" } });
   await alterarControle(screen.getByLabelText("Ocorrência sanitária de retenção"), { target: { value: "VINCULAR" } });
   await esperarOpcao(/Retenção no sítio do parto/);
-  await alterarControle(screen.getByLabelText("Ocorrência existente"), { target: { value: "rp7" } });
+  await alterarControle(screen.getByLabelText("Ocorrência existente *"), { target: { value: "rp7" } });
   await alterarControle(screen.getByLabelText("Peso da matriz"), { target: { value: "VINCULAR" } });
   await esperarOpcao("2026-10-13 · 450 kg");
-  await alterarControle(screen.getByLabelText("Pesagem existente"), { target: { value: "peso7" } });
+  await alterarControle(screen.getByLabelText("Pesagem existente *"), { target: { value: "peso7" } });
   expect(reqV4).toHaveBeenCalledWith("/sanidade/ocorrencias?animalId=a", undefined, "GET", 7);
   expect(reqV4).toHaveBeenCalledWith("/animais/a", undefined, "GET", 7);
   await alterarControle(screen.getByLabelText("Motivo da correção"), { target: { value: "Conferência dos complementos do parto" } });
@@ -202,7 +202,7 @@ it("correção que cria ocorrência de RP confirma fato e impacto sem reaplicar 
   render(<CorrigirFato tipo="parto" id="p" animalId="a" propriedadeId={7} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await waitFor(() => expect(screen.getByRole("button", { name: "Salvar correção" })).toHaveProperty("disabled", false));
   await alterarControle(screen.getByLabelText("Retenção de placenta"), { target: { value: "SIM" } }); await alterarControle(screen.getByLabelText("Ocorrência sanitária de retenção"), { target: { value: "CRIAR" } }); await esperarOpcao("Retenção no parto");
-  await alterarControle(screen.getByLabelText("Doença da ocorrência"), { target: { value: "rp" } }); await alterarControle(screen.getByLabelText("Início real da ocorrência"), { target: { value: "2026-10-14" } });
+  await alterarControle(screen.getByLabelText("Doença da ocorrência *"), { target: { value: "rp" } }); await alterarControle(screen.getByLabelText("Início real da ocorrência *"), { target: { value: "2026-10-14" } });
   await alterarControle(screen.getByLabelText("Motivo da correção"), { target: { value: "Completar registro da RP" } });
   fireEvent.submit(document.getElementById("corrigir-fato-v4")!); await screen.findByText("Preparo autorizado · v2");
   expect(vi.mocked(reqV4).mock.calls.some(([p]) => p.endsWith("/correcao"))).toBe(false);

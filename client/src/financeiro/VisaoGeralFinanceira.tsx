@@ -1,3 +1,4 @@
+import { limparCachePendenteContexto } from "./cacheCadastroAnimal";
 import { AtualizandoFinanceiro } from "./CarregamentoFinanceiro";
 import { useTelaPequena } from "./useTelaPequena";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -55,13 +56,13 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     setPreparando(true); setErro(null);
     try {
       if (await obterRascunhoOperacao()) setSubstituirRascunho(true);
-      else abrirFormulario();
+      else { limparCachePendenteContexto(); abrirFormulario(); }
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { setPreparando(false); }
   };
   const descartarEIniciar = async () => {
     setPreparando(true); setErro(null);
-    try { await descartarRascunhoOperacao(); setSubstituirRascunho(false); abrirFormulario(); }
+    try { await descartarRascunhoOperacao(); limparCachePendenteContexto(); setSubstituirRascunho(false); abrirFormulario(); }
     catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { setPreparando(false); }
   };

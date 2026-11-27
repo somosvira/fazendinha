@@ -39,6 +39,7 @@ vi.mock(
   }),
 );
 import { protocolosOperacaoRouter } from "./protocolos-operacao.js";
+import { rebanhoRouter } from "./rebanho.js";
 const id = uid(910),
   tentativaId = uid(911),
   chave = uid(912);
@@ -48,12 +49,14 @@ function app({
   lancar = false,
   valores = false,
   idUsuario = 7,
+  montagemCompleta = false,
 }: Partial<{
   sessao: boolean;
   pecuaria: boolean;
   lancar: boolean;
   valores: boolean;
   idUsuario: number;
+  montagemCompleta: boolean;
 }> = {}) {
   const usuario: UsuarioContexto = {
     id: idUsuario,
@@ -74,7 +77,7 @@ function app({
       if (sessao) c.set("usuario", usuario);
       await next();
     })
-    .route("/", protocolosOperacaoRouter);
+    .route("/", montagemCompleta ? rebanhoRouter : protocolosOperacaoRouter);
 }
 const post = (body: unknown) => ({
   method: "POST",
@@ -224,16 +227,27 @@ it("estimativa de rascunho protege valores também na resposta e valida sítio s
     (await app({ lancar: true }).request("/modelos/estimativa", post(i)))
       .status,
   ).toBe(403);
+  expect(m.estimar).not.toHaveBeenCalled();
   expect(
     (await app({ valores: true }).request("/modelos/estimativa", post(i)))
       .status,
-  ).toBe(403);
-  expect(m.estimar).not.toHaveBeenCalled();
+  ).toBe(200);
   const r = await app({ lancar: true, valores: true }).request(
     "/modelos/estimativa",
-    post(i),
+    { ...post(i), headers: { "Content-Type": "application/json", "X-Propriedade-Id": "7" } },
   );
   expect(r.status).toBe(200);
   expect(await r.json()).toMatchObject({ totalConhecido: "0.00" });
-  expect(m.estimar).toHaveBeenCalledWith({ ...i, referenciasPagina: 1 });
+  expect(m.estimar).toHaveBeenCalledWith({ ...i, referenciasPagina: 1 }, 7);
+  await app({ lancar: true, valores: true }).request("/modelos/estimativa?propriedadeId=999", post(i));
+  expect(m.estimar).toHaveBeenLastCalledWith({ ...i, referenciasPagina: 1 }, null);
+});
+
+it("na montagem do Rebanho a estimativa aceita leitura de valores sem liberar gravação", async () => {
+  const leitor = app({ valores: true, montagemCompleta: true });
+  const rota = "/protocolos/operacao/modelos/estimativa";
+  expect((await leitor.request(rota, post({ etapas: [] }))).status).toBe(200);
+  expect((await leitor.request("/reproducao/protocolos", post({ etapas: [] }))).status).toBe(403);
+  expect((await app({ montagemCompleta: true }).request(rota, post({ etapas: [] }))).status).toBe(403);
+  expect(m.estimar).toHaveBeenCalledOnce();
 });

@@ -1,9 +1,9 @@
-import { Scale } from "lucide-react";
 // Gráfico de linha da evolução do peso do animal — só a curva de peso (decisão #3 do
 // plano "telas finais da v1"); gráficos agregados do lote ficam para depois. Usa o
 // wrapper compartilhado client/src/components/ui/chart.tsx (Recharts), como o financeiro.
 
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { Empty } from "@/financeiro/financeiro-ui";
 import { ChartContainer, ChartTooltip, type ChartConfig } from "../../../components/ui/chart";
 import type { HistoricoPesagem } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
@@ -42,10 +42,12 @@ export function GraficoPeso({ historicoPesagens, desde = null, ate = null }: { h
 
   if (pontos.length < 2) {
     const recortado = noPeriodo.length < historicoPesagens.length && historicoPesagens.length >= 2;
-    return <div className="peso-sem-dados" role="status"><Scale size={28} aria-hidden="true" className="shrink-0 text-mast"/><div>
-      <h3>{historicoPesagens.length === 0 ? "Ainda não há pesagens deste animal" : recortado ? "Poucas pesagens no período selecionado" : "Uma pesagem ainda não forma uma curva"}</h3>
-      <p>{recortado ? "Menos de duas pesagens neste período — escolha um período maior para ver a curva." : "É preciso pelo menos duas pesagens para o gráfico."}</p>
-    </div></div>;
+    return <div role="status">
+      <Empty>
+        <h3>{historicoPesagens.length === 0 ? "Ainda não há pesagens deste animal" : recortado ? "Poucas pesagens no período selecionado" : "Uma pesagem ainda não forma uma curva"}</h3>
+        <p>{recortado ? "Menos de duas pesagens neste período — escolha um período maior para ver a curva." : "É preciso pelo menos duas pesagens para o gráfico."}</p>
+      </Empty>
+    </div>;
   }
 
   return <><ChartContainer config={config} className="h-[220px] w-full aspect-auto overflow-hidden" role="img" aria-label="Evolução do peso do animal ao longo do tempo">

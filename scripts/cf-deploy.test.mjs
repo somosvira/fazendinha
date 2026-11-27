@@ -16,6 +16,8 @@ function executar(target = 'staging', overrides = {}) {
     pnpm: `#!/bin/sh
 printf '%s\n' "$*" >> "$TEST_COMMANDS"
 case "$*" in
+  'exec node scripts/preflight-deploy.mjs')
+    if [ "$TEST_PREFLIGHT_FAIL" = 1 ]; then exit 1; fi ;;
   'exec prisma migrate deploy')
     if [ "$TEST_MIGRATION_FAIL" = 1 ]; then echo 'migration failed'; exit 1; fi
     echo 'No pending migrations to apply.' ;;
@@ -40,7 +42,7 @@ printf '%s' "$TEST_HEALTH"
       DATABASE_URL: url, DIRECT_URL: url,
       WORKERS_CI_COMMIT_SHA: sha, WORKERS_CI_BUILD_UUID: 'test',
       GITHUB_ACTIONS: 'true', GITHUB_REF: target === 'producao' ? 'refs/heads/main' : 'refs/heads/staging', GITHUB_EVENT_NAME: 'push',
-      TEST_COMMANDS: log, TEST_MIGRATION_FAIL: '0', TEST_DEPLOY_FAIL: '0',
+      TEST_COMMANDS: log, TEST_PREFLIGHT_FAIL: '0', TEST_MIGRATION_FAIL: '0', TEST_DEPLOY_FAIL: '0',
       TEST_HEALTH: JSON.stringify({ status: 'ok', database: { connected: true }, config: { ok: true }, migrations: { upToDate: true }, commit: sha }),
       ...overrides,
     } });
@@ -72,6 +74,11 @@ for (const [name, target, env] of [
   assert.notEqual(r.status, 0);
   assert.equal(r.commands, '');
   assert.doesNotMatch(r.stdout + r.stderr, /senha-que-nao-pode-aparecer/);
+});
+test('preflight recusado impede migrations e publicação', () => {
+  const r = executar('staging', { TEST_PREFLIGHT_FAIL: '1' });
+  assert.notEqual(r.status, 0);
+  assert.doesNotMatch(r.commands, /migrate deploy|wrangler|health/);
 });
 test('migration falha impede publicação', () => {
   const r = executar('staging', { TEST_MIGRATION_FAIL: '1' });
