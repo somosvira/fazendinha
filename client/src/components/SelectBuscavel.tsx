@@ -80,7 +80,9 @@ export function SelectBuscavel<T extends OpcaoBuscavel>({ rotulo, valor, onChang
 
   return <div className="grid gap-1.5">
     <label htmlFor={id} className="text-sm font-medium">{rotulo}</label>
-    <Popover open={aberto} onOpenChange={mudarAberto}>
+    {/* modal: dentro de um diálogo, a lista (renderizada fora dele) recebe a rolagem do mouse;
+        sem isso o bloqueio de rolagem do diálogo descartava a roda e as últimas opções ficavam inalcançáveis. */}
+    <Popover modal open={aberto} onOpenChange={mudarAberto}>
       <div className="relative">
         <PopoverTrigger asChild>
           <button ref={gatilho} id={id} type="button" role="combobox" aria-expanded={aberto} aria-haspopup="listbox" aria-invalid={erroCampo ? true : undefined} aria-describedby={erroCampo ? `${id}-erro` : undefined}
