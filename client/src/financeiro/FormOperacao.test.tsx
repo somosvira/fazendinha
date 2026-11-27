@@ -883,7 +883,34 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
     expect((screen.getByRole("button", { name: "Confirmar operação" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("lista os campos pendentes na prévia e só exibe valores e efeitos depois de completar o formulário", async () => {
+  it("prévia progressiva: valores já determináveis aparecem como estimativa junto das pendências", async () => {
+    montar();
+    const previa = screen.getByTestId("conteudo-resumo-operacao");
+    expect(within(previa).queryByText(/Estimativa/)).toBeNull();
+    await alterarControle(screen.getByLabelText("Produto do item 1"), { target: { value: uid(1) } });
+    await alterarControle(screen.getByLabelText("Descrição do item 1"), { target: { value: "Ração" } });
+    await alterarControle(screen.getByLabelText("Valor unitário do item 1"), { target: { value: "10" } });
+    expect(within(previa).getByText("Campos pendentes")).toBeTruthy();
+    expect(within(previa).getByText("Fornecedor ou parceiro")).toBeTruthy();
+    expect(within(previa).getByText(/Estimativa/)).toBeTruthy();
+    expect(within(previa).getByText("Itens da operação")).toBeTruthy();
+    expect(within(previa).getByRole("heading", { name: "Efeitos previstos" })).toBeTruthy();
+    expect(within(previa).queryByRole("heading", { name: "Efeitos ao confirmar" })).toBeNull();
+    await alterarControle(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: uid(1) } });
+    await alterarControle(screen.getByLabelText("Descrição"), { target: { value: "Compra de ração" } });
+    await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
+    expect(within(previa).queryByText("Campos pendentes")).toBeNull();
+    expect(within(previa).queryByText(/Estimativa/)).toBeNull();
+    expect(within(previa).getByRole("heading", { name: "Efeitos ao confirmar" })).toBeTruthy();
+  });
+
+  it("com categoria por item, a seção se chama Centro de custo", () => {
+    montar();
+    expect(screen.getByRole("heading", { name: "Centro de custo" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Categoria e centro" })).toBeNull();
+  });
+
+  it("formulário vazio lista os campos pendentes sem mostrar zeros nem efeitos", async () => {
     montar();
     const previa = screen.getByTestId("conteudo-resumo-operacao");
     const motivo = within(previa).getByText("Campos pendentes");
