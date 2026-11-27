@@ -30,7 +30,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
-import { transacaoPecuaria } from "../transacao.js";
+import { transacaoPecuaria, timeoutTransacaoAnimais } from "../transacao.js";
 import { criarAplicacaoTx } from "../sanidade/aplicacoes.js";
 import { aplicacaoSemCatalogoSchema as aplicacaoSchema } from "../sanidade/aplicacoes.schemas.js";
 import {
@@ -336,7 +336,9 @@ export async function criarProgramacaoTx(
         input.cienciaSanitaria,
       );
     } catch (erro) {
-      if (!(erro instanceof AvisoAptidaoProgramacao) || !input.cienciaAvisosAptidao?.includes(animal.animalId)) throw erro;
+      if (!(erro instanceof AvisoAptidaoProgramacao)) throw erro;
+      const ciente = input.cienciaMotivosAptidao ? input.cienciaMotivosAptidao.some(c => c.animalId === animal.animalId && c.descricao === erro.message && JSON.stringify([...c.motivos].sort()) === JSON.stringify([...erro.motivos].sort())) : input.cienciaAvisosAptidao?.includes(animal.animalId);
+      if (!ciente) throw new RebanhoError("CONFLITO", "Os avisos mudaram. Confira novamente antes de confirmar.", "cienciaMotivosAptidao");
       avisosAptidao.push({ animalId: animal.animalId, mensagem: erro.message });
     }
     const participante = await criarParticipacaoReprodutivaTx(tx, {
@@ -380,7 +382,7 @@ export const criarProgramacao = (
     return operacaoIdempotenteTx(tx, input, usuarioId, "PROGRAMACAO_IATF", () =>
       criarProgramacaoTx(tx, input, usuarioId),
     );
-  });
+  }, { timeout: timeoutTransacaoAnimais(input.animais.length) });
 export const dataNoBrasil = diaIatf;
 /** Adesão individual usa a mesma versão e os mesmos executores, sem criar um grupo. */
 export const participacaoIndividualReprodutivaSchema = z.object({

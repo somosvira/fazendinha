@@ -291,3 +291,17 @@
     grid-column: 1 / -1;
   }
 }
+
+@media (max-width: 760px) {
+  .programar-protocolo { padding-bottom: 6rem; }
+  .programacao-revisao .programacao-acoes { position: fixed; bottom: 0; inset-inline: 0; z-index: 20; display: flex; flex-direction: row; gap: .5rem; padding: .75rem 1rem max(.75rem, env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--border); }
+  .programacao-revisao .programacao-acoes button { flex: 1; min-width: 0; white-space: normal; }
+}
+
+/* O modelo ocupa toda a largura; o rascunho continua montado entre etapas. */
+.programacao-modelo { grid-column: 1 / -1; }
+.programacao-conteudo { max-height: calc(100vh - 12rem); overflow-y: auto; padding-right: .25rem; }
+@media (max-width: 760px) { .programacao-conteudo { max-height: none; overflow: visible; } }
+
+.programacao-base-consumo{display:grid;gap:.2rem;margin:.75rem 0;padding:.75rem;border:1px solid var(--border);border-radius:.5rem;background:var(--muted)}
+.programacao-base-consumo span{font-size:.8125rem;color:var(--muted-foreground)}

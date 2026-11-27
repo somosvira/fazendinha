@@ -208,3 +208,17 @@ it("desabilita seleção da página quando todos os animais exibidos já foram a
   expect(screen.getByRole("checkbox",{name:"Selecionar esta página"})).toHaveProperty("disabled",true);
   expect(screen.getByRole("checkbox",{name:"Atendido Animal 1"}).getAttribute("aria-checked")).toBe("true");
 });
+
+it("agrupa procedimentos antes da paginação e preserva link para procedimento da segunda página", async () => {
+  window.history.replaceState(null, "", "/pecuaria/reproducao/programacoes/g1?protocoloContexto=g1&etapaId=e11");
+  api.cabecalho.mockResolvedValue({ id:"g1", modo:"COLETIVO", tipo:"REPRODUTIVO", nome:"Grupo", protocolo:{id:"p",nome:"IATF",versao:1}, inicioReferencia:"2026-10-19", precisaoTemporal:"DIA", contagens });
+  const itens = Array.from({length:11}, (_, i) => ({ id:`e${i+1}`, nome:`Procedimento ${i+1}`, ordem:i+1, tipo:"MANEJO", diaRelativo:0, unidadeIntervalo:"DIAS", previstaPara:"2026-10-19", precisaoTemporal:"DIA", contagens, momento:{id:"m1",nome:"D0",ordem:1} }));
+  api.etapas.mockImplementation((_ctx, pagina) => Promise.resolve({ itens: itens.slice((pagina-1)*10,pagina*10), total:11, pagina, porPagina:10 }));
+  render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar={false}/>);
+  const grupo = await screen.findByRole("group", { name:"Etapas do protocolo" });
+  expect(within(grupo).getAllByRole("button")).toHaveLength(1);
+  expect(within(grupo).getByRole("button").textContent).toContain("11 procedimentos");
+  expect((await screen.findByRole("button", {name:/Procedimento 11/})).getAttribute("aria-pressed")).toBe("true");
+  await waitFor(() => expect(api.tarefas).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ etapaId:"e11" }), 1));
+  expect(new URL(window.location.href).searchParams.get("etapaId")).toBe("e11");
+});

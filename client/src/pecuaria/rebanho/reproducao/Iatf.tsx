@@ -1,3 +1,4 @@
+import { listarPoliticasAcompanhamento, type PoliticaAcompanhamento } from "./acompanhamento-api";
 import { usePropriedades } from "../../../api/propriedades";
 import "./programar-protocolo.css";
 import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
@@ -12,8 +13,7 @@ import { DatasDiagnosticoIndividual } from "../protocolos/DatasDiagnosticoIndivi
 import "../telas/ficha-geral.css";
 import { CalendarDays, ClipboardList, Info, Users } from "lucide-react";
 import { descreverErroDisponibilidade } from "./elegibilidade-api";
-import { MensagemAvisoAptidao } from "./MensagemAvisoAptidao";
-import { formatBRDateISO } from "../../../lib/hoje";
+import { AvisosProgramacao, ImpedimentosProgramacao, TabelaParticipantesProgramacao, CalendarioProgramacao, ConsumoProgramacao, type GrupoPrevisto, type ConsumoPrevisto, type AvisoProgramacao, type AnimalProgramacao } from "./ConferenciaProgramacao";
 import { PreparacaoAutomacao, type PreparacaoAutomacaoEntrada, type RevisaoRetroativaAutomacao } from "../protocolos/PreparacaoAutomacao";
 import { useAcoesInicioProtocolo } from "../protocolos/useAcoesInicioProtocolo";
 import { ParticipacoesProgramacao } from "./ParticipacoesProgramacao";
@@ -46,6 +46,7 @@ import {
   Empty,
   Panel,
   Pill,
+  TabelaFinanceira,
 } from "../../../financeiro/financeiro-ui";
 import {
   classeInput,
@@ -187,7 +188,7 @@ export const statusTarefaIatf = (t: TarefaIatf) =>
   t.historicoRegularizacao?.at(-1)?.acao === "ENCERRAR_SEM_SUBSTITUICAO" ? "Encerrada sem substituição" : t.realizadaEm ? "Realizada" : t.dispensadaEm ? "Dispensada" : "Pendente";
 export const statusParticipanteIatf = (p: ParticipanteIatf) =>
   p.encerradoEm ? "Encerrada" : p.inicioEfetivo ? "Iniciada" : "Prevista";
-type PreviaInicioColetivo = { protocolo:{nome:string;versao:number}; itens: Array<{id:string;nome:string;previstaPara:string|null;precisaoTemporal:"DIA"|"HORA"}>; total:number; pagina:number; porPagina:number; participantes:Array<{id:string;brinco:string;nome:string|null}>; avisos:string[]; avisosAptidao?: { animalId: string; mensagem: string }[] };
+type PreviaInicioColetivo = { protocolo:{nome:string;versao:number}; itens: Array<{id:string;nome:string;previstaPara:string|null;precisaoTemporal:"DIA"|"HORA"}>; total:number; pagina:number; porPagina:number; participantes:AnimalProgramacao[]; dataReferenciaContexto?:string; todosGrupos?:GrupoPrevisto[]; avisos:string[]; avisosAptidao?: AvisoProgramacao[]; grupos?: GrupoPrevisto[]; totalGrupos?: number; paginaGrupos?: number; consumoPrevisto?: ConsumoPrevisto; impedimentos?: { animalId: string; descricao: string; codigo: string }[] };
 export function Iatf({
   programacaoId, onAbrirProgramacao, onFecharDetalhe, paginaProgramacao = false, onCancelarProgramacao,
   solicitarProgramacao, onProgramacaoAberta, acaoProgramarNoCabecalho = false,
@@ -299,45 +300,67 @@ export function Iatf({
     return () => { remover(); window.removeEventListener("beforeunload", proteger); resolverSaida.current?.(false); resolverSaida.current = null; };
   }, [paginaProgramacao, novo, ocupado]);
   const [nome, setNome] = useState("");
-  const [identificados, setIdentificados] = useState(animais);
-  const receberIdentificados = useCallback((novos: AnimalPlanner[]) => setIdentificados(atuais => [...atuais.filter(a => !novos.some(n => n.animalId === a.animalId)), ...novos.map(a => ({ animalId: a.animalId, brinco: a.brinco ?? "Animal selecionado", nome: a.nome ?? null }))]), []);
-  const animaisConhecidos = [...animais, ...identificados.filter(a => !animais.some(x => x.animalId === a.animalId))];
+  const [identificados, setIdentificados] = useState<Array<{animalId:string;brinco:string;nome:string|null;loteNome?:string|null;aviso?:string|null}>>(animais);
+  const receberIdentificados = useCallback((novos: AnimalPlanner[]) => setIdentificados(atuais => [...atuais.filter(a => !novos.some(n => n.animalId === a.animalId)), ...novos.map(a => ({ animalId: a.animalId, brinco: a.brinco ?? "Animal selecionado", nome: a.nome ?? null, loteNome: a.lote?.nome ?? null, aviso: a.impedimentoProgramacao ?? null }))]), []);
+  const animaisConhecidos = [...identificados, ...animais.filter(a => !identificados.some(x => x.animalId === a.animalId))];
   const [cienciaSanitaria, setCienciaSanitaria] = useState(false);
+  const [haImpedimentoSanitario, setHaImpedimentoSanitario] = useState(false);
   const [chaveProgramacao, setChaveProgramacao] = useState(() =>
     crypto.randomUUID(),
   );
+  const chavesEnvio = useRef(new Map<string, string>());
+  useEffect(() => { chavesEnvio.current.clear(); }, [contexto, novo]);
   const [protocoloId, setProtocoloId] = useState("");
   const [modeloEscolhido, setModeloEscolhido] = useState<{nome:string;versao:number}|null>(null);
   const [inicio, setInicio] = useState("");
+  const [passo, setPasso] = useState(0);
+  const [marcados, setMarcados] = useState<string[]>([]);
+  const [confirmarRetirada, setConfirmarRetirada] = useState(false);
   const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [retirados, setRetirados] = useState<string[]>([]);
+  const [ciencias, setCiencias] = useState<AvisoProgramacao[]>([]);
+  const receberCiencias = useCallback((avisos: AvisoProgramacao[]) => setCiencias(avisos), []);
+  useEffect(() => { setRetirados([]); setMarcados([]); setPasso(0); }, [sitioEfetivo, contexto, novo]);
   const [diagnosticosIndividuais,setDiagnosticosIndividuais]=useState<Record<string,string>>({});
   programacaoAlterada.current = !!(nome || protocoloId || inicio || selecionados.length || Object.keys(diagnosticosIndividuais).length);
   useEffect(()=>setDiagnosticosIndividuais({}),[contexto,novo]);
   const modeloInicioId = novo === "participantes" ? detalhe?.protocolo.id ?? "" : novo ? protocoloId : "";
   const modeloInicio = useAcoesInicioProtocolo(modeloInicioId, sitioEfetivo ?? undefined);
+  const [politicaDg, setPoliticaDg] = useState<PoliticaAcompanhamento | null | undefined>(undefined);
+  useEffect(() => { let ativo = true; setPoliticaDg(undefined); if (paginaProgramacao && novo && modeloInicioId && sitioEfetivo != null) void listarPoliticasAcompanhamento(sitioEfetivo).then(politicas => { if (ativo) { const hoje = new Date().toLocaleDateString("en-CA", {timeZone:"America/Sao_Paulo"}); setPoliticaDg(politicas.filter(p => p.vigenteDesde.slice(0,10) <= hoje).sort((a,b) => b.vigenteDesde.localeCompare(a.vigenteDesde))[0] ?? null); } }).catch(() => { if (ativo) setPoliticaDg(undefined); }); return () => { ativo = false; }; }, [paginaProgramacao, novo, modeloInicioId, sitioEfetivo]);
+  const regrasDg = modeloInicio.modelo?.configuracaoAcompanhamento?.regras.filter(r => r.finalidade === "DIAGNOSTICO") ?? [];
+  const prazosDg = (["IA", "TE", "COBERTURA"] as const).map(tipo => {
+    const regra = regrasDg.find(r => r.publico === tipo);
+    if (regra) return `${tipo}: ${regra.intervalo} dias (versão)`;
+    const sitio = politicaDg?.parametros;
+    const prazoSitio = sitio?.versao === 1 ? sitio.diagnostico?.diasAposTentativa : sitio?.regras.find(r => r.finalidade === "DIAGNOSTICO" && r.publico === tipo)?.intervalo;
+    return prazoSitio == null ? `${tipo}: sem prazo configurado` : `${tipo}: ${prazoSitio} dias (sítio)`;
+  });
+  const resumoDg = politicaDg === undefined && regrasDg.length < 3 ? `${prazosDg.join(" · ")}. Regra do sítio não consultada.` : `${prazosDg.join(" · ")}. O prazo é contado após a tentativa realizada.`;
   const identidadePreparo = `${modeloInicioId}:${inicio}:${selecionados.join(",")}:${sitioEfetivo}`;
+  useEffect(() => { setCiencias([]); }, [identidadePreparo]);
   const [preparo, setPreparo] = useState<{identidade:string;entradas:PreparacaoAutomacaoEntrada[];pronta:boolean;revisoes:RevisaoRetroativaAutomacao[]}|null>(null);
   const temAutomaticas = modeloInicio.etapas?.some(e=>e.momento?.politicaExecucao==="AUTOMATICA_EXCECAO")??false;
   const automacaoPronta = !temAutomaticas || preparo?.identidade===identidadePreparo && preparo.pronta;
-  const receberPreparo = useCallback((entradas:PreparacaoAutomacaoEntrada[],pronta:boolean,revisoes:RevisaoRetroativaAutomacao[]=[])=>{setPreparo({identidade:identidadePreparo,entradas,pronta,revisoes});setChaveProgramacao(crypto.randomUUID());},[identidadePreparo]);
+  const receberPreparo = useCallback((entradas:PreparacaoAutomacaoEntrada[],pronta:boolean,revisoes:RevisaoRetroativaAutomacao[]=[])=>{setPreparo({identidade:identidadePreparo,entradas,pronta,revisoes});},[identidadePreparo]);
   const identidadeConferencia = JSON.stringify({ contexto, novo, nome, modeloInicioId, inicio, selecionados, diagnosticosIndividuais, cienciaSanitaria, preparo });
   const identidadeConferenciaAtual = useRef(identidadeConferencia);
   identidadeConferenciaAtual.current = identidadeConferencia;
   const [conferenciaInicio, setConferenciaInicio] = useState<{identidade:string;dados:PreviaInicioColetivo; aguardaCiencia?: boolean}|null>(null);
   const conferenciaAtual = conferenciaInicio?.identidade === identidadeConferencia ? conferenciaInicio : null;
-  const previaInicio = conferenciaAtual?.aguardaCiencia ? null : conferenciaAtual?.dados ?? null;
+  const previaInicio = conferenciaAtual?.dados ?? null;
   async function conferirInicio(pagina=1) {
     const identidade = identidadeConferencia;
     const dados = await reqProtocolo<PreviaInicioColetivo>("/programacoes/previa", prop(), { propriedadeId: prop(), protocoloId: modeloInicioId, inicioReferencia: dataHoraISO(inicio), animaisIds: selecionados, cienciaSanitaria, ...(paginaProgramacao && novo === "programacao" ? { aptidaoComoAviso: true } : {}), pagina, porPagina:10 });
-    if (identidadeConferenciaAtual.current !== identidade) return;
+    if (identidadeConferenciaAtual.current !== identidade) return false;
     if (!dados?.protocolo || typeof dados.protocolo.nome !== "string" || !dados.protocolo.nome.trim() || !Number.isInteger(dados.protocolo.versao) || !Array.isArray(dados.itens) || !Array.isArray(dados.participantes) || !Array.isArray(dados.avisos)) {
       setConferenciaInicio(null);
       throw new Error("A conferência retornou dados incompletos. Seu rascunho foi preservado; tente conferir o calendário novamente.");
     }
-    const avisosAnteriores = previaInicio?.avisosAptidao ?? [];
-    const aguardaCiencia = dados.avisosAptidao?.some(aviso =>
-      !avisosAnteriores.some(anterior => anterior.animalId === aviso.animalId && anterior.mensagem === aviso.mensagem));
-    setConferenciaInicio({ identidade, dados, aguardaCiencia });
+    setHaImpedimentoSanitario((dados.impedimentos ?? []).some(item => /sanitári|sanitari/i.test(item.descricao)));
+    if (previaInicio && JSON.stringify(previaInicio.avisosAptidao ?? []) !== JSON.stringify(dados.avisosAptidao ?? [])) setCiencias([]);
+    setConferenciaInicio({ identidade, dados });
+    return true;
   }
   const [operacaoRevisao, setOperacaoRevisao] = useState(0);
   const [acao, setAcao] = useState<{
@@ -454,7 +477,7 @@ export function Iatf({
     indicacaoAberta.current = pedidoIndicacao;
     const url = new URL(window.location.href);
     if (url.searchParams.get("acao") === "prepararIatf") { url.searchParams.delete("acao"); url.searchParams.delete("animalIndicado"); url.searchParams.delete("pedidoPreparacao"); window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash); }
-    setSelecionados([...new Set(indicacaoIds)].slice(0, 100));
+    setSelecionados([...new Set(indicacaoIds)]);
     setNome("");
     setInicio("");
     setProtocoloId("");
@@ -489,16 +512,6 @@ export function Iatf({
   return (
     <div className="protocolos-pagina protocolos-superficie space-y-5">
       <ConfirmDialog open={confirmarSaida} title="Descartar programação?" message="A preparação ainda não foi salva." confirmLabel="Descartar" cancelLabel="Continuar editando" onConfirm={() => { setConfirmarSaida(false); resolverSaida.current?.(true); }} onCancel={() => { setConfirmarSaida(false); resolverSaida.current?.(false); }} />
-      {conferenciaAtual?.aguardaCiencia && <ConfirmDialog
-        open title="Avisos de aptidão" confirmLabel="Continuar para conferência" cancelLabel="Revisar seleção"
-        message={<ul className="max-h-[45vh] space-y-2 overflow-y-auto">
-          {conferenciaAtual.dados.avisosAptidao?.map(aviso => <li key={aviso.animalId}>
-            <MensagemAvisoAptidao mensagem={aviso.mensagem} />
-          </li>)}
-        </ul>}
-        onConfirm={() => setConferenciaInicio({ ...conferenciaAtual, aguardaCiencia: false })}
-        onCancel={() => setConferenciaInicio(null)}
-      />}
       {!paginaProgramacao && <ErrorBox erro={erro} />}
       {modo === "operacao" && !programacaoId && !paginaProgramacao && <Panel>
         <div className="repro-consulta-titulo"><h2>Protocolos</h2><div className="flex gap-1" role="group" aria-label="Situação dos protocolos">
@@ -618,7 +631,7 @@ export function Iatf({
         onNovaVersao={p=>abrirCadastro(p,true)} onConcluir={p=>abrirCadastro(p,false)}
         onInativar={p=>void executar(async()=>{await reqIatf(`/reproducao/protocolos/${p.id}/inativar`,{});await carregar();})}/>}
       {novo && (
-        <SuperficieProgramacao pagina={paginaProgramacao && novo === "programacao"} conferencia={!!previaInicio} onVoltarPreparacao={() => setConferenciaInicio(null)} resumo={<dl className="programacao-resumo"><dt>Sítio</dt><dd><NomeSitioProgramacao id={sitioEfetivo}/></dd><dt>Modelo</dt><dd>{modeloEscolhido ? `${modeloEscolhido.nome} · versão ${modeloEscolhido.versao}` : "Não selecionado"}</dd><dt>Participantes</dt><dd>{selecionados.length} {selecionados.length === 1 ? "animal" : "animais"}</dd><dt>Início previsto</dt><dd>{inicio ? horarioIatf(dataHoraISO(inicio), inicio.includes("T") ? "HORA" : "DIA").replace(" · horário não informado", "") : "Não definido"}</dd></dl>}
+        <SuperficieProgramacao pagina={paginaProgramacao && novo === "programacao"} passo={passo} resumo={<dl className="programacao-resumo"><dt>Sítio</dt><dd><NomeSitioProgramacao id={sitioEfetivo}/></dd><dt>Modelo</dt><dd>{modeloEscolhido ? `${modeloEscolhido.nome} · versão ${modeloEscolhido.versao}` : "Não selecionado"}</dd><dt>Participantes</dt><dd>{selecionados.length} {selecionados.length === 1 ? "animal" : "animais"}</dd><dt>Início previsto</dt><dd>{inicio ? horarioIatf(dataHoraISO(inicio), inicio.includes("T") ? "HORA" : "DIA").replace(" · horário não informado", "") : "Não definido"}</dd></dl>}
           aberto
           largura="sm:max-w-3xl"
           titulo={novo === "participantes" ? "Adicionar ou reintegrar participantes" : "Programar protocolo"}
@@ -626,13 +639,15 @@ export function Iatf({
           bloqueado={ocupado}
           rodape={
             <>
-              <Button secondary onClick={() => { if (paginaProgramacao) void executarComGuardaNavegacao(() => onCancelarProgramacao?.()); else setNovo(null); }}>
-                Cancelar
-              </Button>
-              {previaInicio && !paginaProgramacao && <Button secondary disabled={ocupado} onClick={() => setConferenciaInicio(null)}>Editar preparação</Button>}
-              <Button type="submit" form="novo-iatf" disabled={ocupado || !modeloInicio.etapas || !automacaoPronta || !selecionados.length}>
-                {previaInicio ? "Confirmar programação" : paginaProgramacao ? "Ir para conferência" : "Conferir calendário"}
-              </Button>
+              {paginaProgramacao && novo === "programacao" ? <>
+                <Button type="button" secondary disabled={ocupado} onClick={() => { if (passo > 0) setPasso(passo - 1); else void executarComGuardaNavegacao(() => onCancelarProgramacao?.()); }}>Voltar</Button>
+                {passo < 3 ? <Button type="button" disabled={ocupado} onClick={() => void executar(async () => {
+                  if (passo === 0 && (!nome.trim() || nome.trim().length < 2 || !protocoloId || !inicio || !modeloInicio.etapas)) throw new Error("Informe nome, modelo publicado e início previsto.");
+                  if (passo === 1) { if (!selecionados.length) throw new Error("Selecione ao menos um animal."); if (!automacaoPronta) throw new Error("Conclua a preparação das etapas automáticas."); if (!await conferirInicio()) return false; }
+                  if (passo === 2 && !previaInicio) { if (!await conferirInicio()) return false; }
+                  setPasso(passo + 1); return false;
+                })}>{passo === 0 ? "Ir para animais" : passo === 1 ? "Conferir insumos" : "Ir para conferência"}</Button> : <Button type="submit" form="novo-iatf" disabled={ocupado || !previaInicio || !!previaInicio.impedimentos?.length || !!previaInicio.avisosAptidao?.some(aviso => !ciencias.some(c => c.animalId === aviso.animalId && c.descricao === aviso.descricao && JSON.stringify(c.motivos) === JSON.stringify(aviso.motivos)))}>Confirmar programação</Button>}
+              </> : <><Button secondary onClick={() => setNovo(null)}>Cancelar</Button>{previaInicio && <Button secondary disabled={ocupado} onClick={() => setConferenciaInicio(null)}>Editar preparação</Button>}<Button type="submit" form="novo-iatf" disabled={ocupado || !modeloInicio.etapas || !automacaoPronta || !selecionados.length || !!previaInicio?.impedimentos?.length}> {previaInicio ? "Confirmar programação" : "Conferir calendário"}</Button></>}
             </>
           }
         >
@@ -642,13 +657,20 @@ export function Iatf({
             onSubmit={(e) => {
               e.preventDefault();
               void executar(async () => {
+                if (paginaProgramacao && novo === "programacao" && passo !== 3) throw new Error("Conclua a conferência antes de confirmar.");
+                if (previaInicio?.impedimentos?.length || previaInicio?.avisosAptidao?.some(aviso => !ciencias.some(c => c.animalId === aviso.animalId && c.descricao === aviso.descricao && JSON.stringify(c.motivos) === JSON.stringify(aviso.motivos)))) throw new Error("Revise os impedimentos e confirme ciência dos avisos antes de continuar.");
                 if(!modeloInicio.etapas || !automacaoPronta)throw new Error("Conclua a preparação das etapas automáticas antes de confirmar.");
-                if (!previaInicio) { await conferirInicio(); return false; }
+                if (!previaInicio) { if (paginaProgramacao && novo === "programacao") throw new Error("Confira novamente a programação antes de confirmar."); await conferirInicio(); return false; }
+                const cienciasCanonicas = [...ciencias].sort((a, b) => a.animalId.localeCompare(b.animalId) || JSON.stringify([a.motivos, a.descricao]).localeCompare(JSON.stringify([b.motivos, b.descricao])));
+                const identidadeEnvio = JSON.stringify({ contexto, novo, nome, modeloInicioId, inicio, selecionados, diagnosticosIndividuais, cienciaSanitaria, ciencias: cienciasCanonicas, preparo });
+                const chaveAtual = chavesEnvio.current.get(identidadeEnvio) ?? (chavesEnvio.current.size ? crypto.randomUUID() : chaveProgramacao);
+                chavesEnvio.current.set(identidadeEnvio, chaveAtual);
+                let programacaoCriada: { id: string } | undefined;
                 if (novo === "participantes" && detalhe)
                   await reqIatf(
                     `/reproducao/programacoes/${detalhe.id}/participantes`,
                     {
-                      chave: chaveProgramacao,
+                      chave: chaveAtual,
                       propriedadeId: prop(),
                       cienciaSanitaria,
                       ...(temAutomaticas ? {automacoes:preparo!.entradas,revisaoRetroativa:preparo!.revisoes} : {}),
@@ -659,31 +681,33 @@ export function Iatf({
                       })),
                     },
                   );
-                else
-                  await reqIatf("/reproducao/programacoes", {
-                    chave: chaveProgramacao,
+                else try {
+                  programacaoCriada = await reqIatf<{ id: string }>("/reproducao/programacoes", {
+                    chave: chaveAtual,
                     propriedadeId: prop(),
                     nome,
                     cienciaSanitaria,
                     protocoloId,
                     ...(previaInicio.avisosAptidao?.length
-                      ? { cienciaAvisosAptidao: previaInicio.avisosAptidao.map(aviso => aviso.animalId) }
+                      ? { cienciaMotivosAptidao: cienciasCanonicas.map(({ animalId, motivos, descricao }) => ({ animalId, motivos, descricao })) }
                       : {}),
                     ...(temAutomaticas ? {automacoes:preparo!.entradas,revisaoRetroativa:preparo!.revisoes} : {}),
                     inicioPrevisto: dataHoraISO(inicio),
                     animais: selecionados.map((animalId) => ({ animalId, ...(diagnosticosIndividuais[animalId]?{diagnosticoIndividualEm:diagnosticosIndividuais[animalId]}:{}) })),
                   });
+                } catch (erro) { if (erro instanceof Error && (("code" in erro && erro.code === "CONFLITO" && "campo" in erro && erro.campo === "cienciaMotivosAptidao") || erro.message.includes("Os avisos mudaram"))) { setCiencias([]); await conferirInicio(); } throw erro; }
                 if (contextoAtual.current !== contexto) return;
+                if (paginaProgramacao && !programacaoCriada?.id) throw new Error("A confirmação não retornou a identificação da programação. Confira a lista antes de tentar novamente.");
                 setNovo(null);
-                if (paginaProgramacao) { liberarSaidaProgramacao.current = true; onCancelarProgramacao?.(); }
+                if (paginaProgramacao && programacaoCriada?.id) { liberarSaidaProgramacao.current = true; onAbrirProgramacao?.(programacaoCriada.id); return; }
                 await carregar();
                 if (detalhe) await abrir(detalhe.id);
               });
             }}
           >
             <ErrorBox erro={erro} />
-            <fieldset className={previaInicio ? "hidden" : "grid gap-4"} hidden={!!previaInicio} disabled={!!previaInicio || ocupado}>
-            <section className={paginaProgramacao ? "programacao-bloco programacao-identificacao" : "contents"}>
+            <fieldset className={(!paginaProgramacao && previaInicio) || (paginaProgramacao && passo >= 2) ? "hidden" : "grid gap-4"} hidden={(!paginaProgramacao && !!previaInicio) || (paginaProgramacao && passo >= 2)} disabled={(!paginaProgramacao && !!previaInicio) || (paginaProgramacao && passo >= 2) || ocupado}>
+            <section hidden={paginaProgramacao && passo !== 0} className={paginaProgramacao ? "programacao-bloco programacao-identificacao" : "contents"}>
             {paginaProgramacao && <h2>Identificação e calendário</h2>}
             <div className={paginaProgramacao ? "programacao-campos" : "contents"}>
             {novo !== "participantes" && (
@@ -699,17 +723,18 @@ export function Iatf({
               </label>
             )}
                 {novo !== "participantes" && (
-                  paginaProgramacao ? <EscolhaModeloProgramacao modeloAtual={modeloEscolhido} onEscolhido={setModeloEscolhido} valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} /> : <SeletorVersaoProtocolo tipo="REPRODUTIVO" rotulo="Versão publicada" valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} />
+                  paginaProgramacao ? <div className="programacao-modelo"><EscolhaModeloProgramacao modeloAtual={modeloEscolhido} onEscolhido={setModeloEscolhido} valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={id => { setProtocoloId(id); setCienciaSanitaria(false); }} /></div> : <SeletorVersaoProtocolo tipo="REPRODUTIVO" rotulo="Versão publicada" valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} />
                 )}
-                <CampoDataIatf rotulo="Início previsto" valor={inicio} onChange={setInicio}
+                <CampoDataIatf rotulo="Início previsto" valor={inicio} onChange={valor => { setInicio(valor); if (paginaProgramacao) setCienciaSanitaria(false); }}
                   className={paginaProgramacao ? "programacao-data" : undefined} />
                 {modeloInicioId && !modeloInicio.etapas && !modeloInicio.erro && <p role="status">Carregando etapas da versão…</p>}
+                {paginaProgramacao && modeloInicio.etapas && <EstruturaModeloProgramacao key={modeloInicioId} etapas={modeloInicio.etapas}/>}
                 <ErrorBox erro={modeloInicio.erro}/>
                 {modeloInicio.erro && <Button secondary onClick={modeloInicio.recarregar}>Atualizar etapas</Button>}
                 </div></section>
-                <section className={paginaProgramacao ? "programacao-bloco" : "contents"}>
+                <section hidden={paginaProgramacao && passo !== 1} className={paginaProgramacao ? "programacao-bloco" : "contents"}>
                 {paginaProgramacao && !sitioEfetivo && <h2>Participantes</h2>}
-                {(!paginaProgramacao || selecionados.some(id => animais.find(a => a.animalId === id)?.restricoes?.length) || /sanitári|sanitari/i.test(erro ?? "")) && <label className="text-sm">
+                {(!paginaProgramacao || cienciaSanitaria || haImpedimentoSanitario || selecionados.some(id => animais.find(a => a.animalId === id)?.restricoes?.length) || /sanitári|sanitari/i.test(erro ?? "")) && <label className="text-sm">
                   <input
                     type="checkbox"
                     checked={cienciaSanitaria}
@@ -718,17 +743,20 @@ export function Iatf({
                   Confirmo ciência dos alertas sanitários configurados para
                   estes animais, quando aplicáveis.
                 </label>}
-                {(animaisIndicadosInicialmente?.length ?? 0) > 100 && <p className="text-sm">
-                  A programação aceita até 100 animais. Revise este subconjunto; os demais indicados continuam disponíveis para outra programação.
-                </p>}
-                {!paginaProgramacao && <p className="text-sm">Participantes: {selecionados.length}/100</p>}
-                {!paginaProgramacao ? <ListaRascunho itens={animais} rotulo="animais disponíveis" texto={a => `${a.brinco} ${a.nome ?? ""}`} renderizar={a => <label key={a.animalId}><input type="checkbox" checked={selecionados.includes(a.animalId)} disabled={!selecionados.includes(a.animalId) && selecionados.length >= 100} onChange={e => setSelecionados(e.target.checked ? [...selecionados, a.animalId] : selecionados.filter(id => id !== a.animalId))}/>{a.brinco} {a.nome}</label>}/> : sitioEfetivo ? <SelecaoAnimaisProgramacao key={sitioEfetivo} propriedadeId={sitioEfetivo} data={inicio.slice(0,10)} inicio={inicio} selecionados={selecionados} onSelecionados={setSelecionados} onIdentificados={receberIdentificados} /> : <p>Informe a data de início para consultar os animais no sítio.</p>}
-                {paginaProgramacao && !!selecionados.length && <details><summary>Revisar {selecionados.length} animais selecionados</summary><ListaRascunho itens={selecionados} rotulo="selecionados" texto={id => animaisConhecidos.find(a => a.animalId === id)?.brinco ?? id} renderizar={id => <label className="flex gap-2 py-2" key={id}><input type="checkbox" checked onChange={() => setSelecionados(ids => ids.filter(a => a !== id))}/>{animaisConhecidos.find(a => a.animalId === id)?.brinco ?? "Animal selecionado"} · {animaisConhecidos.find(a => a.animalId === id)?.nome ?? "Sem nome"}</label>}/></details>}
-                <DatasDiagnosticoIndividual animais={selecionados.map(id=>({id,brinco:animaisConhecidos.find(a=>a.animalId===id)?.brinco??"Animal selecionado",nome:animaisConhecidos.find(a=>a.animalId===id)?.nome}))} valores={diagnosticosIndividuais} onChange={(id,data)=>{setDiagnosticosIndividuais(v=>({...v,[id]:data}));setChaveProgramacao(crypto.randomUUID());}}/>
+                {!paginaProgramacao && <p className="text-sm">Participantes: {selecionados.length}{novo === "participantes" ? "/100" : ""}</p>}
+                {!paginaProgramacao ? <ListaRascunho itens={animais} rotulo="animais disponíveis" texto={a => `${a.brinco} ${a.nome ?? ""}`} renderizar={a => <label key={a.animalId}><input type="checkbox" checked={selecionados.includes(a.animalId)} disabled={novo === "participantes" && !selecionados.includes(a.animalId) && selecionados.length >= 100} onChange={e => setSelecionados(e.target.checked ? [...selecionados, a.animalId] : selecionados.filter(id => id !== a.animalId))}/>{a.brinco} {a.nome}</label>}/> : sitioEfetivo ? <SelecaoAnimaisProgramacao key={sitioEfetivo} propriedadeId={sitioEfetivo} data={inicio.slice(0,10)} inicio={inicio} selecionados={selecionados} onSelecionados={ids => { setSelecionados(ids); setCienciaSanitaria(false); setMarcados([]); setRetirados([]); }} onIdentificados={receberIdentificados} /> : <p>Informe a data de início para consultar os animais no sítio.</p>}
+                {paginaProgramacao && !!selecionados.length && <><h3>Animais selecionados</h3><TabelaParticipantesProgramacao animais={selecionados.map(id => { const a = animaisConhecidos.find(item => item.animalId === id); return { id, brinco: a?.brinco ?? "Animal selecionado", nome: a?.nome ?? null, loteNome: "loteNome" in (a ?? {}) ? (a as {loteNome?:string|null}).loteNome : null, aviso: "aviso" in (a ?? {}) ? (a as {aviso?:string|null}).aviso : null }; })} marcados={marcados} onMarcar={setMarcados}/><Button type="button" secondary disabled={!marcados.length} onClick={() => setConfirmarRetirada(true)}>Retirar marcados ({marcados.length})</Button></>}
+                {paginaProgramacao && !!retirados.length && <Button type="button" secondary onClick={() => { setSelecionados(ids => [...ids, ...retirados.filter(id => !ids.includes(id))]); setCienciaSanitaria(false); setRetirados([]); }}>Desfazer última retirada ({retirados.length})</Button>}
+                <ConfirmDialog open={confirmarRetirada} title="Retirar animais do grupo?" message={<><p>{marcados.length} {marcados.length === 1 ? "animal será retirado" : "animais serão retirados"}:</p><p>{marcados.map(id => animaisConhecidos.find(a => a.animalId === id)?.brinco ?? "Animal selecionado").join(", ")}</p></>} confirmLabel="Retirar" focoInicial="cancelar" onCancel={() => setConfirmarRetirada(false)} onConfirm={() => { setSelecionados(ids => ids.filter(id => !marcados.includes(id))); setCienciaSanitaria(false); setRetirados(marcados); setMarcados([]); setConfirmarRetirada(false); }}/>
+
+                {!paginaProgramacao && <DatasDiagnosticoIndividual animais={selecionados.map(id=>({id,brinco:animaisConhecidos.find(a=>a.animalId===id)?.brinco??"Animal selecionado",nome:animaisConhecidos.find(a=>a.animalId===id)?.nome}))} valores={diagnosticosIndividuais} onChange={(id,data)=>{setDiagnosticosIndividuais(v=>({...v,[id]:data}));setChaveProgramacao(crypto.randomUUID());}}/>}
+                {paginaProgramacao && modeloInicioId && <section className="programacao-bloco"><h2>Acompanhamento</h2><p><strong>Diagnóstico de gestação</strong></p><p>{resumoDg} A data depende do registro da tentativa.</p></section>}
                 {temAutomaticas && modeloInicio.etapas && sitioEfetivo != null && selecionados.length > 0 && <PreparacaoAutomacao protocoloId={modeloInicioId} etapas={modeloInicio.etapas} animais={selecionados.map(id=>({id,brinco:animaisConhecidos.find(a=>a.animalId===id)?.brinco??id}))} propriedadeId={sitioEfetivo} inicio={inicio} onChange={receberPreparo}/>}
                 </section>
             </fieldset>
-            {previaInicio && <section className="programacao-conferencia" aria-label="Conferência do início coletivo">
+            {paginaProgramacao && passo === 2 && previaInicio?.consumoPrevisto && <ConsumoProgramacao consumo={previaInicio.consumoPrevisto} total={selecionados.length}/>}
+            {previaInicio && (!paginaProgramacao || passo === 3) && <section className="programacao-conferencia" aria-label="Conferência do início coletivo">
+
               <section className="programacao-bloco">
                 <header className="programacao-conferencia-cabecalho">
                   <CalendarDays size={20} aria-hidden />
@@ -738,30 +766,12 @@ export function Iatf({
                       {!paginaProgramacao && <> · {previaInicio.protocolo.nome} · versão {previaInicio.protocolo.versao}</>}
                     </p>
                   </div>
-                  <span className="programacao-conferencia-total">{previaInicio.total} {previaInicio.total === 1 ? "etapa" : "etapas"}</span>
+                  <span className="programacao-conferencia-total">{previaInicio.totalGrupos ?? previaInicio.total} {(previaInicio.totalGrupos ?? previaInicio.total) === 1 ? "etapa" : "etapas"} · {previaInicio.total} {previaInicio.total === 1 ? "procedimento" : "procedimentos"}</span>
                 </header>
-                <ol className="programacao-calendario">
-                  {previaInicio.itens.map(etapa => {
-                    const revisao = preparo?.revisoes.find(r => r.etapaId === etapa.id);
-                    const automatica = modeloInicio.etapas?.find(a => a.id === etapa.id)?.momento?.politicaExecucao === "AUTOMATICA_EXCECAO";
-                    const modo = revisao?.decisao === "DISPENSAR" ? "Dispensa preparada"
-                      : revisao ? "Registro manual" : automatica ? "Execução automática" : "Confirmação obrigatória";
-                    return <li key={etapa.id}>
-                      <div className="programacao-calendario-data">
-                        {etapa.previstaPara
-                          ? <time dateTime={etapa.previstaPara}>{horarioIatf(etapa.previstaPara, etapa.precisaoTemporal).replace(" · horário não informado", "")}</time>
-                          : <span>Horário a definir</span>}
-                      </div>
-                      <div>
-                        <strong>{etapa.nome}</strong>
-                        {revisao && <p className="text-sm text-muted-foreground">{revisao.motivo}</p>}
-                      </div>
-                      <span className="programacao-calendario-modo" data-automatica={automatica && !revisao}>{modo}</span>
-                    </li>;
-                  })}
-                </ol>
-                {previaInicio.total > 10 && <Paginacao paginaAtual={previaInicio.pagina} totalPaginas={Math.ceil(previaInicio.total / 10)}
-                  totalItens={previaInicio.total} itensPorPagina={10}
+                {paginaProgramacao && <p>{resumoDg} A data depende do registro da tentativa.</p>}
+              <CalendarioProgramacao grupos={(paginaProgramacao ? previaInicio.todosGrupos : previaInicio.grupos) ?? previaInicio.itens.map(p => ({ id: p.id, nome: p.nome, legado: true, procedimentos: [p] }))} modo={id => { const revisoes = preparo?.revisoes.filter(r => r.etapaId === id) ?? []; return revisoes.length ? <span>{revisoes.map(r => <span className="block" key={`${r.animalId}:${r.etapaId}`}>{animaisConhecidos.find(a => a.animalId === r.animalId)?.brinco ?? "Animal selecionado"}: {r.decisao === "DISPENSAR" ? "Dispensa preparada" : "Registro manual"} · {r.motivo}</span>)}</span> : modeloInicio.etapas?.find(e => e.id === id)?.momento?.politicaExecucao === "AUTOMATICA_EXCECAO" ? "Execução automática" : "Confirmação obrigatória"; }}/>
+                {!paginaProgramacao && (previaInicio.totalGrupos ?? previaInicio.total) > 10 && <Paginacao paginaAtual={previaInicio.paginaGrupos ?? previaInicio.pagina} totalPaginas={Math.ceil((previaInicio.totalGrupos ?? previaInicio.total) / 10)}
+                  totalItens={previaInicio.totalGrupos ?? previaInicio.total} itensPorPagina={10}
                   onPaginaChange={p => void executar(async () => { await conferirInicio(p); return false; })}
                   rotulo="etapas previstas" idSelect="previa-coletiva-etapas" />}
               </section>
@@ -771,15 +781,16 @@ export function Iatf({
                   <h3>Participantes</h3>
                   <span className="programacao-conferencia-total">{previaInicio.participantes.length} {previaInicio.participantes.length === 1 ? "animal" : "animais"}</span>
                 </header>
-                <ListaRascunho itens={previaInicio.participantes} rotulo="animais selecionados"
-                  texto={previaInicio.participantes.length > 5 ? a => `${a.brinco} ${a.nome ?? ""}` : undefined}
-                  renderizar={a => <div key={a.id} className="programacao-conferencia-animal">
-                    <span><strong>{a.brinco}</strong>{a.nome && <> · {a.nome}</>}</span>
-                    {diagnosticosIndividuais[a.id] && <span className="programacao-calendario-modo">
-                      DG individual · {formatBRDateISO(diagnosticosIndividuais[a.id])}
-                    </span>}
-                  </div>} />
+                {Object.entries(diagnosticosIndividuais).filter(([id]) => previaInicio.participantes.some(a => a.id === id)).map(([id, data]) => <p key={id}>DG individual legado · {previaInicio.participantes.find(a => a.id === id)?.brinco}: {data.split("-").reverse().join("/")}</p>)}
+                {paginaProgramacao && <p>Contexto em {previaInicio.dataReferenciaContexto?.split("-").reverse().join("/") ?? "data não informada"}.</p>}
+                <TabelaParticipantesProgramacao contexto={paginaProgramacao} animais={previaInicio.participantes.map(a => ({ ...a, aviso: previaInicio.avisosAptidao?.find(aviso => aviso.animalId === a.id)?.descricao ?? previaInicio.impedimentos?.find(item => item.animalId === a.id)?.descricao }))}/>
               </section>
+              <div>{previaInicio.consumoPrevisto && <ConsumoProgramacao consumo={previaInicio.consumoPrevisto} total={selecionados.length}/>}</div>
+              <div>
+              {paginaProgramacao && !previaInicio.impedimentos?.length && !previaInicio.avisosAptidao?.length && <section className="programacao-bloco"><h3>Avisos do grupo</h3><p>Nenhum aviso para os animais selecionados.</p></section>}
+              <ImpedimentosProgramacao itens={previaInicio.impedimentos ?? []} animais={previaInicio.participantes}/>
+              <AvisosProgramacao aceitos={ciencias} avisos={previaInicio.avisosAptidao ?? []} animais={previaInicio.participantes} onCiencia={receberCiencias}/>
+              </div>
               {(temAutomaticas || previaInicio.avisos.length > 0) && <aside className="programacao-conferencia-aviso" aria-label="Avisos da confirmação">
                 <Info size={16} aria-hidden />
                 <div>
@@ -1023,33 +1034,29 @@ export function OrientacaoTemporalEtapa({etapa,onChange}:{etapa:EtapaIatf;onChan
  return <fieldset className="space-y-2 rounded border p-3"><legend>Orientação temporal desta etapa </legend><label className="flex gap-2"><input type="checkbox" checked={!!r} onChange={e=>onChange({...etapa,orientacaoTemporal:e.target.checked?{versao:1,efeito:"ALERTA",referencia:"INICIO_EFETIVO",intervaloHoras:etapa.unidade==="HORAS"?etapa.intervalo:etapa.intervalo*24,toleranciaAntesMinutos:0,toleranciaDepoisMinutos:0}:undefined})}/>Configurar alerta de intervalo</label>{r&&<><label>Referência<SelectCampo className={classeInput} value={r.referencia} onValueChange={(valor) =>mudar({referencia:valor as typeof r.referencia})}><option value="INICIO_EFETIVO">Início efetivo</option><option value="ETAPA_ANTERIOR">Execução válida da etapa anterior</option></SelectCampo></label>{([["intervaloHoras","Intervalo (horas)"],["toleranciaAntesMinutos","Tolerância antes (minutos)"],["toleranciaDepoisMinutos","Tolerância depois (minutos)"]] as const).map(([campo,label])=><label key={campo}>{label}<input className={classeInput} type="number" required min={0} step={campo==="intervaloHoras"?"any":1} value={r[campo]} onChange={e=>mudar({[campo]:Number(e.target.value)})}/></label>)}</>}</fieldset>;
 }
 
-function SuperficieProgramacao({ pagina, conferencia, onVoltarPreparacao, resumo, ...props }: ComponentProps<typeof PainelCadastro> & {
-  pagina: boolean;
-  conferencia: boolean;
-  onVoltarPreparacao: () => void;
-  resumo: import("react").ReactNode;
+function SuperficieProgramacao({ pagina, passo, resumo, ...props }: ComponentProps<typeof PainelCadastro> & {
+  pagina: boolean; passo: number; resumo: import("react").ReactNode;
 }) {
+  const conteudo = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (pagina) conteudo.current?.focus(); }, [pagina, passo]);
   if (!pagina) return <PainelCadastro {...props} />;
   return <section className="programar-protocolo" aria-label={props.titulo}>
-    <header className="programacao-cabecalho">
-      <h1>{props.titulo}</h1>
-      <Button secondary disabled={conferencia && props.bloqueado} onClick={conferencia ? onVoltarPreparacao : props.onFechar}>
-        {conferencia ? "Voltar à preparação" : "Voltar"}
-      </Button>
-    </header>
-    <ol className="programacao-passos" aria-label="Etapas da programação">
-      <li aria-current={conferencia ? undefined : "step"}><span aria-hidden>1</span>Preparação</li>
-      <li aria-current={conferencia ? "step" : undefined}><span aria-hidden>2</span>Conferência</li>
-    </ol>
-    <div className="programacao-layout">
-      <div className="programacao-conteudo">{props.children}</div>
-      <aside className="programacao-revisao">
-        <h2>Programação</h2>
-        {resumo}
-        <div className="programacao-acoes">{typeof props.rodape === "function" ? props.rodape(props.onFechar) : props.rodape}</div>
-      </aside>
-    </div>
+    <header className="programacao-cabecalho"><h1>{props.titulo}</h1></header>
+    <ol className="programacao-passos" aria-label="Etapas da programação">{["Protocolo", "Animais", "Insumos", "Conferência"].map((nome, indice) => <li key={nome} aria-current={passo === indice ? "step" : undefined}><span aria-hidden>{indice + 1}</span>{nome}</li>)}</ol>
+    <div className="programacao-layout"><div ref={conteudo} tabIndex={-1} className="programacao-conteudo">{props.children}</div><aside className="programacao-revisao"><h2>Programação</h2>{resumo}<div className="programacao-acoes">{typeof props.rodape === "function" ? props.rodape(props.onFechar) : props.rodape}</div></aside></div>
   </section>;
+}
+
+function EstruturaModeloProgramacao({ etapas }: { etapas: Array<EtapaIatf & { id: string }> }) {
+  const grupos = new Map<string, { nome: string; etapas: Array<EtapaIatf & { id: string }> }>();
+  for (const etapa of etapas) {
+    const chave = etapa.momento ? `momento:${etapa.momento.ordem}` : `acao:${etapa.id}`;
+    const grupo = grupos.get(chave) ?? { nome: etapa.momento?.nome ?? "Sem etapa agrupada", etapas: [] };
+    grupo.etapas.push(etapa); grupos.set(chave, grupo);
+  }
+  const [escolhida, setEscolhida] = useState("");
+  const grupo = grupos.get(escolhida) ?? grupos.values().next().value;
+  return <div className="col-span-full grid gap-3"><h3>Etapas da versão publicada</h3><div role="group" aria-label="Etapas do modelo" className="flex flex-wrap gap-2">{[...grupos].map(([id, item]) => <Button type="button" key={id} secondary={item !== grupo} aria-pressed={item === grupo} onClick={() => setEscolhida(id)}>{item.nome}</Button>)}</div>{grupo && <TabelaFinanceira compacta rotulo={`Procedimentos · ${grupo.nome}`} itens={grupo.etapas} chaveDe={e => e.id} colunas={[{chave:"procedimento",titulo:"Procedimento",principal:true,celula:e=>e.nome},{chave:"intervalo",titulo:"Intervalo",celula:e=>`${e.unidade === "HORAS" ? "H" : "D"}${e.intervalo}${e.momento?.horarioPadrao ? ` · ${e.momento.horarioPadrao}` : ""}`}]}/>}</div>;
 }
 
 function NomeSitioProgramacao({id}: {id: number | null}) {
