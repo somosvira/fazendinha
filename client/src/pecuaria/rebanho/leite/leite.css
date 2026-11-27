@@ -645,3 +645,6 @@
 .leite-page [data-estado="MEDIDO"][data-slot="select-trigger"] { background: var(--fin-status-positive-bg); color: var(--fin-status-positive-text); }
 .leite-page [data-estado="PENDENTE"][data-slot="select-trigger"] { background: var(--fin-warning-bg); color: var(--warn); }
 .leite-page [data-estado="NAO_ORDENHADO"][data-slot="select-trigger"] { background: var(--fin-tag-bg); color: var(--fin-tag-text); }
+
+.leite-aviso-aplicacoes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: var(--accent); color: var(--warn); font-size: 14px; font-weight: 500; }
+.leite-aviso-aplicacoes a { margin-left: auto; color: var(--primary); }

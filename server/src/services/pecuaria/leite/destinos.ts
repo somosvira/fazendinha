@@ -93,7 +93,8 @@ export async function listarCriasDestino(propriedadeId: number, dataTexto: strin
 export async function listarDestinos(propriedadeId: number, filtro: ConsultaDestinosLeite) {
   const where: Prisma.DestinoInternoLeiteWhereInput = { propriedadeId,
     ...(filtro.de || filtro.ate ? { data: { ...(filtro.de ? { gte: new Date(`${filtro.de}T00:00:00Z`) } : {}), ...(filtro.ate ? { lte: new Date(`${filtro.ate}T00:00:00Z`) } : {}) } } : {}),
-    ...(filtro.animalId ? { parcelas: { some: { animalId: filtro.animalId } } } : {}) };
+    ...(filtro.animalId ? { parcelas: { some: { animalId: filtro.animalId } } } : {}),
+    ...(filtro.busca ? { OR: [{ responsavel: { contains: filtro.busca, mode: "insensitive" } }, { observacao: { contains: filtro.busca, mode: "insensitive" } }, { parcelas: { some: { animal: { OR: [{ brinco: { contains: filtro.busca, mode: "insensitive" } }, { nome: { contains: filtro.busca, mode: "insensitive" } }] } } } }] } : {}) };
   const [itens, total] = await Promise.all([
     prisma.destinoInternoLeite.findMany({ where, include: incluirDestino, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], skip: (filtro.pagina - 1) * 20, take: 20 }),
     prisma.destinoInternoLeite.count({ where }),

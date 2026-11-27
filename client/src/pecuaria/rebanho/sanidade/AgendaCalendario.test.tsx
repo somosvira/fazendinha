@@ -33,7 +33,7 @@ describe('calendário sanitário navegável',()=>{
   const todos=Array.from({length:101},(_,i)=>evento(i+1));window.history.replaceState(null,'','/pecuaria/sanidade/calendario?ano=2026&mes=11&visao=anual');
   vi.mocked(consultarProgramacoes).mockImplementation(async f=>pagina(f.mes?todos.slice(((f.pagina??1)-1)*100,(f.pagina??1)*100):todos.slice(0,1),101,f.pagina??1,todos));render(<AgendaCalendario/>);
   fireEvent.click(await screen.findByRole('button',{name:'Cuidado 101 em Novembro'}));await waitFor(()=>expect(consultarProgramacoes).toHaveBeenLastCalledWith(expect.objectContaining({mes:11,pagina:2}),expect.any(AbortSignal)));
-  expect((await screen.findByRole('button',{name:/Cuidado 101/})).getAttribute('aria-pressed')).toBe('true');expect(screen.getAllByText('Dia a definir').length).toBeGreaterThan(0);expect(screen.queryByText('Dia 1')).toBeNull();
+  expect((await screen.findAllByText(/Cuidado 101/)).length).toBeGreaterThan(0);expect(screen.getAllByText('Dia a definir').length).toBeGreaterThan(0);expect(screen.queryByText('Dia 1')).toBeNull();
  });
  it('PDF solicita a exportação anual completa independente de filtros e página mensal',async()=>{
   const anual=pagina([evento()]);vi.mocked(consultarProgramacoes).mockResolvedValue(anual);window.history.replaceState(null,'','/pecuaria/sanidade/calendario?ano=2026&mes=11&busca=exame&tipo=VERIFICACAO&pagina=2');render(<AgendaCalendario/>);

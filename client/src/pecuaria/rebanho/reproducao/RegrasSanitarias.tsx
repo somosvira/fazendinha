@@ -311,10 +311,6 @@ export function RegrasSanitarias({
       />
       <div className="p-4 space-y-3">
         {!aberto && <ErrorBox erro={erro} />}
-        <p className="text-sm text-ink-3">
-          As regras são definidas pela fazenda. Efeito clínico e efeito sobre o
-          protocolo são independentes; nenhuma doença ou conduta é presumida.
-        </p>
         {mensagem && <p role="status">{mensagem}</p>}
         {carregando ? (
           <p role="status">Carregando regras…</p>
@@ -527,11 +523,6 @@ export function RegrasSanitarias({
                   <option value="RETIRAR">Retirar da participação</option>
                 </SelectCampo>
               </label>
-              <p className="text-sm text-ink-3">
-                Bloqueio e retirada são conferidos na prévia do fato sanitário.
-                Retirada de participação não registra retirada física de
-                dispositivo.
-              </p>
               {(gatilho === "PROCEDIMENTO" || edicaoOcorrencia) && (
                 <label className="flex gap-2">
                   <input

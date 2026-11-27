@@ -31,7 +31,6 @@ export function ToqueAptidaoFormulario({ animalId, propriedadeId, onMudou, emMod
         <label>Retorno informado<DatePicker min={data} value={retorno} onChange={(valor) => setRetorno(valor)} /></label>
         <label>Responsável pelo toque<Input required minLength={2} maxLength={160} value={responsavel} onChange={e => setResponsavel(e.target.value)}/></label></div>
       <label className="block">Observações do toque<textarea className="mt-1 min-h-24 w-full rounded border bg-background p-3" maxLength={4000} value={observacao} onChange={e => setObservacao(e.target.value)}/></label>
-      <p className="text-sm text-muted-foreground">Inconclusivo mantém a aptidão pendente. Para registrar também DG no mesmo exame, use o atendimento de avaliação reprodutiva.</p>
       {erro && <p role="alert">{erro}</p>}{mensagem && <p role="status">{mensagem}</p>}
       <Button type="submit" disabled={ocupado || !resultado}>{ocupado ? "Registrando…" : "Registrar exame de aptidão"}</Button>
     </form>;

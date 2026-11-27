@@ -5,6 +5,7 @@ import { EsqueletoTabela } from "../../../components/Esqueleto";
 import { formatBRDateISO } from "../../../lib/hoje";
 import { reqV4, type PainelReprodutivo } from "./api";
 import { IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 /** Previsão pertence à gestação vigente; nunca deriva da data de um parto realizado. */
 export function PartosPrevistos({ propriedadeId }: { propriedadeId: number }) {
@@ -22,7 +23,7 @@ export function PartosPrevistos({ propriedadeId }: { propriedadeId: number }) {
     return () => { ativo = false; };
   }, [propriedadeId, revisao]);
   const animais = consulta?.sitio === propriedadeId ? (consulta.painel.animais ?? []).filter(a => a.situacao === "GESTANTE" && a.gestacao?.status === "VALIDO" && !a.gestacao.encerradaEm).sort((a,b) => (a.gestacao?.previsaoParto ?? "9999").localeCompare(b.gestacao?.previsaoParto ?? "9999") || a.brinco.localeCompare(b.brinco)) : [];
-  return <Panel><section aria-label="Partos previstos"><header className="repro-consulta-titulo"><h2>Partos previstos</h2></header><ErrorBox erro={erro}/>{erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Consultar previsões novamente</Button>}{carregando ? <EsqueletoTabela label="Carregando previsões de parto"/> : !erro && <>{animais.length ? <ConsultaOperacional visualizacao="tabela" rotulo="Previsões de parto" itens={animais} chaveDe={a => a.animalId} colunas={[
+  return <Panel><section aria-label="Partos previstos"><header className="repro-consulta-titulo"><h2>Partos previstos</h2></header><ErrorBox erro={erro}/>{erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Consultar previsões novamente</Button>}{carregando ? <EsqueletoTabela label="Carregando previsões de parto"/> : !erro && <>{animais.length ? <ConsultaOperacional icone={ICONES_TABELA.parto} rotulo="Previsões de parto" itens={animais} chaveDe={a => a.animalId} colunas={[
     {chave:"matriz",titulo:"Matriz",principal:true,larguraFlexivel:true,larguraMinima:180,celula:a=><IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/>},
     {chave:"previsao",titulo:"Previsão de parto",larguraMinima:160,celula:a=>a.gestacao?.previsaoParto ? formatBRDateISO(a.gestacao.previsaoParto) : "Não informada"},
     {chave:"acao",titulo:"Ações",acoes:true,larguraMinima:150,celula:a=><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${encodeURIComponent(a.animalId)}#reproducao`}>Ver gestação</LinkReproducao>},

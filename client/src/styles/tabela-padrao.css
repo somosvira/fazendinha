@@ -1,0 +1,21 @@
+/* Tabela padrão: cabeçalho cinza, sem contorno próprio e sem divisórias verticais.
+ * O contorno e o arredondamento pertencem ao painel que contém a tabela. Vale para toda
+ * tabela do sistema (Financeiro, Estoque, Pecuária, Configurações e diálogos), e não só
+ * para as telas com `data-design-operacional`. Tipografia e espaçamento ficam com as
+ * regras de cada área. */
+@media screen {
+  :root :is(.app-main, [data-slot="dialog-content"], [data-slot="sheet-content"]) table:not(.rg-tabela) {
+    border: 0;
+  }
+  :root :is(.app-main, [data-slot="dialog-content"], [data-slot="sheet-content"]) table:not(.rg-tabela) > thead > tr > th {
+    background: var(--muted, #f1f5f4);
+    color: var(--campo-tinta-2, #526863);
+    border-bottom: 1px solid var(--campo-linha, #dfe7e5);
+  }
+  :root :is(.app-main, [data-slot="dialog-content"], [data-slot="sheet-content"]) table:not(.rg-tabela) > :is(thead, tbody, tfoot) > tr > :is(th, td):not(:last-child) {
+    border-inline-end: 0;
+  }
+  :root :is(.app-main, [data-slot="dialog-content"], [data-slot="sheet-content"]) table:not(.rg-tabela) > tbody > tr > td {
+    border-bottom: 1px solid var(--fin-positive-bg);
+  }
+}

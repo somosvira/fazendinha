@@ -360,6 +360,7 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
   return (
     <PaginaFinanceira>
       <PageHeader
+        nivel={2}
         eyebrow=""
         titulo="Categorias"
         acao={<div className="flex flex-wrap gap-2"><BotaoFinanceiro secondary onClick={handleExport}>Exportar CSV</BotaoFinanceiro><BotaoFinanceiro onClick={() => setShowNew(true)}>Nova categoria</BotaoFinanceiro></div>}

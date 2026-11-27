@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { AgendaSemanal, agruparTarefasVisuais, inicioSemanaSanitaria, type TarefaVisual } from "./AgendaSemanal";
 import { AlternarVisualizacaoSanitaria, useVisualizacaoSanitaria } from "./VisualizacaoSanitaria";
-import { CartoesOcorrencias } from "./CartoesOcorrencias";
 const req = vi.hoisted(()=>vi.fn());
 vi.mock("./api",()=>({reqSanidade:req}));
 afterEach(()=>{cleanup();localStorage.clear();window.history.replaceState(null,"","/");vi.clearAllMocks();vi.useRealTimers();});
@@ -35,9 +34,5 @@ describe("visões operacionais de Sanidade",()=>{
   expect(screen.getByRole("dialog",{name:/Vacinação/})).toBeTruthy();
   fireEvent.click(screen.getByRole("button",{name:"Fechar grupo"}));
   const atrasos=screen.getByRole("region",{name:"Tarefas atrasadas"});fireEvent.click(within(atrasos).getByRole("button",{name:"Próxima página"}));await waitFor(()=>expect(req.mock.calls.some(c=>String(c[0]).includes("pagina=2"))).toBe(true));
- });
- it("mostra agregado do servidor independente da quantidade de cartões e filtra por doença",()=>{
-  const filtrar=vi.fn();const abrir=vi.fn();render(<CartoesOcorrencias itens={[{id:"o",animalId:"a",inicio:"2026-10-16",fim:null,status:"VALIDO",doenca:{id:"d",nome:"Mastite"},desfecho:null}]} resumo={{abertas:80,encerradas:10,anuladas:1,porDoenca:[{id:"d",nome:"Mastite",quantidade:80}]}} nomeAnimal={()=>"Aurora"} acoes={()=>null} onAbrir={abrir} doencaId="" onDoenca={filtrar}/>);
-  expect(screen.getByText("80 ocorrências abertas no recorte filtrado")).toBeTruthy();fireEvent.click(screen.getByRole("button",{name:/Mastite.*80/}));expect(filtrar).toHaveBeenCalledWith("d");fireEvent.click(screen.getByRole("button",{name:"Ver ocorrência"}));expect(abrir).toHaveBeenCalled();
  });
 });

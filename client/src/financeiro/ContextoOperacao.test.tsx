@@ -17,7 +17,7 @@ const operacao: Operacao = {
 };
 function montar() {
   const abrir = vi.fn();
-  render(<TabelaFinanceira cartaoComLinks rotulo="Operações" onAbrir={abrir} chaveDe={op => op.id} itens={[operacao]} colunas={[
+  render(<TabelaFinanceira rotulo="Operações" onAbrir={abrir} chaveDe={op => op.id} itens={[operacao]} colunas={[
     { chave: "operacao", titulo: "Operação", principal: true, celula: op => op.descricao },
     { chave: "parceiro", titulo: "Parceiro", celula: op => <ParceiroOperacao parceiro={op.parceiro} /> },
     { chave: "impactos", titulo: "Impacto gerado", celula: op => <ImpactosOperacao operacao={op} /> },

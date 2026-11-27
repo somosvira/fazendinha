@@ -15,6 +15,7 @@ import { PaginacaoLocal, usePaginacaoLocal } from "@/components/PaginacaoLocal";
 import { listarTiposAplicacao, reqSanidade, salvarTipoAplicacao, type TipoAplicacao } from "./api";
 import { ProtocolosCadastro } from "./ProtocolosCadastro";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "@/components/iconesTabela";
 
 const PainelCadastro = (props: Parameters<typeof PainelBase>[0]) => <PainelBase {...props} compacto />;
 
@@ -132,14 +133,13 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
     <div role="tabpanel" className="min-w-0" id={`cadastro-${aba}`} aria-label={titulo}>
       {aba === "protocolos" ? <ProtocolosCadastro podeLancar={podeLancar} /> : <section className="pec-catalogo-sanitario rounded-xl border border-border bg-card">
 
-        {aba === "exame" && <p className="px-4 pb-4 text-sm text-ink-3">Após a primeira coleta, o formato do resultado fica bloqueado, mesmo se a coleta estiver pendente ou anulada. Isso preserva a interpretação do histórico.</p>}
         <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} acao={podeLancar && <Button disabled={ocupado || carregando} onClick={() => abrir(aba)}>{novo}</Button>}><BuscaLista rotulo={`Buscar ${titulo.toLocaleLowerCase("pt-BR")}`} placeholder="Buscar pelo nome" valor={busca} onChange={valor => { setCadastroId(""); setBusca(valor); }} /></BarraConsulta>
         {!carregando && !erro && itens.length > 0 && !itensExibidos.length && <p role="status" className="px-4 pb-4 text-sm text-ink-3">Nenhum cadastro corresponde à busca. Altere ou limpe o nome pesquisado.</p>}
         <div className="px-4"><ErrorBox erro={erro} />{aviso && <p role="status" className="py-3 text-sm">{aviso}</p>}
           {ocupado && <p role="status" className="py-3 text-sm">Atualizando cadastro…</p>}
           {erro && !painel && <Button secondary disabled={ocupado} onClick={() => setVersao((v) => v + 1)}>Tentar novamente</Button>}
         </div>
-        {carregando ? <EsqueletoTabela label={`Carregando ${titulo.toLowerCase()}`} colunas={3} className="p-4" /> : !erro && !itens.length ? <p className="p-4 text-sm text-ink-3">Nenhum cadastro. {podeLancar ? "Use o botão acima para cadastrar." : ""}</p> : <ConsultaOperacional filtrosColunas={consulta.colunas}
+        {carregando ? <EsqueletoTabela label={`Carregando ${titulo.toLowerCase()}`} colunas={3} className="p-4" /> : !erro && !itens.length ? <p className="p-4 text-sm text-ink-3">Nenhum cadastro. {podeLancar ? "Use o botão acima para cadastrar." : ""}</p> : <ConsultaOperacional icone={ICONES_TABELA.aplicacao} filtrosColunas={consulta.colunas}
           rotulo={titulo} itens={paginacao.itens} chaveDe={(item) => item.id}
           colunas={[
             { chave: "nome", titulo: "Nome", principal: true, celula: (item) => aba === "exame" ? nomeExame(item.id, item.nome) : item.nome },

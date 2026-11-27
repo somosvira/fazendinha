@@ -16,7 +16,7 @@ describe("protocolos agrupados pela evidência operacional", () => {
   });
   it("preserva histórico, estados desconhecidos, nomes e navegação contextual sem tag de situação", () => {
     const abrir=vi.fn();
-    render(<ListaProtocolosReprodutivos itens={[grupo("Novilhas"),grupo("Outubro",{},"ENCERRADA"),grupo("Legado",{},"LEGADO")]} sitio={1} modo="tabela" aoAbrir={abrir}/>);
+    render(<ListaProtocolosReprodutivos itens={[grupo("Novilhas"),grupo("Outubro",{},"ENCERRADA"),grupo("Legado",{},"LEGADO")]} sitio={1} aoAbrir={abrir}/>);
     expect(within(screen.getByRole("region",{name:"Histórico"})).getAllByRole("link",{name:"Outubro"})[0]).toBeTruthy();
     expect(within(screen.getByRole("region",{name:"A conferir"})).getAllByRole("link",{name:"Legado"})[0]).toBeTruthy();
     expect(screen.queryByRole("columnheader",{name:"Situação"})).toBeNull();

@@ -53,6 +53,14 @@ describe("GET /estoque/catalogo", () => {
     expect((await appCom(base).request("/estoque/catalogo?busca=zoetis")).status).toBe(200);
     expect(mocks.listarCatalogo).toHaveBeenCalledWith({ busca: "zoetis", pagina: 1, porPagina: 20 });
   });
+  it("repassa os filtros de uso e de situação na fazenda", async () => {
+    mocks.listarCatalogo.mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 20 });
+    expect((await appCom(base).request("/estoque/catalogo?uso=nutricional&naFazenda=nao")).status).toBe(200);
+    expect(mocks.listarCatalogo).toHaveBeenCalledWith({ busca: "", pagina: 1, porPagina: 20, uso: "nutricional", naFazenda: "nao" });
+  });
+  it.each(["uso=agricola", "naFazenda=talvez"])("filtro inválido %s → 400", async (qs) => {
+    expect((await appCom(base).request(`/estoque/catalogo?${qs}`)).status).toBe(400);
+  });
   it("id inválido → 404 sem consultar; item ausente → 404", async () => {
     expect((await appCom(base).request("/estoque/catalogo/abc")).status).toBe(404);
     expect(mocks.detalheCatalogo).not.toHaveBeenCalled();

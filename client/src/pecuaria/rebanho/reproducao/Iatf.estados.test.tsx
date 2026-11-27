@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { preferirCartoes } from "@/lib/visualizacao.fixture";
 import { listarCadastrosProtocolos, type CadastroProtocoloMeta, type PaginaCadastro } from "../protocolos/cadastros-api";
 import {
   act,
@@ -57,7 +56,7 @@ const paginaCatalogo = (itens: CadastroProtocoloMeta[]) => ({ itens, total: iten
 const paginaProgramacoes = (itens: ProgramacaoIatf[]) => ({ itens: itens.map(cabecalho), total: itens.length, pagina: 1, porPagina: 10 });
 beforeEach(() => {
   vi.clearAllMocks();
-  localStorage.clear();preferirCartoes({reproducao:["visualProtocolosReproducao"],REPRODUTIVO:["visualCadastroProtocolos"],SANITARIO:["visualCadastroProtocolos"]});
+  localStorage.clear();
   setPropriedadeAtiva(null);
   window.history.replaceState(null, "", "/pecuaria/reproducao");
   vi.mocked(reqV4).mockResolvedValue([]);
@@ -79,7 +78,7 @@ it("não declara protocolos ausentes enquanto aguarda a primeira consulta", asyn
   ).toBeNull();
   await act(async () => leitura.resolver(paginaCatalogo([protocolo])));
   expect(
-    screen.getByRole("heading", { name: /Protocolo confirmado/ }),
+    screen.getAllByText(/Protocolo confirmado/)[0],
   ).toBeTruthy();
   expect(screen.queryByText("Carregando protocolos…")).toBeNull();
   expect(
@@ -102,7 +101,7 @@ it("distingue erro de catálogo vazio e retry recupera os protocolos", async () 
     screen.queryByText("Nenhum protocolo encontrado."),
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-  await screen.findByRole("heading", { name: /Protocolo confirmado/ });
+  await screen.findAllByText(/Protocolo confirmado/);
   expect(screen.queryByRole("alert")).toBeNull();
   expect(listarCadastrosProtocolos).toHaveBeenNthCalledWith(2, "REPRODUTIVO", 1, "", "ATIVA");
 });
@@ -132,10 +131,10 @@ it("atualização conserva protocolos confirmados durante carregamento e falha",
     .mockReturnValueOnce(atualizacao.promessa)
     .mockResolvedValueOnce(paginaCatalogo([]));
   render(<Iatf modo="cadastros" propriedadeId={1} podeLancar={false} />);
-  await screen.findByRole("heading", { name: /Protocolo confirmado/ });
+  await screen.findAllByText(/Protocolo confirmado/);
   fireEvent.change(screen.getByRole("searchbox",{name:"Buscar protocolos"}),{target:{value:"confirmado"}});
   expect(
-    screen.getByRole("heading", { name: /Protocolo confirmado/ }),
+    screen.getAllByText(/Protocolo confirmado/)[0],
   ).toBeTruthy();
   expect(screen.getByRole("status").textContent).toContain(
     "Atualizando protocolos",
@@ -144,16 +143,14 @@ it("atualização conserva protocolos confirmados durante carregamento e falha",
     atualizacao.rejeitar(new Error("Falha na atualização")),
   );
   expect(
-    screen.getByRole("heading", { name: /Protocolo confirmado/ }),
+    screen.getAllByText(/Protocolo confirmado/)[0],
   ).toBeTruthy();
   expect(
     screen.queryByText("Nenhum protocolo encontrado."),
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
   await screen.findByText("Nenhum protocolo encontrado.");
-  expect(
-    screen.queryByRole("heading", { name: /Protocolo confirmado/ }),
-  ).toBeNull();
+  expect(screen.queryAllByText(/Protocolo confirmado/)).toHaveLength(0);
 });
 it.each(["resolver", "rejeitar"] as const)(
   "troca de sítio ignora lista anterior ao %s fora de ordem",

@@ -160,12 +160,12 @@ describe("OperacoesFinanceiras — paginação", () => {
     })) as never);
 
     render(<OperacoesFinanceiras />);
-    expect((await screen.findAllByText("Operação 15")).length).toBe(2);
+    expect((await screen.findAllByText("Operação 15")).length).toBe(1);
     expect(screen.queryAllByText("Operação 16")).toHaveLength(0);
     expect(screen.getByText("1–15 de 16 operações")).toBeTruthy();
 
     await alterarControle(screen.getByLabelText("Ir para a página"), { target: { value: "2" } });
-    expect((await screen.findAllByText("Operação 16")).length).toBe(2);
+    expect((await screen.findAllByText("Operação 16")).length).toBe(1);
     expect(screen.queryAllByText("Operação 15")).toHaveLength(0);
     expect(screen.getByText("16–16 de 16 operações")).toBeTruthy();
   });

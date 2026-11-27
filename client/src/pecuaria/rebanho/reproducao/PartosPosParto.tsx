@@ -1,6 +1,5 @@
 import { PartosPrevistos } from "./PartosPrevistos";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
-import { CartaoParto, IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
+import { IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
 import { BuscaLista } from "@/components/BuscaLista";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
@@ -13,10 +12,10 @@ import { type SnapshotRelatorioPartos } from "./RelatorioPartos";
 import { Paginacao } from "../ui";
 import { usePeriodoConsulta } from "./periodo-consulta";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
   const periodo = usePeriodoConsulta("partos");
-  const visual = useVisualizacaoConsulta("visualPartos", "reproducao");
   const [snapshot, setSnapshot] = useState<SnapshotRelatorioPartos | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -50,7 +49,7 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
   return <div className="space-y-5">
     <PartosPrevistos propriedadeId={propriedadeId}/>
     <section aria-label="Partos e pós-parto" className="space-y-4"><div className="repro-consulta-titulo"><h2>Partos e pós-parto</h2></div>
-    <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} acao={<AlternarVisualizacaoConsulta {...visual} rotulo="Visualização de partos"/>} resumo={visivel ? <span>{partos.length} de {visivel.totalPartos} partos no período</span> : undefined}>
+    <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} resumo={visivel ? <span>{partos.length} de {visivel.totalPartos} partos no período</span> : undefined}>
 
       <BuscaLista rotulo="Buscar matriz" placeholder="Brinco ou nome da matriz" valor={busca} onChange={buscar}/>
       <DateRangePicker value={periodo.range} onChange={r=>{setPagina(1);periodo.alterar(r);}}/>
@@ -61,7 +60,7 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
     {carregando && <EsqueletoTabela label="Carregando partos" />}
     {!carregando && !erro && visivel && <Panel>
 
-      {!partos.length ? <div className="space-y-3 p-5"><p>{visivel.partos.length ? "Nenhum parto corresponde à busca ou aos filtros." : "Nenhum parto neste período."}</p>{visivel.partos.length ? <><p className="text-sm text-muted-foreground">Existem {visivel.totalPartos} partos no período selecionado.</p><Button secondary onClick={() => { buscar(""); consulta.edicao.limpar(); consulta.limpar(); }}>Limpar busca e filtros</Button></> : <p className="text-sm text-muted-foreground">Use o filtro de período para consultar outras datas.</p>}</div> : visual.modo === "visual" ? <div className="reproducao-cartoes">{partos.slice((atual-1)*20,atual*20).map(p => <CartaoParto key={p.id} parto={p} sitio={propriedadeId}/>)}</div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={consulta.colunas}
+      {!partos.length ? <div className="space-y-3 p-5"><p>{visivel.partos.length ? "Nenhum parto corresponde à busca ou aos filtros." : "Nenhum parto neste período."}</p>{visivel.partos.length ? <><p className="text-sm text-muted-foreground">Existem {visivel.totalPartos} partos no período selecionado.</p><Button secondary onClick={() => { buscar(""); consulta.edicao.limpar(); consulta.limpar(); }}>Limpar busca e filtros</Button></> : <p className="text-sm text-muted-foreground">Use o filtro de período para consultar outras datas.</p>}</div> : <TabelaFinanceira icone={ICONES_TABELA.parto} filtrosColunas={consulta.colunas}
         rotulo="Partos realizados" itens={partos.slice((atual-1)*20,atual*20)} chaveDe={p => p.id} colunas={[
           { chave: "data", titulo: "Data do parto", larguraMinima: 110, celula: p => formatBRDateISO(p.data) },
           { chave: "matriz", titulo: "Matriz", principal: true, larguraFlexivel: true, larguraMinima: 160, celula: p => <IdentificacaoReproducao id={p.matriz.id} brinco={p.matriz.brinco} nome={p.matriz.nome} sitio={propriedadeId}/> },

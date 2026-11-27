@@ -10,7 +10,6 @@ import { DatePicker } from "@/components/DatePicker";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { CampoFiltro, GrupoCamposFiltro, PainelFiltros } from "@/financeiro/PainelFiltros";
 import { MultiSelect } from "../../../components/MultiSelect";
-import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
 // Lista de animais — BarraFiltros + TabelaFinanceira + Paginacao (servidor),
 // no padrão de OperacoesFinanceiras.tsx. Seleção múltipla habilita
 // "Movimentar N animais"; ações de linha são Editar e Movimentar.
@@ -26,12 +25,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FormColetivoSanitario } from "../sanidade/FormColetivoSanitario";
 import { FormAplicacaoServico } from "../sanidade/FormAplicacaoServico";
 import { PesagemColetiva } from "../manejo/ManejoAnimal";
-import { ArrowRightLeft, ChevronRight, Pencil, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowRightLeft, ChevronRight, Pencil, Plus, Search } from "lucide-react";
 import { listarAnimais, buscarFichaAnimal, listarCategorias, obterCatalogos, RebanhoApiError } from "../api";
 import type { AnimalFicha, AnimalResumo, Aptidao, CategoriaDTO, Catalogos, ListarFiltros, Origem, PapelReprodutivo, Sexo, Situacao, TipoBaixa } from "../types";
 import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloOpcaoCategoria, rotuloPapelReprodutivo, rotuloSituacao, rotuloTipoBaixa } from "../lib/rotulos";
 import { formatarGmd } from "../lib/peso";
-import { BarraFiltros, CategoriaPill, Paginacao, useAoMovimentarComToast } from "../ui";
+import { CategoriaPill, Paginacao, useAoMovimentarComToast } from "../ui";
 import { FormDadosAnimal } from "../forms/FormDadosAnimal";
 import { FormMovimentar } from "../forms/FormMovimentar";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -41,6 +40,7 @@ import { NavRebanho } from "./NavRebanho";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import "./lista-animais.css";
 import "./rotinas-aprovadas.css";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 const ITENS_POR_PAGINA = 20;
 
@@ -471,10 +471,10 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
               <ChevronRight size={16} aria-hidden />
             </button>
           </li>)}
-        </ul> : <TabelaFinanceira visualizacao={pesagem ? undefined : "tabela"} compacta={!pesagem}
+        </ul> : <TabelaFinanceira icone={ICONES_TABELA.animal} compacta={!pesagem}
           ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }}
           filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={item => item.id}
-          onAbrir={item => onAbrirAnimal(item.id)} cartaoComLinks />}
+          onAbrir={item => onAbrirAnimal(item.id)} />}
         <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-animais" />
       </> : <Empty>Nenhum animal encontrado com os filtros selecionados.</Empty>}
     </Panel>

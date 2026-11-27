@@ -5,6 +5,7 @@ import { CabecalhoTabela, Pill } from "../../../financeiro/financeiro-ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite } from "./operacoes-api";
 import { hojeOperacional } from "./modelo";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 interface Custos { totalConhecido: string | null; cobertura: string }
 interface Relatorio { consolidado: { situacao: string; custoPorLitro: string | null; custos: Custos; motivos: string[] }; porClassificacao: { finalidade: string; custos: Custos }[] }
 const dinheiro = (v: string | null) => v === null ? "Sem valor" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -21,7 +22,7 @@ export function CustosLeite({ periodo, podeExportar: _podeExportar = false }: { 
   return <section className="leite-consulta-custos"><CabecalhoTabela titulo="Custos da produção" rotuloAjuda="Sobre custos da produção" />
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando custos…</p> : <>
       {oculto ? <p>Sem acesso a valores.</p> : <>
-        <ConsultaOperacional rotulo="Custos registrados por classificação" itens={dados.porClassificacao ?? []} chaveDe={l => l.finalidade} colunas={[
+        <ConsultaOperacional icone={ICONES_TABELA.valor} rotulo="Custos registrados por classificação" itens={dados.porClassificacao ?? []} chaveDe={l => l.finalidade} colunas={[
           { chave: "classificacao", titulo: "Classificação", principal: true, celula: l => nomes[l.finalidade] ?? l.finalidade },
           { chave: "valor", titulo: "Custo registrado", alinhamento: "direita", celula: l => dinheiro(l.custos.totalConhecido) },
         ]} />

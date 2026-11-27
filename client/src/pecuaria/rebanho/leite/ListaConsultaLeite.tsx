@@ -1,35 +1,17 @@
 import type { Key, ReactNode } from "react";
-import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
-import { TabelaFinanceira, type ColunaTabela, Empty } from "@/financeiro/financeiro-ui";
+import { TabelaFinanceira, type ColunaTabela } from "@/financeiro/financeiro-ui";
 import "./consultas-leite.css";
 
-/** As duas apresentações compartilham as mesmas células, permissões e ações. */
-export function ListaConsultaLeite<T>({ preferencia, rotulo, itens, colunas, chaveDe, onAbrir, compacta, tituloDe, detalheDe, destaque, visualizacao, renderizarVisual, layout, padrao = "tabela", icone, iconeDe }: {
-  /** Mesmo ícone do cartão, mostrado na coluna principal da tabela. */
+export function ListaConsultaLeite<T>({ rotulo, itens, colunas, chaveDe, onAbrir, compacta, icone, iconeDe, rodape }: {
+  /** Ícone padronizado da linha, mostrado na coluna principal. */
   icone?: React.ComponentProps<typeof TabelaFinanceira<T>>["icone"]; iconeDe?: React.ComponentProps<typeof TabelaFinanceira<T>>["iconeDe"];
-  renderizarVisual?: (item: T) => ReactNode; layout?: "grade" | "linhas";
-  /** Listas abrem em tabela; cartões só quando mostram o que a tabela não mostra (ex.: ordenhas do dia). */
-  padrao?: "visual" | "tabela";
-  visualizacao?: ReturnType<typeof useVisualizacaoConsulta>;
-  preferencia: string; rotulo: string; itens: T[]; colunas: ColunaTabela<T>[];
-  tituloDe?: (item: T) => ReactNode; detalheDe?: (item: T) => ReactNode; destaque?: string;
+  rotulo: string; itens: T[]; colunas: ColunaTabela<T>[];
   chaveDe: (item: T) => Key; onAbrir?: (item: T) => void; compacta?: boolean;
+  /** Paginação da lista: fica dentro da mesma caixa da tabela, como nas demais consultas. */
+  rodape?: ReactNode;
 }) {
-  const preferenciaLocal = useVisualizacaoConsulta(preferencia, "leite", padrao);
-  const { modo, mudar } = visualizacao ?? preferenciaLocal;
-  const principal = colunas.find(c => c.principal) ?? colunas[0];
-  const acoes = colunas.filter(c => c.acoes || c.chave === "acao");
-  const volume = colunas.find(c => c.chave === destaque);
-  const fatos = colunas.filter(c => c !== principal && c !== volume && !c.ocultarNoCartao && !acoes.includes(c));
-  return <div className="leite-lista-consulta" data-layout={layout}>
-    {!visualizacao && <div className="leite-lista-opcoes"><AlternarVisualizacaoConsulta modo={modo} mudar={mudar} rotulo={`Visualização de ${rotulo.toLocaleLowerCase("pt-BR")}`} /></div>}
-    {modo === "tabela" ? <TabelaFinanceira icone={icone} iconeDe={iconeDe} visualizacao="tabela" barraRolagemSuperior rotulo={rotulo} itens={itens} colunas={colunas} chaveDe={chaveDe} onAbrir={onAbrir} compacta={compacta} /> : <div className="leite-cartoes-consulta" role="list" aria-label={rotulo}>
-      {itens.map(item => <div role="listitem" key={chaveDe(item)}>{renderizarVisual ? renderizarVisual(item) : <CartaoConsulta className={layout === "linhas" ? "leite-linha-consulta" : ""} titulo={tituloDe ? tituloDe(item) : principal?.celula(item)} detalhe={detalheDe?.(item)} onAbrir={onAbrir ? () => onAbrir(item) : undefined} acoes={acoes.length ? acoes.map(c => <span key={c.chave}>{c.celula(item)}</span>) : undefined}>
-        {volume && <div className="leite-cartao-volume"><strong>{volume.celula(item)}</strong><span>{volume.titulo}</span></div>}
-        {fatos.map(c => <FatoConsulta key={c.chave} rotulo={c.titulo}>{c.celula(item)}</FatoConsulta>)}
-      </CartaoConsulta>}</div>)}
-      {!itens.length && <Empty>Nenhum registro neste recorte.</Empty>}
-    </div>}
+  return <div className="leite-lista-consulta">
+    <TabelaFinanceira icone={icone} iconeDe={iconeDe} barraRolagemSuperior rotulo={rotulo} itens={itens} colunas={colunas} chaveDe={chaveDe} onAbrir={onAbrir} compacta={compacta} />
+    {rodape}
   </div>;
 }

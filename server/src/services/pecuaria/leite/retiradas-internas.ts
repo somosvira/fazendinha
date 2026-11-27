@@ -68,7 +68,9 @@ export async function obterRetiradaInternaLeite(id: string, propriedadeId: numbe
 }
 export async function listarRetiradasInternasLeite(propriedadeId: number, input: ReturnType<typeof consultaRetiradasInternasLeiteSchema.parse>) {
   const filtro = consultaRetiradasInternasLeiteSchema.parse(input);
-  const where = { propriedadeId, ...(filtro.de || filtro.ate ? { data: { ...(filtro.de ? { gte: new Date(filtro.de) } : {}), ...(filtro.ate ? { lte: new Date(filtro.ate) } : {}) } } : {}) };
+  const contem = filtro.busca ? { contains: filtro.busca, mode: "insensitive" as const } : null;
+  const where = { propriedadeId, ...(filtro.de || filtro.ate ? { data: { ...(filtro.de ? { gte: new Date(filtro.de) } : {}), ...(filtro.ate ? { lte: new Date(filtro.ate) } : {}) } } : {}),
+    ...(contem ? { OR: [{ motivo: contem }, { responsavel: contem }, { entrada: { sessao: { nome: contem } } }, { entrada: { movimento: { produto: { nome: contem } } } }] } : {}) };
   const [itens, total] = await prisma.$transaction([prisma.retiradaInternaLeite.findMany({ where, include: incluir, orderBy: [{ data: "desc" }, { id: "desc" }], skip: (filtro.pagina - 1) * 20, take: 20 }), prisma.retiradaInternaLeite.count({ where })]);
   return { propriedadeId, itens: itens.map(retiradaInternaLeiteDTO), total, pagina: filtro.pagina, tamanho: 20 };
 }

@@ -27,7 +27,7 @@ export const destinoInternoLeiteSchema = z.object({
     ctx.addIssue({ code: "custom", path: ["parcelas"], message: "As parcelas excedem o saldo de origem informado" });
 });
 export const estornoDestinoLeiteSchema = z.object({ chave: uuid, propriedadeId: propriedadeLeiteSchema, versaoEsperada: z.number().int().positive(), motivo: z.string().trim().min(5).max(1000) }).strict();
-export const consultaDestinosLeiteSchema = z.object({ de: dataLeiteSchema.optional(), ate: dataLeiteSchema.optional(), animalId: uuid.optional(), pagina: z.coerce.number().int().min(1).max(100000).default(1), propriedadeId: z.coerce.number().int().min(1).max(2147483647).optional() }).superRefine((v, ctx) => {
+export const consultaDestinosLeiteSchema = z.object({ de: dataLeiteSchema.optional(), ate: dataLeiteSchema.optional(), animalId: uuid.optional(), busca: z.string().trim().max(100).optional(), pagina: z.coerce.number().int().min(1).max(100000).default(1), propriedadeId: z.coerce.number().int().min(1).max(2147483647).optional() }).superRefine((v, ctx) => {
   if (v.de && v.ate && v.de > v.ate) ctx.addIssue({ code: "custom", path: ["ate"], message: "O fim deve ser igual ou posterior ao início" });
 });
 export const consultaOrigensDestinoSchema = z.object({ produtoId: uuid, data: dataLeiteSchema, propriedadeId: z.coerce.number().int().min(1).max(2147483647).optional() });

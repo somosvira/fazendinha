@@ -17,7 +17,7 @@ export function ResumoDestinosLeite({ revisao = 0 }: {revisao?:number}) {
       .then(r=>{if(ativa)setDados(r)}).catch(e=>{if(ativa)setErro(e instanceof Error?e.message:'Não foi possível consultar os destinos.')});
     return()=>{ativa=false};
   },[sitio,data,revisao,tentativa]);
-  return <Card className="leite-resumo-destinos"><header><h2>Distribuição do dia</h2><label>Data do resumo<DatePicker aria-label="Data do resumo de destinos" value={data} onChange={setData}/></label></header>
+  return <Card className="leite-resumo-destinos"><header><h2>Distribuição do dia</h2><div className="leite-resumo-data"><DatePicker aria-label="Data do resumo de destinos" value={data} onChange={setData}/></div></header>
     {erro?<div role="alert">{erro}<Button variant="outline" onClick={()=>setTentativa(v=>v+1)}>Tentar novamente</Button></div>:<DistribuicaoConsumoLeite dados={dados?resumirOperacionalPeriodo(dados.dias,data):null} carregando={!dados}/>}
   </Card>;
 }

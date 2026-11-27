@@ -107,10 +107,7 @@ export function PostParto({ valor, onChange, animalId, propriedadeId, escoreRef,
               <Button type="button" variant="outline" size="icon" className="h-[var(--campo-altura)] w-[var(--campo-altura)] shrink-0" aria-label="Limpar grau de retenção" onClick={() => mudar("grauRetencaoPlacenta", "")}><X size={16} aria-hidden /></Button>
             </div>
           ) : (
-            <div className="grid gap-2">
-              <label>Grau de retenção (opcional)<SelectCampo value={valor.grauRetencaoPlacenta} onValueChange={v => mudar("grauRetencaoPlacenta", v)}><option value="">Não informado</option>{[1, 2, 3].map(g => <option key={g} value={g}>{g}</option>)}</SelectCampo></label>
-              <p className="text-sm text-muted-foreground">O grau é descritivo; não determina tratamento ou aptidão.</p>
-            </div>
+            <label>Grau de retenção (opcional)<SelectCampo value={valor.grauRetencaoPlacenta} onValueChange={v => mudar("grauRetencaoPlacenta", v)}><option value="">Não informado</option>{[1, 2, 3].map(g => <option key={g} value={g}>{g}</option>)}</SelectCampo></label>
           )}
           <label className="grid min-w-0 content-start gap-1 text-sm font-medium">
             Ocorrência sanitária de retenção

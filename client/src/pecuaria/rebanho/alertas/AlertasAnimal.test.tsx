@@ -21,7 +21,6 @@ describe("alertas na ficha do animal", () => {
     await waitFor(() => expect(consultar).toHaveBeenLastCalledWith(expect.objectContaining({ pagina: 2 }), expect.any(AbortSignal)));
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "vacina" } });
     await waitFor(() => expect(consultar).toHaveBeenLastCalledWith(expect.objectContaining({ busca: "vacina", pagina: 1 }), expect.any(AbortSignal)));
-    fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
     expect(screen.getByRole("table", { name: "Alertas deste animal" })).toBeTruthy();
     for (const [name, disposicao] of [["Próximos", "PROXIMOS"], ["Programados", "PROGRAMADOS"], ["Histórico", "HISTORICO"]]) {
       fireEvent.click(screen.getByRole("button", { name }));

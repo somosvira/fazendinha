@@ -1,6 +1,4 @@
 import { DatePicker } from "../../../components/DatePicker";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
-import { RegistroVisualProducaoLeite } from "./RegistroVisualProducaoLeite";
 import type { GrupoProducaoLeite } from "./resumo-producao";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GraficoProducaoLeite } from "./GraficoProducaoLeite";
@@ -18,13 +16,14 @@ import { formatarLitros, hojeOperacional } from "./modelo";
 import { CustosLeite } from "./CustosLeite";
 import { HistoricoColetivoLeite } from "./HistoricoColetivoLeite";
 import "./consultas-leite.css";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
+import { RegistroVisualProducaoLeite } from "./RegistroVisualProducaoLeite";
 type Grupo = GrupoProducaoLeite;
 interface Consulta { grupos: Grupo[]; ordenhas: { posicaoId: string; nome: string }[] }
 const datasVisao = (data: string, visao: string) => ({ inicio: visao === "dia" ? data : `${data.slice(0, 7)}-01`, fim: visao === "dia" ? data : new Date(Date.UTC(Number(data.slice(0, 4)), Number(data.slice(5, 7)), 0)).toISOString().slice(0, 10) });
 const iniciais = () => { const q = new URLSearchParams(location.search); const hoje = hojeOperacional(); const valor = q.get("producaoData") ?? hoje; const data = /^\d{4}-\d{2}-\d{2}$/.test(valor) && Number.isFinite(Date.parse(valor)) ? valor : hoje; const visao = q.get("producaoVisao") === "mes" ? "mes" : "dia"; const periodo = datasVisao(data, q.has("producaoVisao") ? visao : "mes"); return { visao, data, natureza: q.get("natureza") ?? "", inicio: q.get("inicio") || periodo.inicio, fim: q.get("fim") || periodo.fim }; };
 
 export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: { podeExportar?: boolean }) {
-  const visualizacao = useVisualizacaoConsulta("producaoVisualizacao", "leite", "visual");
   const [filtros, setFiltros] = useState(iniciais);
   const [dados, setDados] = useState<Consulta | null>(null), [erro, setErro] = useState(""), [revisao, setRevisao] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -62,9 +61,10 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
     </>}><PeriodoFinanceiroControl showIcon inicio={inicio} fim={fim} label="Período da produção" onChange={v => aplicar({ ...filtros, ...v, data: v.inicio || data })} /></BarraConsulta>
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando produção…</p> : <>
       <div className="leite-producao-painel"><div className="leite-producao-evolucao"><GraficoProducaoLeite grupos={grupos} /></div><section className="leite-producao-registro" aria-label="Consulta dos registros de produção">
-      <div className="producao-registro-cabecalho"><h3>Registro da produção</h3><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização da produção" /></div>
-      {visualizacao.modo === "visual" ? <RegistroVisualProducaoLeite sitio={sitio} inicio={inicio} fim={fim} grupos={grupos} ordenhas={dados.ordenhas ?? []} data={data} /> : <>
-      <TabelaFinanceira visualizacao="tabela" barraRolagemSuperior rotulo="Volumes de produção" itens={grupos.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={g => g.periodo} colunas={[
+      {grupos.length > 0 && <RegistroVisualProducaoLeite sitio={sitio} inicio={inicio} fim={fim} grupos={grupos} ordenhas={dados.ordenhas ?? []} data={data} />}
+      <div className="producao-registro-cabecalho"><h3>Registro da produção</h3></div>
+      {<>
+      <TabelaFinanceira icone={ICONES_TABELA.ordenha} barraRolagemSuperior rotulo="Volumes de produção" itens={grupos.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={g => g.periodo} colunas={[
         { chave: "periodo", titulo: visao === "dia" ? "Dia" : "Mês", principal: true, celula: g => g.periodo.split("-").reverse().join("/") },
         ...(dados.ordenhas ?? []).map(o => ({ chave: o.posicaoId, titulo: o.nome, alinhamento: "direita" as const, celula: (g: Grupo) => formatarLitros(g.turnos.find(t => t.posicaoId === o.posicaoId)?.litros ?? null) })),
         { chave: "total", titulo: "Total", alinhamento: "direita", celula: g => <strong>{formatarLitros(g.litros)}</strong> },

@@ -423,6 +423,7 @@ export type FiltrosMovimentacoes = {
   propriedadeId?: number;
   dataDe?: string;
   dataAte?: string;
+  busca?: string;
   animalId?: string;
   /** default true no servidor */
   incluirDesfeitas?: boolean;

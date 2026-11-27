@@ -29,6 +29,7 @@ import { LiquidarCompromissoModal } from "./LiquidarCompromissoModal";
 import { deCentavos, paraCentavos } from "./lib/parcelas";
 import { ParceiroOperacao } from "./ContextoOperacao";
 import { codigoOperacao } from "../estoque/navegacao";
+import { ICONES_TABELA } from "@/components/iconesTabela";
 
 const SITUACOES_COMPROMISSO = ["PENDENTE", "PARCIAL", "LIQUIDADO", "CANCELADO"];
 function criteriosIniciaisCompromissos() {
@@ -175,7 +176,7 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
       </BarraConsulta>
       {visao === "calendario" ? <CalendarioCompromissos itens={lista} mes={mes} onChangeMes={setMes} onLiquidar={podeLancar ? setPagando : undefined} /> : <>
       {lista.length ? <>
-        <TabelaFinanceira ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(campos, edicao, consultaColunas.erro)} compacta cartaoComLinks rotulo="Compromissos financeiros" itens={lista.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={c => c.id} onAbrir={setSelecionado} classeLinha={c => c.vencido ? "compromisso-vencido" : ""} colunas={[
+        <TabelaFinanceira iconeDe={c => c.tipo === "RECEBER" ? ICONES_TABELA.receber : ICONES_TABELA.pagar} ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(campos, edicao, consultaColunas.erro)} compacta rotulo="Compromissos financeiros" itens={lista.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={c => c.id} onAbrir={setSelecionado} classeLinha={c => c.vencido ? "compromisso-vencido" : ""} colunas={[
           { chave: "descricao", titulo: "Compromisso", principal: true, larguraMinima: 240, larguraFlexivel: true, celula: c => <><strong>{tituloCompromisso(c)}</strong><div className="mt-1 text-xs text-ink-3"><LinkOperacaoFinanceira id={c.operacao.id} numero={c.operacao.numero} /></div></> },
           { chave: "parceiro", titulo: "Parceiro", larguraMinima: 180, celula: c => <ParceiroOperacao parceiro={c.parceiro} /> },
           { chave: "vencimento", titulo: "Vencimento", larguraMinima: 135, celula: c => <div className={c.vencido ? "compromisso-vencimento-atrasado" : ""}><time dateTime={c.dataVencimento}>{dataBR(c.dataVencimento)}</time>{c.vencido && <span className="compromisso-atraso"><CircleAlert size={14} aria-hidden />Vencido</span>}</div> },

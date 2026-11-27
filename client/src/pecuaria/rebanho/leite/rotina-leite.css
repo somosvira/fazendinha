@@ -17,17 +17,9 @@
 .ordenhas-paginacao>label{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:14px}
 .ordenhas-paginacao>label>button{width:80px}
 .ordenhas-paginacao>nav,.ordenhas-paginacao>.fin-paginacao{flex:1}
-.leite-rotina-reformulada .leite-ordenha-visual{padding:22px;gap:18px;border:0;box-shadow:0 3px 14px color-mix(in srgb, var(--fin-heading) 4%, transparent);border-radius:16px;background:var(--card)}
-.leite-ordenha-visual header{align-items:flex-start;margin-bottom:0;flex-wrap:wrap}
-.leite-ordenha-visual header>h3{align-self:center;flex:1}
-.leite-ordenha-visual header .ordenha-turno-icone{display:grid!important;place-items:center;width:42px;height:42px;flex-shrink:0;border-radius:12px;background:var(--fin-positive-bg);color:var(--lucro)}
-.leite-ordenha-visual .leite-volume-visual{margin:0;gap:8px}
-.leite-ordenha-visual .leite-volume-visual>strong{font-size:32px}
-.leite-ordenha-visual .leite-volume-visual>span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
 .ordenha-fonte{margin-left:auto;font-size:14px}
-.leite-ordenha-visual .leite-naturezas-legenda{grid-template-columns:1fr;gap:0}
-.leite-ordenha-visual .leite-naturezas-legenda>div{display:flex;justify-content:space-between;padding:8px 0;gap:12px}
-.leite-ordenha-visual .leite-naturezas-legenda dd{margin:0;font-size:16px}
+
 .ordenha-origens-resumo{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;padding-top:8px;font-size:14px;color:var(--muted-foreground)}
 .ordenha-origens-resumo>span{display:flex;gap:6px;align-items:center}
 .leite-registro .ordenha-campo-volume{grid-column:1/-1;grid-row:1;background:var(--fin-positive-bg);padding:16px 18px;border-radius:12px}
@@ -43,14 +35,11 @@
 .leite-producao-registro .producao-registro-cabecalho{margin-top:0}
 .leite-rotina-reformulada :is(.leite-consulta-custos,.leite-historico-coletivo){margin-top:24px}
 .leite-rotina-reformulada .leite-estoque-visao{align-items:stretch;gap:20px}
-.leite-rotina-reformulada .leite-estoque-visao>section{padding:24px;border-radius:16px;background:var(--fin-positive-bg)}
-.leite-rotina-reformulada .leite-coberturas{padding:24px;background:var(--card);border:0;border-radius:16px}
-.leite-rotina-reformulada .leite-produto-visual{padding:22px;border:0;box-shadow:0 3px 14px color-mix(in srgb, var(--fin-heading) 4%, transparent);border-radius:16px}
-.leite-rotina-reformulada .leite-coleta-visual{padding:20px;border:0;box-shadow:0 3px 14px color-mix(in srgb, var(--fin-heading) 4%, transparent);border-radius:16px;gap:20px}
-.leite-rotina-reformulada .leite-coleta-visual time{background:var(--fin-positive-bg);min-width:58px;padding:10px}
-.leite-rotina-reformulada .leite-coleta-visual time strong{font-size:28px}
-.leite-rotina-reformulada :is(.leite-amostra-visual,.leite-venda-visual){padding:22px;border:0;box-shadow:0 3px 14px color-mix(in srgb, var(--fin-heading) 4%, transparent);border-radius:16px}
-@media(max-width:650px){.leite-producao-evolucao,.leite-producao-registro{padding:16px}.leite-rotina-reformulada .leite-coleta-visual{gap:12px}.leite-rotina-reformulada .leite-cabecalho-acoes{flex-wrap:wrap}.leite-rotina-reformulada .leite-modulo-acoes>button{flex:1}}
+.leite-rotina-reformulada .leite-estoque-visao>section{padding:24px;border-radius:12px;border:1px solid var(--border);background:var(--card)}
+/* Os dois resumos lado a lado usam a mesma superfície: borda, raio e fundo iguais. */
+.leite-rotina-reformulada .leite-coberturas{padding:24px;background:var(--card);border:1px solid var(--border);border-radius:12px}
+
+@media(max-width:650px){.leite-producao-evolucao,.leite-producao-registro{padding:16px}.leite-rotina-reformulada .leite-cabecalho-acoes{flex-wrap:wrap}.leite-rotina-reformulada .leite-modulo-acoes>button{flex:1}}
 /* A data e a ação principal mantêm largura legível no telefone. */
 @media(max-width:650px){
  .leite-rotina-reformulada .leite-cabecalho-acoes{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:12px;align-items:center}

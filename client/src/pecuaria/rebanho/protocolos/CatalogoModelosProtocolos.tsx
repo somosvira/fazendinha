@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, MoreHorizontal, Plus } from "lucide-react";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
+import { MoreHorizontal, Plus } from "lucide-react";
 import { Button, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { Paginacao } from "../ui";
 import { type CadastroProtocoloMeta } from "./cadastros-api";
-import { DetalheModeloProtocolo, intervaloProcedimento } from "./DetalheModeloProtocolo";
+import { DetalheModeloProtocolo } from "./DetalheModeloProtocolo";
 import { Button as BotaoMenu } from "../../../components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu";
 import "./CatalogoModelosProtocolos.css";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 type Props = {
   tipo: CadastroProtocoloMeta["tipo"]; protocolos: CadastroProtocoloMeta[]; total: number; pagina: number;
@@ -30,7 +30,6 @@ function SituacaoModelo({ p }: { p: CadastroProtocoloMeta }) {
 }
 export function CatalogoModelosProtocolos(props: Props) {
   const { tipo, protocolos, total, pagina, carregando, erro, ocupado, podeLancar } = props;
-  const visual = useVisualizacaoConsulta("visualCadastroProtocolos",tipo);
   const [detalhe,setDetalhe] = useState<CadastroProtocoloMeta | null>(null);
   useEffect(()=>{setDetalhe(null);},[tipo]);
   const titulo = tipo === "SANITARIO" ? "Protocolos sanitários" : "Protocolos reprodutivos";
@@ -52,21 +51,12 @@ export function CatalogoModelosProtocolos(props: Props) {
     <header className="catalogo-modelos-cabecalho"><div><h1>{titulo}</h1></div>{podeLancar && <Button disabled={bloqueado} onClick={props.onNovo}><Plus size={18} aria-hidden="true" />Novo protocolo</Button>}</header>
     <div className="catalogo-modelos-barra"><label className="catalogo-modelos-busca">Buscar protocolos<input className={classeInput} type="search" placeholder="Nome ou descrição" value={props.busca} onChange={e=>props.onBusca(e.target.value)}/></label>
       <label className="catalogo-modelos-inativos"><input type="checkbox" checked={props.situacao === "TODAS" || props.situacao === "INATIVA"} onChange={e=>props.onSituacao(e.target.checked?"TODAS":"ATIVA")}/>Mostrar inativos</label>
-      <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos protocolos"/>
     </div>
     {!["TODAS","ATIVA"].includes(props.situacao) && <div className="catalogo-modelos-filtro-anterior"><span>Filtro do link anterior: {props.situacao === "INATIVA" ? "somente inativos" : props.situacao === "RASCUNHO" ? "cadastros não concluídos" : "cadastros concluídos ativos"}</span><Button secondary onClick={()=>props.onSituacao("ATIVA")}>Remover filtro</Button></div>}
     <div className="catalogo-modelos-estado"><ErrorBox erro={erro}/>{erro && <Button secondary disabled={carregando} onClick={props.onRecarregar}>Tentar novamente</Button>}
       {carregando ? (protocolos.length ? <p role="status">Atualizando protocolos… Os dados confirmados continuam visíveis.</p> : <EsqueletoTabela label="Carregando protocolos" />) : <p role="status">{total} {total===1?"protocolo":"protocolos"}{props.situacao==="TODAS"?" · incluindo inativos":props.situacao==="INATIVA"?" inativos":" ativos"}{erro && " · última consulta confirmada"}</p>}
     </div>
-    {carregando && !protocolos.length ? <div className="catalogo-modelos-esqueleto" aria-hidden="true"><div/><div/></div> : visual.modo === "visual" ? <div className="catalogo-modelos-cartoes">{protocolos.map(p=>{
-      const restantes = Math.max(0,(p.totalMomentos??0)+(p.totalAcoesSemEtapa??0)-(p.previaEstrutura?.length??0));
-      return <article key={p.id} className="modelo-cartao"><header className="modelo-identidade"><span className="modelo-emblema"><ShieldCheck size={24} aria-hidden="true" /></span><div><h3>{p.nome}</h3>{tipo !== "SANITARIO" && <p>{p.finalidade ? finalidades[p.finalidade] : "Finalidade não informada"}</p>}</div><SituacaoModelo p={p}/></header>
-        <dl className="modelo-fatos"><div><dt>Versão</dt><dd>{p.versao}</dd></div><div><dt>Estrutura</dt><dd>{resumoEstrutura(p)}</dd></div></dl>
-        {!!p.previaEstrutura?.length && <ol className="modelo-previa" aria-label={`Etapas e procedimentos de ${p.nome}`}>{p.previaEstrutura?.map(e=><li key={e.id}>{!e.agrupada && e.intervalo!=null && <span>{intervaloProcedimento(e.intervalo,e.unidade??"DIAS")}</span>}<strong>{e.nome}</strong>{e.agrupada && <small>{e.totalProcedimentos} {e.totalProcedimentos===1?"procedimento":"procedimentos"}</small>}</li>)}</ol>}
-        {restantes>0 && <p className="modelo-previa-mais">+ {restantes} {restantes===1?"item em":"itens em"} Ver detalhes</p>}
-        <footer>{acoes(p)}</footer>
-      </article>;
-    })}</div> : <TabelaFinanceira<CadastroProtocoloMeta> rotulo={titulo} visualizacao="tabela" compacta itens={protocolos} chaveDe={p=>p.id} colunas={[
+    {carregando && !protocolos.length ? <div className="catalogo-modelos-esqueleto" aria-hidden="true"><div/><div/></div> : <TabelaFinanceira<CadastroProtocoloMeta> icone={ICONES_TABELA.protocolo} rotulo={titulo} compacta itens={protocolos} chaveDe={p=>p.id} colunas={[
       {chave:"nome",titulo:"Protocolo",principal:true,larguraMinima:220,celula:p=><strong className="modelo-nome">{p.nome}</strong>},
       {chave:"situacao",titulo:"Situação",larguraMinima:190,celula:p=><div className="modelo-situacoes"><SituacaoModelo p={p}/>{p.ativo && (p.publicado || p.publicadoEm) && <span className="modelo-situacao">Ativo</span>}</div>},
       ...(tipo === "SANITARIO" ? [] : [{chave:"finalidade",titulo:"Finalidade",larguraMinima:140,celula:(p:CadastroProtocoloMeta)=>p.finalidade ? finalidades[p.finalidade] : "Não informada"}]),

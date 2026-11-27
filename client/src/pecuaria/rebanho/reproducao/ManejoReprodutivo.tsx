@@ -1,10 +1,9 @@
 import "../telas/rotinas-aprovadas.css";
-import {Plus,Layers,CalendarDays} from "lucide-react";
+import {Plus} from "lucide-react";
 import {VacaIcon} from "../../../components/icons/VacaIcon";
 const IconeVaca = () => <VacaIcon/>;
 import { incorporarAptidaoManejo } from "./manejo-aptidao";
 import { listarCategorias } from "../api";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
 import type { ControleOrdenacao } from "../../../financeiro/OrdenarConsulta";
@@ -16,7 +15,7 @@ import { CampoFiltro } from "@/financeiro/PainelFiltros";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { useEffect, useState } from "react";
 import { ClipboardList, Search, Stethoscope, TriangleAlert, Venus } from "lucide-react";
-import { ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { ErrorBox, Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { formatBRDateISO, getHojeISO } from "../../../lib/hoje";
 import { Paginacao } from "../ui";
@@ -40,7 +39,6 @@ type DadosManejo = { propriedadeId: number; hoje: string; filas: Record<FilaMane
 export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento, recarregarToken = 0 }: {
   propriedadeId?: number; podeLancar: boolean; onRegistrarEvento?: () => void; onConsultarHistorico?: () => void; recarregarToken?: number;
 }) {
-  const visual = useVisualizacaoConsulta("visualAnimaisReproducao", "reproducao");
   const [detalhe, setDetalhe] = useState<LinhaManejo | null>(null);
   const [consulta, setConsulta] = useState(lerConsultaManejo);
   const [dados, setDados] = useState<DadosManejo | null>(null);
@@ -120,25 +118,17 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
       </header>
       {carregando && <EsqueletoTabela label="Carregando filas de manejo" className="p-5" />}
       {visivel && <>
-        <div className="repro-consulta-titulo"><div><h2>Filas de manejo <span>{linhas.length} animais</span></h2><p>{atual?.descricao ?? (consulta.fila === "manejo" ? "Avaliações, agendamentos, retornos e serviços. Contagem de animais únicos nas filas exibidas." : "Todas as filas. Um animal pode ter mais de um acompanhamento; cada animal é contado uma vez.")}</p></div><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais e acompanhamentos"/></div>
-        {visual.modo === "visual" && linhas.length > 0 ? <div className="reproducao-cartoes reproducao-manejo-cartoes">{linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho).map(a => {
-          const fila = filaDe(a.animalId);
-          return <article className="reproducao-cartao" key={a.animalId}>
-            <header><span className="repro-animal-icone"><VacaIcon/></span><div><IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/><p className="repro-lote"><Layers size={15}/>{a.lote?.nome ?? "Lote não informado"}</p></div><div className="repro-aptidao-clinica"><span>Aptidão</span><Pill tone={a.aptidaoClinica === "APTA" ? "green" : "amber"}>{rotuloAptidao(a)}</Pill></div></header>
-            <dl><div><dt>Situação reprodutiva</dt><dd>{rotuloSituacao(a)}</dd></div><div><dt>Fila de manejo</dt><dd>{filasDe(a.animalId).map(f => f.titulo).join(" · ") || "Não informada"}</dd></div><div><dt><CalendarDays size={15}/>Data de referência</dt><dd>{a.data ? formatBRDateISO(a.data) : "Não comprovada"}</dd></div></dl>
-            {detalhesDiagnostico(a)}
-            <div className="reproducao-cartao-acompanhamento">{fila === "pendencias" ? <ul>{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <strong>{prazo(a)}</strong>}</div>
-            <footer><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao>{a.visitas?.map(v => <LinkReproducao key={v.id} botao sitio={propriedadeId} href={`/pecuaria/visitas/${v.id}`}>{v.nome}</LinkReproducao>)}</footer>
-          </article>;
-        })}</div> : <TabelaFinanceira icone={IconeVaca} visualizacao="tabela" filtrosColunas={filtrosDasColunas(campos,edicaoFiltros)} rotulo={atual?.titulo ?? "Animais e acompanhamentos"} itens={linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho)} chaveDe={a => a.animalId} colunas={[
+        <div className="repro-consulta-titulo"><div><h2>Filas de manejo <span>{linhas.length} animais</span></h2><p>{atual?.descricao ?? (consulta.fila === "manejo" ? "Avaliações, agendamentos, retornos e serviços. Contagem de animais únicos nas filas exibidas." : "Todas as filas. Um animal pode ter mais de um acompanhamento; cada animal é contado uma vez.")}</p></div></div>
+        <TabelaFinanceira icone={IconeVaca} filtrosColunas={filtrosDasColunas(campos,edicaoFiltros)} rotulo={atual?.titulo ?? "Animais e acompanhamentos"} itens={linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho)} chaveDe={a => a.animalId} colunas={[
           { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: a => <IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/> },
           { chave: "lote", titulo: "Lote", larguraMinima: 110, celula: a => a.lote?.nome ?? "Não informado" },
           { chave: "data", titulo: "Data de referência", celula: a => a.data ? <div>{formatBRDateISO(a.data)}<p className="text-sm text-muted-foreground">{prazo(a)}</p></div> : "Não comprovada" },
           { chave: "situacao", titulo: "Fila de manejo", celula: a => <div><span>{filasDe(a.animalId)[0]?.titulo ?? "Conferência necessária"}</span>{filasDe(a.animalId).length > 1 && <span className="block text-sm text-muted-foreground">+{filasDe(a.animalId).length - 1} acompanhamentos</span>}</div> },
           { chave: "situacaoReprodutiva", titulo: "Situação reprodutiva", celula: a => rotuloSituacao(a) },
           { chave: "aptidao", titulo: "Aptidão", celula: a => rotuloAptidao(a) },
+          { chave: "motivo", titulo: "Acompanhamento e pendências", larguraMinima: 240, celula: a => filaDe(a.animalId) === "pendencias" ? <ul className="space-y-1 text-sm">{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : detalhesDiagnostico(a) ?? "—" },
           { chave: "acao", titulo: "Ação", acoes: true, celula: a => <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={() => setDetalhe(a)}>Ver acompanhamento</Button><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao>{a.visitas?.map(v => <LinkReproducao key={v.id} botao sitio={propriedadeId} href={`/pecuaria/visitas/${v.id}`}>{v.nome}</LinkReproducao>)}</div> },
-        ]}/>}
+        ]}/>
         <div className="flex flex-wrap items-center justify-end border-t border-border px-4 pt-3"><label className="text-sm">Animais por página <SelectCampo className="ml-2" aria-label="Animais por página" value={String(consulta.tamanho)} onValueChange={v => mudar({ tamanho: Number(v) })}>{[4,10,25,50].map(n => <option key={n} value={n}>{n} por página</option>)}</SelectCampo></label></div>
         <Paginacao paginaAtual={pagina} totalPaginas={paginas} totalItens={linhas.length} itensPorPagina={consulta.tamanho} onPaginaChange={pagina => mudar({ pagina })} rotulo="animais" idSelect="pagina-manejo"/>
       </>}

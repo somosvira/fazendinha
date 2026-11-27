@@ -22,7 +22,7 @@ describe("controle de lotes por validade", () => {
   });
   it("ativo sem saldo não oferece identificação nem cria lote", async () => {
     render(<PartidasProduto produtoId="p" propriedadeId={2} rastreado onMudou={vi.fn()} />);
-    await screen.findByText(/Controle de lotes por validade ativo/);
+    await screen.findByLabelText("Controlar lotes por validade");
     expect(screen.queryByText("Identificar estoque sem validade")).toBeNull();
   });
   it("identificação fica nas opções avançadas apenas com saldo desconhecido positivo", async () => {

@@ -42,7 +42,7 @@
 .producao-tabela { border: 1px solid var(--fin-table-rule, var(--border)); border-radius: 10px; overflow: auto; width: 100%; }
 .producao-tabela table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .producao-tabela th, .producao-tabela td { padding: 12px; text-align: center; vertical-align: middle; border-inline-end: 1px solid var(--fin-table-rule, var(--border)); border-bottom: 1px solid var(--fin-table-rule, var(--border)); }
-.producao-tabela th { background: var(--fin-table-header, #e2e7ea); color: var(--fin-table-heading, #34434b); font-weight: 650; white-space: nowrap; }
+.producao-tabela th { font-weight: 650; white-space: nowrap; }
 .producao-tabela tr > :last-child { border-inline-end: 0; }
 .producao-tabela tbody tr:last-child td { border-bottom: 0; }
 .producao-situacao { display: inline-flex; padding: 4px 8px; background: var(--muted); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }

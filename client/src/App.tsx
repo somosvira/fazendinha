@@ -9,11 +9,10 @@ import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/des
  * são mascarados quando o perfil não tem a flag verValores.
  */
 
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
 import { abrirRotaNovaOperacao, isNovaOperacaoFinanceira, isNovoRelatorioFinanceiro, isSubrotaFinanceira, isSubrotaRebanho, tabToPath, pathToTab, DEFAULT_TAB, navegarPara, normalizarLocalizacaoPecuaria, normalizarRotaPecuaria, isSubrotaPecuaria } from "./router";
 import { Header } from "./components/Header";
-import { VisualizacaoNoCabecalho } from "./components/VisualizacaoConsulta";
 import { AppSidebar } from "./components/AppSidebar";
 import "./financeiro/financeiro-theme.css";
 import { descartarRascunhoOperacao, descartarRascunhoRelatorioFinanceiro, obterRascunhoOperacao, obterRascunhoRelatorioFinanceiro } from "./financeiro/novo-api";
@@ -26,6 +25,7 @@ import "./pecuaria/pecuaria-refino.css";
 import "./styles/abas.css";
 import "./styles/tabelas-operacionais.css";
 import "./styles/operacional-aprovado.css";
+import "./styles/tabela-padrao.css";
 import "./styles/campo.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { executarComGuardaNavegacao } from "./navegacaoGuardada";
@@ -646,7 +646,7 @@ export function App() {
           }}
         />
       )}
-    <VisualizacaoNoCabecalho key={usuario.id} usuarioId={usuario.id}>
+    <Fragment key={usuario.id}>
     <div className={"app" + (sideColapsada ? " side-collapsed" : "")}>
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
       <AppSidebar
@@ -711,7 +711,7 @@ export function App() {
         }}
       />
     </div>
-    </VisualizacaoNoCabecalho>
+    </Fragment>
     </>
   );
 }

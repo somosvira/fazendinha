@@ -187,8 +187,8 @@ function SimLineChart({
       <ChartContainer config={config} className="h-[180px] w-full aspect-auto" role="img" aria-label={`${labelA} e ${labelB} ao longo de 12 meses`}>
         <Chart data={dados} margin={{ top: 8, right: 8, bottom: 0, left: 4 }} accessibilityLayer>
           <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
-          <XAxis dataKey="mes" interval={2} tick={{ fill: "var(--ink-2)", fontSize: 11 }} tickLine={false} axisLine={false} />
-          <YAxis width={48} tickFormatter={(v) => fmtY(Number(v))} tick={{ fill: "var(--ink-2)", fontSize: 11 }} tickLine={false} axisLine={false} />
+          <XAxis dataKey="mes" interval={2} tick={{ fill: "var(--ink-2)", fontSize: 12 }} tickLine={false} axisLine={false} />
+          <YAxis width={48} tickFormatter={(v) => fmtY(Number(v))} tick={{ fill: "var(--ink-2)", fontSize: 12 }} tickLine={false} axisLine={false} />
           <ChartTooltip formatter={(v, nome) => [fmtY(Number(v ?? 0)), nome === "serieA" ? labelA : labelB]} />
           <ChartLegend formatter={(nome) => nome === "serieA" ? labelA : labelB} />
           {tipo === "line" ? <>

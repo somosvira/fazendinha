@@ -1,3 +1,5 @@
+import { BuscaLista } from "@/components/BuscaLista";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 import { CalendarDays, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +20,7 @@ import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
 import { hojeOperacional, formatarLitros } from "./modelo";
 import type { OrigemDestinoLeite } from "./destinos-types";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 interface Descarte {
   destino?: "CASA" | "FUNCIONARIOS";
   responsavel?: string;
@@ -60,6 +63,10 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
   const filtros = useRascunhoConsulta({ data }, { data: hojeOperacional() }, v => { setData(v.data); setPagina(1); });
   const [estorno, setEstorno] = useState<Descarte | null>(null),
     [motivoEstorno, setMotivoEstorno] = useState("");
+  const [atualizando, setAtualizando] = useState(true);
+  const [busca, setBusca] = useState(""), [buscaAplicada, setBuscaAplicada] = useState("");
+  // Busca enquanto digita; a espera evita uma consulta por tecla.
+  useEffect(() => { const t = setTimeout(() => { setBuscaAplicada(busca.trim()); setPagina(1); }, 300); return () => clearTimeout(t); }, [busca]);
   const [erro, setErro] = useState(""),
     [aviso, setAviso] = useState(""),
     [ocupado, setOcupado] = useState(false);
@@ -86,7 +93,7 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
   }, [sitio]);
   useEffect(() => {
     const atual = ++geracao.current;
-    setLista(null);
+    setAtualizando(true);
     setOrigens([]);
     setEntradaId("");
     setEstorno(null);
@@ -98,7 +105,7 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
         total: number;
         tamanho: number;
       }>(
-        `${base}?${new URLSearchParams({ de: `${data.slice(0, 7)}-01`, ate: data, pagina: String(pagina) })}`,
+        `${base}?${new URLSearchParams({ de: `${data.slice(0, 7)}-01`, ate: data, pagina: String(pagina), ...(buscaAplicada ? { busca: buscaAplicada } : {}) })}`,
         sitio,
       ),
       produto
@@ -112,16 +119,19 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
         if (atual === geracao.current) {
           setLista(l);
           setOrigens(o.itens);
+          setAtualizando(false);
         }
       })
       .catch((e) => {
-        if (atual === geracao.current)
+        if (atual === geracao.current) {
           setErro(e instanceof Error ? e.message : "Falha na consulta");
+          setAtualizando(false);
+        }
       });
     return () => {
       geracao.current++;
     };
-  }, [sitio, data, produto, pagina, revisao, base]);
+  }, [sitio, data, produto, pagina, revisao, base, buscaAplicada]);
   async function executar(
     caminho: string,
     body: Record<string, unknown>,
@@ -170,7 +180,7 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
   return (
     <section className="leite-operacoes" aria-label={interna ? "Retiradas para Casa e Funcionários" : "Descarte físico de leite"}>
       <CabecalhoTabela titulo={interna ? "Casa e Funcionários" : "Descarte físico"} rotuloAjuda={interna ? "Sobre retiradas internas" : "Sobre descarte físico"} acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />{interna ? "Registrar retirada interna" : "Registrar descarte"}</Button> : undefined} />
-      <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Data de referência"><DatePicker aria-label={interna ? "Data das retiradas internas" : "Data do descarte"} value={filtros.rascunho.data} onChange={v => { if(v) filtros.editar("data", v); }} /></CampoFiltro>} resumo={<span className="leite-contexto-data"><CalendarDays size={17} aria-hidden />Mês até <time dateTime={data}>{data.split("-").reverse().join("/")}</time></span>} />
+      <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Data de referência"><DatePicker aria-label={interna ? "Data das retiradas internas" : "Data do descarte"} value={filtros.rascunho.data} onChange={v => { if(v) filtros.editar("data", v); }} /></CampoFiltro>} resumo={<span className="leite-contexto-data"><CalendarDays size={17} aria-hidden />Mês até <time dateTime={data}>{data.split("-").reverse().join("/")}</time></span>}><BuscaLista rotulo="Buscar registro" placeholder={interna ? "Buscar responsável, motivo ou produto" : "Buscar motivo, produto ou ordenha"} valor={busca} onChange={setBusca} /></BarraConsulta>
       {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {aviso && <p role="status">{aviso}</p>}
       {podeLancar && novo && <PainelCadastro aberto
@@ -269,20 +279,20 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
         </form>
       )}
       </div></PainelCadastro>}
+      {!lista && !erro && <EsqueletoTabela label="Carregando registros" className="p-5" />}
       {lista && (
-        <>
-          <ListaConsultaLeite tituloDe={d => interna ? d.destino === "CASA" ? "Casa" : "Funcionários" : d.produtoNome} detalheDe={d => d.data.split("-").reverse().join("/")} layout="grade" destaque="litros" preferencia={interna ? "retiradasInternasLeiteVisualizacao" : "descartesLeiteVisualizacao"} compacta rotulo={interna ? "Retiradas internas registradas" : "Descartes registrados"} itens={lista.itens} chaveDe={d => d.id} colunas={[
-          ...(interna ? [{ chave: "destino", titulo: "Destino", ocultarNoCartao: true, celula: (d: Descarte) => d.destino === "CASA" ? "Casa" : "Funcionários" }, { chave: "responsavel", titulo: "Responsável", celula: (d: Descarte) => d.responsavel ?? "Não informado" }] : []),
+        <div aria-busy={atualizando} className={atualizando ? "opacity-60 transition-opacity" : "transition-opacity"}>
+          <ListaConsultaLeite icone={ICONES_TABELA.carencia} compacta rotulo={interna ? "Retiradas internas registradas" : "Descartes registrados"} itens={lista.itens} chaveDe={d => d.id} colunas={[
+          ...(interna ? [{ chave: "destino", titulo: "Destino", celula: (d: Descarte) => d.destino === "CASA" ? "Casa" : "Funcionários" }, { chave: "responsavel", titulo: "Responsável", celula: (d: Descarte) => d.responsavel ?? "Não informado" }] : []),
             { chave: "data", titulo: "Data", principal: true, celula: d => d.data.split("-").reverse().join("/") },
-            { chave: "produto", titulo: "Produto", ocultarNoCartao: true, celula: d => d.produtoNome },
+            { chave: "produto", titulo: "Produto", celula: d => d.produtoNome },
             { chave: "ordenha", titulo: "Ordenha", celula: d => d.nomeOrdenha },
             { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },
             { chave: "situacao", titulo: "Situação", celula: d => d.status === "CONFIRMADO" ? "Confirmado" : "Estornado" },
             { chave: "acoes", titulo: "Ações", acoes: true, celula: d => <div className="leite-consulta-acoes"><DialogConsultaLeite titulo={interna ? "Ver retirada" : "Ver descarte"}><p>Motivo: {d.motivo}</p><p>Saldo da origem: {formatarLitros(d.saldoOrigemAntes)} → {formatarLitros(d.saldoOrigemDepois)}</p><p>Versão {d.versao}</p>{d.motivoEstorno && <p>Motivo do estorno: {d.motivoEstorno}</p>}</DialogConsultaLeite>{podeLancar && d.status === "CONFIRMADO" && <Button variant="outline" aria-label={`Corrigir ${interna ? "retirada" : "descarte"} de ${d.data}`} onClick={() => { setEstorno(d); setMotivoEstorno(""); }}>Corrigir</Button>}</div> },
-          ]} />
+          ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(lista.total / lista.tamanho))} total={lista.total} porPagina={lista.tamanho} rotulo={interna ? "Paginação das retiradas internas" : "Paginação dos descartes"} substantivo={interna ? "retiradas" : "descartes"} idSelect={interna ? "pagina-retiradas-internas-leite" : "pagina-descartes-leite"} onPagina={setPagina} />} />
 
-          <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(lista.total / lista.tamanho))} total={lista.total} porPagina={lista.tamanho} rotulo={interna ? "Paginação das retiradas internas" : "Paginação dos descartes"} substantivo={interna ? "retiradas" : "descartes"} idSelect={interna ? "pagina-retiradas-internas-leite" : "pagina-descartes-leite"} onPagina={setPagina} />
-        </>
+        </div>
       )}
       {estorno && (
         <form
