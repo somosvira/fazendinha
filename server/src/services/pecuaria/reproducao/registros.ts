@@ -1,5 +1,5 @@
 import { prepararContextoAvaliacaoTx, revisaoAvaliacaoContextual } from "./avaliacao-contextual.js";
-import { resolverDecisaoIatf, quantidadePadraoTentativa, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
+import { resolverDecisaoIatf, quantidadePadraoTentativa, validarConsumoTentativa } from "./atendimento.calc.js";
 import { sincronizarLocalizacoesBezerreiroTx } from '../bezerreiro/localizacao.js';
 import { resolverClasseReprodutiva } from "./classe-reprodutiva.calc.js";
 import { aplicarPesoSecagemTx, conferirPesoSecagemNaRevisaoTx, exigirAutorRealSecagemTx, lerLactacaoComPesoSecagemTx } from "./peso-secagem.js";
@@ -237,6 +237,7 @@ export async function prepararTentativaTx(
   tx: Prisma.TransactionClient,
   input: TentativaInput,
   usuarioId: number | null,
+  opcoes?: { consumoIaEstoqueAvulso?: boolean },
 ) {
   await travarAnimais(tx, [input.animalId]);
   const data = dia(input.data);
@@ -316,7 +317,7 @@ export async function prepararTentativaTx(
     validade: Date | null;
   } | null = null;
   const quantidadeInformada = quantidadePadraoTentativa(input.tipo, input.quantidade, material?.produto.unidade);
-  validarConsumoExcepcionalTentativa(input.tipo, quantidadeInformada, material?.produto.unidade, input.motivoQuantidadeExcepcional);
+  validarConsumoTentativa({ tipo: input.tipo, origem: input.origem, quantidade: quantidadeInformada, unidade: material?.produto.unidade, motivo: input.motivoQuantidadeExcepcional }, opcoes?.consumoIaEstoqueAvulso);
   const quantidade = quantidadeInformada == null ? null : new Prisma.Decimal(quantidadeInformada);
   if (input.tipo === "COBERTURA") {
     if (input.origem === "ESTOQUE" || quantidade || input.partidaId)
@@ -411,8 +412,8 @@ export async function prepararTentativaTx(
   };
   return { dadosCriacao, material, matriz, quantidade, data };
 }
-export async function criarTentativaTx(tx: Prisma.TransactionClient, input: TentativaInput, usuarioId: number | null, opcoes?: { adiarAcompanhamento?: boolean }) {
-  const { dadosCriacao, material, matriz, quantidade, data } = await prepararTentativaTx(tx, input, usuarioId);
+export async function criarTentativaTx(tx: Prisma.TransactionClient, input: TentativaInput, usuarioId: number | null, opcoes?: { adiarAcompanhamento?: boolean; consumoIaEstoqueAvulso?: boolean }) {
+  const { dadosCriacao, material, matriz, quantidade, data } = await prepararTentativaTx(tx, input, usuarioId, opcoes);
   if (input.origem === "ESTOQUE" && material && quantidade) {
     const consumo = await consumirEstoqueTx(tx, { produto: material.produto, propriedadeId: input.propriedadeId,
       quantidade, campoQuantidade: "quantidade", data, partidaId: input.partidaId,
@@ -433,7 +434,7 @@ export async function criarTentativaTx(tx: Prisma.TransactionClient, input: Tent
     depois: {
       ...criada,
       cienciaSanitaria: input.cienciaSanitaria === true,
-      quantidadeExcepcional: input.tipo !== "COBERTURA" && criada.quantidade != null && !criada.quantidade.eq(1),
+      quantidadeExcepcional: input.tipo !== "COBERTURA" && criada.quantidade != null && !criada.quantidade.eq(1) && (!(opcoes?.consumoIaEstoqueAvulso && input.tipo === "IA" && input.origem === "ESTOQUE") || !!input.motivoQuantidadeExcepcional),
       motivoQuantidadeExcepcional: input.motivoQuantidadeExcepcional ?? null,
       cienciaValidadeDesconhecida: input.cienciaValidadeDesconhecida === true,
       documentacaoExcepcional: input.documentacaoExcepcional === true,
@@ -456,7 +457,7 @@ export const criarTentativa = (
     input,
     usuarioId,
     "TENTATIVA_REPRODUTIVA",
-    criarTentativaTx,
+    (tx, dados, usuario) => criarTentativaTx(tx, dados, usuario, { consumoIaEstoqueAvulso: true }),
     (tx, id) => tx.tentativaReprodutiva.findUniqueOrThrow({ where: { id } }),
   );
 export async function prepararAvaliacaoTx(

@@ -18,6 +18,7 @@ export function Dica({ conteudo, rotulo, children, className, asChild = false }:
 }) {
   const [aberto, setAberto] = useState(false);
   const toque = useRef(false);
+  const focoPorToque = useRef(false);
   const Gatilho = asChild ? Slot : "button";
   return <Popover open={aberto} onOpenChange={setAberto}>
     <PopoverTrigger asChild>
@@ -25,16 +26,17 @@ export function Dica({ conteudo, rotulo, children, className, asChild = false }:
         type={asChild ? undefined : "button"}
         aria-label={rotulo}
         className={cn("dica-gatilho inline-flex items-center align-middle text-ink-3 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2", className)}
-        onMouseEnter={() => setAberto(true)}
-        onMouseLeave={() => setAberto(false)}
+        onPointerEnter={(e) => { toque.current = e.pointerType === "touch"; }}
+        onMouseEnter={() => { if (!toque.current) setAberto(true); }}
+        onMouseLeave={() => { if (!toque.current) setAberto(false); }}
         // Só o foco do teclado abre: o clique também foca o botão, e o Radix devolve o
         // foco ao gatilho quando fecha, o que reabria a dica ao tirar o mouse.
-        onFocus={(e) => { if (e.currentTarget.matches(":focus-visible")) setAberto(true); }}
-        onBlur={() => setAberto(false)}
+        onFocus={(e) => { if (!focoPorToque.current && e.currentTarget.matches(":focus-visible")) setAberto(true); }}
+        onBlur={() => { focoPorToque.current = false; setAberto(false); }}
         // Mouse: o hover já abriu, o clique só mantém aberta (o toggle do Radix fecharia).
         // Toque: não há hover, então o toque alterna.
-        onPointerDown={(e) => { toque.current = e.pointerType === "touch"; }}
-        onClick={(e) => { if (asChild) return; e.preventDefault(); e.stopPropagation(); setAberto((v) => (toque.current ? !v : true)); }}
+        onPointerDown={(e) => { toque.current = e.pointerType === "touch"; focoPorToque.current = toque.current; }}
+        onClick={(e) => { if (asChild) return; e.preventDefault(); e.stopPropagation(); setAberto((v) => (e.detail !== 0 && toque.current ? !v : true)); }}
       >{children}</Gatilho>
     </PopoverTrigger>
     <PopoverContent

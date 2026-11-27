@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quantidadePadraoTentativa, resolverDecisaoIatf, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
+import { quantidadePadraoTentativa, resolverDecisaoIatf, validarConsumoExcepcionalTentativa, validarConsumoTentativa } from "./atendimento.calc.js";
 describe("decisões do atendimento manual", () => {
   it("preserva não indicar como decisão distinta de ausência", () => {
     expect(resolverDecisaoIatf({resultado:"NEGATIVO"}).decisaoIatf).toBeNull();
@@ -28,4 +28,13 @@ it("novas exceções exigem motivo sem reescrever quantidades históricas",()=>{
  expect(()=>validarConsumoExcepcionalTentativa("IA",1,"DOSE")).not.toThrow();
  expect(()=>validarConsumoExcepcionalTentativa("TE",2,"UN","Transferência dupla")).toThrow(/um embrião/);
  expect(()=>validarConsumoExcepcionalTentativa("TE",0.5,"ML","Unidade documental histórica")).not.toThrow();
+});
+
+it("dispensa motivo somente na IA avulsa de estoque", () => {
+ const ia = {tipo:"IA" as const, origem:"ESTOQUE" as const, quantidade:2, unidade:"DOSE"};
+ expect(() => validarConsumoTentativa(ia, true)).not.toThrow();
+ expect(() => validarConsumoTentativa(ia)).toThrow(/motivo/);
+ expect(() => validarConsumoTentativa({...ia, origem:"DOCUMENTADA"}, true)).toThrow(/motivo/);
+ expect(() => validarConsumoTentativa({...ia, origem:"SERVICO"}, true)).toThrow(/motivo/);
+ expect(() => validarConsumoTentativa({...ia, tipo:"TE", unidade:"UN"}, true)).toThrow(/um embrião/);
 });

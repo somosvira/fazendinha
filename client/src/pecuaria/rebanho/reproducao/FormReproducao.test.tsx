@@ -21,6 +21,7 @@ import {
   reqV4,
   registrarAvaliacao,
   registrarParto,
+  registrarTentativa,
   type PainelReprodutivo,
 } from "./api";
 vi.mock("../api", () => ({
@@ -393,7 +394,7 @@ it.each([null,"INDICAR","NAO_INDICAR"] as const)("DG individual preserva decisã
 
 it("tentativa individual mantém quantidade histórica visível na seção excepcional",async()=>{
  render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" tentativaInicial={{tipo:"IA",materialId:"material",quantidade:2}} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
- await screen.findByText(/1 dose por inseminação/);
+ await screen.findByRole("button", {name:"Quantidade excepcional ou registro histórico"});
  expect(screen.getByLabelText("Quantidade efetivamente utilizada")).toHaveProperty("value","2");
  expect(screen.getByRole("button", {name:"Quantidade excepcional ou registro histórico"}).getAttribute("aria-expanded")).toBe("true");
 });
@@ -707,4 +708,58 @@ it("mantém o primeiro erro visível quando outro campo inválido está recolhid
   fireEvent.invalid(peso);
   fireEvent.invalid(data);
   expect(screen.getByRole("button", { name: "Parto e crias" }).getAttribute("aria-expanded")).toBe("true");
+});
+
+it("IA avulsa permite duas doses sem motivo e usa pai do material", async () => {
+ vi.mocked(listarMaterialGenetico).mockResolvedValue([{id:"m",tipo:"SEMEN",touro:{tipo:"EXTERNO",id:"pai",nome:"Touro externo"},doadora:null,produto:{id:"p",nome:"Sêmen A",unidade:"DOSE"},saldo:3}] as never);
+ vi.mocked(registrarTentativa).mockResolvedValue({} as never);
+ render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+ await alterarControle(screen.getByLabelText("Origem do material"),{target:{value:"ESTOQUE"}});
+ await esperarOpcao("Sêmen A · saldo 3");
+ await alterarControle(screen.getByLabelText("Material genético"),{target:{value:"m"}});
+ expect(screen.queryByLabelText("Touro")).toBeNull();
+ await waitFor(() => expect(screen.getByLabelText("Quantidade utilizada (DOSE)")).toHaveProperty("value","1"));
+ fireEvent.change(screen.getByLabelText("Quantidade utilizada (DOSE)"),{target:{value:"2"}});
+ fireEvent.submit(document.getElementById("form-reproducao")!);
+ await waitFor(() => expect(registrarTentativa).toHaveBeenCalledTimes(1));
+ expect(vi.mocked(registrarTentativa).mock.calls[0][0]).toMatchObject({tipo:"IA",origem:"ESTOQUE",materialId:"m",quantidade:2});
+ expect(vi.mocked(registrarTentativa).mock.calls[0][0]).not.toHaveProperty("motivoQuantidadeExcepcional");
+ expect(vi.mocked(registrarTentativa).mock.calls[0][0]).not.toHaveProperty("touroExternoId");
+});
+it("mantém quantidade planejada e motivo na execução com callback", async () => {
+ const registrar=vi.fn().mockResolvedValue(undefined);
+ render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" propriedadeId={1} tentativaInicial={{tipo:"IA",quantidade:2}} onRegistrar={registrar} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+ await alterarControle(screen.getByLabelText("Origem do material"),{target:{value:"ESTOQUE"}});
+ expect(screen.getByLabelText("Quantidade efetivamente utilizada")).toHaveProperty("value","2");
+ fireEvent.submit(document.getElementById("form-reproducao")!);
+ expect(await screen.findByText(/Informe o motivo da quantidade excepcional/)).toBeTruthy();
+ expect(registrar).not.toHaveBeenCalled();
+});
+
+it("não transporta o padrão de dose para material em outra unidade", async () => {
+ vi.mocked(listarMaterialGenetico).mockResolvedValue([
+  {id:"dose",tipo:"SEMEN",touro:{tipo:"EXTERNO",id:"p",nome:"Touro"},produto:{id:"p1",nome:"Dose",unidade:"DOSE"},saldo:3},
+  {id:"ml",tipo:"SEMEN",touro:{tipo:"EXTERNO",id:"p",nome:"Touro"},produto:{id:"p2",nome:"Líquido",unidade:"ML"},saldo:3},
+ ] as never);
+ render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+ await alterarControle(screen.getByLabelText("Origem do material"),{target:{value:"ESTOQUE"}});
+ await esperarOpcao("Dose · saldo 3");
+ await alterarControle(screen.getByLabelText("Material genético"),{target:{value:"dose"}});
+ expect(screen.getByLabelText("Quantidade utilizada (DOSE)")).toHaveProperty("value","1");
+ await alterarControle(screen.getByLabelText("Material genético"),{target:{value:"ml"}});
+ expect(screen.getByLabelText("Quantidade utilizada (ML)")).toHaveProperty("value","");
+});
+it("não envia motivo oculto ao voltar para IA avulsa de estoque", async () => {
+ vi.mocked(listarMaterialGenetico).mockResolvedValue([{id:"m",tipo:"SEMEN",touro:{tipo:"EXTERNO",id:"pai",nome:"Touro"},produto:{id:"p",nome:"Sêmen",unidade:"DOSE"},saldo:3}] as never);
+ vi.mocked(registrarTentativa).mockResolvedValue({} as never);
+ render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+ await esperarOpcao("Sêmen · saldo 3");
+ await alterarControle(screen.getByLabelText("Material genético"),{target:{value:"m"}});
+ fireEvent.click(screen.getByRole("button",{name:"Quantidade excepcional ou registro histórico"}));
+ fireEvent.change(screen.getByLabelText("Quantidade efetivamente utilizada"),{target:{value:"2"}});
+ fireEvent.change(screen.getByLabelText("Motivo da quantidade excepcional"),{target:{value:"Motivo anterior válido"}});
+ await alterarControle(screen.getByLabelText("Origem do material"),{target:{value:"ESTOQUE"}});
+ fireEvent.submit(document.getElementById("form-reproducao")!);
+ await waitFor(() => expect(registrarTentativa).toHaveBeenCalledTimes(1));
+ expect(vi.mocked(registrarTentativa).mock.calls[0][0]).not.toHaveProperty("motivoQuantidadeExcepcional");
 });

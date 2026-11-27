@@ -83,3 +83,7 @@
   padding-block-start: 1rem;
   border-block-start: 1px solid var(--border);
 }
+
+.repro-registro-campos > .repro-material-inteiro { grid-column: 1 / -1; }
+.repro-registro-campos > .repro-estoque-campos { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 650px) { .repro-registro-campos > .repro-estoque-campos { grid-template-columns: minmax(0, 1fr); } }

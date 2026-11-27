@@ -70,8 +70,9 @@ it("não deduz início ou IATF de tentativa avulsa e não usa contagem técnica 
  const dados = painel(); dados.situacoesIniciais = []; dados.animais[0].resumoAcompanhamento!.referencia=null;
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
- expect(await screen.findByText("Início não comprovado")).toBeTruthy();
- expect(contagemTentativas()).toBe("12");
+ expect(await screen.findByText("Tentativas registradas")).toBeTruthy();
+ expect(screen.getByText("Tentativas registradas").parentElement!.querySelector("dd")!.textContent).toBe("12");
+ expect(screen.queryByText("Início não comprovado")).toBeNull();
  expect(await screen.findByText(/Nenhum protocolo reprodutivo encontrado/)).toBeTruthy();
  expect(screen.queryByText("999")).toBeNull();
  expect(vi.mocked(reqV4).mock.calls.some(([url]) => url.includes("/reproducao/participacoes"))).toBe(false);
@@ -257,4 +258,16 @@ it("restaura período legado sem tipo nas tentativas e partos", async () => {
    expect(parametros.get(`${prefixo}Inicio`)).toBe("2020-09-10");
    expect(parametros.get(`${prefixo}Fim`)).toBe("2020-09-30");
  }
+});
+
+it("distingue início desconhecido sem tentativas de resumo ausente", async () => {
+ const dados = painel(); dados.animais[0].resumoAcompanhamento = {dataReferencia:getHojeISO(),tentativas:0,referencia:null};
+ vi.mocked(obterReproducao).mockResolvedValue(dados);
+ const {unmount} = render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
+ expect(await screen.findByText("Início não comprovado")).toBeTruthy();
+ expect(contagemTentativas()).toBe("Início não comprovado");
+ unmount(); dados.animais[0].resumoAcompanhamento = undefined;
+ render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
+ expect(await screen.findByText("Contagem não informada")).toBeTruthy();
+ expect(screen.getByText("Referência não informada")).toBeTruthy();
 });

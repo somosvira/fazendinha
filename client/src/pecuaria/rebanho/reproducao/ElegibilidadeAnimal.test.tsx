@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ElegibilidadeAnimal } from "./ElegibilidadeAnimal";
@@ -116,4 +117,24 @@ it("preserva revisão de toque e permite encerrar bloqueio histórico com motivo
   fireEvent.change(screen.getByLabelText("Motivo do encerramento"), { target: { value: "Tratamento encerrado e conferido" } });
   fireEvent.click(screen.getByRole("button", { name: "Encerrar bloqueio anterior" }));
   await waitFor(() => expect(decidirElegibilidade).toHaveBeenCalledWith({ vinculoCicloId: "v", tipo: "RETOMAR_POLITICA", aptaDesde: null, data: expect.any(String), propriedadeId: 1, motivo: "Tratamento encerrado e conferido", chave: expect.any(String) }));
+});
+
+it("agrupa motivos reais de aptidão pendente e conserva os demais", async () => {
+ vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _s, data) => ({...elegibilidade(data), aptidao: {...elegibilidade(data).aptidao!, motivos:["EXAME_APTIDAO_NECESSARIO"]}, motivos:["EXAME_APTIDAO_NECESSARIO", "OUTRO_MOTIVO"], alertas:["OUTRO_ALERTA"]}));
+ render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar naFicha/>);
+ const estado = await screen.findByText("Pendente de avaliação");
+ expect(within(estado.parentElement!).getByText("Aguarda exame para definir aptidão.")).toBeTruthy();
+ expect(screen.getAllByText("Aguarda exame para definir aptidão.")).toHaveLength(1);
+ expect(screen.getByText("outro motivo")).toBeTruthy();
+ expect(screen.getByText("outro alerta")).toBeTruthy();
+ expect(screen.getByRole("button",{name:"Registrar exame de aptidão"})).toBeTruthy();
+});
+
+it("atualiza motivo do cartão conforme a data consultada", async () => {
+ vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _s, data) => ({...elegibilidade(data), aptidao: {...elegibilidade(data).aptidao!, motivos:[data === "2020-05-02" ? "LOCALIZACOES_CONFLITANTES" : "LOCALIZACAO_DESCONHECIDA"]}}));
+ render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar={false} naFicha/>);
+ expect(await screen.findByText("Localização do animal não comprovada na data consultada.")).toBeTruthy();
+ await alterarControle(screen.getByLabelText("Data de referência da aptidão"), {target:{value:"2020-05-02"}});
+ expect(await screen.findByText("Há localizações conflitantes na data consultada.")).toBeTruthy();
+ expect(screen.queryByText("Localização do animal não comprovada na data consultada.")).toBeNull();
 });
