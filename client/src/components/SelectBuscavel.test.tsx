@@ -81,3 +81,19 @@ it("exibe o detalhe da opção selecionada e o erro do campo", async () => {
   expect(await screen.findByText("Detalhe de Bayer S.A.")).toBeTruthy();
   expect(screen.getByRole("alert").textContent).toBe("Campo inválido");
 });
+
+it("escolher uma opção devolve o valor e o foco volta ao campo", async () => {
+  const onChange = vi.fn();
+  render(<><button type="button">Fora da lista</button><SelectBuscavel rotulo="Fabricante" valor="" onChange={onChange} buscar={buscar} /></>);
+  abrir();
+  fireEvent.click(await screen.findByRole("option", { name: "Ourofino Saúde Animal" }));
+  expect(onChange).toHaveBeenCalledWith("f2", expect.objectContaining({ id: "f2" }));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Fabricante" })));
+});
+
+it("enquanto a lista está aberta, o conteúdo fora dela fica oculto para leitores de tela (popover modal)", async () => {
+  render(<><button type="button">Fora da lista</button><SelectBuscavel rotulo="Fabricante" valor="" onChange={vi.fn()} buscar={buscar} /></>);
+  abrir();
+  await screen.findByRole("option", { name: "Bayer S.A." });
+  expect(screen.queryByRole("button", { name: "Fora da lista" })).toBeNull();
+});

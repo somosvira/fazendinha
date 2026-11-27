@@ -88,7 +88,7 @@ it("trocar produto limpa a dose, herda unidade e metadados sem reaproveitar quan
   fireEvent.click(await screen.findByRole("option", { name: "Dispositivo" }));
   expect(screen.getByLabelText("Quantidade prevista (UN)")).toHaveProperty("value", "");
   expect(screen.getByLabelText("Quantidade prevista (UN)")).toHaveProperty("required", true);
-  expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Produto" }));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Produto" })));
   expect(screen.queryByText("Via: IM")).toBeNull();
   expect(await screen.findByText("Orientação de uso: Conferir embalagem")).toBeTruthy();
 });
