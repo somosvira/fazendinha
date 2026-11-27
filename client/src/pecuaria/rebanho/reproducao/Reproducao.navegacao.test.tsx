@@ -21,6 +21,7 @@ vi.mock("./RegrasSanitarias", () => ({RegrasSanitarias:()=>null}));
 vi.mock("./AcompanhamentoReprodutivo", () => ({AcompanhamentoReprodutivo:()=>null}));
 vi.mock("./FormReproducao", () => ({FormReproducao:({animalInicial,acao}:{animalInicial:string;acao:string})=><p>Formulário {acao} {animalInicial}</p>}));
 vi.mock("./DetalheFato", () => ({DetalheFato:({fato}:{fato:{id:string}})=><p>Origem {fato.id}</p>}));
+vi.mock("./DetalheParto", () => ({DetalheParto:({id,propriedadeId}:{id:string;propriedadeId:number})=><p>Parto {id} do sítio {propriedadeId}</p>}));
 afterEach(() => { cleanup(); vi.clearAllMocks(); setPropriedadeAtiva(null); });
 it("popstate entre consultas da mesma página troca animal, origem e abre parto", async()=>{
   const base={animais:[],tentativas:[],avaliacoes:[],partos:[],restricoes:[]};
