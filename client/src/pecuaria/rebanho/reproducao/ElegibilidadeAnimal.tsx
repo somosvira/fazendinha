@@ -30,14 +30,14 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
     {carregando && <p role="status">Consultando aptidão…</p>}{erro && <p role="alert">{erro}</p>}
     {r && <><dl className="repro-metricas" aria-label="Situação reprodutiva e aptidão">
       <div><dt>Situação reprodutiva</dt><dd>{situacoes[r.situacaoReprodutiva ?? "DESCONHECIDA"] ?? "Desconhecida"}</dd></div>
-      <div><dt>Aptidão</dt><dd>{aptidao?.estado === "APTA" ? "Apta" : aptidao?.estado === "NAO_APTA" ? "Não apta" : "Pendente de avaliação"}</dd></div>
+      <div><dt>Aptidão</dt><dd>{aptidao?.estado === "APTA" ? "Apta" : aptidao?.estado === "NAO_APTA" ? "Não apta" : "Pendente de avaliação"}</dd>{naFicha && aptidao?.estado === "PENDENTE" && aptidao.motivos.map(m => <small key={m}>{descreverMotivo(m)}</small>)}</div>
       <div><dt>PEV original</dt><dd>{r.pevOriginalAte ? formatBRDateISO(r.pevOriginalAte) : "Não informado"}</dd></div>
     </dl>
     {aptidao?.data && <p>Exame de {formatBRDateISO(aptidao.data)}{aptidao.exameId && <> · <a className="underline" href={`/pecuaria/sanidade?aba=exames&animalId=${animalId}&detalheTipo=exame&detalheId=${aptidao.exameId}&sitio=${propriedadeId}`}>Ver evidência</a></>}</p>}
     {podeLancar && aptidao?.exameId && <RevisarToqueAptidao combinado={aptidao.finalidadePrincipal !== "APTIDAO_REPRODUTIVA"} key={aptidao.exameId} exameId={aptidao.exameId} propriedadeId={propriedadeId} onMudou={atualizar}/>}
     {podeLancar && aptidao?.bloqueioAnteriorId && r.vinculoCicloId && <EncerrarBloqueioAnterior vinculoCicloId={r.vinculoCicloId} key={aptidao.bloqueioAnteriorId} id={aptidao.bloqueioAnteriorId} propriedadeId={propriedadeId} onMudou={atualizar}/>}
     {aptidao?.retornoEm && <p>Retorno de aptidão: {formatBRDateISO(aptidao.retornoEm)}</p>}
-    {r.motivos.map(m => <p key={m}>{descreverMotivo(m)}</p>)}{r.alertas.map(m => <p key={m}>{descreverMotivo(m)}</p>)}
+    {r.motivos.filter(m => !(naFicha && aptidao?.estado === "PENDENTE" && aptidao.motivos.includes(m))).map(m => <p key={m}>{descreverMotivo(m)}</p>)}{r.alertas.map(m => <p key={m}>{descreverMotivo(m)}</p>)}
     {r.necessidadeAptidao?.estado === "AVALIACAO_DEVIDA" && <p role="status">Idade/peso ou prazo pós-parto indicam avaliação devida. O aviso não determina aptidão.</p>}
     {r.necessidadeAptidao?.pendencias.map(m => <p key={m}>{descreverMotivo(m)}</p>)}
     {r.acompanhamentoAptidao?.visitasAbertas.map(v => <p key={v.id}><a className="underline" href={`/pecuaria/visitas/${v.id}`}>{v.nome}</a></p>)}

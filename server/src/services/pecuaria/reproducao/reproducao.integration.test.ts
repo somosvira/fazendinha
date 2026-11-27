@@ -78,6 +78,7 @@ async function animal(sexo: "F" | "M" = "F", loteId?: string, papelReprodutivo?:
 async function material(
   tipo: "SEMEN" | "EMBRIAO" = "SEMEN",
   doadoraId?: string,
+  comPartida = false,
 ) {
   const touro = await animal("M"),
     produto = await prisma.produto.create({
@@ -85,9 +86,11 @@ async function material(
         nome: `Gen V4 ${run}-${produtos.length}`,
         usoGenetico: true,
         unidade: "DOSE",
+        rastrearPartidas: comPartida,
       },
     });
   produtos.push(produto.id);
+  const partida = comPartida ? await prisma.partidaProduto.create({ data: { produtoId: produto.id, codigo: `LOTE-${run}`, validade: new Date("2027-01-01") } }) : null;
   await criarEntradaValorizadaFixture({
     data: {
       propriedadeId,
@@ -98,11 +101,13 @@ async function material(
       quantidade: 3,
       custoUnitario: 10,
       valorTotal: 30,
+      ...(partida ? { alocacaoPartidaEstoques: { create: { partidaId: partida.id, quantidade: 3 } } } : {}),
     },
   });
-  return prisma.materialGenetico.create({
+  const material = await prisma.materialGenetico.create({
     data: { produtoId: produto.id, tipo, touroId: touro, doadoraId },
   });
+  return { ...material, partidaFixtureId: partida?.id };
 }
 const base = (animalId: string, data = "2026-09-01") => ({
   animalId,
@@ -190,6 +195,7 @@ afterAll(async () => {
   await prisma.doenca.deleteMany({ where: { id: { in: doencas } } });
   await prisma.materialGenetico.deleteMany({ where: { produtoId: ps } });
   await limparMovimentosValorizadosFixture(produtos);
+  await prisma.partidaProduto.deleteMany({ where: { produtoId: ps } });
   await prisma.produto.deleteMany({ where: { id: ps } });
   await prisma.requisicaoPecuaria.deleteMany({
     where: { propriedadeId: props },
@@ -235,25 +241,38 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
   });
   it("IA concorrente mesma chave consome uma vez; chaves diferentes disputam saldo", async () => {
     const a = await animal(),
-      m = await material();
+      m = await material("SEMEN", undefined, true);
     const input = {
       ...base(a),
       tipo: "IA" as const,
       materialId: m.id,
+      partidaId: m.partidaFixtureId!,
       origem: "ESTOQUE" as const,
       quantidade: 2,
-      motivoQuantidadeExcepcional: "Duas doses utilizadas no atendimento desta fixture",
     };
     const feitos = await Promise.all([
       criarTentativa(input, null),
       criarTentativa(input, null),
     ]);
     expect(feitos[0].id).toBe(feitos[1].id);
+    expect(feitos[0].quantidade?.toString()).toBe("2");
     expect(
       await prisma.movimentoEstoque.count({
         where: { produtoId: m.produtoId, tipo: "SAIDA" },
       }),
     ).toBe(1);
+    const movimento = await prisma.movimentoEstoque.findFirstOrThrow({ where: { produtoId: m.produtoId, tipo: "SAIDA" } });
+    expect(movimento.quantidade.toString()).toBe("2");
+    expect(feitos[0].movimentoEstoqueId).toBe(movimento.id);
+    expect(feitos[0].partidaId).toBe(m.partidaFixtureId);
+    expect(feitos[0].geneticaSnapshot).toMatchObject({ material: { produtoId: m.produtoId, partida: { id: m.partidaFixtureId } } });
+    const alocacao = await prisma.alocacaoPartidaEstoque.findFirstOrThrow({ where: { movimentoEstoqueId: movimento.id } });
+    expect(alocacao.partidaId).toBe(m.partidaFixtureId);
+    expect(alocacao.quantidade.toString()).toBe("2");
+    const insuficiente = await animal();
+    await expect(criarTentativa({ ...input, ...base(insuficiente), quantidade: 2 }, null)).rejects.toThrow();
+    expect(await prisma.tentativaReprodutiva.count({ where: { animalId: insuficiente } })).toBe(0);
+    expect(await prisma.movimentoEstoque.count({ where: { produtoId: m.produtoId, tipo: "SAIDA" } })).toBe(1);
     const a2 = await animal(),
       a3 = await animal();
     const resultados = await Promise.allSettled([

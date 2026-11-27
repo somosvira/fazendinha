@@ -62,6 +62,8 @@ IA usa material de sêmen; TE usa embrião e conserva doadora e receptora com pa
 
 O material pode vir do estoque, de Serviço ou de origem documentada, conforme a origem registrada. Fato, consumo, custo e vínculos são confirmados de forma coordenada. A tentativa preserva os dados genéticos informados naquele dia; editar o cadastro do material não reescreve o que foi utilizado.
 
+Na IA avulsa com material do estoque, informe a quantidade utilizada na unidade do produto; o registro cria uma tentativa e baixa essa quantidade do estoque. Em dose ou unidade, o valor inicial é 1. A execução vinculada a protocolos mantém sua conferência própria de quantidade.
+
 Uma tentativa anulada não devolve automaticamente uma dose utilizada. A correção distingue devolução por erro de lançamento, material consumido e material descartado. O custo de um Serviço não é duplicado pelo vínculo com a tentativa.
 
 ## Gestação, perda, aborto e parto

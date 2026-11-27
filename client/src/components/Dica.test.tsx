@@ -49,3 +49,33 @@ it("mostra tooltip no hover de uma ação sem impedir seu clique", () => {
   fireEvent.click(acao);
   expect(executar).toHaveBeenCalledOnce();
 });
+
+it("toque abre e fecha o popover visível sem hover sintético", async () => {
+ render(<AjudaCampo rotulo="Ajuda de filiação" texto="Doadora e touro" />);
+ const gatilho = screen.getByRole("button", {name:"Ajuda de filiação"});
+ fireEvent.pointerEnter(gatilho, {pointerType:"touch"});
+ fireEvent.mouseEnter(gatilho);
+ fireEvent.pointerDown(gatilho, {pointerType:"touch"});
+ fireEvent.click(gatilho, {detail: 1});
+ expect((await screen.findByRole("dialog")).textContent).toBe("Doadora e touro");
+ fireEvent.pointerDown(gatilho, {pointerType:"touch"});
+ fireEvent.click(gatilho, {detail: 1});
+ expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("após toque, foco de teclado e ativação abrem a ajuda e Escape fecha", async () => {
+ render(<><AjudaCampo rotulo="Ajuda de filiação" texto="Doadora e touro" /><button>Próximo</button></>);
+ const gatilho = screen.getByRole("button", {name:"Ajuda de filiação"});
+ fireEvent.pointerEnter(gatilho, {pointerType:"touch"});
+ fireEvent.pointerDown(gatilho, {pointerType:"touch"});
+ fireEvent.click(gatilho, {detail:1});
+ expect(await screen.findByRole("dialog")).toBeTruthy();
+ fireEvent.blur(gatilho);
+ vi.spyOn(gatilho, "matches").mockReturnValue(true);
+ fireEvent.focus(gatilho);
+ expect(await screen.findByRole("dialog")).toBeTruthy();
+ fireEvent.click(gatilho, {detail:0});
+ expect(await screen.findByRole("dialog")).toBeTruthy();
+ fireEvent.keyDown(screen.getByRole("dialog"), {key:"Escape"});
+ expect(screen.queryByRole("dialog")).toBeNull();
+});

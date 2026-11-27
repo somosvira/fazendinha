@@ -131,6 +131,11 @@ export const anularDecisao = (
     input.propriedadeId,
   );
 const motivos: Record<string, string> = {
+  LOCALIZACAO_DESCONHECIDA: "Localização do animal não comprovada na data consultada.",
+  LOCALIZACOES_CONFLITANTES: "Há localizações conflitantes na data consultada.",
+  GESTACOES_CONFLITANTES: "Há gestações conflitantes na data consultada.",
+  ENCERRAMENTO_GESTACAO_DESCONHECIDO: "O encerramento da gestação não está comprovado.",
+  ORIGEM_INICIAL_ANULADA: "A situação inicial que fundamentava o acompanhamento foi anulada.",
   EXAME_APTIDAO_NECESSARIO: "Aguarda exame para definir aptidão.",
   APTIDAO_INCONCLUSIVA: "A avaliação de aptidão foi inconclusiva; aguarda reavaliação.",
   EXAME_NAO_APTA: "O último exame concluiu que o animal não está apto.",

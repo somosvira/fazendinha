@@ -27,3 +27,9 @@ export function validarConsumoExcepcionalTentativa(tipo: "IA" | "TE" | "COBERTUR
   if (!motivo || motivo.trim().length < 5)
     throw new RebanhoError("VALIDACAO", "Informe o motivo do consumo excepcional. Perda de material deve ser registrada separadamente no estoque", "motivoQuantidadeExcepcional");
 }
+
+/** A dispensa é interna e só se aplica ao registro avulso de IA com estoque. */
+export function validarConsumoTentativa(input: { tipo: "IA" | "TE" | "COBERTURA"; origem: "ESTOQUE" | "SERVICO" | "DOCUMENTADA"; quantidade: number | null; unidade: string | undefined; motivo?: string }, consumoIaEstoqueAvulso = false) {
+  if (consumoIaEstoqueAvulso && input.tipo === "IA" && input.origem === "ESTOQUE") return;
+  validarConsumoExcepcionalTentativa(input.tipo, input.quantidade, input.unidade, input.motivo);
+}

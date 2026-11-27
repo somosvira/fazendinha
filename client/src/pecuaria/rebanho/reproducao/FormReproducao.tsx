@@ -178,6 +178,7 @@ export function FormReproducao({
   const [servicoId, setServicoId] = useState("");
   const [valorServico, setValorServico] = useState("");
   const [quantidade, setQuantidade] = useState(tentativaInicial?.quantidade != null ? String(tentativaInicial.quantidade) : "");
+  const [quantidadeTocada, setQuantidadeTocada] = useState(false);
   const [responsavel, setResponsavel] = useState("");
   const [resultado, setResultado] =
     useState<AvaliacaoInput["resultado"] | "">("");
@@ -283,6 +284,10 @@ export function FormReproducao({
     "IATF",
   ]);
   const [restricao, setRestricao] = useState("TEMPORARIA");
+  const materialSelecionado = materiais.find(m => m.id === materialId);
+  const paiMaterial = tipo === "COBERTURA" ? null : materialSelecionado?.touro;
+  const quantidadeIaAvulsa = !onRegistrar && tipo === "IA" && origem === "ESTOQUE";
+  const nomeGenitor = (g: MaterialGeneticoDTO["touro"] | null | undefined) => g ? (g.tipo === "ANIMAL" ? `${g.brinco}${g.nome ? ` · ${g.nome}` : ""}` : g.nome) : "Não informado";
   const animal = painel.animais.find((a) => a.animalId === animalId);
   const gestacoesClinicas = [...(painel.gestacoes ?? []), ...(animal?.gestacao ? [{...animal.gestacao, animalId}] : [])];
   const tentativasClinicas = [...painel.tentativas, ...(animal?.ultimaTentativa && !painel.tentativas.some(t => t.id === animal.ultimaTentativa!.id) ? [{...animal.ultimaTentativa, animalId}] : [])];
@@ -370,7 +375,7 @@ export function FormReproducao({
     required = true,
     rotuloVazio = "Selecione",
   ) => (
-    <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required} ajuda={id === "servico" ? "A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente." : id === "classe-reprodutiva" ? "A classificação não registra um parto nem libera o animal para reprodução." : id === "material" ? (tipo === "TE" ? "O animal selecionado é a receptora. A doadora do embrião define a filiação genética da cria. Uso habitual: 1 embrião por receptora; a unidade cadastrada é conferida antes de confirmar." : "Uso habitual: 1 dose por inseminação; a unidade cadastrada é conferida antes de confirmar.") : undefined}>
+    <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required} ajuda={id === "animal" && acao === "tentativa" && tipo === "TE" ? "O animal selecionado é a receptora. A doadora do material mantém a filiação genética da cria." : id === "material" && materialSelecionado ? `${tipo === "TE" ? `Doadora: ${nomeGenitor(materialSelecionado.doadora)}. ` : ""}Touro: ${nomeGenitor(materialSelecionado.touro)}.` : id === "servico" ? "A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente." : id === "classe-reprodutiva" ? "A classificação não registra um parto nem libera o animal para reprodução." : undefined}>
       {(p) => (
         <SelectCampo
           key={id === "tipo-exame" ? `${id}:${opcoes.length}` : id}
@@ -407,15 +412,15 @@ export function FormReproducao({
     }
     if (acao === "avaliacao" && (!resultado || !tipoExameId || (resultado === "SEXAGEM" && !sexoFetal))) { setErro("Informe o tipo de exame, a conclusão e o sexo fetal quando houver sexagem."); return; }
     if (acao === "avaliacao" && resultado !== "NAO_AVALIADO" && ["SEXAGEM", "RECONFIRMACAO"].includes(finalidade ?? "") && !demandaInicial?.gestacaoId && !gestacaoDoFato) { setErro("Vincule uma gestação conhecida para reconfirmação ou sexagem."); return; }
-    if (acao === "tentativa" && tipo !== "COBERTURA" && quantidade && Number(quantidade) !== 1 && motivoQuantidadeExcepcional.trim().length < 5) { setErro("Informe o motivo da quantidade excepcional (mínimo de 5 caracteres)."); return; }
+    if (acao === "tentativa" && tipo !== "COBERTURA" && !quantidadeIaAvulsa && quantidade && Number(quantidade) !== 1 && motivoQuantidadeExcepcional.trim().length < 5) { setErro("Informe o motivo da quantidade excepcional (mínimo de 5 caracteres)."); return; }
     if (acao === "parto" && destinoCriaPendente) { setErro("Confira a sugestão de Bezerreiro e escolha o lote de cada cria ou Sem lote."); setRevelarDestino(v => v + 1); return; }
     if (acao === "parto") { const erroParto = validarDadosParto(dadosParto); if (erroParto) { setErro(erroParto); if (dadosParto.desfecho === "ABORTO" && dadosParto.observacao.trim().length < 5) setRevelarExplicacao(v => v + 1); else if (dadosParto.escoreAtivo && !escoreNumericoValido(dadosParto.escoreValor)) setRevelarEscore(v => v + 1); else setRevelarPos(v => v + 1); return; } }
     if (ocupado) return;
     setOcupado(true);
     setErro(null);
     const unidadeMaterial = materiais.find(m => m.id === materialId)?.produto.unidade;
-    const quantidadeEfetiva = quantidade !== "" ? Number(quantidade) : unidadeMaterial === "DOSE" || unidadeMaterial === "UN" ? 1 : undefined;
-    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, motivoQuantidadeExcepcional, responsavel, resultado, conduta, decisaoIatf, resultadoAptidao, retornoAptidaoEm, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, contextuais, dadosParto, crias, lactacao, situacao, classeReprodutiva, restricaoAte, acoesRestritas, restricao});
+    const quantidadeEfetiva = quantidade !== "" ? Number(quantidade) : (!quantidadeIaAvulsa || !quantidadeTocada) && (unidadeMaterial === "DOSE" || unidadeMaterial === "UN") ? 1 : undefined;
+    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, motivoQuantidadeExcepcional: quantidadeIaAvulsa ? "" : motivoQuantidadeExcepcional, responsavel, resultado, conduta, decisaoIatf, resultadoAptidao, retornoAptidaoEm, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, contextuais, dadosParto, crias, lactacao, situacao, classeReprodutiva, restricaoAte, acoesRestritas, restricao});
     if (envio.current?.payload !== payload) envio.current = { payload, chave: crypto.randomUUID() };
     const base = { chave: envio.current.chave, propriedadeId, animalId, data };
     try {
@@ -425,13 +430,13 @@ export function FormReproducao({
           tipo: tipo as "IA" | "TE" | "COBERTURA",
           origem: origem as "ESTOQUE" | "SERVICO" | "DOCUMENTADA",
           ...(materialId && tipo !== "COBERTURA" ? { materialId } : {}),
-          ...(touro
+          ...(touro && !paiMaterial
             ? touro.startsWith("externo:")
               ? { touroExternoId: touro.slice(8) }
               : { touroId: touro }
             : {}),
           ...(tipo !== "COBERTURA" && quantidadeEfetiva != null ? { quantidade: quantidadeEfetiva } : {}),
-          ...(tipo !== "COBERTURA" && motivoQuantidadeExcepcional.trim() ? { motivoQuantidadeExcepcional: motivoQuantidadeExcepcional.trim() } : {}),
+          ...(tipo !== "COBERTURA" && !quantidadeIaAvulsa && motivoQuantidadeExcepcional.trim() ? { motivoQuantidadeExcepcional: motivoQuantidadeExcepcional.trim() } : {}),
           ...(origem === "ESTOQUE"
             ? {
                 partidaId: partidaId || undefined,
@@ -676,6 +681,7 @@ export function FormReproducao({
               (v) => {
                 setTipo(v);
                 setMaterialId("");
+                setTouro("");
                 if (v === "COBERTURA" && origem === "ESTOQUE") setOrigem("DOCUMENTADA");
               },
               [
@@ -690,11 +696,11 @@ export function FormReproducao({
               ["SERVICO", "Material incluído no Serviço"],
             ])}
             {tipo !== "COBERTURA" &&
-              seletor(
+              <div className={quantidadeIaAvulsa ? "repro-material-inteiro" : undefined}>{seletor(
                 "material",
                 "Material genético",
                 materialId,
-                setMaterialId,
+                v => { setMaterialId(v); setTouro(""); },
                 materiais
                   .filter(
                     (m) => m.tipo === (tipo === "TE" ? "EMBRIAO" : "SEMEN"),
@@ -704,27 +710,16 @@ export function FormReproducao({
                     `${m.produto.nome} · saldo ${m.saldo ?? "não informado"}`,
                   ]),
                 origem === "ESTOQUE",
-              )}
-            {seletor(
-              "touro",
-              "Touro",
-              touro,
-              setTouro,
-              [
-                ...touros.map((a) => [a.id, a.brinco] as [string, string]),
-                ...genitores.map(
-                  (g) =>
-                    [`externo:${g.id}`, `${g.nome} · externo`] as [
-                      string,
-                      string,
-                    ],
-                ),
-              ],
+              )}</div>}
+            {(tipo === "COBERTURA" || !paiMaterial) && seletor(
+              "touro", "Touro", touro, setTouro,
+              [...touros.map(a => [a.id, a.brinco] as [string, string]), ...genitores.map(g => [`externo:${g.id}`, `${g.nome} · externo`] as [string, string])],
               tipo === "COBERTURA",
             )}
-            {tipo !== "COBERTURA" && <><Button variant="outline" type="button" aria-expanded={quantidadeAberta} onClick={() => setQuantidadeAberta(v => !v)}>Quantidade excepcional ou registro histórico</Button>{quantidadeAberta && <div className="grid gap-3">{campo("quantidade", "Quantidade efetivamente utilizada", quantidade, setQuantidade, false, "number")}{campo("motivo-quantidade", "Motivo da quantidade excepcional", motivoQuantidadeExcepcional, setMotivoQuantidadeExcepcional, !!quantidade && Number(quantidade) !== 1)}</div>}</>}
+            {tipo !== "COBERTURA" && !quantidadeIaAvulsa && <><Button variant="outline" type="button" aria-expanded={quantidadeAberta} onClick={() => setQuantidadeAberta(v => !v)}>Quantidade excepcional ou registro histórico</Button>{quantidadeAberta && <div className="grid gap-3">{campo("quantidade", "Quantidade efetivamente utilizada", quantidade, setQuantidade, false, "number")}{campo("motivo-quantidade", "Motivo da quantidade excepcional", motivoQuantidadeExcepcional, setMotivoQuantidadeExcepcional, !!quantidade && Number(quantidade) !== 1)}</div>}</>}
             {origem === "ESTOQUE" && (
               <>
+                <div className="repro-estoque-campos">
                 {partidas.length > 0 &&
                   seletor(
                     "partida",
@@ -737,6 +732,8 @@ export function FormReproducao({
                     ]),
                     false,
                   )}
+                {quantidadeIaAvulsa && campo("quantidade", `Quantidade utilizada${materialSelecionado ? ` (${materialSelecionado.produto.unidade})` : ""}`, quantidade || (!quantidadeTocada && materialSelecionado && ["DOSE", "UN"].includes(materialSelecionado.produto.unidade) ? "1" : ""), v => { setQuantidadeTocada(true); setQuantidade(v); }, true, "number")}
+                </div>
                 {partidas.some((p) => p.id === partidaId && !p.validade) && (
                   <ConfirmacaoCiencia
                     id="rep-validade"
