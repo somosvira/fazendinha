@@ -28,6 +28,17 @@ describe("busca e atualização da Sanidade", () => {
     expect(screen.getByRole("tab", { name: /^Tarefas/ })).toBeTruthy();
   });
 
+  it("agenda de tarefas vazia diferencia ausência de tarefas e recorte filtrado", async () => {
+    mocks.req.mockResolvedValue([]);
+    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas");
+    render(<Sanidade podeLancar={false} />);
+    expect(await screen.findByText("Nenhuma tarefa planejada.")).toBeTruthy();
+    cleanup();
+    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas&situacao=ATRASADA");
+    render(<Sanidade podeLancar={false} />);
+    expect(await screen.findByText("Nenhuma tarefa encontrada para os filtros atuais.")).toBeTruthy();
+  });
+
   it("limpa o filtro de doença do gráfico pelo modal somente após aplicar", async () => {
     mocks.req.mockResolvedValue([]);
     window.history.replaceState(null,"","/pecuaria/sanidade?aba=ocorrencias&doencaId=f42259e4-3872-4a27-9be0-740418d269db");

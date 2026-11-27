@@ -210,3 +210,18 @@ it("reúne data e registro no cabeçalho do módulo sem duplicar ações na cons
  expect(screen.queryByRole("heading", {name:"Ordenhas"})).toBeNull();
  unmount(); destino.remove();
 });
+it("período sem ordenhas não mostra o resumo vazio, só o estado vazio da lista", async () => {
+  vi.mocked(consultarParcelas).mockResolvedValue({ ...lista, total: 0, itens: [], resumo: { totalLitros: null, sessoes: 0, semAfericao: 0, pendentesEstoque: 0, porNatureza: [] } });
+  render(<OrdenhasGerais podeLancar />);
+  await screen.findByText("Nenhuma ordenha neste período");
+  expect(screen.queryByLabelText("Resumo das ordenhas")).toBeNull();
+  expect(screen.queryByText(/0 de 0 ordenhas/)).toBeNull();
+  expect(screen.queryByText("Não informado")).toBeNull();
+});
+it("ordenhas sem aferição mostram Sem aferição no volume, sem confundir com zero", async () => {
+  vi.mocked(consultarParcelas).mockResolvedValue({ ...lista, resumo: { totalLitros: null, sessoes: 1, semAfericao: 1, pendentesEstoque: 0, porNatureza: [] } });
+  render(<OrdenhasGerais podeLancar />);
+  const resumo = await screen.findByLabelText("Resumo das ordenhas");
+  expect(resumo.textContent).toContain("Sem aferição");
+  expect(resumo.textContent).toContain("0 de 1 ordenhas com aferição");
+});

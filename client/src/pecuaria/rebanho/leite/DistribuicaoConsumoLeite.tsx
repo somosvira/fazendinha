@@ -21,7 +21,7 @@ export function DistribuicaoConsumoLeite({ dados, compacto = false, carregando =
     { nome: "Do limpo", valor: descarte?.comercialLitros }, { nome: "Do sujo", valor: descarte?.naoComercialLitros },
     { nome: "De colostro", valor: descarte?.colostroLitros }, { nome: "A classificar", valor: descarte?.semClassificacaoLitros },
   ];
-  const volume = (valor: string | null | undefined, breve = false) => carregando ? <Skeleton className="h-5 w-16" /> : erro ? "Indisponível" : valor == null && breve ? <span aria-label="Não informado">—</span> : formatarLitros(valor == null ? null : Number(valor));
+  const volume = (valor: string | null | undefined, breve = false) => carregando ? <Skeleton className="h-5 w-16" /> : erro ? "Indisponível" : valor == null && breve ? <span aria-label="Não informado">—</span> : valor == null ? "Nenhum volume registrado" : formatarLitros(Number(valor));
   const conhecidos = !carregando && !erro && total !== null && total > 0;
   return <div className={`consumo-distribuicao${compacto ? " consumo-distribuicao-compacta" : ""}`}>
     <section aria-label="Distribuição da alimentação" className="consumo-alimentacao">

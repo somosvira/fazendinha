@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Compromisso, Conta } from "./novo-api";
 import { navegarPara } from "../router";
-import { brl, type TomFinanceiro } from "./financeiro-ui";
+import { brl, Empty, type TomFinanceiro } from "./financeiro-ui";
 
 export function resumoVencidos(itens: Compromisso[], tipo: Compromisso["tipo"]) {
   const vencidos = itens.filter(item => item.vencido && item.tipo === tipo);
@@ -40,7 +40,7 @@ export function ContasDisponibilidade({ contas, onAbrir, onAbrirConta }: { conta
   return <Card data-fin-tom="entrada" className="fin-painel h-full min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
     <div className="fin-cabecalho flex items-center gap-3 p-4"><span className="fin-section-icon"><Landmark aria-hidden="true" /></span><div><h2 className="font-sans text-xl">Contas e disponibilidade</h2></div></div>
     <div className="px-4 pb-3"><p className="text-xs text-muted-foreground">Saldo disponível · {incluidas.length} {incluidas.length === 1 ? "conta incluída" : "contas incluídas"}</p><strong className={`text-2xl tabular-nums ${saldo < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{brl(saldo)}</strong></div>
-    {incluidas.length ? <ListaContas contas={incluidas} onAbrir={onAbrirConta} /> : <p className="px-4 pb-4 text-sm text-muted-foreground">Nenhuma conta incluída no saldo disponível.</p>}
+    {incluidas.length ? <ListaContas contas={incluidas} onAbrir={onAbrirConta} /> : <Empty icone={Landmark}>Nenhuma conta incluída no saldo disponível.</Empty>}
     {!!excluidas.length && <Collapsible className="border-t border-border">
       <CollapsibleTrigger asChild><Button variant="ghost" className="h-auto w-full justify-between whitespace-normal rounded-none p-4 text-left">{excluidas.length} {excluidas.length === 1 ? "conta fora do saldo" : "contas fora do saldo"}<ChevronDown aria-hidden="true" /></Button></CollapsibleTrigger>
       <CollapsibleContent><ListaContas contas={excluidas} onAbrir={onAbrirConta} /></CollapsibleContent>

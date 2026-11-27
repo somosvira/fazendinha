@@ -8,7 +8,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableCaption } from "@/components/ui/table";
 import { getHojeISO } from "../lib/hoje";
 import { navegarPara } from "../router";
-import { brl, dataBR } from "./financeiro-ui";
+import { CalendarCheck } from "lucide-react";
+import { brl, dataBR, Empty } from "./financeiro-ui";
 import { tituloCompromisso } from "./lib/compromissos";
 import type { Compromisso } from "./novo-api";
 
@@ -45,7 +46,7 @@ export function DashboardCompromissos({ itens, href, onLiquidar, resumo, integra
             <TableCell><span className="block">{dataBR(item.dataVencimento)}</span>{item.vencido && <Badge variant="outline" className="mt-1 border-destructive/20 bg-destructive/10 text-destructive">Vencido</Badge>}</TableCell><TableCell className={`text-right font-semibold tabular-nums ${item.tipo === "RECEBER" ? "text-[var(--fin-entrada)]" : "text-[var(--fin-saida)]"}`}>{brl(item.saldoPendente)}</TableCell>
             {onLiquidar && <TableCell className="text-right"><Button variant="link" className="px-2" aria-label={item.tipo === "PAGAR" ? "Registrar pagamento" : "Registrar recebimento"} onClick={() => onLiquidar(item)}>{item.tipo === "PAGAR" ? "Pagar" : "Receber"}</Button></TableCell>}
           </TableRow>)}</TableBody>
-        </Table> : <p role="status" className="px-4 py-3 text-left text-sm text-muted-foreground">{grupo.vazio}</p>}
+        </Table> : <div role="status"><Empty icone={CalendarCheck}>{grupo.vazio}</Empty></div>}
         {!grupo.itens.length && grupo.id === "proximos" && proximoFuturo && <div className="mx-4 mb-4 rounded-md border border-border p-3"><p className="mb-1 text-xs text-muted-foreground">Próximo vencimento · fora dos próximos 7 dias</p><Button variant="ghost" className="h-auto w-full justify-between gap-2 whitespace-normal px-0 text-left" onClick={() => setSelecionado(proximoFuturo)}><span className="min-w-0"><strong className="block break-words">{tituloCompromisso(proximoFuturo)}</strong><time className="text-xs text-muted-foreground" dateTime={proximoFuturo.dataVencimento}>{dataBR(proximoFuturo.dataVencimento)}</time></span><strong className="shrink-0 tabular-nums">{brl(proximoFuturo.saldoPendente)}</strong></Button></div>}
         {grupo.itens.length > 5 && <p className="px-3 py-2 text-xs text-muted-foreground">Exibindo 5 de {grupo.itens.length} · consulte os demais em Ver todos.</p>}
       </TabsContent>)}

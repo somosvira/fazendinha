@@ -11,14 +11,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 // visível, então mover/desfazer precisa recarregar as duas seções.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRightLeft, Layers, Plus } from "lucide-react";
+import { ArrowRightLeft, Layers, Plus, SearchX } from "lucide-react";
 import { MultiSelect } from "../../../components/MultiSelect";
 import { dataValida } from "../reproducao/periodo-consulta";
 import { DateRangePicker, dateFromIso, isoDate } from "../../../components/DateRangePicker";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { usePropriedades } from "../../../api/propriedades";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
-import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { AcoesLinha, Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { Paginacao, useAoMovimentarComToast } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { editarLote, listarLotes, listarMovimentacoes, obterCatalogos } from "../api";
@@ -194,6 +194,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
         {lotes === null
           ? <EsqueletoTabela label="Carregando lotes" className="p-6" />
           : <TabelaFinanceira icone={ICONES_TABELA.lote} ordenacao={ordemLotes.controle} filtrosColunas={filtrosDasColunas(camposLotes,edicaoLotes)} rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar).filter(c=>podeLancar||!c.acoes)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
+        {lotes !== null && !lotesFiltrados.length && (busca || filtroSitio ? <Empty icone={SearchX}>Nenhum lote corresponde à busca ou aos filtros.</Empty> : <Empty icone={Layers}>{mostrarInativos ? "Nenhum lote cadastrado." : podeLancar ? "Nenhum lote ativo. Use Novo lote para cadastrar o primeiro." : "Nenhum lote ativo."}</Empty>)}
       </fieldset>
       {lotes !== null && <Paginacao paginaAtual={paginaLotesAtual} totalPaginas={totalPaginasLotes} totalItens={lotesFiltrados.length} itensPorPagina={LOTES_POR_PAGINA} onPaginaChange={setPaginaLotes} rotulo="lotes" idSelect="pagina-lista-lotes" />}
     </Panel>
@@ -206,6 +207,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
       {(sitiosHistorico.length>0||lotesHistorico.length>0)&&<div className="flex flex-wrap gap-2 p-4 border-b border-border">{sitiosHistorico.map(id=><Button secondary key={id} onClick={()=>{setPaginaHistorico(1);setSitiosHistorico(v=>v.filter(x=>x!==id));setLotesHistorico([]);}}>Sítio: {sitiosAtivos.find(s=>String(s.id)===id)?.nome??"Selecionado"} ×</Button>)}{lotesHistorico.map(id=><Button secondary key={id} onClick={()=>{setPaginaHistorico(1);setLotesHistorico(v=>v.filter(x=>x!==id));}}>Lote: {catalogos?.lotes.find(l=>l.id===id)?.nome??"Selecionado"} ×</Button>)}</div>}
 
       <HistoricoMovimentacoes filtrosColunas={filtrosDasColunas(camposHistorico,edicaoHistorico)}
+        filtrado={!!buscaHistoricoAplicada || !!dataDeHistorico || !!dataAteHistorico || sitiosHistorico.length > 0 || lotesHistorico.length > 0 || !mostrarDesfeitas}
         paginaControlada={paginaHistorico}
         onPaginaChange={setPaginaHistorico}
         carregar={carregarHistorico}

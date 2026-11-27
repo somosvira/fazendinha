@@ -23,7 +23,7 @@ import { SubTabs } from "../../../components/SubTabs";
 import { navegarPara } from "../../../router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Check, Ban, ChevronDown, MoreHorizontal, Plus, Search, ShieldCheck,
+  Check, Ban, ChevronDown, ClipboardList, MoreHorizontal, Plus, Search, ShieldCheck,
 } from "lucide-react";
 import {
   Button,
@@ -926,10 +926,10 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
 
               {visaoAgenda === "cuidados" ? <AgendaCuidados filtros={{animalId,busca:buscaAnimal,loteId,de,ate,pagina}} revisao={revisao} onFiltros={v=>{setAnimalId(v.animalId);setBuscaAnimal(v.busca);setLoteId(v.loteId);setDe(v.de);setAte(v.ate);setPagina(v.pagina)}}/> : visaoAgenda === "rodadas" ? <AgendaRodadas filtrosColunas={filtrosColunas} filtrosUI={(acao) => filtrosTabela(acao)} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 10 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={(id) => { const url = new URL(window.location.href); if (id) url.searchParams.set("rodadaId", id); else url.searchParams.delete("rodadaId"); for (const chave of ["protocoloContexto", "protocoloBusca", "protocoloSituacao", "abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) url.searchParams.delete(chave); navegarPara(url.pathname + url.search); setRodadaId(id); }} onExecutar={setExecutandoEtapa} /> : <>
               <div className="san-tarefas-lista"><TabelaFinanceira iconeDe={t => t.parametros.tipo === "APLICACAO" ? ICONES_TABELA.aplicacao : ICONES_TABELA.exame} compacta filtrosColunas={filtrosColunas} rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).sort((a, b) => Number(b.situacao === "PENDENTE") - Number(a.situacao === "PENDENTE") || a.previstaPara.localeCompare(b.previstaPara) || a.id.localeCompare(b.id))} chaveDe={t => t.id} colunas={colunasTarefas} /></div>
-              {!carregandoAba && !erroAba && !tarefas.length && (
-                <p className="p-4">
-                  Nenhuma tarefa planejada.
-                </p>
+              {!carregandoAba && !erroAba && !tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).length && (
+                <Empty icone={ClipboardList}>
+                  {tarefas.length ? "Nenhuma tarefa prevista no período selecionado." : animalId || buscaAnimal || loteId || de || ate || situacao ? "Nenhuma tarefa encontrada para os filtros atuais." : "Nenhuma tarefa planejada."}
+                </Empty>
               )}
               {totalTarefas > 0 && <Paginacao paginaAtual={pagina} totalPaginas={Math.max(1, Math.ceil(totalTarefas / 50))} totalItens={totalTarefas} itensPorPagina={50} onPaginaChange={setPagina} rotulo="tarefas" idSelect="agenda-pagina-tarefas" />}
               </>}

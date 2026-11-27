@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AjudaCampo } from "@/components/Dica";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
-import { TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Empty, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Milk } from "lucide-react";
 import { consultarLeite } from "./operacoes-api";
 import { ComponentesProducaoLeite } from "./ComponentesProducaoLeite";
 import { resumirOperacionalPeriodo, type ResumoOperacionalProducao, type GrupoProducaoLeite } from "./resumo-producao";
@@ -19,7 +20,7 @@ export function RegistroVisualProducaoLeite({sitio,inicio,fim,grupos,ordenhas,da
  const [periodo,setPeriodo]=useState(data),[detalhe,setDetalhe]=useState<'producao'|'consumo'|'vendas'|null>(null);
  useEffect(()=>{let ativa=true;setResumo(null);setErro("");void consultarLeite<ResumoOperacionalProducao>(`/consultas-producao/resumo-operacional?${new URLSearchParams({inicio,fim})}`,sitio).then(r=>{if(ativa)setResumo(r)}).catch(e=>{if(ativa)setErro(e instanceof Error?e.message:"Não foi possível consultar os destinos e vendas.")});return()=>{ativa=false}},[sitio,inicio,fim,revisao]);
  const grupo=grupos.find(g=>g.periodo===periodo)??grupos.find(g=>data.startsWith(g.periodo))??grupos[0];
- if(!grupo)return <p role="status">Nenhuma produção registrada no período.</p>;
+ if(!grupo)return <div role="status"><Empty icone={Milk}>Nenhum volume registrado no período.</Empty></div>;
  const operacional=resumo?resumirOperacionalPeriodo(resumo.dias??[],grupo.periodo):null;
  const litros=(v:string|null|undefined)=>formatarLitros(v==null?null:Number(v));
  const itens=detalhe==='producao'?grupo.turnos.map(t=>({nome:ordenhas.find(o=>o.posicaoId===t.posicaoId)?.nome??t.nome??'Ordenha',valor:formatarLitros(t.litros)})):detalhe==='consumo'?[

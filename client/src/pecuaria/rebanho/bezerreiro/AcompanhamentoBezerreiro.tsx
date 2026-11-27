@@ -1,3 +1,4 @@
+import { FlaskConical, History, Milk } from "lucide-react";
 import { nomeExame } from "../sanidade/nomeExame";
 import { FormMovimentar } from "../forms/FormMovimentar";
 import { buscarFichaAnimal, obterCatalogos } from "../api";
@@ -6,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/DatePicker';
 import { SelectCampo } from '@/financeiro/SelectCampo';
-import { TabelaFinanceira } from '@/financeiro/financeiro-ui';
+import { TabelaFinanceira, Empty} from '@/financeiro/financeiro-ui';
 import { navegarPara } from '../../../router';
 import { formatarDataBR } from '../lib/rotulos';
 import { hojeOperacional } from '../leite/modelo';
@@ -31,16 +32,16 @@ export function AcompanhamentoBezerreiro({animalId,sitio,podeLancar,revisao=0,em
     <div className="bez-colunas"><section><div className="bez-sectionhead"><h3>Colostragem inicial</h3><Button variant="outline" onClick={()=>navegarPara('/pecuaria/bezerreiro?aba=colostragem')}>Consultar origens e banco</Button></div>{dados.acompanhamento&&<p className="bez-ajuda">Peso de referência: {dados.acompanhamento.pesoReferenciaKg==null?'Não informado':`${numero(dados.acompanhamento.pesoReferenciaKg)} kg`} · Meta do fornecimento inicial: {litros(dados.acompanhamento.metaLitros)}</p>}<TabelaFinanceira icone={ICONES_TABELA.leite} rotulo="Fornecimentos de colostro do animal" itens={dados.colostro} chaveDe={f=>f.id} colunas={[
       {chave:'data',titulo:'Data / hora',principal:true,celula:f=><>{formatarDataBR(f.data)}<span className="bez-subtexto">{f.ocorridoEm?new Date(f.ocorridoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'Horário não informado'}</span></>},
       {chave:'volume',titulo:'Fornecimento',celula:f=>litros(f.quantidadeLitros)},{chave:'brix',titulo:'Brix do colostro',celula:f=>brixFornecimentoColostro(f)},{chave:'responsavel',titulo:'Responsável',celula:f=>f.responsavel??'Não informado'},{chave:'status',titulo:'Situação',celula:f=>f.status==='VALIDO'?'Válido':f.status},
-    ]}/>{!dados.colostro.length&&<p className="bez-estado">Nenhum fornecimento de colostro registrado.</p>}</section>
+    ]}/>{!dados.colostro.length&&<Empty icone={Milk}>Nenhum fornecimento de colostro registrado.</Empty>}</section>
     <section><div className="bez-sectionhead"><h3>Avaliação da imunidade</h3>{podeLancar&&<div className="bez-acoes"><Button onClick={()=>setExame(true)}>Registrar exame</Button><Button variant="outline" onClick={()=>setVinculo(true)}>Vincular exame existente</Button></div>}</div><TabelaFinanceira icone={ICONES_TABELA.exame} rotulo="Exames vinculados ao acompanhamento" itens={dados.exames} chaveDe={e=>e.id} colunas={[
       {chave:'data',titulo:'Coleta',principal:true,celula:e=>formatarDataBR(e.exame.data)},{chave:'metodo',titulo:'Método / exame',celula:e=>e.metodo??nomeExame(e.exame.tipoExame.id,e.exame.tipoExame.nome)},{chave:'resultado',titulo:'Resultado',celula:e=>e.exame.resultadoNumero!=null?`${numero(e.exame.resultadoNumero)} ${e.exame.tipoExame.unidade??''}`:e.exame.resultadoOpcao??e.exame.resultadoTexto??'Resultado no exame'},{chave:'status',titulo:'Situação',celula:e=>e.exame.status==='VALIDO'?'Registrado':e.exame.status},
-    ]}/>{!dados.exames.length&&<p className="bez-estado">Nenhum exame de imunidade vinculado.</p>}</section></div>
+    ]}/>{!dados.exames.length&&<Empty icone={FlaskConical}>Nenhum exame de imunidade vinculado.</Empty>}</section></div>
     <section className="bez-secao"><div className="bez-sectionhead"><h3>Participação e fases</h3>{podeLancar&&atual&&<div className="bez-acoes"><Button variant="outline" disabled={!config.dados} onClick={()=>setAlteracao({tipo:'fase',participacao:atual})}>Alterar fase</Button><Button variant="outline" onClick={()=>setMovimentando(true)}>Movimentar animal</Button></div>}</div>
     {dados.participacoes.map(p=><section key={p.id} className="bez-participacao"><p><strong>{p.perfil.lote.nome}</strong> · {formatarDataBR(p.desde)} a {p.ate?formatarDataBR(p.ate):'presente'}{p.motivoSaida?` · ${p.motivoSaida}`:''}</p><TabelaFinanceira icone={ICONES_TABELA.fase} rotulo="Fases da participação" itens={p.fases} chaveDe={f=>f.id} colunas={[
       {chave:'desde',titulo:'Desde',principal:true,celula:f=>formatarDataBR(f.desde)},{chave:'fase',titulo:'Fase',celula:f=>f.faseVersao.nome},{chave:'coleira',titulo:'Coleira',celula:f=><ColeiraBadge nome={coleiraHistoricaFase(f.faseVersao)?.nome} cor={coleiraHistoricaFase(f.faseVersao)?.cor}/>},{chave:'ate',titulo:'Até',celula:f=>f.ate?formatarDataBR(f.ate):'Vigente'},{chave:'motivo',titulo:'Motivo',celula:f=>f.motivo??'—'},
       ...(podeLancar?[{chave:'acoes',titulo:'Ações',celula:(f:Participacao['fases'][number])=><Button variant="outline" onClick={()=>setCancelamento({animalId,sitio,participacao:p,periodo:f})}>Cancelar programação</Button>}]:[]),
     ]}/></section>)}{!dados.participacoes.length&&<p className="bez-estado">Acompanhamento de colostragem registrado, sem participação em lote de bezerreiro.</p>}</section>
-    <div className="bez-acoes bez-secao"><Button variant="outline" onClick={()=>navegarPara(`/pecuaria/rebanho/animais/${animalId}#sanidade`)}>Sanidade do animal</Button><Button variant="outline" onClick={()=>navegarPara(`/pecuaria/bezerreiro?aba=alimentacao&animalId=${animalId}`)}>Alimentação</Button></div></>:<p className="bez-estado">Nenhuma passagem ou acompanhamento de bezerreiro registrado para este animal.</p>}
+    <div className="bez-acoes bez-secao"><Button variant="outline" onClick={()=>navegarPara(`/pecuaria/rebanho/animais/${animalId}#sanidade`)}>Sanidade do animal</Button><Button variant="outline" onClick={()=>navegarPara(`/pecuaria/bezerreiro?aba=alimentacao&animalId=${animalId}`)}>Alimentação</Button></div></>:<Empty icone={History}>Nenhuma passagem ou acompanhamento de bezerreiro registrado para este animal.</Empty>}
   </>}</EstadoConsulta>
     {movimentando&&!movimento&&(erroMovimento?<div role="alert">{erroMovimento}<Button variant="outline" onClick={()=>setMovimentando(false)}>Fechar</Button></div>:<EsqueletoFormulario label="Carregando movimentação"/>)}
     {movimentando&&movimento&&<FormMovimentar animais={[movimento.animal]} propriedades={movimento.catalogos.propriedades} lotes={movimento.catalogos.lotes} propriedadeInicial={sitio} loteInicial={movimento.animal.lote?.id} onFechar={()=>setMovimentando(false)} onSalvo={()=>{setMovimentando(false);salvo();}}/>}

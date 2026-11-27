@@ -67,9 +67,9 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
       {<>
       <TabelaFinanceira icone={ICONES_TABELA.ordenha} barraRolagemSuperior rotulo="Volumes de produção" itens={grupos.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={g => g.periodo} colunas={[
         { chave: "periodo", titulo: visao === "dia" ? "Dia" : "Mês", principal: true, celula: g => g.periodo.split("-").reverse().join("/") },
-        ...(dados.ordenhas ?? []).map(o => ({ chave: o.posicaoId, titulo: o.nome, alinhamento: "direita" as const, celula: (g: Grupo) => formatarLitros(g.turnos.find(t => t.posicaoId === o.posicaoId)?.litros ?? null) })),
-        { chave: "total", titulo: "Total", alinhamento: "direita", celula: g => <strong>{formatarLitros(g.litros)}</strong> },
-        { chave: "cobertura", titulo: "Situação", celula: g => g.completa ? "Completa" : "Parcial" },
+        ...(dados.ordenhas ?? []).map(o => ({ chave: o.posicaoId, titulo: o.nome, alinhamento: "direita" as const, celula: (g: Grupo) => { const l = g.turnos.find(t => t.posicaoId === o.posicaoId)?.litros ?? null; return l == null ? "Sem medição" : formatarLitros(l); } })),
+        { chave: "total", titulo: "Total", alinhamento: "direita", celula: g => g.litros == null ? "Sem registro" : <strong>{formatarLitros(g.litros)}</strong> },
+        { chave: "cobertura", titulo: "Situação", celula: g => g.litros == null ? "Sem registros" : g.completa ? "Completa" : "Parcial" },
       ]} />
       <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={grupos.length} porPagina={15} rotulo="Paginação da produção" substantivo="períodos" idSelect="pagina-producao-leite" onPagina={setPagina} />
       </>}

@@ -52,6 +52,12 @@ describe("HistoricoMovimentacoes", () => {
   it("mostra vazio quando não há movimentações", async () => {
     const carregar = vi.fn().mockResolvedValue({ itens: [], total: 0 });
     render(<HistoricoMovimentacoes carregar={carregar} />);
+    expect(await screen.findByText("Nenhuma movimentação registrada.")).toBeTruthy();
+  });
+
+  it("com filtro aplicado, o vazio fala do recorte", async () => {
+    const carregar = vi.fn().mockResolvedValue({ itens: [], total: 0 });
+    render(<HistoricoMovimentacoes carregar={carregar} filtrado />);
     expect(await screen.findByText("Nenhuma movimentação encontrada com os filtros selecionados.")).toBeTruthy();
   });
 

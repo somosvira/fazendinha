@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { BarraConsulta } from '@/financeiro/BarraConsulta';
 import { CampoFiltro } from '@/financeiro/PainelFiltros';
 import { SelectCampo } from '@/financeiro/SelectCampo';
-import { TabelaFinanceira } from '@/financeiro/financeiro-ui';
+import { Empty, TabelaFinanceira } from '@/financeiro/financeiro-ui';
+import { Baby, History, SearchX } from 'lucide-react';
 import { navegarPara } from '../../../router';
 import { formatarDataBR } from '../lib/rotulos';
 import { hojeOperacional } from '../leite/modelo';
@@ -44,7 +45,7 @@ export function AnimaisBezerreiro({sitio,podeLancar:podeLancarPerfil,config,revi
       adicionais={<><CampoFiltro rotulo="Participação no bezerreiro"><SelectCampo aria-label="Participação no bezerreiro" value={rascunho.historico} onValueChange={v=>setRascunho({...rascunho,historico:v})}><option value="">Presentes</option><option value="true">Histórico de saídas</option></SelectCampo></CampoFiltro><CampoFiltro rotulo="Coleira"><SelectCampo value={rascunho.coleira} onValueChange={v=>setRascunho({...rascunho,coleira:v})}><option value="">Todas</option>{config.coleiras.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></CampoFiltro><CampoFiltro rotulo="Fase"><SelectCampo value={rascunho.fase} onValueChange={v=>setRascunho({...rascunho,fase:v})}><option value="">Todas</option>{config.fases.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></CampoFiltro></>}>
       <BuscaLista rotulo="Buscar animal" placeholder="Buscar brinco ou nome" valor={busca} onChange={setBusca}/>
     </BarraConsulta>
-    <EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&(consulta.dados.total===0?<p className="bez-estado">{params.get('busca')||params.get('coleira')||params.get('fase')?'Nenhum animal corresponde aos filtros. Ajuste ou limpe os critérios.':historico?'Nenhuma saída registrada.':'Nenhum animal participa do bezerreiro neste sítio.'}</p>:<>{<TabelaFinanceira icone={ICONES_TABELA.animal} rotulo={rotulo} itens={consulta.dados.itens} chaveDe={p=>p.id} colunas={[
+    <EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&(consulta.dados.total===0?<Empty icone={params.get('busca')||params.get('coleira')||params.get('fase')?SearchX:historico?History:Baby}>{params.get('busca')||params.get('coleira')||params.get('fase')?'Nenhum animal corresponde aos filtros. Ajuste ou limpe os critérios.':historico?'Nenhuma saída registrada.':'Nenhum animal participa do bezerreiro neste sítio.'}</Empty>:<>{<TabelaFinanceira icone={ICONES_TABELA.animal} rotulo={rotulo} itens={consulta.dados.itens} chaveDe={p=>p.id} colunas={[
       {chave:'brinco',titulo:'Brinco',celula:p=>p.animal.brinco},
       {chave:'nome',titulo:'Nome',principal:true,celula:p=><button className="bez-link" onClick={()=>abrir(p)}>{p.animal.nome??'Sem nome'}</button>},
       ...(consolidado?[{chave:'sitio',titulo:'Sítio',celula:(p:Participacao)=>p.perfil.propriedade?.nome??'—'}]:[]),
