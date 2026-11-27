@@ -1,7 +1,6 @@
-import { contemSql } from "../../../test/sql-baseline.js";
-import { readFileSync } from "node:fs";
+import { baselineSql, contemSql } from "../../../test/sql-baseline.js";
 import { expect,it } from "vitest";
-const sql=readFileSync(new URL("../../../../prisma/migrations/20261025000000_base_unificada/migration.sql",import.meta.url),"utf8");
+const sql=baselineSql;
 it("contrato estrutural SQL de entrega/demonstrativo — não substitui PostgreSQL real",()=>{
  for(const t of ["EntregaLeite","ConferenciaEntregaLeite","ComprovanteEntregaLeite"]) expect(contemSql(sql, `"${t}_imutavel" BEFORE UPDATE OR DELETE`)).toBe(true);
  expect(contemSql(sql, 'CREATE UNIQUE INDEX "EntregaLeite_retiradaId_key"')).toBe(true);

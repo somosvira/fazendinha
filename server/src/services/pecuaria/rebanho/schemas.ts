@@ -61,6 +61,7 @@ export const cadastrarAnimalSchema = z.object({
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
   composicao: z.array(composicaoItemSchema).optional().default([]),
   pesoEntradaKg: pesoKgSchema.nullable().optional(),
+  eccEntrada: z.number().finite().min(1).max(5).nullable().optional(),
 }).merge(filiacaoCamposSchema).superRefine(exigirLadoUnico);
 export type CadastrarAnimalInput = z.infer<typeof cadastrarAnimalSchema>;
 
@@ -175,6 +176,8 @@ export const listarMovimentacoesSchema = z.object({
   animalId: z.string().uuid().optional(),
   dataDe: z.string().date().optional(),
   dataAte: z.string().date().optional(),
+  /** texto livre: motivo, lote ou sítio de origem/destino, brinco ou nome do animal */
+  busca: z.string().trim().max(100).optional(),
   incluirDesfeitas: z.enum(["true", "false"]).optional().default("true").transform((v) => v === "true"),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),

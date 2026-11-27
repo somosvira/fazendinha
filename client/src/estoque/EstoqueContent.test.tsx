@@ -48,7 +48,7 @@ async function selecionarFiltro(rotulo: string, opcao: string) {
   if(lateral){fireEvent.click(within(lateral).getByRole("button",{name:"Aplicar filtros"})); await waitFor(()=>expect(screen.queryByRole("dialog",{name:"Filtros"})).toBeNull());}
 }
 
-const resumoEstoque = () => within(document.querySelector<HTMLElement>(".estoque-resumo-consulta")!);
+const resumoEstoque = () => within(document.querySelector<HTMLElement>(".estoque-destaques")!);
 function mostrarMovimentos() { fireEvent.mouseDown(screen.getByRole("tab", { name: "Movimentações" })); }
 
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); setPropriedadeAtiva(null); window.history.replaceState({}, "", "/"); });
@@ -141,7 +141,7 @@ describe("EstoqueContent — filtro inicial vindo do módulo", () => {
 
   it("não mostra custo vaca/dia nem vacas em lactação (só dados de estoque)", async () => {
     render(<EstoqueContent />);
-    await resumoEstoque().findByText("Valor em estoque");
+    await resumoEstoque().findByText("valor em estoque");
     expect(screen.queryByText(/custo vaca/i)).toBeNull();
     expect(screen.queryByText(/vacas em lacta/i)).toBeNull();
     expect((fetch as unknown as ReturnType<typeof mockFetch>).mock.calls.some(([url]) => /custo-vaca-dia/.test(String(url)))).toBe(false);
@@ -176,7 +176,7 @@ describe("EstoqueContent — saldos e custo médio", () => {
   it("card Valor em estoque soma o valor dos saldos listados", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({}), saldo({ produtoId: 2, nome: "Sal", valor: 10.5 })] }));
     render(<EstoqueContent />);
-    const card = (await resumoEstoque().findByText("Valor em estoque")).closest("section")!;
+    const card = (await resumoEstoque().findByText("valor em estoque")).closest("ul")!;
     expect(card.textContent?.replace(/\u00a0/g, " ")).toContain("R$ 100,50");
     expect(within(card).queryByText(/produtos? com movimento/)).toBeNull();
   });
@@ -184,7 +184,7 @@ describe("EstoqueContent — saldos e custo médio", () => {
   it("não carrega a antiga consulta geral de lotes dos produtos", async () => {
     const fetchMock = fetch as unknown as ReturnType<typeof mockFetch>;
     render(<EstoqueContent />);
-    await resumoEstoque().findByText("Valor em estoque");
+    await resumoEstoque().findByText("valor em estoque");
     expect(screen.queryByRole("heading", { name: "Lotes dos produtos" })).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => /\/pecuaria\/nutricao\/partidas|\/estoque\/produtos.*lotes/.test(String(url)))).toBe(false);
   });
@@ -192,7 +192,7 @@ describe("EstoqueContent — saldos e custo médio", () => {
   it("card Valor em estoque ignora valores negativos e avisa (com filtro) os produtos com saldo negativo", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({}), saldo({ produtoId: 2, nome: "Sal", saldo: -3, valor: -20 })] }));
     render(<EstoqueContent />);
-    const card = (await resumoEstoque().findByText("Valor em estoque")).closest("section")!;
+    const card = (await resumoEstoque().findByText("valor em estoque")).closest("ul")!;
     expect(card.textContent?.replace(/\u00a0/g, " ")).toContain("R$ 90,00");
     const tabela = () => within(screen.getByRole("table", { name: "Saldos de estoque" }));
     expect(tabela().getByText("Ração")).toBeTruthy();
@@ -207,17 +207,17 @@ describe("EstoqueContent — saldos e custo médio", () => {
   it("sem saldo negativo não mostra o aviso", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})] }));
     render(<EstoqueContent />);
-    await resumoEstoque().findByText("Valor em estoque");
+    await resumoEstoque().findByText("valor em estoque");
     expect(screen.queryByText(/saldo negativo/)).toBeNull();
   });
 
   it("reúne valor e produtos com saldo positivo e mostra entradas sem colapso", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({}), saldo({ produtoId: 2, nome: "Sal", saldo: 0, valor: 0 })] }));
     render(<EstoqueContent />);
-    const card = (await screen.findByText("1 produto em estoque")).closest("section")!;
-    expect(within(card).getByText("1 produto em estoque")).toBeTruthy();
+    const card = (await resumoEstoque().findByText("produto em estoque")).closest("li")!;
+    expect(card.textContent).toBe("1produto em estoque");
     expect(within(card).queryByText(/^de \d+ produtos? com movimento/)).toBeNull();
-    expect(resumoEstoque().getByText("Valor em estoque")).toBeTruthy();
+    expect(resumoEstoque().getByText("valor em estoque")).toBeTruthy();
     expect(screen.queryByRole("region", { name: "Últimas entradas" })).toBeNull();
     mostrarMovimentos();
     expect(screen.getByText("Últimas entradas").closest("details")).toBeNull();
@@ -475,13 +475,13 @@ it("atalho de reposição seleciona Produtos e preserva os filtros ao alternar a
   mostrarMovimentos();
   expect(new URLSearchParams(window.location.search).get("aba")).toBe("movimentacoes");
   fireEvent.click(screen.getByRole("button", { name: "1 abaixo do mínimo" }));
-  expect(screen.getByRole("tab", { name: "Produtos" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("tab", { name: /^Produtos/ }).getAttribute("aria-selected")).toBe("true");
   const tabela = within(screen.getByRole("table", { name: "Saldos de estoque" }));
   expect(tabela.getByText("Ração")).toBeTruthy();
   expect(tabela.queryByText("Sal")).toBeNull();
   fireEvent.change(screen.getByLabelText("Buscar produto"), { target: { value: "Ração" } });
   mostrarMovimentos();
-  fireEvent.mouseDown(screen.getByRole("tab", { name: "Produtos" }));
+  fireEvent.mouseDown(screen.getByRole("tab", { name: /^Produtos/ }));
   expect((screen.getByLabelText("Buscar produto") as HTMLInputElement).value).toBe("Ração");
   expect(screen.getByRole("button", { name: "1 abaixo do mínimo" }).getAttribute("aria-pressed")).toBe("true");
 });
@@ -494,7 +494,7 @@ it("não apresenta valor desconhecido como zero e acompanha a aba no histórico"
   mostrarMovimentos();
   window.history.replaceState(null, "", "/estoque?aba=produtos");
   fireEvent(window, new PopStateEvent("popstate"));
-  expect(screen.getByRole("tab", { name: "Produtos" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("tab", { name: /^Produtos/ }).getAttribute("aria-selected")).toBe("true");
 });
 
 it('aplica filtro de princípio ativo antes de paginar saldos e conserva parâmetros ao mudar de aba', async () => {
@@ -521,7 +521,7 @@ it.each(['financeiro', 'pecuaria'])('consulta de %s conserva produtos e moviment
   vi.stubGlobal('fetch', mockFetch({ saldos: [saldo({})] }));
   render(<EstoqueContent />);
   expect(await screen.findByRole('table', { name: 'Saldos de estoque' })).toBeTruthy();
-  expect(screen.getByRole('tab', { name: 'Produtos' })).toBeTruthy();
+  expect(screen.getByRole('tab', { name: /^Produtos/ })).toBeTruthy();
   expect(screen.getByRole('tab', { name: 'Movimentações' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Cadastrar produto' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Movimentar estoque' })).toBeNull();

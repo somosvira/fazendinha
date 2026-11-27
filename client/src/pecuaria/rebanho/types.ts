@@ -191,6 +191,7 @@ export type CadastrarAnimalInput = {
   papelReprodutivo?: PapelReprodutivo;
   composicao?: ComposicaoItemInput[];
   pesoEntradaKg?: number | null;
+  eccEntrada?: number | null;
 } & FiliacaoInput;
 
 export type CadastrarAnimalResultado = AnimalFicha & {
@@ -422,6 +423,7 @@ export type FiltrosMovimentacoes = {
   propriedadeId?: number;
   dataDe?: string;
   dataAte?: string;
+  busca?: string;
   animalId?: string;
   /** default true no servidor */
   incluirDesfeitas?: boolean;

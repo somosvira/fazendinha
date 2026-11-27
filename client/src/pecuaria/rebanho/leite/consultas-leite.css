@@ -45,21 +45,11 @@
 }
 
 /* Consultas do leite: leitura compacta e os mesmos fatos em cartões e tabela. */
-.leite-lista-consulta { min-width: 0; }
+/* A tabela padrão não tem contorno próprio: o contorno é da superfície que a contém.
+ * No Leite a lista fica solta na página, então esta caixa faz esse papel. */
+.leite-lista-consulta { min-width: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
 .leite-lista-opcoes { display: flex; justify-content: flex-end; margin: 0 0 14px; }
-.leite-cartoes-consulta { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr)); gap: 16px; align-items: start; }
-.leite-cartoes-consulta .consulta-entidade { margin: 0; padding: 16px; border-radius: 12px; box-shadow: none; height: 100%; }
-.leite-cartoes-consulta > [role="listitem"] { height: 100%; min-width: 0; }
-.leite-cartoes-consulta .consulta-entidade > header { margin-bottom: 12px; }
-.leite-cartoes-consulta .consulta-entidade h3 { font-size: 15px; margin: 0; }
-.leite-cartoes-consulta .consulta-entidade-conteudo { display: grid; grid-template-columns: 1fr; gap: 0; }
-.leite-cartoes-consulta .consulta-fato { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 6px 0; font-size:14px; }
-.leite-cartoes-consulta .consulta-fato > span { color: var(--muted-foreground); }
-.leite-cartoes-consulta .consulta-fato > div { text-align: right; font-weight: 600; }
-.leite-cartoes-consulta .consulta-entidade-acao { display: flex; flex-wrap: wrap; gap: 8px; }
-.leite-cartoes-consulta .consulta-entidade > footer { margin-top: 12px; }
-.leite-cartoes-consulta .consulta-entidade > footer > span { flex: 1; }
-.leite-cartoes-consulta .consulta-entidade > footer :is(button, a) { width: 100%; }
+
 .leite-grafico-producao { margin: 0; padding: 8px 0 18px; border-bottom: 1px solid var(--border); min-width: 0; }
 .leite-grafico-producao figcaption { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .leite-grafico-producao figcaption h2 { margin: 0; font-size: 16px; }
@@ -68,9 +58,7 @@
 .leite-grafico-producao i.parcial { background: repeating-linear-gradient(135deg, var(--primary) 0 4px, var(--card) 4px 6px); outline: 1px solid var(--primary); outline-offset: -1px; margin-left: 12px; }
 .leite-grafico-area { min-width: 0; height: 240px; margin-top: 16px; }
 .leite-grafico-producao .leite-consulta-nota { font-size:14px; margin-bottom: 0; }
-.leite-cartao-volume { display: flex; flex-direction: column; gap: 3px; padding: 0 0 12px; }
-.leite-cartao-volume strong { font-family: var(--font-display); font-size: 26px; font-weight: 750; letter-spacing: -.025em; }
-.leite-cartao-volume > span { color: var(--muted-foreground); font-size:14px; }
+
 .leite-agrupamento-producao { display: flex; align-items: center; justify-content: flex-end; gap: 12px; font-size:14px; color: var(--muted-foreground); }
 .leite-ordenhas-tamanho { display: flex; align-items: center; gap: 8px; font-size:14px; color: var(--muted-foreground); white-space: nowrap; }
 .leite-ordenhas-tamanho > [data-slot="select-trigger"] { width: 76px; }
@@ -111,7 +99,6 @@
 .leite-superficie .producao-registro-cabecalho{margin:16px 0 10px}
 .leite-superficie .leite-grafico-area{height:210px;margin-top:10px}
 .leite-superficie .leite-consultas{gap:12px}.leite-superficie .leite-grafico-producao figcaption h2{margin:0}.leite-resumo-destinos .consumo-retiradas>div>div>span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-
 
 /* Trilhas intrínsecas de formulários não podem alargar o portal. */
 :root [data-slot="dialog-content"].leite-consulta-dialog[data-fin-scroll="conteudo"] {

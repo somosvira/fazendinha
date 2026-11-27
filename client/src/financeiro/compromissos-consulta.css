@@ -31,10 +31,8 @@
 .compromisso-vencimento-atrasado, .compromisso-saldo-vencido { color: var(--fin-status-danger-text); }
 .compromisso-vencimento-atrasado > time { font-weight: 650; white-space: nowrap; }
 .compromisso-atraso { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; font-weight: 600; }
-:root .compromissos-consulta .fin-tabela > tbody > tr.compromisso-vencido > td,
-:root .compromissos-consulta .fin-tabela-cartoes > li.compromisso-vencido { background: var(--fin-danger-bg); }
-:root .compromissos-consulta .fin-tabela > tbody > tr.compromisso-vencido:is(:hover,:focus-within) > td,
-:root .compromissos-consulta .fin-tabela-cartoes > li.compromisso-vencido:is(:hover,:focus-within) { background: var(--fin-status-danger-bg); }
+:root .compromissos-consulta .fin-tabela > tbody > tr.compromisso-vencido > td{ background: var(--fin-danger-bg); }
+:root .compromissos-consulta .fin-tabela > tbody > tr.compromisso-vencido:is(:hover,:focus-within) > td{ background: var(--fin-status-danger-bg); }
 .compromissos-consulta .fin-tabela [data-fin-acoes] button { font-size: 13px; padding-inline: 12px; }
 @media (max-width: 700px) {
   .compromissos-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }

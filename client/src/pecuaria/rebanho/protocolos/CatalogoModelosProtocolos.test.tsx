@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { preferirCartoes } from "@/lib/visualizacao.fixture";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CatalogoModelosProtocolos } from "./CatalogoModelosProtocolos";
@@ -12,17 +11,16 @@ const modelo:CadastroProtocoloMeta={id:"p",nome:"Modelo IATF",tipo:"REPRODUTIVO"
 const procedimento:ProcedimentoCadastro={id:"a",nome:"Aplicação inicial",procedimento:"Aplicação de produto",intervalo:0,unidadeIntervalo:"DIAS",referencia:"Produto congelado",quantidade:"2",unidadeQuantidade:"ML",definirMaterialNoAtendimento:false,via:null,orientacaoUso:null};
 const etapa:EtapaEstruturaCadastro={id:"m",nome:"Preparo",agrupada:true,modoAtendimento:"AUTOMATIZADA",instrucoesGerais:"Conferir identificação",procedimentos:pagina([procedimento])};
 function props(tipo:CadastroProtocoloMeta["tipo"]="REPRODUTIVO") {return {tipo,protocolos:[{...modelo,tipo}],total:11,pagina:1,carregando:false,erro:null,ocupado:false,podeLancar:false,busca:"preparo",situacao:"ATIVA",onBusca:vi.fn(),onSituacao:vi.fn(),onPagina:vi.fn(),onRecarregar:vi.fn(),onNovo:vi.fn(),onNovaVersao:vi.fn(),onConcluir:vi.fn(),onInativar:vi.fn()};}
-beforeEach(()=>{vi.resetAllMocks();localStorage.clear();preferirCartoes({SANITARIO:["visualCadastroProtocolos"],REPRODUTIVO:["visualCadastroProtocolos"]});window.history.replaceState(null,"","/configuracoes/pecuaria/reproducao/protocolos");vi.mocked(obterEstruturaCadastro).mockResolvedValue(pagina([etapa]));});
+beforeEach(()=>{vi.resetAllMocks();localStorage.clear();window.history.replaceState(null,"","/configuracoes/pecuaria/reproducao/protocolos");vi.mocked(obterEstruturaCadastro).mockResolvedValue(pagina([etapa]));});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 it("apresenta intervalos fracionários sem arredondar o calendário cadastrado",()=>{
   expect(intervaloProcedimento(1.23456,"HORAS")).toBe("H1,23456");
   expect(intervaloProcedimento(7.5,"DIAS")).toBe("D7,5");
 });
-it.each(["SANITARIO","REPRODUTIVO"] as const)("%s: alterna cards/tabela preservando recorte e permite ao leitor consultar o modal",async tipo=>{
+it.each(["SANITARIO","REPRODUTIVO"] as const)("%s: preserva recorte e permite ao leitor consultar o modal",async tipo=>{
   const p=props(tipo);render(<CatalogoModelosProtocolos {...p}/>);
-  expect(screen.getByText("Preparo")).toBeTruthy();expect(obterEstruturaCadastro).not.toHaveBeenCalled();
+  expect(obterEstruturaCadastro).not.toHaveBeenCalled();
   expect(screen.queryByRole("button",{name:/Nova versão de/})).toBeNull();expect(screen.queryByRole("button",{name:/Inativar/})).toBeNull();
-  fireEvent.click(screen.getByRole("button",{name:"Tabela"}));
   expect(screen.getByRole("table",{name:tipo==="SANITARIO"?"Protocolos sanitários":"Protocolos reprodutivos"})).toBeTruthy();
   expect(screen.getByRole("searchbox")).toHaveProperty("value","preparo");expect(p.onPagina).not.toHaveBeenCalled();
   fireEvent.click(within(screen.getByRole("table")).getByRole("button",{name:/Ver detalhes de/}));
@@ -44,9 +42,7 @@ it("inclui inativos e reúne conclusão e versão no menu do modelo correto",asy
 it("mantém a tabela sanitária no celular, sem finalidade redundante nem menu de escrita para consulta",()=>{
   vi.stubGlobal("innerWidth",390);
   const p=props("SANITARIO");render(<CatalogoModelosProtocolos {...p}/>);
-  fireEvent.click(screen.getByRole("button",{name:"Tabela"}));
   const tabela=screen.getByRole("table",{name:"Protocolos sanitários"});
-  expect(tabela.closest("[data-fin-visualizacao]")?.getAttribute("data-fin-visualizacao")).toBe("tabela");
   expect(within(tabela).queryByRole("columnheader",{name:"Finalidade"})).toBeNull();
   expect(within(tabela).getByRole("columnheader",{name:"Situação"})).toBeTruthy();
   expect(screen.queryByRole("button",{name:/Mais ações de/})).toBeNull();
@@ -56,7 +52,6 @@ it("mantém a tabela sanitária no celular, sem finalidade redundante nem menu d
 it("preserva finalidade reprodutiva e bloqueia o menu durante uma gravação",()=>{
   render(<CatalogoModelosProtocolos {...props()} podeLancar ocupado/>);
   expect(screen.getByRole("button",{name:/Mais ações de/})).toHaveProperty("disabled",true);
-  fireEvent.click(screen.getByRole("button",{name:"Tabela"}));
   expect(within(screen.getByRole("table")).getByRole("columnheader",{name:"Finalidade"})).toBeTruthy();
 });
 it("modelo publicado/inativo conserva somente os comandos permitidos e Escape devolve o foco",async()=>{
@@ -91,4 +86,10 @@ it("resposta atrasada de uma página de procedimentos não substitui a primeira 
   fireEvent.click(within(screen.getByRole("navigation",{name:"Paginação de procedimentos de Preparo"})).getByRole("button",{name:"Anterior"}));
   resolver(pagina([{...procedimento,id:"tardia",referencia:"Resposta tardia"}],11,2));
   await waitFor(()=>expect(screen.getAllByText("Produto congelado")).toBeTruthy());expect(screen.queryByText("Resposta tardia")).toBeNull();
+});
+it("identifica prazo factual do diagnóstico sem apresentá-lo como D0", async () => {
+  vi.mocked(obterEstruturaCadastro).mockResolvedValue(pagina([{...etapa,procedimentos:pagina([{...procedimento, nome:"DG", procedimento:"Diagnóstico", referenciaPrazoDiagnostico:true}])}]));
+  render(<DetalheModeloProtocolo origem={modelo} onClose={vi.fn()}/>);
+  expect(await screen.findByText("Após a tentativa")).toBeTruthy();
+  expect(screen.queryByText("D0")).toBeNull();
 });

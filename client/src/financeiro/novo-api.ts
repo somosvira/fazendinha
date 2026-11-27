@@ -1,7 +1,9 @@
 import { comPropriedade } from "../propriedadeScope";
 import { mensagemErroHttp } from "../lib/erroHttp";
 import type { RelatorioGerencialDTO } from "../components/relatorio-gerencial/types";
-import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
+import { estadoRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
+import { getUsuario } from "../lib/auth";
+import { removerCachesRascunhoUsuario } from "./cacheCadastroAnimal";
 import { prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
 import type { UnidadeMedida } from "../lib/unidades";
 import { SEM_VINCULO } from "../lib/ids";
@@ -160,10 +162,12 @@ export type SnapshotRelatorioFinanceiro = {
 };
 export type RelatorioFinanceiroDetalhe = RelatorioFinanceiro & { snapshot: SnapshotRelatorioFinanceiro | null };
 
+export type SaldoNegativo = { propriedadeId: number; contaId: string; saldoAtual: string; valorPagamento: string; saldoProjetado: string; token: string };
+
 /** Erro da API financeira: `campo` indica o input ao qual a mensagem se refere. */
 export class ApiError extends Error {
   /** Conflito de nome na adoção de item do catálogo: o produto da fazenda que já usa o nome (docs/produtos.md, Adoção). */
-  constructor(message: string, public status: number, public code?: string, public campo?: string, public produtoExistente?: { id: string; nome: string }) { super(message); this.name = "ApiError"; }
+  constructor(message: string, public status: number, public code?: string, public campo?: string, public produtoExistente?: { id: string; nome: string }, public saldoNegativo?: SaldoNegativo) { super(message); this.name = "ApiError"; }
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -175,7 +179,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError("Falha de conexão. Confira sua internet e tente novamente.", 0);
   });
   const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new ApiError(corpo.error ?? mensagemErroHttp(resposta.status), resposta.status, corpo.code, corpo.campo, corpo.produtoExistente);
+  if (!resposta.ok) throw new ApiError(corpo.error ?? mensagemErroHttp(resposta.status), resposta.status, corpo.code, corpo.campo, corpo.produtoExistente, corpo.saldoNegativo);
   return corpo as T;
 }
 
@@ -211,12 +215,16 @@ export const salvarRascunhoOperacao = (dados: unknown, versao?: number) => {
   return req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify({ dados, versao }) }).then(publicar);
 };
 export const descartarRascunhoOperacao = () => {
+  const usuarioId = getUsuario()?.id;
+  const rascunhoId = estadoRascunhoAtivo().rascunho?.id;
   const publicar = prepararPublicacaoRascunho("escrita");
-  return req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" }).then(() => { publicar(null); });
+  return req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" }).then(() => { removerCachesRascunhoUsuario(usuarioId, rascunhoId); publicar(null); });
 };
-export const confirmarRascunhoOperacao = (versao?: number, chave?: string) => {
+export const confirmarRascunhoOperacao = (versao?: number, chave?: string, cienciaSaldoNegativo?: string) => {
+  const usuarioId = getUsuario()?.id;
+  const rascunhoId = estadoRascunhoAtivo().rascunho?.id;
   const publicar = prepararPublicacaoRascunho("escrita");
-  return req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao, chave }) }).then((operacao) => { publicar(null); return operacao; });
+  return req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao, chave, cienciaSaldoNegativo }) }).then((operacao) => { removerCachesRascunhoUsuario(usuarioId, rascunhoId); publicar(null); return operacao; });
 };
 export const listarRelatoriosFinanceiros = () => req<RelatorioFinanceiro[]>("/financeiro/relatorios");
 export const obterRascunhoRelatorioFinanceiro = () => {

@@ -64,15 +64,17 @@ Sempre que mudar páginas, registros, fluxos, URLs/filtros ou permissões, revis
 
 Testes de servidor cobrem entrada, seleção prévia de fontes autorizadas, parâmetros SQL, escopo e contrato dos destinos. Testes de cliente cobrem catálogo, busca assíncrona, filtro de tipo, seleção por teclado, falha/repetição, restauração por URL, recepção de links e guarda de navegação. Consultas locais de conferência são somente de leitura no `fazendinha_seedatev3`, sem habilitar flags de integração, criar fixtures, aplicar migrations ou alterar o manifesto da seed. Validação no navegador e testes automatizados são evidências distintas; nenhuma marca de homologação de domínio é aprovada por esta mudança.
 
-A revisão visual de Animais/ficha/ordenhas/filas mantém o catálogo, os gates e os destinos existentes. O registro geral de ordenha continua consumindo `leiteModo=registro`, `registroId`, data operacional e ordenha; sua apresentação é modal, sem perder o período da consulta no retorno. Os cartões abrem o animal exato, sem substituir a navegação por uma ficha ilustrativa. O contexto adicional do cartão é dado de leitura da lista, não nova fonte autônoma da busca.
+A revisão visual de Animais/ficha/ordenhas/filas mantém o catálogo, os gates e os destinos existentes. O registro geral de ordenha continua consumindo `leiteModo=registro`, `registroId`, data operacional e ordenha; sua apresentação é modal, sem perder o período da consulta no retorno. Em Animais, a linha abre a ficha exata. O contexto adicional da lista pertence à leitura da consulta e não cria outra fonte de busca.
 
-O acabamento operacional geral conserva os destinos da busca. A seleção por `usuario` em Acessos abre o editor em modal; receitas, operações nutricionais e protocolos continuam consumindo suas URLs antes de apresentar o modal. Trocar a apresentação não autoriza abrir outro registro nem remover o retorno da consulta. Filtros e parâmetros persistentes continuam sujeitos aos testes de navegação existentes.
+O acabamento operacional geral conserva os destinos da busca. A seleção por `usuario` em Acessos abre o editor em modal. Receitas, operações nutricionais e protocolos consomem os parâmetros de suas URLs. O resultado **Modelos de protocolos reprodutivos** abre a consulta de Configurações; a rota dedicada do builder conserva parâmetros de edição, derivação e retorno em todas as fases. Procedimentos continuam sendo acessados pela versão do modelo. Filtros e parâmetros persistentes ficam cobertos pelos testes de navegação.
+
+Os prazos opcionais de DG e reconfirmação aparecem no contexto da versão do protocolo e, após a adesão, da participação e do acompanhamento. A busca localiza a versão e os registros principais. Esses destinos apresentam a referência factual e o prazo conforme as permissões e o sítio da consulta.
 
 A reformulação da composição operacional preserva as URLs, fontes e gates da busca. Cabeçalhos integrados do Leite, agrupamento das visitas, seleção superior dos relatórios e cartões de Sítios são apresentações dos mesmos destinos. O histórico dos cadastros é consultado em modal sob demanda; não há novo tipo de registro pesquisável introduzido por essa apresentação.
 
 A composição das consultas operacionais mantém os destinos existentes de políticas, exames, estoque e relatórios. A ação de resultado completo no cartão de exame abre o mesmo registro pelo handler de detalhe, sem criar uma nova entidade pesquisável. Formulários de nova versão em modal preservam a página de configuração alcançada pela busca. Alterações de espaçamento e resumo visual não modificam catálogo, fontes, gates ou parâmetros de navegação.
 
-A revisão de responsividade e densidade conserva o catálogo, as fontes, os gates e os destinos exatos. Sidebar, ações do catálogo de protocolos e cartões de animais usam os handlers anteriores; parâmetros de visualização, busca, paginação e retorno continuam reconhecidos. A retirada de medidas/datas dos cartões não remove campos pesquisáveis ou a informação da ficha e da tabela.
+A navegação a partir da busca conserva catálogo, fontes, gates e destinos exatos. Abrir a ficha usa a identidade do animal e preserva o contexto de retorno. A apresentação responsiva da lista mantém os campos pesquisáveis.
 
 A integração automática do Bezerreiro conserva a identidade do animal e os destinos de sua ficha. Participação é um intervalo contextual, não um segundo cadastro pesquisável; a regularização exige conferir lote e localização e não é executada pela busca. A página Bezerreiro permanece no catálogo sob o gate de Pecuária.
 
@@ -114,3 +116,9 @@ Pecuária). Produtos sem dados oficiais vinculados continuam disponíveis na con
 do Catálogo e exibem o motivo da pendência. Não geram resultado do tipo referência oficial apenas por possuírem pesquisa pendente ou links a conferir. Referências parciais são identificadas como tais no contexto do resultado e abrem o modal exato com seus campos e pendências.
 
 A busca global de produtos abre a ficha exata do Produto da fazenda. Referências de catálogo entram na fonte de medicamentos somente quando possuem orientação de bula; outras referências são consultáveis pelo seletor interno de produtos. O modal de seleção não possui rota própria.
+
+A carga de cadastros padrão não cria uma nova fonte de busca: referências oficiais continuam disponíveis pelo destino exato do catálogo descrito acima, raças são opções do filtro de animais, e doenças são opções nos fluxos de Sanidade, sem ficha individual pesquisável na busca global.
+
+O exame de ECC do tipo de sistema responde ao nome original do catálogo e a “Escore de condição corporal (ECC)”; o resultado abre o exame exato, sob os gates e escopo existentes. No catálogo de tipos, `cadastroId` opcional limita a lista ao tipo encontrado; editar a busca remove esse filtro e URLs anteriores continuam válidas.
+
+O ECC informado na entrada do animal fica disponível na busca de exames após o cadastro avulso ou a confirmação da compra. A busca encontra o exame pelo tipo e pelo animal. Rascunhos de compra ainda não geram exames nem resultados de busca.

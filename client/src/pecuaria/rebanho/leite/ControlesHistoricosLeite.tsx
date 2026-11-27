@@ -1,3 +1,4 @@
+import { Empty } from "@/financeiro/financeiro-ui";
 import { Fragment, useId } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from "@/components/ui/table";
 import { dataSanitaria } from "../sanidade/rotulos";
@@ -12,7 +13,7 @@ export function ControlesHistoricosLeite({ itens, coletivo = false }: { itens: C
   const titulo = coletivo ? "Agregados históricos do sítio" : "Controles históricos do animal";
   return <section className="controles-historicos-leite" data-vazio={!itens.length || undefined} aria-labelledby={id}>
     <header><h3 id={id}>{titulo}</h3></header>
-    {itens.length === 0 ? <p className="controles-historicos-vazio">{coletivo ? "Nenhum agregado histórico no período." : "Nenhum controle histórico no período."}</p> : <>
+    {itens.length === 0 ? <Empty>{coletivo ? "Nenhum agregado histórico no período." : "Nenhum controle histórico no período."}</Empty> : <>
       <div className="controles-historicos-tabela" role="region" aria-label={titulo} tabIndex={0}>
         <Table semContainer className="consulta-tabela">
           <TableCaption className="sr-only">{titulo}, separados das aferições operacionais</TableCaption>

@@ -1,4 +1,3 @@
-import { preferirCartoes } from "@/lib/visualizacao.fixture";
 import { consultarManejoAptidao, type ElegibilidadeNaData } from "./elegibilidade-api";
 // @vitest-environment jsdom
 import { abrirFiltrosConsulta, aplicarFiltrosConsulta, alterarControle } from "@/lib/controles.fixture";
@@ -41,7 +40,7 @@ function elegibilidade(id: string, patch: Partial<ElegibilidadeNaData> = {}): El
 }
 let painel: PainelReprodutivo;
 beforeEach(() => {
-  vi.clearAllMocks(); localStorage.clear();preferirCartoes({reproducao:["visualAnimaisReproducao"]}); window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=ciclos&sitio=7");
+  vi.clearAllMocks(); localStorage.clear(); window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=ciclos&sitio=7");
   painel = { animais: [estado("1"), estado("2"), estado("3"), estado("4", "AGUARDANDO_DIAGNOSTICO"), estado("9", "DESCONHECIDA")], tentativas: [], avaliacoes: [], partos: [], restricoes: [] };
   vi.mocked(consultarManejoAptidao).mockResolvedValue({ propriedadeId: 7, dataReferencia: hoje, itens: Array.from({length:9}, (_,i)=>elegibilidade(String(i+1))) });
   vi.mocked(listarCategorias).mockResolvedValue({ itens: [], semCategoria: 0 });
@@ -91,7 +90,6 @@ it("filtra contagens globais antes de paginar, muda ordem e preserva URL e taman
   await alterarControle(screen.getByLabelText("Filtrar lote"), { target: { value: "" } });
   await alterarControle(screen.getByLabelText("Ordenar animais"), { target: { value: "menor-espera" } });
   await aplicarFiltrosConsulta();
-  fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
   const tabela = screen.getByRole("table", { name: "Animais e acompanhamentos" });
   expect(within(tabela).getAllByRole("row")[1].textContent).toContain("V4-8");
   await alterarControle(screen.getByLabelText("Animais por página"), { target: { value: "10" } });
@@ -149,24 +147,6 @@ it("exclui baixadas, servidas e gestantes e mantém pendências de escopo da fil
   expect(screen.getAllByText("Papel reprodutivo não informado.").length).toBeGreaterThan(0);
 });
 
-it("alterna cartões e tabela preservando recorte, ordem, página e lista autorizada", async () => {
-  window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=ciclos&sitio=7&fila=diagnostico&q=Animal&porPagina=10");
-  render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
-  await screen.findByText("V4-4");
-  expect(screen.getByRole("button", { name: "Cartões" }).getAttribute("aria-pressed")).toBe("true");
-  expect(screen.getAllByRole("link", { name: "Abrir ficha" })).toHaveLength(1);
-  fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
-  expect(screen.getByRole("table", { name: "Diagnóstico e reconfirmação" })).toBeTruthy();
-  expect(screen.getByText("1–1 de 1 animais")).toBeTruthy();
-  expect(window.location.search).toContain("fila=diagnostico");
-  expect(window.location.search).toContain("q=Animal");
-  expect(window.location.search).toContain("porPagina=10");
-  expect(window.location.search).toContain("visualAnimaisReproducao=tabela");
-  fireEvent.click(screen.getByRole("button", { name: "Cartões" }));
-  expect(screen.queryByRole("table")).toBeNull();
-  expect(screen.getAllByRole("link", { name: "Abrir ficha" })).toHaveLength(1);
-  expect(obterReproducao).toHaveBeenCalledTimes(1);
-});
 
 function configurarCrescimento() {
   vi.mocked(listarCategorias).mockResolvedValue({ semCategoria: 0, itens: [{

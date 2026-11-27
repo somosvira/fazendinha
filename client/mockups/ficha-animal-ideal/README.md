@@ -1,6 +1,6 @@
 # Ficha animal — proposta de organização
 
-Prévia interativa baseada no [README do frontend](../../README.md), com a DEV-001 do ambiente local como referência em 30/10/2026. A ficha real e seus serviços não foram alterados.
+Prévia interativa de 30/10/2026 com a DEV-001 do ambiente local como referência. A ficha real e seus serviços não foram alterados.
 
 ## Composição proposta
 

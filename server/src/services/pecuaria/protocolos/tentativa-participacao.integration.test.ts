@@ -2,8 +2,11 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
+import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
+import { criarPoliticaAcompanhamentoSchema } from "../reproducao/acompanhamento.schemas.js";
 import {
   criarDemandasDoFatoTx,
+  criarPoliticaAcompanhamentoTx,
   reconciliarDemandasAnimalTx,
 } from "../reproducao/acompanhamento.js";
 const banco =
@@ -61,10 +64,11 @@ banco("vínculo externo e prazo congelado em PostgreSQL", () => {
               tipo: "REPRODUTIVO",
               finalidade: "IATF",
               modalidadeTentativa: "EXTERNA",
-              modalidadeDiagnostico: "EXTERNO",
+              modalidadeDiagnostico: "PROTOCOLO",
               configuracaoAcompanhamento: configuracao,
             },
           });
+          const etapaDg = await tx.etapaProtocolo.create({ data: { protocoloId: modelo.id, ordem: 1, nome: "DG", tipo: "EXAME", diaRelativo: 0, configuracao: { tipo: "AVALIACAO", referenciaPrazoDiagnostico: true, planoAvaliacao: { tipo: "DIAGNOSTICO" } } } });
           const p = await tx.participacaoProtocolo.create({
             data: {
               protocoloId: modelo.id,
@@ -82,6 +86,7 @@ banco("vínculo externo e prazo congelado em PostgreSQL", () => {
               },
             },
           });
+          const tarefaDg = await tx.tarefaProtocolo.create({ data: { execucaoId: p.id, etapaId: etapaDg.id, previstaPara: dia("2026-01-01"), previsaoOriginal: dia("2026-01-01"), precisaoTemporal: "DIA", previsaoPendente: true, parametros: { previsaoOriginal: "2026-01-01", previsaoPendente: true } } });
           const t = await tx.tentativaReprodutiva.create({
             data: {
               animalId: animal.id,
@@ -102,6 +107,7 @@ banco("vínculo externo e prazo congelado em PostgreSQL", () => {
             snapshot: {
               tentativaId: t.id,
               animalId: animal.id,
+              propriedadeId: sitio.id,
               data: "2026-01-12",
               tipo: "IA",
             },
@@ -131,6 +137,11 @@ banco("vínculo externo e prazo congelado em PostgreSQL", () => {
             origemAdocao: "MODELO",
             previstaPara: dia("2026-02-11"),
           });
+          await reconciliarDemandasAnimalTx(tx, animal.id, usuario.id);
+          await reconciliarDemandasAnimalTx(tx, animal.id, usuario.id);
+          expect(await tx.tarefaProtocolo.findUniqueOrThrow({ where: { id: tarefaDg.id } })).toMatchObject({ previstaPara: dia("2026-02-11"), previsaoPendente: false, precisaoTemporal: "DIA" });
+          expect(await tx.demandaAcompanhamentoReprodutivo.findUniqueOrThrow({ where: { id: d.id } })).toMatchObject({ tarefaId: tarefaDg.id });
+          expect(await tx.demandaAcompanhamentoReprodutivo.count({ where: { tentativaId: t.id } })).toBe(1);
           await tx.$executeRaw`SAVEPOINT duplicado`;
           await expect(
             tx.vinculoTentativaParticipacao.create({ data: dados }),
@@ -153,7 +164,9 @@ banco("vínculo externo e prazo congelado em PostgreSQL", () => {
             estado: "PENDENTE",
             previstaPara: dia("2026-02-11"),
             participacaoAcompanhamentoId: p.id,
+            tarefaId: null,
           });
+          expect(await tx.tarefaProtocolo.findUniqueOrThrow({ where: { id: tarefaDg.id } })).toMatchObject({ previsaoOriginal: null, previsaoPendente: true });
           await tx.tentativaReprodutiva.update({
             where: { id: t.id },
             data: {
@@ -170,6 +183,28 @@ banco("vínculo externo e prazo congelado em PostgreSQL", () => {
           ).toMatchObject({
             estado: "ENCERRADA",
             motivoEncerramento: "ORIGEM_ANULADA",
+          });
+          const politica=await criarPoliticaAcompanhamentoTx(tx, criarPoliticaAcompanhamentoSchema.parse({
+            chave: randomUUID(), propriedadeId: sitio.id, vigenteDesde: "2026-01-01",
+            parametros: { ...configuracao, regras: [{ ...configuracao.regras[0], intervalo: 19, tipoExameId: TIPO_EXAME_REPRODUTIVO }] },
+          }), usuario.id);
+          const substituta=await tx.tentativaReprodutiva.create({ data: {
+            animalId: animal.id, propriedadeId: sitio.id, data: dia("2026-02-15"), tipo: "IA",
+            ciclo: 1, ordem: 2, origemMaterial: "DOCUMENTADA", geneticaSnapshot: {},
+          } });
+          const fato = { tentativaId: substituta.id, tipoTentativa: substituta.tipo, animalId: animal.id, propriedadeId: sitio.id, data: substituta.data };
+          await criarDemandasDoFatoTx(tx, fato, usuario.id, politica.id);
+          const congelada = await tx.demandaAcompanhamentoReprodutivo.findFirstOrThrow({ where: { tentativaId: substituta.id } });
+          expect(congelada).toMatchObject({ previstaPara: dia("2026-03-06"), regraSnapshot: { tipoExameId: TIPO_EXAME_REPRODUTIVO, tipoExameVersao: expect.any(Number) } });
+          await tx.vinculoTentativaParticipacao.create({ data: {
+            ...dados, tentativaId: substituta.id, snapshot: { ...dados.snapshot, tentativaId: substituta.id, data: "2026-02-15" },
+          } });
+          await criarDemandasDoFatoTx(tx, fato, usuario.id, undefined, p.id);
+          await reconciliarDemandasAnimalTx(tx, animal.id, usuario.id);
+          await reconciliarDemandasAnimalTx(tx, animal.id, usuario.id);
+          expect(await tx.demandaAcompanhamentoReprodutivo.findMany({ where: { tentativaId: substituta.id } })).toEqual([congelada]);
+          expect(await tx.tarefaProtocolo.findUniqueOrThrow({ where: { id: tarefaDg.id } })).toMatchObject({
+            previstaPara: dia("2026-03-17"), previsaoPendente: false, parametros: { tentativaPrazoDiagnosticoId: substituta.id },
           });
           await tx.$executeRaw`SAVEPOINT apagar`;
           await expect(

@@ -12,28 +12,4 @@
   align-items: center;
   gap: 6px 12px;
 }
-.nutricao-fechamentos .fin-tabela-cartoes .nutricao-fechamento-periodo {
-  justify-content: space-between;
-}
-.nutricao-fechamentos .fin-consulta-responsiva[data-fin-visualizacao="cartoes"] > .fin-tabela-cartoes {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px;
-}
-.nutricao-fechamentos .fin-tabela-cartoes > li {
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--card);
-}
-.nutricao-fechamentos .fin-tabela-cartoes > li > .relative { height: 100%; }
-.nutricao-fechamentos .fin-tabela-cartoes dl {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 104px), 1fr));
-  gap: 8px 12px;
-}
-@container (min-width: 760px) {
-  .nutricao-fechamentos .fin-consulta-responsiva[data-fin-visualizacao="cartoes"] > .fin-tabela-cartoes {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+

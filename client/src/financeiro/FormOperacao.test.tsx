@@ -60,6 +60,8 @@ it("operador sem valores confirma manualmente, mantém dados no403 e não usa ra
   await alterarControle(screen.getByLabelText("Prestador de serviço"), { target: { value: uid(1) } });
   await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
   expect(screen.queryByLabelText("Anexar documentos")).toBeNull();
+  expect(screen.queryByText(/Saldo atual:/)).toBeNull();
+  expect(screen.queryByText(/deixará esta conta com saldo negativo/)).toBeNull();
   act(() => { fireEvent.submit(container.querySelector("form")!); fireEvent.submit(container.querySelector("form")!); });
   expect(fetchMock).toHaveBeenCalledOnce();
   expect(String(fetchMock.mock.calls[0][0])).toBe("/api/financeiro/operacoes");
@@ -1401,4 +1403,109 @@ it("salvamento pendente, saída e nova edição respeitam ordem e versão", asyn
   await waitFor(() => expect(gravacoes).toHaveLength(3));
   expect(gravacoes.map(g => (g.dados.formulario as Record<string, unknown>).descricao)).toEqual(["Primeira edição", "Edição ao sair", "Última edição após retomar"]);
   expect(gravacoes.map(g => g.versao)).toEqual([undefined, 1, 2]);
+});
+
+describe("saldo da conta na operação", () => {
+  afterEach(() => setPropriedadeAtiva(null));
+  const configSaldos = { ...config, contas: [{ ...config.contas[0], propriedadeId: 1 }, { ...config.contas[0], propriedadeId: 1, id: uid(3), nome: "Conta reserva", saldoAtual: "50.00" }, { ...config.contas[0], propriedadeId: 1, id: uid(4), nome: "Conta sem saldo", saldoAtual: null }, { ...config.contas[0], propriedadeId: 1, id: uid(5), nome: "Conta negativa", saldoAtual: "-10.00" }] };
+  async function preparar(onSalvo = vi.fn()) {
+    vi.spyOn(permissoes, "podeVerValoresFinanceiros").mockReturnValue(true);
+    setPropriedadeAtiva(1);
+    render(<FormOperacao config={configSaldos} tipoInicial="SERVICO" onSalvo={onSalvo} />);
+    await alterarControle(screen.getByLabelText("Descrição"), { target: { value: "Serviço rural" } });
+    await alterarControle(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+    await alterarControle(screen.getByLabelText("Prestador de serviço"), { target: { value: uid(1) } });
+    await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
+  }
+  it("atualiza o aviso ao trocar conta e calcula apenas o pagamento parcial", async () => {
+    await preparar();
+    expect(screen.queryByText(/deixará esta conta com saldo negativo/)).toBeNull();
+    await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(3) } });
+    expect(screen.getByText(/deixará esta conta com saldo negativo/)).toBeTruthy();
+    await alterarControle(screen.getByLabelText("Condição financeira"), { target: { value: "PARCIAL" } });
+    await alterarControle(screen.getByLabelText("Valor liquidado na operação"), { target: { value: "30" } });
+    expect(screen.queryByText(/deixará esta conta com saldo negativo/)).toBeNull();
+    await alterarControle(screen.getByLabelText("Valor liquidado na operação"), { target: { value: "60" } });
+    expect(screen.getByText(/deixará esta conta com saldo negativo/)).toBeTruthy();
+    await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(5) } });
+    expect(screen.getByText(/Esta conta já está negativa/)).toBeTruthy();
+    await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(4) } });
+    expect(screen.queryByText(/deixará esta conta com saldo negativo/)).toBeNull();
+    setPropriedadeAtiva(null);
+    await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(3) } });
+    expect(screen.queryByText(/Saldo atual:/)).toBeNull();
+    expect(screen.queryByText(/deixará esta conta com saldo negativo/)).toBeNull();
+  });
+  it("mostra saldo da propriedade principal sem header de sítio", async () => {
+    setPropriedadeAtiva(null);
+    vi.spyOn(permissoes, "podeVerValoresFinanceiros").mockReturnValue(true);
+    vi.stubGlobal("fetch", vi.fn(async (url: unknown) => ({ ok: true, json: async () => String(url).includes("/propriedades") ? [{ id: 1, nome: "Principal", principal: true, ativo: false }, { id: 2, nome: "Outra", principal: false, ativo: true }] : { existente: null } })));
+    render(<FormOperacao config={configSaldos} tipoInicial="SERVICO" onSalvo={vi.fn()} />);
+    await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(3) } });
+    expect(await screen.findByText(/Saldo atual:/)).toBeTruthy();
+  });
+  it("revisar conta volta ao seletor e preserva o rascunho", async () => {
+    const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+      if (String(url).endsWith("/rascunho") && init?.method === "PUT") return { ok: true, json: async () => ({ id: "draft", dados: {}, versao: 4, documentos: [] }) };
+      if (String(url).endsWith("/rascunho/confirmacao")) return { ok: false, status: 409, json: async () => ({ error: "Saldo negativo", code: "SALDO_NEGATIVO", campo: "financeiro.contaId", saldoNegativo: { propriedadeId: 1, contaId: uid(1), saldoAtual: "80.00", valorPagamento: "100.00", saldoProjetado: "-20.00", token: "token" } }) };
+      return { ok: true, json: async () => ({ existente: null }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await preparar();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    const dialog = await screen.findByRole("dialog", { name: "Saldo negativo na conta" });
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Revisar conta" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Revisar conta" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Conta financeira")));
+    expect((screen.getByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Serviço rural");
+  });
+  it("expõe erro de validação no formulário após tentativa com ciência", async () => {
+    let tentativas = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: unknown, init?: RequestInit) => {
+      if (String(url).endsWith("/rascunho") && init?.method === "PUT") return { ok: true, json: async () => ({ id: "draft", dados: {}, versao: 4, documentos: [] }) };
+      if (String(url).endsWith("/rascunho/confirmacao")) {
+        if (++tentativas === 1) return { ok: false, status: 409, json: async () => ({ error: "Saldo negativo", code: "SALDO_NEGATIVO", campo: "financeiro.contaId", saldoNegativo: { propriedadeId: 1, contaId: uid(1), saldoAtual: "80.00", valorPagamento: "100.00", saldoProjetado: "-20.00", token: "token" } }) };
+        return { ok: false, status: 422, json: async () => ({ error: "Revise a descrição", campo: "descricao" }) };
+      }
+      return { ok: true, json: async () => ({ existente: null }) };
+    }));
+    await preparar();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    const dialog = await screen.findByRole("dialog", { name: "Saldo negativo na conta" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar com saldo negativo" }));
+    expect(await screen.findAllByText("Revise a descrição")).not.toHaveLength(0);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Saldo negativo na conta" })).toBeNull());
+  });
+  it("revalida o saldo, reconfirma com novo token e preserva versão e chave", async () => {
+    let tentativas = 0;
+    const onSalvo = vi.fn();
+    const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+      if (String(url).endsWith("/rascunho") && init?.method === "PUT") return { ok: true, json: async () => ({ id: "draft", dados: {}, versao: 4, documentos: [] }) };
+      if (String(url).endsWith("/rascunho/confirmacao")) {
+        tentativas++;
+        if (tentativas === 2) throw new Error("offline");
+        if (tentativas <= 3) return { ok: false, status: 409, json: async () => ({ error: "Saldo negativo", code: "SALDO_NEGATIVO", campo: "financeiro.contaId", saldoNegativo: { propriedadeId: 1, contaId: uid(1), saldoAtual: tentativas === 1 ? "80.00" : "70.00", valorPagamento: "100.00", saldoProjetado: tentativas === 1 ? "-20.00" : "-30.00", token: `token-${tentativas}` } }) };
+        return { ok: true, json: async () => ({ id: uid(88), numero: 88, documentos: [] }) };
+      }
+      return { ok: true, json: async () => ({ existente: null }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await preparar(onSalvo);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    let dialog = await screen.findByRole("dialog", { name: "Saldo negativo na conta" });
+    expect(within(dialog).getByText(/saldo mudou/i)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar com saldo negativo" }));
+    await within(dialog).findByRole("alert");
+    expect(within(dialog).getByRole("alert").textContent).toContain("Falha de conexão");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar com saldo negativo" }));
+    await waitFor(() => expect(within(dialog).getByText(/70,00/)).toBeTruthy());
+    dialog = screen.getByRole("dialog", { name: "Saldo negativo na conta" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar com saldo negativo" }));
+    await waitFor(() => expect(onSalvo).toHaveBeenCalledOnce());
+    const envios = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/rascunho/confirmacao")).map(([, init]) => JSON.parse(String(init?.body)));
+    expect(envios).toHaveLength(4);
+    expect(envios[1]).toMatchObject({ chave: envios[0].chave, versao: envios[0].versao, cienciaSaldoNegativo: "token-1" });
+    expect(envios[2]).toMatchObject({ chave: envios[0].chave, versao: envios[0].versao, cienciaSaldoNegativo: "token-1" });
+    expect(envios[3]).toMatchObject({ chave: envios[0].chave, versao: envios[0].versao, cienciaSaldoNegativo: "token-3" });
+  });
 });

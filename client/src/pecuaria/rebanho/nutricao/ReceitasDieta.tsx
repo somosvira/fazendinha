@@ -6,8 +6,7 @@ import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
+import { Button, Empty, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { quantidadeNutricional, un } from "./quantidades";
 import type { Dieta } from "./api";
 
@@ -21,6 +20,7 @@ import "./nutricao.css";
 
 import { ComposicaoReceita } from "./ComposicaoReceita";
 import { BuscaLista } from "../../../components/BuscaLista";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 function estadoReceita() { const p = new URLSearchParams(window.location.search); return { form: p.get("formReceita"), id: p.get("receitaId") }; }
 /** Configurações e Nutrição compartilham o mesmo catálogo e os mesmos formulários. */
@@ -32,7 +32,6 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
   const situacao = params.get("situacaoReceita") ?? "";
   // A situação fica no painel de Filtros, como nas demais consultas.
   const edicaoSituacao = useRascunhoConsulta({ situacao }, { situacao: "" }, v => atualizar({ situacaoReceita: v.situacao }));
-  const visualizacao = useVisualizacaoConsulta("receitasVisualizacao", "nutricao", "tabela");
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const enviando = useRef(false);
@@ -55,32 +54,24 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
   // Cartão e tabela oferecem as mesmas ações: o nome abre a composição; ficam a secundária e a principal.
   const acoesReceita = (d: Dieta) => podeLancar && <>
     <Button secondary onClick={() => abrir(d.publicadaEm ? "versao" : "editar", d.id)}>{d.publicadaEm ? "Nova versão" : "Editar rascunho"}</Button>
-    {d.publicadaEm ? <LinkNutricional className="nutricao-botao" href={rotaOperacaoNutricional("atribuir", undefined, undefined, d.id)}>Atribuir a lote</LinkNutricional> : <Button onClick={() => abrir("publicar", d.id)}>Publicar</Button>}
+    {d.publicadaEm ? <LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("atribuir", undefined, undefined, d.id)}>Atribuir a lote</LinkNutricional> : <Button secondary onClick={() => abrir("publicar", d.id)}>Publicar</Button>}
   </>;
   const nomeReceita = (d: Dieta) => <button type="button" className="nutricao-receita-nome" onClick={() => abrir("detalhe", d.id)}>{d.nome}</button>;
   const receitas = consulta.dados?.filter((d) => d.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")) && (!situacao || (situacao === "publicadas") === !!d.publicadaEm)) ?? [];
   return <div className="nutricao-receitas nutricao-conteudo"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} estrutura="cartoes" label="Carregando receitas de dieta…" />
     {url.form && !consulta.carregando && !consulta.erro && url.form !== "nova" && !dieta && <p role="alert">Receita não encontrada. <Button secondary onClick={() => abrir()}>Voltar às receitas</Button></p>}
-    {consulta.dados && <><BarraConsulta criterios={situacao ? [{ id: "situacao", rotulo: situacao === "publicadas" ? "Publicadas" : "Rascunhos", limpar: () => atualizar({ situacaoReceita: "" }) }] : []} edicaoFiltros={edicaoSituacao} adicionais={<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação" value={edicaoSituacao.rascunho.situacao} onValueChange={v => edicaoSituacao.editar("situacao", v)}><option value="">Todas</option><option value="publicadas">Publicadas</option><option value="rascunhos">Rascunhos</option></SelectCampo></CampoFiltro>} acao={podeLancar ? <Button onClick={() => abrir("nova")}><Plus size={18} aria-hidden />Nova receita</Button> : undefined}><BuscaLista rotulo="Buscar receita" valor={busca} onChange={valor => atualizar({ buscaReceita: valor })} placeholder="Buscar receita pelo nome" /><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização das receitas" /></BarraConsulta>
-      {!receitas.length ? <Panel className="nutricao-vazio">{consulta.dados.length ? "Nenhuma receita corresponde aos filtros." : "Nenhuma receita cadastrada."}</Panel> : visualizacao.modo === "tabela" ? <TabelaFinanceira rotulo="Receitas de dieta" itens={receitas} chaveDe={(d) => d.id} colunas={[
+    {consulta.dados && <Panel className="overflow-hidden"><BarraConsulta criterios={situacao ? [{ id: "situacao", rotulo: situacao === "publicadas" ? "Publicadas" : "Rascunhos", limpar: () => atualizar({ situacaoReceita: "" }) }] : []} edicaoFiltros={edicaoSituacao} adicionais={<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação" value={edicaoSituacao.rascunho.situacao} onValueChange={v => edicaoSituacao.editar("situacao", v)}><option value="">Todas</option><option value="publicadas">Publicadas</option><option value="rascunhos">Rascunhos</option></SelectCampo></CampoFiltro>} acao={podeLancar ? <Button onClick={() => abrir("nova")}><Plus size={18} aria-hidden />Nova receita</Button> : undefined}><BuscaLista rotulo="Buscar receita" valor={busca} onChange={valor => atualizar({ buscaReceita: valor })} placeholder="Buscar receita pelo nome" /></BarraConsulta>
+      {!receitas.length ? <Empty>{consulta.dados.length ? "Nenhuma receita corresponde aos filtros." : "Nenhuma receita cadastrada."}</Empty> : <TabelaFinanceira icone={ICONES_TABELA.dieta} rotulo="Receitas de dieta" itens={receitas} chaveDe={(d) => d.id} colunas={[
         { chave: "receita", titulo: "Receita", principal: true, larguraFlexivel: true, celula: (d) => nomeReceita(d) },
         { chave: "versao", titulo: "Versão", larguraMinima: 80, celula: (d) => `v${d.versao}` },
         { chave: "situacao", titulo: "Situação", celula: (d) => <Pill tone={d.publicadaEm ? "green" : "amber"}>{d.publicadaEm ? "Publicada" : "Rascunho"}</Pill> },
         { chave: "ingredientes", titulo: "Ingredientes", alinhamento: "direita", celula: (d) => d.itens.length },
+        { chave: "composicao", titulo: "Composição", larguraMinima: 260, celula: (d) => <ComposicaoCompacta dieta={d} /> },
         { chave: "total", titulo: "Total por cabeça/dia", alinhamento: "direita", celula: (d) => totalPorCabeca(d) },
         { chave: "uso", titulo: "Uso vigente", larguraMinima: 200, celula: (d) => d.lotesEmUso?.length ? <span className="grid gap-1">{d.lotesEmUso.map((l) => <LinkNutricional key={l.id} href={rotaNutricao({ loteId: l.id })}>{l.nome} · {l.propriedade.nome}</LinkNutricional>)}</span> : "Sem uso vigente" },
         { chave: "acoes", titulo: "Ações", acoes: true, celula: (d) => <div className="flex flex-col items-stretch gap-2">{acoesReceita(d)}</div> },
-      ]} /> : <div className="nutricao-receitas-grid">{receitas.map((d) => <Panel key={d.id} className={`nutricao-receita-card ${!d.publicadaEm ? "nutricao-receita-rascunho" : ""}`}>
-        <header className="receita-identidade-nova">
-          <div><h3>{nomeReceita(d)}</h3><p>v{d.versao} · {d.itens.length} {d.itens.length === 1 ? "ingrediente" : "ingredientes"} · {totalPorCabeca(d)} por cabeça/dia</p></div>
-          <Pill tone={d.publicadaEm ? "green" : "amber"}>{d.publicadaEm ? "Publicada" : "Rascunho"}</Pill>
-        </header>
-        <ComposicaoCompacta dieta={d} />
-        <p className="receita-uso-compacto">{d.lotesEmUso?.length ? <>Em uso: {d.lotesEmUso.map((l, i) => <span key={l.id}>{i > 0 && ", "}<LinkNutricional href={rotaNutricao({ loteId: l.id })}>{l.nome} · {l.propriedade.nome}</LinkNutricional></span>)}</> : "Sem lote usando esta receita."}</p>
-        {podeLancar && <footer className="receita-acoes-novas">{acoesReceita(d)}</footer>}
-      </Panel>)}</div>}
-
-    </>}
+      ]} />}
+    </Panel>}
   </div>;
 }
 /** Soma por unidade: receitas podem misturar KG, L e outras unidades sem somá-las entre si. */

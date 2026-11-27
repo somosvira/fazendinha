@@ -1,7 +1,7 @@
 import { reqCadastroProtocolo, type CadastroProtocoloMeta, type PaginaCadastro } from "./cadastros-api";
 export type ProcedimentoCadastro = {
   id: string; nome: string; procedimento: string; intervalo: number; unidadeIntervalo: string;
-  referencia: string | null; definirMaterialNoAtendimento: boolean;
+  referencia: string | null; definirMaterialNoAtendimento: boolean; referenciaPrazoDiagnostico?: boolean; referenciaPrazoReconfirmacao?: boolean;
   quantidade: string | null; unidadeQuantidade: string | null; via: string | null; orientacaoUso: string | null;
 };
 export type EtapaEstruturaCadastro = {

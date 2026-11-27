@@ -16,12 +16,21 @@ vi.mock("./pecuaria/rebanho/reproducao/Visitas", async () => {
   const { registrarGuardaNavegacao } = await import("./navegacaoGuardada");
   return { Visitas: () => { React.useEffect(() => registrarGuardaNavegacao(mocks.guarda), []); return <p>Tela da visita aberta</p>; } };
 });
+vi.mock("./pecuaria/rebanho/protocolos/PaginaCadastroProtocolo", async () => {
+  const React = await import("react");
+  const { registrarGuardaNavegacao } = await import("./navegacaoGuardada");
+  return { PaginaCadastroProtocolo: () => {
+    const [dose, setDose] = React.useState("");
+    React.useEffect(() => registrarGuardaNavegacao(intencao => intencao === "troca-sitio" ? Promise.resolve(true) : mocks.guarda()), []);
+    return <label>Dose do rascunho<input value={dose} onChange={e => setDose(e.target.value)} /></label>;
+  } };
+});
 vi.mock("./pecuaria/rebanho/RebanhoContent", () => ({ RebanhoContent: () => <p>Lista de animais · página {new URLSearchParams(window.location.search).get("page") ?? "1"}</p> }));
 vi.mock("./api/auth", () => ({ fetchMe: vi.fn(() => new Promise(() => {})), logout: vi.fn() }));
 vi.mock("./financeiro/rascunhoAtivo", async original => ({ ...await original<typeof import("./financeiro/rascunhoAtivo")>(), limparRascunhoAtivo: vi.fn(), useRascunhoAtivo: () => ({ rascunho: null, conhecido: true, editando: false, recuperacao: null }) }));
 vi.mock("./financeiro/rascunhoRelatorioAtivo", async original => ({ ...await original<typeof import("./financeiro/rascunhoRelatorioAtivo")>(), limparRascunhoRelatorioAtivo: vi.fn(), useRascunhoRelatorioAtivo: () => ({ rascunho: null, conhecido: true, editando: false, recuperacao: null }) }));
 vi.mock("./financeiro/novo-api", async original => ({ ...await original<typeof import("./financeiro/novo-api")>(), obterRascunhoOperacao: vi.fn().mockResolvedValue(null), obterRascunhoRelatorioFinanceiro: vi.fn().mockResolvedValue(null) }));
-vi.mock("./components/CommandPalette", () => ({ CommandPalette: (props: { onNav: (t: "pec-rebanho", id: string, caminho: string) => void }) => <button onClick={() => props.onNav("pec-rebanho", "a1", "/pecuaria/rebanho/animais/00000000-0000-4000-8000-000000000184?propriedadeId=2&sitio=2")}>Selecionar animal pela busca</button> }));
+vi.mock("./components/CommandPalette", () => ({ CommandPalette: (props: { onNav: (t: "pec-rebanho", id: string, caminho: string) => void }) => <><button onClick={() => props.onNav("pec-rebanho", "a1", "/pecuaria/rebanho/animais/00000000-0000-4000-8000-000000000184?propriedadeId=2&sitio=2")}>Selecionar animal pela busca</button><button onClick={() => props.onNav("pec-rebanho", "", "/pecuaria/rebanho/animais/novo")}>Novo animal pela busca</button></> }));
 vi.mock("./components/ChatWidget", () => ({ ChatWidget: () => null }));
 
 const usuario: UsuarioSessao = { id: 5, nome: "Pessoa", email: "pessoa@example.test", papel: "proprietario", abas: ["dashboard", "lancar", "gastos", "caixinha", "cadastros", "relatorio"], areas: ["pecuaria", "financeiro", "estoque"], flags: ["lancar", "exportar", "gerenciarAcessos"], status: "ATIVO", dono: true };
@@ -101,4 +110,37 @@ it("busca abre caminho completo e sítio do registro após a guarda aceitar", as
   await screen.findByText("Lista de animais · página 1");
   expect(location.pathname).toBe("/pecuaria/rebanho/animais/00000000-0000-4000-8000-000000000184"); expect(location.search).toBe("?propriedadeId=2&sitio=2");
   expect(screen.getByText("Sítio ativo: 2")).toBeTruthy(); expect(mocks.guarda).toHaveBeenCalledOnce();
+});
+
+it("mantém o builder e a URL exata ao recusar o retorno à lista no mesmo tab", async () => {
+  await import("./components/ConfiguracoesHub");
+  const lista = "/configuracoes/pecuaria/reproducao/protocolos?busca=IATF";
+  const builder = "/configuracoes/pecuaria/reproducao/protocolos/novo?base=p1";
+  window.history.replaceState({}, "", builder);
+  let concluir!: (ok: boolean) => void;
+  mocks.guarda.mockReturnValue(new Promise<boolean>(resolve => { concluir = resolve; }));
+  render(<App />);
+  const dose = await screen.findByRole("textbox", { name: "Dose do rascunho" }, { timeout: 3500 });
+  fireEvent.change(dose, { target: { value: "7" } });
+  fireEvent.click(screen.getByRole("button", { name: "Trocar para sítio 2" }));
+  await screen.findByText("Sítio ativo: 2");
+  expect(screen.getByRole("textbox", { name: "Dose do rascunho" })).toBe(dose);
+  window.history.replaceState({}, "", lista);
+  fireEvent.popState(window);
+  await waitFor(() => expect(mocks.guarda).toHaveBeenCalledOnce());
+  expect(screen.getByRole("textbox", { name: "Dose do rascunho" })).toBe(dose);
+  concluir(false);
+  await waitFor(() => expect(location.pathname + location.search).toBe(builder));
+  expect(screen.getByRole("textbox", { name: "Dose do rascunho" })).toHaveProperty("value", "7");
+}, 10000);
+
+it("ação Novo animal da busca conserva o retorno filtrado do Rebanho", async () => {
+  const retorno = "/pecuaria/rebanho/animais?busca=Aurora";
+  window.history.replaceState(null, "", retorno);
+  render(<App />);
+  await screen.findByText("Lista de animais · página 1");
+  fireEvent.click(screen.getByRole("button", { name: "Novo animal pela busca" }));
+  await waitFor(() => expect(location.pathname).toBe("/pecuaria/rebanho/animais/novo"));
+  expect(new URLSearchParams(location.search).get("retorno")).toBe(retorno);
+  expect(history.state.cadastroAnimalOrigem).toBe(retorno);
 });

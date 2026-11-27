@@ -1,4 +1,8 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { Pencil, Trash2, Plus } from "lucide-react";
+import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { AjudaCampo } from "../../../components/Dica";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro, classeInput } from "../../../financeiro/PainelCadastro";
 import { Paginacao } from "../ui";
@@ -7,18 +11,29 @@ import { obterAcoesCadastro, type CadastroProtocoloMeta } from "./cadastros-api"
 import "./BuilderEtapasProtocolo.css";
 import { EsqueletoLista } from "../../../components/Esqueleto";
 
-export type AcaoBuilderEtapas = { chaveEdicao?: string; ordem?: number; momento?: MomentoCadastro | null };
+export type AcaoBuilderEtapas = { id?: string; chaveEdicao?: string; ordem?: number; momento?: MomentoCadastro | null };
+export type CargaAcoesCadastro = { origem: string; paginas: number; ids: ReadonlySet<string> };
 export type BuilderEtapasProtocoloProps<T extends AcaoBuilderEtapas> = {
+  tituloQuadro?: string;
+  quadroSomenteLeitura?: boolean;
+  podeRemover?: (indices: number[]) => boolean;
+  motivoEdicaoBloqueada?: (item: T) => string | undefined;
+  abrirPeloCalendario?: (item: T) => boolean;
+  onEncerrarEdicao?: () => void;
   permitirAutomacao?: boolean;
   editorEmModal?: boolean;
   resumoEtapa?: (itens: T[]) => { referencia: string; procedimentos: string };
+  ordemExibicaoEtapa?: (itens: T[]) => number;
+  quadro?: (item: T) => { procedimento: string; produto: ReactNode; quantidade: string };
   origem: CadastroProtocoloMeta | null;
+  cargaPersistida?: MutableRefObject<CargaAcoesCadastro | null>;
   itens: T[];
   onChange: (itens: T[]) => void;
   converter: (item: T) => T;
   onCompletoChange: (completo: boolean) => void;
   criarAcao: (momento: MomentoCadastro, referenciaDaEtapa?: T) => T;
   renderizarAcao: (item: T, indiceOriginal: number) => ReactNode;
+  renderizarDetalhes?: (item: T, indiceOriginal: number) => ReactNode;
   renderizarCalendario?: (item: T, indicesDoMomento: number[]) => ReactNode;
   indiceErro?: number | null;
 };
@@ -38,19 +53,31 @@ function agrupar<T extends AcaoBuilderEtapas>(itens: T[]): Grupo<T>[] {
   return [...grupos.values()].sort((a, b) => (a.momento?.ordem ?? a.acoes[0].item.ordem ?? a.acoes[0].indice) - (b.momento?.ordem ?? b.acoes[0].item.ordem ?? b.acoes[0].indice));
 }
 
-export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAutomacao = false, editorEmModal = false, resumoEtapa, origem, itens, onChange, converter, onCompletoChange, criarAcao, renderizarAcao, renderizarCalendario, indiceErro }: BuilderEtapasProtocoloProps<T>) {
+export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ tituloQuadro = "Etapas e procedimentos", quadroSomenteLeitura = false, podeRemover, motivoEdicaoBloqueada, abrirPeloCalendario, onEncerrarEdicao, permitirAutomacao = false, editorEmModal = false, resumoEtapa, ordemExibicaoEtapa, quadro, origem, cargaPersistida, itens, onChange, converter, onCompletoChange, criarAcao, renderizarAcao, renderizarDetalhes, renderizarCalendario, indiceErro }: BuilderEtapasProtocoloProps<T>) {
   const id = useId();
   const raiz = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLElement>(null);
+  const quadroEditorRef = useRef<HTMLDivElement>(null);
+  const acionadorExclusao = useRef<HTMLButtonElement | null>(null);
+  const botaoRemoverEtapa = useRef<HTMLButtonElement>(null);
   const [edicaoAberta, setEdicaoAberta] = useState(false);
+  const [passoModal, setPassoModal] = useState<0 | 1>(0);
+  const [exclusao, setExclusao] = useState<number | "etapa" | null>(null);
+  const [manutencao, setManutencao] = useState(false);
+  const [destinoManutencao, setDestinoManutencao] = useState<HTMLElement | null>(null);
+  useEffect(() => { if (quadro) setDestinoManutencao(document.getElementById("manutencao-protocolo")); }, [quadro]);
+  const [acaoSelecionada, setAcaoSelecionada] = useState<number | null>(null);
   const antesDaEdicao = useRef<T[]>([]);
-  const abrirEdicao = () => { antesDaEdicao.current = [...refs.current.itens]; setEdicaoAberta(true); };
+  const abrirEdicao = (passo: 0 | 1 = 1) => { antesDaEdicao.current = [...refs.current.itens]; setPassoModal(passo); setEdicaoAberta(true); };
+  const encerrarEdicao = () => { setEdicaoAberta(false); onEncerrarEdicao?.(); };
+  const cancelarEdicao = () => { onChange(antesDaEdicao.current); encerrarEdicao(); };
   const adicionarEtapa = useRef<HTMLButtonElement>(null);
   const refs = useRef({ itens, onChange, converter });
   refs.current = { itens, onChange, converter };
   const geracao = useRef(0);
   const cargaEmCurso = useRef<number | null>(null);
-  const cargaConfirmada = useRef<{ origem: string; paginas: number } | null>(null);
+  const cargaLocal = useRef<CargaAcoesCadastro | null>(null);
+  const cargaConfirmada = cargaPersistida ?? cargaLocal;
   const origemChave = origem ? `${origem.id}:${origem.atualizadoEm}` : "nova";
   const [carga, setCarga] = useState({ origem: origemChave, paginas: 0 });
   const [carregando, setCarregando] = useState(false);
@@ -60,7 +87,7 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
   const editavel = completo && itens.length <= 100;
 
   async function carregar(pagina: number, token = geracao.current) {
-    if (!origem || cargaEmCurso.current === token) return;
+    if (!origem || cargaEmCurso.current === token || (cargaConfirmada.current?.origem === origemChave && cargaConfirmada.current.paginas >= pagina)) return;
     cargaEmCurso.current = token;
     setCarregando(true);
     setErroCarga(null);
@@ -69,13 +96,16 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
       if (token !== geracao.current) return;
       if (resposta.revisao && resposta.revisao !== origem.atualizadoEm) throw new Error("Esta versão mudou. Reabra o modelo para carregar a revisão atual.");
       const momentosEditados = new Map(refs.current.itens.flatMap(item => item.momento ? [[item.momento.ordem, item.momento] as const] : []));
-      const novos = resposta.itens.map(item => {
-        const convertido = refs.current.converter(item);
+      const ids = new Set(cargaConfirmada.current?.origem === origemChave ? cargaConfirmada.current.ids : refs.current.itens.flatMap(item => item.id ? [item.id] : []));
+      const novos = resposta.itens.flatMap(item => {
+        if (item.id && ids.has(item.id)) return [];
+        if (item.id) ids.add(item.id);
+        const convertido = { ...refs.current.converter(item), ...(item.id ? { id: item.id } : {}) };
         const editado = convertido.momento && momentosEditados.get(convertido.momento.ordem);
-        return editado ? { ...convertido, momento: { ...editado } } : convertido;
+        return [editado ? { ...convertido, momento: { ...editado } } : convertido];
       });
-      refs.current.onChange([...refs.current.itens, ...novos].sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity)));
-      cargaConfirmada.current = { origem: origemChave, paginas: pagina };
+      cargaConfirmada.current = { origem: origemChave, paginas: pagina, ids };
+      if (novos.length) refs.current.onChange([...refs.current.itens, ...novos].sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity)));
       setCarga(cargaConfirmada.current);
     } catch (erro) {
       if (token === geracao.current) setErroCarga(erro instanceof Error ? erro.message : "Não foi possível carregar os procedimentos.");
@@ -86,7 +116,7 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
   useEffect(() => {
     const token = ++geracao.current;
     cargaEmCurso.current = null;
-    if (cargaConfirmada.current?.origem === origemChave && refs.current.itens.length) { setCarga(cargaConfirmada.current); return; }
+    if (cargaConfirmada.current?.origem === origemChave) { setCarga(cargaConfirmada.current); return; }
     setCarga({ origem: origemChave, paginas: 0 });
     setErroCarga(null);
     setCarregando(false);
@@ -95,14 +125,21 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
     // A revisão define a sessão de edição; callbacks usam refs para conservar edições.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [origemChave]);
-  const podeSalvar = editavel && itens.length > 0;
+  useEffect(() => { if (quadro && origem && !completo && paginas > 0 && !carregando && !erroCarga) void carregar(paginas + 1); }, [origem, completo, paginas, carregando, erroCarga]);
+  const podeSalvar = editavel && (!!quadro || itens.length > 0);
   useEffect(() => { onCompletoChange(podeSalvar); }, [podeSalvar, onCompletoChange]);
 
   const grupos = agrupar(itens);
+  const gruposQuadro = ordemExibicaoEtapa ? grupos
+    .map(grupo => ({ grupo, ordem: ordemExibicaoEtapa(grupo.acoes.map(({ item }) => item)) }))
+    .sort((a, b) => a.ordem === b.ordem ? 0 : a.ordem - b.ordem)
+    .map(({ grupo }) => grupo) : grupos;
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [paginaEtapas, setPaginaEtapas] = useState(1);
   const [paginasAcoes, setPaginasAcoes] = useState<Record<string, number>>({});
   const grupo = grupos.find(g => g.chave === selecionada) ?? grupos[0];
+  const dadosDaEtapaBloqueados = grupo?.acoes.some(({ item }) => !!motivoEdicaoBloqueada?.(item));
+  const acaoAtiva = grupo?.acoes.find(a => a.indice === acaoSelecionada)?.item;
   const paginaEtapasAtual = Math.min(paginaEtapas, Math.max(1, Math.ceil(grupos.length / 10)));
   const paginaAcoes = grupo ? Math.min(paginasAcoes[grupo.chave] ?? 1, Math.max(1, Math.ceil(grupo.acoes.length / 10))) : 1;
   const foco = useRef<{ tipo: "nome" | "etapa" | "acao" | "adicionar"; indice?: number } | null>(null);
@@ -114,7 +151,7 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
     if (destino.tipo === "adicionar") elemento = adicionarEtapa.current;
     if (destino.tipo === "etapa") elemento = raiz.current?.querySelector(`[data-selecionar-etapa="${destino.indice}"]`);
     if (destino.tipo === "acao") {
-      const linha = (editorRef.current ?? raiz.current)?.querySelector(`[data-indice-acao="${destino.indice}"]`);
+      const linha = (quadroEditorRef.current ?? editorRef.current ?? raiz.current)?.querySelector(`[data-indice-acao="${destino.indice}"]`);
       elemento = linha?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? linha?.querySelector<HTMLElement>("input, select, textarea") ?? linha?.querySelector<HTMLElement>("button");
     }
     (elemento ?? raiz.current)?.focus();
@@ -122,13 +159,15 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
   }, [itens, selecionada, paginaEtapasAtual, paginaAcoes, edicaoAberta]);
   useEffect(() => {
     if (indiceErro == null) return;
+    if (itens[indiceErro] && motivoEdicaoBloqueada?.(itens[indiceErro])) return;
     const indiceGrupo = grupos.findIndex(g => g.acoes.some(a => a.indice === indiceErro));
     if (indiceGrupo < 0) return;
     const comErro = grupos[indiceGrupo];
-    setSelecionada(comErro.chave); abrirEdicao();
+    const calendario = abrirPeloCalendario?.(itens[indiceErro]);
+    setSelecionada(comErro.chave); setAcaoSelecionada(indiceErro); abrirEdicao(calendario ? 0 : 1);
     setPaginaEtapas(Math.floor(indiceGrupo / 10) + 1);
     setPaginasAcoes(ps => ({ ...ps, [comErro.chave]: Math.floor(comErro.acoes.findIndex(a => a.indice === indiceErro) / 10) + 1 }));
-    foco.current = { tipo: "acao", indice: indiceErro };
+    if (!calendario) foco.current = { tipo: "acao", indice: indiceErro };
     // A posição do erro é fornecida pelo formulário ao validar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indiceErro]);
@@ -143,12 +182,12 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
     return { base, momento: { nome: `Etapa ${ordem}`, ordem, modoAtendimento: "MANUAL" } };
   };
   function mudarMomento(patch: Partial<MomentoCadastro>) {
-    if (!grupo?.momento) return;
+    if (!grupo?.momento || dadosDaEtapaBloqueados) return;
     const indices = new Set(grupo.acoes.map(a => a.indice));
     onChange(itens.map((item, i) => indices.has(i) ? { ...item, momento: { ...grupo.momento!, ...patch } } : item));
   }
   function removerEtapa() {
-    if (!grupo) return;
+    if (!grupo || podeRemover?.(grupo.acoes.map(a => a.indice)) === false) return;
     const indice = grupos.indexOf(grupo);
     const restantes = grupos.filter(g => g !== grupo);
     const proxima = Math.min(indice, restantes.length - 1);
@@ -160,7 +199,7 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
     setEdicaoAberta(false);
   }
   function removerAcao(indice: number) {
-    if (!grupo) return;
+    if (!grupo || podeRemover?.([indice]) === false) return;
     if (grupo.acoes.length === 1) { removerEtapa(); return; }
     const posicao = grupo.acoes.findIndex(a => a.indice === indice);
     const restantes = grupo.acoes.filter(a => a.indice !== indice);
@@ -170,7 +209,104 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
     onChange(itens.filter((_, i) => i !== indice));
   }
 
+  function focarAoAbrir(evento: Event) {
+    if (!(evento.target instanceof HTMLElement)) return;
+    if (passoModal === 0 && acaoAtiva && abrirPeloCalendario?.(acaoAtiva)) {
+      const calendario = evento.target.querySelector<HTMLInputElement>("[data-calendario-protocolo]");
+      if (calendario) { evento.preventDefault(); calendario.focus(); }
+      return;
+    }
+    if (indiceErro == null) return;
+    const procedimento = evento.target.querySelector(`[data-indice-acao="${indiceErro}"]`);
+    const invalido = procedimento?.querySelector<HTMLElement>('[aria-invalid="true"], [role="alert"][tabindex="-1"]');
+    if (invalido) { evento.preventDefault(); invalido.focus(); }
+  }
+
+  if (quadro && !manutencao) return <div ref={raiz} className="quadro-protocolo" tabIndex={-1}>
+    <header className="quadro-protocolo-cabecalho"><h2>{tituloQuadro}</h2>{!quadroSomenteLeitura && <Button secondary type="button" disabled={!editavel || itens.length >= 100} onClick={() => {
+      const { base, momento } = prepararNovoMomento();
+      antesDaEdicao.current = [...itens];
+      const nova = criarAcao(momento);
+      onChange([...base, nova]); setSelecionada(`momento-${momento.ordem}`); setAcaoSelecionada(base.length); setPassoModal(0); setEdicaoAberta(true);
+    }}><Plus size={16} aria-hidden />Adicionar etapa</Button>}</header>
+    {!completo && <div><p role="status">{itens.length} de {origem?.totalEtapas} procedimentos carregados.</p><Button secondary type="button" disabled={carregando} onClick={() => void carregar(paginas + 1)}>{erroCarga ? "Tentar novamente" : "Carregar próximos procedimentos"}</Button></div>}
+    <ErrorBox erro={erroCarga} />{carregando && <EsqueletoLista label="Carregando procedimentos" />}
+    <div className={quadroSomenteLeitura ? "quadro-protocolo-rolagem quadro-protocolo-leitura" : "quadro-protocolo-rolagem"} role="region" aria-label="Quadro de procedimentos" tabIndex={0}>
+      <table>
+        <thead><tr><th>Etapa</th><th>Procedimento</th><th>Produto / modelo</th><th>Qtd. por animal</th>{!quadroSomenteLeitura && <th>Ações</th>}</tr></thead>
+        {gruposQuadro.map(g => <tbody key={g.chave}>{g.acoes.map(({ item, indice }, posicao) => {
+          const linha = quadro(item);
+          const motivo = motivoEdicaoBloqueada?.(item);
+          const nomeEtapa = g.momento?.nome ?? "Ação legada";
+          const editarDados = !quadroSomenteLeitura && !g.acoes.some(acao => motivoEdicaoBloqueada?.(acao.item));
+          const dadosEtapa = posicao === 0 && <>
+            <span className="quadro-referencia">{resumoEtapa?.(g.acoes.map(a => a.item)).referencia}</span>
+            <strong>{nomeEtapa}</strong>
+          </>;
+          return <tr key={chaveAcao(item, indice)}>
+            {posicao === 0 && <th scope="rowgroup" rowSpan={g.acoes.length}>
+              {editarDados ? <button type="button" className="quadro-editar-dados" aria-label={`Editar dados da etapa ${nomeEtapa}`} title="Editar dados da etapa" disabled={!editavel} onClick={() => {
+                setSelecionada(g.chave);
+                setAcaoSelecionada(indice);
+                abrirEdicao(0);
+              }}>{dadosEtapa}</button> : dadosEtapa}
+            </th>}
+            <td>{linha.procedimento}</td><td>{linha.produto}</td><td>{linha.quantidade}</td>
+            {!quadroSomenteLeitura && <td>{motivo ? <AjudaCampo texto={motivo} rotulo={`Como alterar ${linha.procedimento}`} /> :
+              <Button secondary type="button" aria-label={`Editar ${linha.procedimento} · ${g.momento?.nome ?? "ação legada"}`} disabled={!editavel} onClick={() => { setSelecionada(g.chave); setAcaoSelecionada(indice); abrirEdicao(); }}><Pencil size={16} aria-hidden /></Button>}
+            </td>}
+          </tr>;
+        })}</tbody>)}
+      </table>
+    </div>
+    {!quadroSomenteLeitura && edicaoAberta && grupo && <PainelCadastro aberto camada="sobreDetalhe" titulo={`Editar etapa · ${grupo.momento?.nome ?? "Ação legada"}`} largura="sm:max-w-[724px]" className="quadro-etapa-dialogo" onOpenAutoFocus={focarAoAbrir} rascunhoPersistido onFechar={cancelarEdicao} rodape={<>{passoModal === 0 && <Button secondary type="button" onClick={cancelarEdicao}>Cancelar</Button>}{passoModal === 1 && <Button secondary type="button" onClick={() => setPassoModal(0)}>Voltar aos dados</Button>}<Button type="button" onClick={() => passoModal === 0 ? setPassoModal(1) : encerrarEdicao()}>{passoModal === 0 ? "Ir para procedimentos" : "Concluir etapa"}</Button></>}>
+      <nav className="quadro-passos" aria-label="Edição da etapa">
+        <button type="button" aria-current={passoModal === 0 ? "step" : undefined} onClick={() => setPassoModal(0)}><span>1</span> Dados da etapa</button>
+        <button type="button" aria-current={passoModal === 1 ? "step" : undefined} onClick={() => setPassoModal(1)}><span>2</span> Procedimentos</button>
+      </nav>
+      {passoModal === 0 ? <div className="quadro-dados-etapa">
+        {grupo.momento ? <>
+          <label><span>Nome da etapa <span aria-hidden="true">*</span></span><input aria-label="Nome da etapa" className={classeInput} required maxLength={120} readOnly={dadosDaEtapaBloqueados} value={grupo.momento.nome} onChange={e => mudarMomento({ nome: e.target.value })} /></label>
+          {renderizarCalendario?.(grupo.acoes[0].item, grupo.acoes.map(a => a.indice))}
+          <label><span>Modo de atendimento <span aria-hidden="true">*</span></span><select aria-label="Modo de atendimento" className={classeInput} required disabled={dadosDaEtapaBloqueados} value={grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO" ? "AUTOMATICA_EXCECAO" : "CONFIRMACAO_OBRIGATORIA"} onChange={e => mudarMomento(e.target.value === "AUTOMATICA_EXCECAO" ? { modoAtendimento: "AUTOMATIZADA", politicaExecucao: "AUTOMATICA_EXCECAO", fusoHorario: "America/Sao_Paulo" } : { modoAtendimento: "MANUAL", politicaExecucao: "CONFIRMACAO_OBRIGATORIA" })}><option value="CONFIRMACAO_OBRIGATORIA">Confirmação obrigatória</option>{permitirAutomacao && <option value="AUTOMATICA_EXCECAO">Automática com reversão por exceção</option>}</select></label>
+          {grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO" && <label><span>Horário padrão <span aria-hidden="true">*</span></span><input aria-label="Horário padrão" type="time" className={classeInput} required readOnly={dadosDaEtapaBloqueados} value={grupo.momento.horarioPadrao ?? ""} onChange={e => mudarMomento({ horarioPadrao: e.target.value })} /></label>}
+          <label>Instruções gerais<textarea className={classeInput} readOnly={dadosDaEtapaBloqueados} value={grupo.momento.instrucoesGerais ?? ""} onChange={e => mudarMomento({ instrucoesGerais: e.target.value })} /></label>
+        </> : <><p>Ação legada sem etapa declarada.</p>{renderizarCalendario?.(grupo.acoes[0].item, grupo.acoes.map(a => a.indice))}</>}
+        <Button ref={botaoRemoverEtapa} secondary type="button" disabled={podeRemover?.(grupo.acoes.map(a => a.indice)) === false} onClick={() => { acionadorExclusao.current = botaoRemoverEtapa.current; setExclusao("etapa"); }}>Remover etapa</Button>
+      </div> : <>
+        <dl className="quadro-etapa-resumo">
+          <div><dt>Etapa</dt><dd>{grupo.momento?.nome ?? "Ação legada"}</dd></div>
+          <div><dt>Calendário</dt><dd>{resumoEtapa?.([(grupo.acoes.find(a => a.indice === acaoSelecionada) ?? grupo.acoes[0]).item]).referencia}</dd></div>
+          <div><dt>Modo de atendimento</dt><dd>{grupo.momento?.modoAtendimento === "AUTOMATIZADA" ? "Automatizada" : grupo.momento?.modoAtendimento === "MANUAL" ? "Manual" : "Não informado"}</dd></div>
+        </dl>
+        <header className="quadro-protocolo-cabecalho"><h3 id={`${id}-procedimentos-quadro`}>Procedimentos da etapa</h3>
+          <Button secondary type="button" disabled={dadosDaEtapaBloqueados || !grupo.momento || itens.length >= 100} onClick={() => {
+            if (!grupo.momento) return;
+            const pos = grupo.acoes[grupo.acoes.length - 1].indice + 1;
+            onChange([...itens.slice(0, pos), criarAcao({ ...grupo.momento }, grupo.acoes[0].item), ...itens.slice(pos)]);
+            setAcaoSelecionada(pos);
+          }}><Plus size={16} aria-hidden />Adicionar procedimento</Button>
+        </header>
+        <div className="quadro-etapa-corpo" ref={quadroEditorRef}>
+          <fieldset aria-labelledby={`${id}-procedimentos-quadro`}><div className="quadro-lista-procedimentos">{grupo.acoes.map(({ item, indice }) => {
+            const nome = quadro(item).procedimento;
+            return <div className="quadro-item-procedimento" key={chaveAcao(item, indice)}>
+              <label><input type="radio" name={`${id}-procedimento`} checked={acaoSelecionada === indice} onChange={() => setAcaoSelecionada(indice)} /><span>{nome}</span></label>
+              <button className="quadro-remover-procedimento" type="button" aria-label={`Remover ${nome}`} title={`Remover ${nome}`} disabled={podeRemover?.([indice]) === false} onClick={e => { acionadorExclusao.current = e.currentTarget; setExclusao(indice); }}><Trash2 size={16} aria-hidden /></button>
+            </div>;
+          })}</div></fieldset>
+          <section><h3>Detalhes do procedimento</h3>{grupo.acoes.filter(a => a.indice === acaoSelecionada).map(({ item, indice }) => <div key={chaveAcao(item, indice)} data-indice-acao={indice}>{(renderizarDetalhes ?? renderizarAcao)(item, indice)}</div>)}</section>
+        </div>
+      </>}
+    </PainelCadastro>}
+    <ConfirmDialog open={exclusao !== null} camada="sobreDetalhe" tone="danger" title={exclusao === "etapa" ? "Remover etapa?" : "Remover procedimento?"}
+      message={typeof exclusao === "number" && itens[exclusao] ? <>O procedimento <strong>{quadro(itens[exclusao]).procedimento}</strong> será removido do rascunho da etapa <strong>{grupo?.momento?.nome ?? "Ação legada"}</strong>.</> : "Esta alteração será aplicada ao rascunho."}
+      confirmLabel="Remover" onCancel={() => { setExclusao(null); requestAnimationFrame(() => acionadorExclusao.current?.focus()); }}
+      onConfirm={() => { if (exclusao === "etapa") removerEtapa(); else if (exclusao !== null) { const proximo = grupo?.acoes.find(a => a.indice !== exclusao); removerAcao(exclusao); if (proximo) setAcaoSelecionada(proximo.indice - (proximo.indice > exclusao ? 1 : 0)); } setExclusao(null); }} />
+  </div>;
+
   return <div ref={raiz} className={`builder-etapas${editorEmModal ? " builder-etapas-em-lista" : ""}`} tabIndex={-1}>
+    {quadro && <Button secondary type="button" onClick={() => setManutencao(false)}>Voltar ao quadro</Button>}
     {!completo && <div className="builder-etapas-carga"><p role="status">{itens.length} de {origem?.totalEtapas} procedimentos carregados. Carregue todos para salvar, adicionar ou remover sem perder ações.</p><Button secondary type="button" disabled={carregando} onClick={() => void carregar(paginas + 1)}>{erroCarga ? "Tentar carregar novamente" : "Carregar próximos 10 procedimentos"}</Button></div>}
     <ErrorBox erro={erroCarga} />
     {carregando && <EsqueletoLista label="Carregando procedimentos" />}
@@ -199,7 +335,7 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
             {renderizarCalendario?.(grupo.acoes[0].item, grupo.acoes.map(a => a.indice))}
             <label className="builder-etapas-campo">Instruções gerais da etapa (opcional)<textarea className={classeInput} rows={3} maxLength={2000} value={grupo.momento.instrucoesGerais ?? ""} onChange={e => mudarMomento({ instrucoesGerais: e.target.value })} /></label>
             <fieldset className="builder-etapas-modo"><legend>Como esta etapa será executada?</legend><label><input type="radio" name={`${id}-modo`} checked={grupo.momento.politicaExecucao !== "AUTOMATICA_EXCECAO"} onChange={() => mudarMomento({ modoAtendimento: "MANUAL", politicaExecucao: "CONFIRMACAO_OBRIGATORIA" })} /><span><strong>Confirmação obrigatória</strong><small>A equipe informa os dados reais e confirma o atendimento. Obrigatório para exames e tentativas reprodutivas.</small></span></label>{permitirAutomacao && <label><input type="radio" name={`${id}-modo`} checked={grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO"} onChange={() => mudarMomento({ modoAtendimento: "AUTOMATIZADA", politicaExecucao: "AUTOMATICA_EXCECAO", fusoHorario: "America/Sao_Paulo" })} /><span><strong>Automática com reversão por exceção</strong><small>Aplicações e dispositivos com dados completos são executados no horário programado. A equipe registra as exceções.</small></span></label>}</fieldset>
-            {grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO" && <div className="grid gap-3"><label>Horário padrão<input className={classeInput} type="time" required value={grupo.momento.horarioPadrao ?? ""} onChange={e => mudarMomento({ horarioPadrao: e.target.value })} /></label><p className="text-sm">Horário de Brasília · America/Sao_Paulo. A ativação exige dados completos e revisão das etapas vencidas.</p></div>}
+            {grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO" && <div className="grid gap-3"><label>Horário padrão<input className={classeInput} type="time" required value={grupo.momento.horarioPadrao ?? ""} onChange={e => mudarMomento({ horarioPadrao: e.target.value })} /></label></div>}
             {!grupo.momento.modoAtendimento && <p className="builder-etapas-ajuda">Etapa legada sem modo declarado. Escolha o modo para a nova versão.</p>}
           </> : <div className="builder-etapas-legado"><p>Esta ação não possui etapa declarada. A data não a agrupa com outras ações.</p><Button secondary type="button" disabled={!editavel} onClick={() => {
             const { base, momento } = prepararNovoMomento();

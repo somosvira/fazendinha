@@ -1,7 +1,9 @@
+import { BuscaLista } from "@/components/BuscaLista";
 import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Button,
+  Destaques,
   Empty,
   ErrorBox,
   type ColunaTabela,
@@ -36,6 +38,7 @@ import {
   organizarHoje,
 } from "./visao-geral-api";
 import "./visao-geral-reprodutiva.css";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 function somarDias(data: string, dias: number) {
   const d = new Date(`${data}T12:00:00Z`);
@@ -428,11 +431,11 @@ export function VisaoGeralReprodutiva({
   ];
   return (
     <div className="repro-visao-geral">
-      <dl className="repro-visao-indicadores" aria-label="Resumo operacional">
-        <div><dt>Atendimentos nas etapas de hoje</dt><dd>{etapasHoje ? etapasHoje.reduce((total, etapa) => total + etapa.atendidos, 0) : "—"}</dd></div>
-        <div><dt>Protocolos e participações abertos</dt><dd>{execucoes ? execucoes.length : "—"}</dd></div>
-        <div><dt>Cuidados em atenção</dt><dd>{alertas?.cobertura.estado === "ATUALIZADA" ? alertas.totaisFiltrados.cuidados : "A conferir"}</dd></div>
-      </dl>
+      <Destaques itens={[
+        { valor: etapasHoje ? etapasHoje.reduce((total, etapa) => total + etapa.atendidos, 0) : "—", rotulo: "atendimentos nas etapas de hoje" },
+        { valor: execucoes ? execucoes.length : "—", rotulo: "protocolos e participações abertos" },
+        { valor: alertas?.cobertura.estado === "ATUALIZADA" ? alertas.totaisFiltrados.cuidados : "—", rotulo: alertas?.cobertura.estado === "ATUALIZADA" ? "cuidados em atenção" : "cuidados em atenção (a conferir)", tom: alertas?.cobertura.estado === "ATUALIZADA" && alertas.totaisFiltrados.cuidados > 0 ? "alerta" : undefined },
+      ]} />
       <div className="repro-visao-secoes">
         <SecaoFicha
           className="repro-visao-painel"
@@ -450,8 +453,7 @@ export function VisaoGeralReprodutiva({
           ) : !etapasHoje || !gruposHoje ? (
             <p role="status">Consultando cuidados de hoje…</p>
           ) : totalHoje ? (
-            <ConsultaOperacional
-              visualizacao="tabela"
+            <ConsultaOperacional icone={ICONES_TABELA.etapaProtocolo}
               colunas={colunasCuidados}
               itens={linhasHoje}
               chaveDe={(r) => r.id}
@@ -461,21 +463,9 @@ export function VisaoGeralReprodutiva({
             <Empty>Nenhum cuidado previsto para hoje.</Empty>
           )}
         </SecaoFicha>
-        <SecaoFicha className="repro-visao-painel" titulo="Próximos">
-          <BarraConsulta
-            resumo={
-              proximosFiltrados
-                ? `${proximosFiltrados.length} cuidados`
-                : undefined
-            }
-          >
-            <input
-              className="repro-visao-busca"
-              aria-label="Buscar próximos cuidados"
-              placeholder="Buscar protocolo ou cuidado"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
+        <SecaoFicha className="repro-visao-painel" titulo="Próximos" acoes={proximosFiltrados && <span className="repro-visao-resumo">{proximosFiltrados.length} {proximosFiltrados.length === 1 ? "cuidado" : "cuidados"}</span>}>
+          <BarraConsulta>
+            <BuscaLista rotulo="Buscar próximos cuidados" placeholder="Buscar protocolo ou cuidado" valor={busca} onChange={setBusca} />
             <PeriodoFinanceiroControl
               inicio={inicio}
               fim={fim}
@@ -497,8 +487,7 @@ export function VisaoGeralReprodutiva({
           ) : !proximosFiltrados ? (
             <p role="status">Consultando próximos cuidados…</p>
           ) : proximosFiltrados.length ? (
-            <ConsultaOperacional
-              visualizacao="tabela"
+            <ConsultaOperacional icone={ICONES_TABELA.agenda}
               colunas={colunasCuidados.filter(
                 (c) => !["atendidos", "pendentes"].includes(c.chave),
               )}
@@ -539,8 +528,7 @@ export function VisaoGeralReprodutiva({
               protocolos.
             </p>
           ) : organizados.emAndamento.length ? (
-            <ConsultaOperacional
-              visualizacao="tabela"
+            <ConsultaOperacional icone={ICONES_TABELA.protocolo}
               colunas={colunasExecucoes}
               itens={organizados.emAndamento}
               chaveDe={(p) => `${p.modo}:${p.id}`}
@@ -580,8 +568,7 @@ export function VisaoGeralReprodutiva({
                     {alertas.totaisFiltrados.cuidados} cuidados ·{" "}
                     {alertas.totaisFiltrados.animais} animais
                   </p>
-                  <ConsultaOperacional
-                    visualizacao="tabela"
+                  <ConsultaOperacional icone={ICONES_TABELA.alerta}
                     colunas={colunasAlertas}
                     itens={alertas.itens}
                     chaveDe={(g) => g.chave}

@@ -26,6 +26,7 @@ import { NovoDemonstrativoLeite } from "./NovoDemonstrativoLeite";
 import { ComprovantesEntregaLeite } from "./ComprovantesEntregaLeite";
 import "./operacoes.css";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 const dataPt = (valor: string) =>
   valor.slice(0, 10).split("-").reverse().join("/");
 const moeda = (valor: string) =>
@@ -208,7 +209,7 @@ export function ComercialLeite({
     {carregando && <p role="status">Consultando documentos comerciais…</p>}{erro && <p role="alert">{erro}</p>}{erroConfig && podeFinanceiro && <p role="alert">{erroConfig}</p>}{aviso && <p role="status">{aviso}</p>}
     <CabecalhoTabela titulo="Entregas e conferências" />
     {entregas && <>
-      <ConsultaOperacional rotulo="Histórico de entregas do sítio" itens={entregas.itens} chaveDe={e => e.id} colunas={[
+      <ConsultaOperacional icone={ICONES_TABELA.coleta} rotulo="Histórico de entregas do sítio" itens={entregas.itens} chaveDe={e => e.id} colunas={[
         {chave:"entrega",titulo:"Entrega",principal:true,celula:e => <strong>{e.referencia}</strong>},
         {chave:"data",titulo:"Data",celula:e => dataPt(e.data)},
         {chave:"comprador",titulo:"Comprador",celula:e => e.parceiroNome ?? "Não informado"},
@@ -221,7 +222,7 @@ export function ComercialLeite({
       <Paginacao pagina={pagina} totalPaginas={Math.max(1,Math.ceil(entregas.total/entregas.porPagina))} total={entregas.total} porPagina={entregas.porPagina} rotulo="Paginação de entregas" substantivo="entregas" idSelect="pagina-entregas-leite" onPagina={setPagina} />
     </>}
     {podeFinanceiro && <><CabecalhoTabela titulo="Demonstrativos do comprador" rotuloAjuda="Sobre demonstrativos do comprador" />{erroDoc && <p role="alert">{erroDoc}</p>}{docs && <>
-      <ConsultaOperacional rotulo="Demonstrativos e anulações preservados" itens={docs.itens} chaveDe={d => d.id} colunas={[
+      <ConsultaOperacional icone={ICONES_TABELA.relatorio} rotulo="Demonstrativos e anulações preservados" itens={docs.itens} chaveDe={d => d.id} colunas={[
         {chave:"referencia",titulo:"Documento",principal:true,celula:d => <strong>{d.referencia}</strong>},
         {chave:"comprador",titulo:"Comprador",celula:d => config?.parceiros.find(p => p.id === d.parceiroId)?.nome ?? "Comprador do documento"},
         {chave:"periodo",titulo:"Período",celula:d => `${dataPt(d.inicio)} a ${dataPt(d.fim)}`},

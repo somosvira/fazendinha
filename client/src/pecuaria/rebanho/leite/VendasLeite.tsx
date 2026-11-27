@@ -1,6 +1,5 @@
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { Ellipsis, FileText, Plus, Wallet } from "lucide-react";
-import { CartaoVendaVisual } from "./VisuaisConsultaLeite";
 import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { useEffect, useRef, useState } from "react";
@@ -78,7 +77,7 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
       </Empty>
     ) : <>
       <dl className="leite-consulta-resumo"><div><dt>Operações no recorte</dt><dd>{dados.resumo.vendas}</dd></div><div><dt>Volume do recorte<AjudaCampo rotulo="Sobre o volume comercial do recorte" texto="Volume retirado nas operações abertas e avulsas mais o volume reconhecido nos fechamentos, pelo período inteiro de cada acordo. Não é a produção dos dias filtrados."/></dt><dd>{formatarLitros(Number(dados.resumo.totalLitros))}</dd></div><div><dt>Preço pendente</dt><dd>{dados.resumo.precoPendente}</dd></div><div><dt>Total comercial conhecido</dt><dd>{!podeFinanceiro ? "Restrito" : dados.resumo.valorTotal === null ? "Sem valor" : Number(dados.resumo.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</dd></div></dl>
-      <ListaConsultaLeite icone={Wallet} layout="grade" renderizarVisual={v => <CartaoVendaVisual item={v} podeVerValores={podeFinanceiro} acao={<Button variant="outline" onClick={() => abrir(v)}>Abrir operação</Button>}/>} preferencia="vendasLeiteVisualizacao" rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
+      <ListaConsultaLeite icone={Wallet} rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
         { chave: "referencia", titulo: "Operação", principal: true, larguraMinima: 160, celula: v => <strong>{v.referencia}</strong> },
         { chave: "comprador", titulo: "Comprador", larguraMinima: 150, celula: v => v.parceiroNome ?? "Não informado" },
         { chave: "periodo", titulo: "Período", larguraMinima: 185, celula: v => v.modalidade === "AVULSA" ? dataPt(v.data) : `${dataPt(v.inicio)} a ${dataPt(v.fim)}` },
@@ -87,8 +86,7 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
         { chave: "valor", titulo: "Total comercial", alinhamento: "direita", celula: v => !podeFinanceiro ? "Restrito" : v.valorTotal === null ? "Preço pendente" : Number(v.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) },
         { chave: "situacao", titulo: "Situação", larguraMinima: 130, celula: v => <Pill tone={v.situacao === "ABERTA" ? "amber" : v.situacao === "CANCELADA" ? "red" : "green"}>{situacoes[v.situacao] ?? v.situacao}</Pill> },
         { chave: "acao", titulo: "Ação", acoes: true, larguraMinima: 150, celula: v => <Button variant="outline" onClick={() => abrir(v)}>Abrir operação</Button> },
-      ]} />
-      <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de vendas" substantivo="vendas" idSelect="pagina-vendas-leite" onPagina={setPagina} />
+      ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de vendas" substantivo="vendas" idSelect="pagina-vendas-leite" onPagina={setPagina} />} />
     </>}
     <DialogComercialLeite titulo={nova ? "Nova operação por período" : "Detalhe da operação"} aberto={!!selecionada || nova} onFechar={fecharDetalhe}>
       <OperacoesComerciaisLeite key={nova ? "nova" : selecionada!} integrado operacaoId={selecionada} iniciarNova={nova} podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} onMudou={id => { setRevisao(r => r + 1); setSelecionada(id); setNova(false); const url = new URL(location.href); url.searchParams.delete("novaOperacaoLeite"); if (id) url.searchParams.set("operacaoLeiteId", id); history.replaceState(null,"",url); }} />

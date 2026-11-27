@@ -1,7 +1,6 @@
-import { contemSql, funcaoSql } from "../../../test/sql-baseline.js";
-import { readFileSync } from "node:fs";
+import { baselineSql, contemSql, funcaoSql } from "../../../test/sql-baseline.js";
 import { describe, expect, it } from "vitest";
-const sql = readFileSync(new URL("../../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
+const sql = baselineSql;
 describe("snapshot SQL da rotina e da identidade da folha", () => {
   it("preserva identidade, data, sítio, configuração e autoria do dia", () => {
     expect(contemSql(sql, 'BEFORE UPDATE ON "pecuaria"."DiaProducaoLeite"')).toBe(true);

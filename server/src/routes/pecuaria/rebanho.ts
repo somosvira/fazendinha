@@ -120,7 +120,7 @@ function validarQuery<T extends z.ZodTypeAny>(schema: T) {
  * depende do gate de área (`exigeArea("pecuaria")` em app.ts).
  */
 const exigirLancarParaEscrita: MiddlewareHandler = async (c, next) => {
-  if (c.req.method === "GET" || (c.req.method === "POST" && /\/(?:visitas\/selecoes|protocolos\/operacao\/participacoes)\/previa\/?$/.test(c.req.path))) return next();
+  if (c.req.method === "GET" || (c.req.method === "POST" && /\/(?:visitas\/selecoes\/previa|protocolos\/operacao\/(?:participacoes\/previa|modelos\/estimativa))\/?$/.test(c.req.path))) return next();
   if (c.req.method === "POST" && /\/sanidade\/tablet\/(?:templates|envios(?:\/[^/]+\/revisao)?)\/?$/.test(c.req.path)) return next();
   return exigePermissao("lancar")(c, next);
 };

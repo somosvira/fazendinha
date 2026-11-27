@@ -1,3 +1,5 @@
+import { limparCachePendenteContexto } from "./financeiro/cacheCadastroAnimal";
+import { abrirNovoAnimal, contextoRebanhoAtual, validarRetornoRebanho } from "./pecuaria/rebanho/lib/navegacao";
 import "./components/consulta-operacional.css";
 import { usaDesignOperacional } from "./lib/designOperacional";
 import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/descarteTrabalhoAtivo";
@@ -7,11 +9,10 @@ import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/des
  * são mascarados quando o perfil não tem a flag verValores.
  */
 
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
 import { abrirRotaNovaOperacao, isNovaOperacaoFinanceira, isNovoRelatorioFinanceiro, isSubrotaFinanceira, isSubrotaRebanho, tabToPath, pathToTab, DEFAULT_TAB, navegarPara, normalizarLocalizacaoPecuaria, normalizarRotaPecuaria, isSubrotaPecuaria } from "./router";
 import { Header } from "./components/Header";
-import { VisualizacaoNoCabecalho } from "./components/VisualizacaoConsulta";
 import { AppSidebar } from "./components/AppSidebar";
 import "./financeiro/financeiro-theme.css";
 import { descartarRascunhoOperacao, descartarRascunhoRelatorioFinanceiro, obterRascunhoOperacao, obterRascunhoRelatorioFinanceiro } from "./financeiro/novo-api";
@@ -24,6 +25,7 @@ import "./pecuaria/pecuaria-refino.css";
 import "./styles/abas.css";
 import "./styles/tabelas-operacionais.css";
 import "./styles/operacional-aprovado.css";
+import "./styles/tabela-padrao.css";
 import "./styles/campo.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { executarComGuardaNavegacao } from "./navegacaoGuardada";
@@ -183,6 +185,13 @@ export function App() {
     if (destino === "gerencial") fixarSitioNaUrlDoPainel(getPropriedadeAtiva());
     return getPropriedadeAtiva();
   });
+  const [areaMontada, setAreaMontada] = useState(() => ({ sitio: propAtiva, revisao: 0 }));
+  if (areaMontada.sitio !== propAtiva) {
+    // A navegação pode mudar a URL antes de a guarda aceitar a saída do editor.
+    // A área remonta somente em resposta à troca de sítio fora desse editor.
+    const noBuilder = /^\/configuracoes\/pecuaria\/reproducao\/protocolos\/novo\/?$/.test(window.location.pathname);
+    setAreaMontada({ sitio: propAtiva, revisao: areaMontada.revisao + (noBuilder ? 0 : 1) });
+  }
   const trocarPropriedade = (id: number | null) => {
     void executarComGuardaNavegacao(() => {
       if (id !== getPropriedadeAtiva() && /^\/pecuaria\/rebanho\/animais\/?$/.test(window.location.pathname)) {
@@ -203,7 +212,7 @@ export function App() {
         if(id==null)delete filtros.propriedadeId;else filtros.propriedadeId=String(id);
         return {tab:"gerencial",filtros};
       });
-    });
+    }, "troca-sitio");
   };
 
   // Deep-link da IA (chat): filtros aplicados numa tela via query string
@@ -286,6 +295,7 @@ export function App() {
   const abrirRascunhoAtivo = () => {
     void executarComGuardaNavegacao(() => {
       setDeepLinkFiltros(null);
+      if (rascunhoAtivo.conhecido && !rascunhoAtivo.rascunho && !rascunhoAtivo.recuperacao && !rascunhoAtivo.editando) limparCachePendenteContexto();
       abrirRotaNovaOperacao();
       setTab("lancar");
     });
@@ -636,7 +646,7 @@ export function App() {
           }}
         />
       )}
-    <VisualizacaoNoCabecalho key={usuario.id} usuarioId={usuario.id}>
+    <Fragment key={usuario.id}>
     <div className={"app" + (sideColapsada ? " side-collapsed" : "")}>
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
       <AppSidebar
@@ -670,7 +680,7 @@ export function App() {
         onSair={onSair}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
-        <div key={propAtiva ?? "all"} data-design-operacional={usaDesignOperacional(tab, window.location.pathname) ? "" : undefined} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
+        <div key={areaMontada.revisao} data-design-operacional={usaDesignOperacional(tab, window.location.pathname) ? "" : undefined} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
           <LimiteCarregamentoArea contexto={`${tab}:${propAtiva ?? "all"}`}><Suspense fallback={<div className="shell-wide pagina-financeira"><EsqueletoPagina label="Carregando área" /></div>}>{conteudo}</Suspense></LimiteCarregamentoArea>
         </div>
       </main>
@@ -692,7 +702,8 @@ export function App() {
             const sitio = Number(destino.searchParams.get("propriedadeId"));
             if (Number.isInteger(sitio) && sitio > 0 && sitio <= 2147483647) { setPropriedadeAtiva(sitio); setPropAtiva(sitio); }
             setDeepLinkFiltros(null);
-            navegarPara(caminho);
+            if (caminho === "/pecuaria/rebanho/animais/novo" && validarRetornoRebanho(contextoRebanhoAtual())) abrirNovoAnimal();
+            else navegarPara(caminho);
           });
         }}
         podeVer={(t) => {
@@ -700,7 +711,7 @@ export function App() {
         }}
       />
     </div>
-    </VisualizacaoNoCabecalho>
+    </Fragment>
     </>
   );
 }

@@ -9,6 +9,9 @@ export const consultaCatalogoProdutosSchema = z.object({
   busca: z.string().trim().max(160).default(""),
   pagina: z.coerce.number().int().positive().default(1),
   porPagina: z.coerce.number().int().min(1).max(50).default(20),
+  uso: usoQuerySchema.optional(),
+  /** `sim`: já adotado pela fazenda (está em Produtos); `nao`: só no catálogo. */
+  naFazenda: z.enum(["sim", "nao"]).optional(),
 }).strict();
 export type ConsultaCatalogoProdutos = z.infer<typeof consultaCatalogoProdutosSchema>;
 

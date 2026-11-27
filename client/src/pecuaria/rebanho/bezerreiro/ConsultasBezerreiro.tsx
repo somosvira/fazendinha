@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/DatePicker';
+import { BuscaLista } from '@/components/BuscaLista';
 import { BarraConsulta } from '@/financeiro/BarraConsulta';
 import { PeriodoFinanceiroControl } from '@/financeiro/PeriodoFinanceiroControl';
 import { SelectCampo } from '@/financeiro/SelectCampo';
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from '@/components/VisualizacaoConsulta';
 import { TabelaFinanceira } from '@/financeiro/financeiro-ui';
 import { navegarPara } from '../../../router';
 import { formatarDataBR } from '../lib/rotulos';
@@ -15,10 +15,10 @@ import { consultaBezerreiro } from './api';
 import { dinheiro, litros } from './modelo';
 import { EstadoConsulta, ModalBezerreiro, PaginacaoBezerreiro, useConsultaBezerreiro } from './ui';
 import type { CustoBezerreiro, FatoSanidade, Pagina, Participacao } from './types';
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 export function PeriodoBezerreiro({params,mudar}: {params:URLSearchParams;mudar:(v:Record<string,string>)=>void}) {return <div className="bez-contexto"><label>De<DatePicker value={params.get('de')??''} onChange={v=>mudar({de:v,pagina:''})}/></label><label>Até<DatePicker value={params.get('ate')??''} onChange={v=>mudar({ate:v,pagina:''})}/></label></div>;}
 export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number}) {
   const consulta=useConsultaBezerreiro<CustoBezerreiro>(`/custos${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),animalId:params.get('animalId'),perfilId:params.get('perfil')})}`,sitio,revisao);
-  const visual = useVisualizacaoConsulta('visualCustosBezerreiro', 'bezerreiro', 'visual');
   const dados = consulta.dados;
   const oculto = dados?.cobertura === 'OCULTO';
   const valor = (custo: Parameters<typeof dinheiro>[0]) => oculto ? 'Oculto' : dinheiro(custo);
@@ -34,7 +34,6 @@ export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number;par
           {oculto ? 'Valores ocultos por permissão' : dados.cobertura === 'COMPLETA' ? 'Cobertura completa' : 'Cobertura parcial'}
         </span>}
       </div>
-      <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos custos do bezerreiro" />
       <PeriodoBezerreiro params={params} mudar={mudar} />
     </header>
     <EstadoConsulta {...consulta} carregando={!dados}>
@@ -53,7 +52,7 @@ export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number;par
         </dl>
         <section>
           <h3>Componentes de custo</h3>
-          <ListaBezerreiro modo={visual.modo} rotulo="Componentes de custo do bezerreiro" itens={[
+          <ListaBezerreiro icone={ICONES_TABELA.valor} rotulo="Componentes de custo do bezerreiro" itens={[
             { id: 'alimentacao', nome: 'Alimentação registrada', base: litros(dados.alimentacao.quantidadeLitros),
               custo: dados.alimentacao.custoConhecido, pendencias: dados.alimentacao.pendencias },
             { id: 'sanidade', nome: 'Sanidade exclusiva dos bezerros', base: 'Fatos sanitários atribuídos',
@@ -67,11 +66,11 @@ export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number;par
         </section>
         <section className="bez-painel-secao">
           <h3>Alimentação por animal</h3>
-          <ListaBezerreiro modo={visual.modo} rotulo="Custos atribuídos por animal"
+          <ListaBezerreiro icone={ICONES_TABELA.animal} rotulo="Custos atribuídos por animal"
             itens={dados.porAnimal} chaveDe={a => a.animalId} colunas={[
               { chave: 'animal', titulo: 'Animal', principal: true, celula: a =>
                 <button className="bez-link" onClick={() => navegarPara(`/pecuaria/bezerreiro/animais/${a.animalId}`)}>
-                  {visual.modo === 'visual' ? <><span className="bez-animal-brinco">{a.brinco}</span> {a.nome ?? 'Sem nome'}</> : `${a.brinco} · ${a.nome ?? 'Sem nome'}`}
+                  {`${a.brinco} · ${a.nome ?? 'Sem nome'}`}
                 </button> },
               { chave: 'volume', titulo: 'Volume atribuído', celula: a => litros(a.litrosAtribuidos) },
               { chave: 'custo', titulo: 'Custo alimentar atribuído', alinhamento: 'direita', celula: a => valor(a.custoAlimentarAtribuido) },
@@ -85,11 +84,13 @@ export function CustosBezerreiro({sitio,params,mudar,revisao}: {sitio:number;par
   </div>;
 }
 export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar,aoSalvar}: {sitio:number;params:URLSearchParams;mudar:(v:Record<string,string>)=>void;revisao:number;podeLancar:boolean;aoSalvar:()=>void}) {
-  const pagina=Math.max(1,Number(params.get('pagina'))||1),consulta=useConsultaBezerreiro<Pagina<FatoSanidade>>(`/sanidade${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),pagina,animalId:params.get('animalId')})}`,sitio,revisao);
+  const pagina=Math.max(1,Number(params.get('pagina'))||1),consulta=useConsultaBezerreiro<Pagina<FatoSanidade>>(`/sanidade${consultaBezerreiro({de:params.get('de'),ate:params.get('ate'),pagina,animalId:params.get('animalId'),busca:params.get('busca')})}`,sitio,revisao);
+  const [busca,setBusca]=useState(params.get('busca')??'');
+  // Busca enquanto digita, como as demais listas; a espera evita uma consulta por tecla.
+  useEffect(()=>{if(busca===(params.get('busca')??''))return;const t=setTimeout(()=>mudar({busca,pagina:''}),300);return()=>clearTimeout(t);},[busca]); // eslint-disable-line react-hooks/exhaustive-deps
   const [selecionar,setSelecionar]=useState(false),[animalId,setAnimalId]=useState(''),[tipo,setTipo]=useState<TipoFatoSanitario|'aplicacao'>('exame'),[form,setForm]=useState(false);
   const participantes=useConsultaBezerreiro<Pagina<Participacao>>(selecionar?'/participantes?porPagina=100':null,sitio,revisao);
   function salvo(){setForm(false);aoSalvar();}
-  const visual = useVisualizacaoConsulta('visualSanidadeBezerreiro', 'bezerreiro', 'visual');
   const rotulo = 'Sanidade dos bezerros';
   const chaveDe = (f: FatoSanidade) => `${f.tipo}-${f.id}`;
   const animal = (f: FatoSanidade) => <button className="bez-link" onClick={() => navegarPara(`/pecuaria/bezerreiro/animais/${f.animalId}`)}>
@@ -101,39 +102,21 @@ export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar,aoSalv
   </Button>;
 
   return <>
-    <div className="bez-sectionhead">
-      <h2>{rotulo}</h2>
-      <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização da sanidade dos bezerros" />
-      {podeLancar && <Button onClick={() => setSelecionar(true)}>Registrar ação sanitária</Button>}
-    </div>
-    <BarraConsulta>
+    <BarraConsulta acao={podeLancar ? <Button onClick={() => setSelecionar(true)}>Registrar ação sanitária</Button> : undefined}>
+      <BuscaLista rotulo="Buscar animal ou ação sanitária" placeholder="Buscar animal ou ação sanitária" valor={busca} onChange={setBusca} />
       <PeriodoFinanceiroControl inicio={params.get('de') ?? ''} fim={params.get('ate') ?? ''}
         allowAll showIcon label="Período" onChange={({ inicio, fim }) => mudar({ de: inicio, ate: fim, pagina: '' })} />
     </BarraConsulta>
     <EstadoConsulta {...consulta} carregando={!consulta.dados}>
       {consulta.dados && <>
-        {visual.modo === 'tabela' ? <TabelaFinanceira visualizacao="tabela" rotulo={rotulo}
+        {<TabelaFinanceira icone={ICONES_TABELA.aplicacao} rotulo={rotulo}
           itens={consulta.dados.itens} chaveDe={chaveDe} colunas={[
             {chave:'animal',titulo:'Animal',principal:true,celula:animal},
             {chave:'acao',titulo:'Ação sanitária',celula:f=>f.descricao},
             {chave:'data',titulo:'Data',celula:f=>formatarDataBR(f.data)},
             {chave:'status',titulo:'Situação',celula:situacao},
             {chave:'detalhe',titulo:'Ação',acoes:true,celula:detalhes},
-          ]} /> : consulta.dados.itens.length > 0 && <ul className="bez-sanidade-cartoes" aria-label={rotulo}>
-          {consulta.dados.itens.map(f => <li className="bez-sanidade-cartao" key={chaveDe(f)}>
-            <div className="bez-sanidade-cartao-topo">
-              {animal(f)}
-              <span className="bez-selo">{situacao(f)}</span>
-            </div>
-            <div className="bez-sanidade-cartao-corpo">
-              <dl>
-                <div><dt>Ação sanitária</dt><dd>{f.descricao}</dd></div>
-                <div><dt>Data</dt><dd>{formatarDataBR(f.data)}</dd></div>
-              </dl>
-              {detalhes(f)}
-            </div>
-          </li>)}
-        </ul>}
+          ]} />}
         {!consulta.dados.total && <p className="bez-estado">Nenhuma ação sanitária registrada durante as participações deste recorte.</p>}
         <PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} mudar={p => mudar({pagina:String(p)})} />
       </>}

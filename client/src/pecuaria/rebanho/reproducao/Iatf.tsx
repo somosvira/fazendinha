@@ -23,7 +23,6 @@ import { BuscaLista } from "../../../components/BuscaLista";
 import { CampoFiltro } from "../../../financeiro/PainelFiltros";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
 import { useConsultaCadastroProtocolos } from "../protocolos/useConsultaCadastroProtocolos";
 import { urlCadastroProtocolo } from "../protocolos/rotas-cadastro";
 import "../protocolos/protocolos.css";
@@ -36,9 +35,8 @@ import { momentoParaCadastro, type MomentoCadastro, type SubtipoAplicacaoCadastr
 
 import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type CabecalhoProtocolo, type TarefaOperacional } from "../protocolos/api";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
-import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
 import { OperacaoProtocolo } from "../protocolos/OperacaoProtocolo";
-import { CampoDataIatf, dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
+import { CampoDataIatf, dataHoraISO, horarioIatf } from "./CampoDataIatf";
 export { dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 import { navegarPara } from "../../../router";
 import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOrigem";
@@ -61,7 +59,11 @@ import { type UnidadeMedida } from "../../../lib/unidades";
 import { EsqueletoFicha, EsqueletoTabela } from "../../../components/Esqueleto";
 export type EtapaIatf = {
   chaveEdicao?: string;
-  tentativaTipo?: "IA" | "TE";
+  intervaloPendente?: boolean;
+  referenciaPrazoDiagnostico?: boolean;
+  referenciaPrazoReconfirmacao?: boolean;
+  exameDgAlterado?: boolean;
+  tentativaTipo?: "IA" | "TE" | "COBERTURA";
   referenciasCusto?: ReferenciasCustoCadastro;
   ordem?: number;
   momento?: MomentoCadastro;
@@ -73,6 +75,9 @@ export type EtapaIatf = {
   orientacaoTemporal?: {versao:1;referencia:"INICIO_EFETIVO"|"ETAPA_ANTERIOR";intervaloHoras:number;toleranciaAntesMinutos:number;toleranciaDepoisMinutos:number;efeito:"ALERTA"};
   planoAplicacao?: {
     produtoId: string;
+    produtoCatalogoId?: string;
+    categoriaId?: string;
+    nomeProduto?: string;
     dose: string;
     unidadeDose: UnidadeMedida;
     via?: string | null;
@@ -91,15 +96,17 @@ export function etapaParaCadastro(e: EtapaIatf, contratoNovo = false): EtapaIatf
   return {
     referenciasCusto:e.referenciasCusto, nome: e.nome, tipo: e.tipo, intervalo: e.intervalo, unidade: e.unidade,
     ...(e.momento ? { momento: momentoParaCadastro(e.momento) } : {}),
+    ...(e.referenciaPrazoDiagnostico ? { referenciaPrazoDiagnostico: true } : {}),
+    ...(e.referenciaPrazoReconfirmacao ? { referenciaPrazoReconfirmacao: true } : {}),
     ...(e.tipo === "APLICACAO" && e.subtipo ? { subtipo: e.subtipo } : {}),
     ...(e.orientacaoTemporal ? {orientacaoTemporal:e.orientacaoTemporal} : {}),
-    ...(e.tipo === "APLICACAO" && e.planoAplicacao ? { planoAplicacao: { produtoId: e.planoAplicacao.produtoId, dose: e.planoAplicacao.dose, unidadeDose: e.planoAplicacao.unidadeDose, via: e.planoAplicacao.via, ...(e.planoAplicacao.tipoAplicacaoId ? { tipoAplicacaoId: e.planoAplicacao.tipoAplicacaoId } : {}) } } : {}),
+    ...(e.tipo === "APLICACAO" && e.planoAplicacao ? { planoAplicacao: { ...(e.planoAplicacao.produtoId ? { produtoId: e.planoAplicacao.produtoId } : { produtoCatalogoId: e.planoAplicacao.produtoCatalogoId, categoriaId: e.planoAplicacao.categoriaId }), dose: e.planoAplicacao.dose, unidadeDose: e.planoAplicacao.unidadeDose, via: e.planoAplicacao.via, ...(e.planoAplicacao.tipoAplicacaoId ? { tipoAplicacaoId: e.planoAplicacao.tipoAplicacaoId } : {}) } } : {}),
     ...(e.tipo === "TENTATIVA" && e.tentativaTipo && !e.planoTentativa ? { tentativaTipo: e.tentativaTipo } : {}),
     ...(e.tipo === "TENTATIVA" && contratoNovo ? { tentativaTipo: e.tentativaTipo ?? e.planoTentativa?.tipo } : {}),
     ...(e.tipo === "TENTATIVA" && !contratoNovo && e.planoTentativa ? { planoTentativa: { tipo: e.planoTentativa.tipo, materialId: e.planoTentativa.materialId, quantidade: e.planoTentativa.quantidade } } : {}),
     ...(e.tipo === "EXAME" && e.planoExame ? { planoExame: { tipoExameId: e.planoExame.tipoExameId } } : {}),
     ...(e.tipo === "AVALIACAO" && e.planoAvaliacao ? { planoAvaliacao: { tipoExameId: e.planoAvaliacao.tipoExameId, tipo: e.planoAvaliacao.tipo } } : {}),
-  };
+  } as EtapaIatf;
 }
 export type ProtocoloIatf = {
   id: string;
@@ -244,7 +251,6 @@ export function Iatf({
   useEffect(()=>{if(programacaoId||modo!=="operacao")return;const u=new URL(window.location.href);buscaProgramacao?u.searchParams.set("iatfBusca",buscaProgramacao):u.searchParams.delete("iatfBusca");paginaProgramacoes>1?u.searchParams.set("iatfPagina",String(paginaProgramacoes)):u.searchParams.delete("iatfPagina");window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);},[buscaProgramacao,paginaProgramacoes,programacaoId,modo]);
   useEffect(()=>{const restaurar=()=>{const p=new URLSearchParams(window.location.search);setBuscaProgramacao(p.get("iatfBusca")??"");setPaginaProgramacoes(Math.max(1,Math.floor(Number(p.get("iatfPagina"))||1)));};window.addEventListener("popstate",restaurar);return()=>window.removeEventListener("popstate",restaurar);},[]);
   const filtradas = programacoes;
-  const visual = useVisualizacaoConsulta("visualProtocolosReproducao", "reproducao");
   const [criterios, setCriterios] = useState(() => ({ status: new URLSearchParams(window.location.search).get("iatfStatus") ?? "", ordem: new URLSearchParams(window.location.search).get("iatfOrdem") ?? "RECENTES" }));
   const edicaoProgramacoes = useRascunhoConsulta({ busca: buscaProgramacao, ...criterios }, { busca: "", status: "", ordem: "RECENTES" }, v => {
     setBuscaProgramacao(v.busca); setPaginaProgramacoes(1); setCriterios({ status: v.status, ordem: v.ordem });
@@ -510,7 +516,6 @@ export function Iatf({
           { chave: "ordem", conteudo: <CampoFiltro rotulo="Ordenar por"><SelectCampo value={edicaoProgramacoes.rascunho.ordem} onValueChange={v=>edicaoProgramacoes.editar("ordem",v)}><option value="RECENTES">Mais recentes</option><option value="NOME">Nome do grupo</option></SelectCampo></CampoFiltro> },
         ].map(c=>({...c,ativo:false,limpar:edicaoProgramacoes.limpar}))} criterios={criterios.status?[{id:"status",rotulo:criterios.status==="ABERTA"?"Aberta":"Encerrada",limpar:()=>{setCriterios(c=>({...c,status:""}));setPaginaProgramacoes(1);const u=new URL(window.location.href);u.searchParams.delete("iatfStatus");window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);}}]:[]} acao={<>
           {podeLancar && !acaoProgramarNoCabecalho && <Button disabled={!sitioEfetivo || carregando || !!erroConsulta} onClick={() => { setNome(""); setNovo("programacao"); setChaveProgramacao(crypto.randomUUID()); setCienciaSanitaria(false); }}>Programar protocolo</Button>}
-          <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos protocolos em acompanhamento"/>
         </>}><BuscaLista rotulo="Buscar programação" placeholder="Protocolo ou grupo" valor={buscaProgramacao} onChange={v=>{setBuscaProgramacao(v);setPaginaProgramacoes(1);}}/></BarraConsulta>
         <div className="space-y-3">
           {carregando && (consultaVisivel
@@ -518,7 +523,7 @@ export function Iatf({
             : <EsqueletoTabela label="Carregando programações" />)}
           <ErrorBox erro={erroConsulta} />
           {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-          <ListaProtocolosReprodutivos itens={filtradas} sitio={sitioEfetivo ?? undefined} modo={visual.modo === "visual" ? "visual" : "tabela"} aoAbrir={id => onAbrirProgramacao ? onAbrirProgramacao(id) : void abrir(id)} />
+          <ListaProtocolosReprodutivos itens={filtradas} sitio={sitioEfetivo ?? undefined} aoAbrir={id => onAbrirProgramacao ? onAbrirProgramacao(id) : void abrir(id)} />
           {(consultaVisivel?.total ?? 0)>10&&<Paginacao paginaAtual={paginaLista} totalPaginas={paginasProgramacoes} totalItens={consultaVisivel?.total ?? 0} itensPorPagina={10} onPaginaChange={setPaginaProgramacoes} rotulo="programações" idSelect="pagina-programacoes-iatf"/>}
           {!carregando && !erroConsulta && consultaVisivel && !!buscaProgramacao.trim() && !programacoes.length && <Empty>Nenhuma programação encontrada com esta busca. Ajuste os critérios para consultar outras programações.</Empty>}
           {!carregando &&
@@ -879,15 +884,19 @@ export function PlanoEtapa({
   propriedadeId,
   contratoNovo,
   tipoDefinido,
+  bloquearTipoAvaliacao,
+  containerPopover,
   onChange,
 }: {
+  bloquearTipoAvaliacao?: boolean;
+  containerPopover?: HTMLElement | null;
   contratoNovo?: boolean;
   tipoDefinido?: boolean;
   etapa: EtapaIatf;
   propriedadeId?: number;
   onChange: (e: EtapaIatf) => void;
 }) {
-  if (etapa.tipo === "EXAME") return <SelectBuscavel buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO", propriedadeId })} rotulo="Exame sanitário planejado" valor={etapa.planoExame?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoExame: tipoExameId ? { tipoExameId } : undefined })}/>;
+  if (etapa.tipo === "EXAME") return <SelectBuscavel containerPopover={containerPopover} contentClassName={containerPopover ? "z-[1350]" : undefined} buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO", propriedadeId })} rotulo="Exame sanitário planejado" valor={etapa.planoExame?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoExame: tipoExameId ? { tipoExameId } : undefined })}/>;
   if (etapa.tipo === "APLICACAO") {
     const p = etapa.planoAplicacao;
     const alterar = (
@@ -931,7 +940,7 @@ export function PlanoEtapa({
     );
   }
   if (etapa.tipo === "TENTATIVA") {
-    if (contratoNovo) return <div className="col-span-full grid gap-3">{!tipoDefinido && <label>Procedimento de reprodução<SelectCampo required className={classeInput} value={etapa.tentativaTipo ?? etapa.planoTentativa?.tipo ?? ""} onValueChange={(valor) => onChange({ ...etapa, tentativaTipo: valor as "IA" | "TE", planoTentativa: undefined })}><option value="" disabled>Selecione o procedimento</option><option value="IA">Inseminação artificial</option><option value="TE">Transferência de embrião</option></SelectCampo></label>}<p className="text-sm">Material genético e quantidade são obrigatórios no atendimento. Nenhum material é fixado neste modelo.</p></div>;
+    if (contratoNovo) return <div className="col-span-full grid gap-3">{!tipoDefinido && <label>Procedimento de reprodução<SelectCampo required className={classeInput} value={etapa.tentativaTipo ?? etapa.planoTentativa?.tipo ?? ""} onValueChange={(valor) => onChange({ ...etapa, tentativaTipo: valor as "IA" | "TE", planoTentativa: undefined })}><option value="" disabled>Selecione o procedimento</option><option value="IA">Inseminação artificial</option><option value="TE">Transferência de embrião</option></SelectCampo></label>}</div>;
     const p = etapa.planoTentativa;
     const alterar = (
       campos: Partial<NonNullable<EtapaIatf["planoTentativa"]>>,
@@ -960,7 +969,7 @@ export function PlanoEtapa({
             <option value="TE">Transferência de embrião</option>
           </SelectCampo>
         </label>
-        <SelectBuscavel buscar={opcoesProtocolo({ opcao: "MATERIAL", origem: "REPRODUTIVO", tipoTentativa: p?.tipo ?? "IA", propriedadeId })} rotulo="Material planejado" valor={p?.materialId ?? ""} onChange={materialId => materialId ? alterar({ materialId }) : onChange({ ...etapa, planoTentativa: undefined })}/>
+        <SelectBuscavel containerPopover={containerPopover} contentClassName={containerPopover ? "z-[1350]" : undefined} buscar={opcoesProtocolo({ opcao: "MATERIAL", origem: "REPRODUTIVO", tipoTentativa: p?.tipo ?? "IA", propriedadeId })} rotulo="Material planejado" valor={p?.materialId ?? ""} onChange={materialId => materialId ? alterar({ materialId }) : onChange({ ...etapa, planoTentativa: undefined })}/>
         <label>
           Quantidade planejada
           <input
@@ -979,13 +988,13 @@ export function PlanoEtapa({
   if (etapa.tipo === "AVALIACAO")
     return (
       <div className="col-span-full grid gap-3">
-      <SelectBuscavel buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO", propriedadeId })} rotulo="Tipo de exame reprodutivo" valor={etapa.planoAvaliacao?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoAvaliacao: { tipo: etapa.planoAvaliacao?.tipo ?? "DIAGNOSTICO", tipoExameId: tipoExameId || undefined } })}/>
-      <p className="text-sm">Sem tipo definido, mantém a avaliação reprodutiva padrão de compatibilidade.</p>
+      <SelectBuscavel containerPopover={containerPopover} contentClassName={containerPopover ? "z-[1350]" : undefined} buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO", propriedadeId })} rotulo="Tipo de exame reprodutivo" valor={etapa.planoAvaliacao?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoAvaliacao: { tipo: etapa.planoAvaliacao?.tipo ?? "DIAGNOSTICO", tipoExameId: tipoExameId || undefined } })}/>
       <label>
         Avaliação planejada
         <SelectCampo
           className={classeInput}
           value={etapa.planoAvaliacao?.tipo ?? ""}
+          disabled={bloquearTipoAvaliacao}
           onValueChange={(valor) =>
             onChange({
               ...etapa,
@@ -1012,12 +1021,7 @@ export function PlanoEtapa({
         </SelectCampo>
       </label></div>
     );
-  return (
-    <p className="col-span-full text-sm">
-      A confirmação registra esta ação com horário e autoria. Não implica
-      aplicação de medicamento.
-    </p>
-  );
+  return null;
 }
 export function OrientacaoTemporalEtapa({etapa,onChange}:{etapa:EtapaIatf;onChange:(e:EtapaIatf)=>void}){
  const r=etapa.orientacaoTemporal;const mudar=(v:Partial<NonNullable<EtapaIatf["orientacaoTemporal"]>>)=>r&&onChange({...etapa,orientacaoTemporal:{...r,...v}});

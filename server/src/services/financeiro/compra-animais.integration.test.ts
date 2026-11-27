@@ -6,9 +6,12 @@ import crypto from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../db.js";
 import { exigirBancoIntegracaoPecuaria } from "../../lib/banco-pecuaria-integration.fixture.js";
-import { cadastrar, darBaixa, estornarBaixa } from "../pecuaria/rebanho/animais.js";
+import { cadastrar, cadastrarTx, darBaixa, estornarBaixa } from "../pecuaria/rebanho/animais.js";
+import { registrarEccEntradaTx } from "../pecuaria/rebanho/ecc-entrada.js";
+import { cadastrarAnimalSchema } from "../pecuaria/rebanho/schemas.js";
 import { hojeFazenda } from "../pecuaria/rebanho/regras.js";
-import { criarOperacao, estornarOperacao, obterOperacao } from "./operacoes.js";
+import { criarOperacao, criarTransacaoAvulsa, confirmarRascunhoOperacao, estornarOperacao, obterOperacao } from "./operacoes.js";
+import { transacaoPecuaria } from "../pecuaria/transacao.js";
 import { confirmarRascunho } from "./rascunhos.js";
 import { operacaoSchema } from "./schemas.js";
 
@@ -69,7 +72,8 @@ afterAll(async () => {
   const animais = (await prisma.animal.findMany({ where: { localizacoes: { some: { propriedadeId } } }, select: { id: true } })).map((a) => a.id);
   const animalId = { in: animais };
   await prisma.rascunhoOperacao.deleteMany({ where: { propriedadeId } });
-  await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: operacoes } } });
+  const transacoes = (await prisma.transacaoFinanceira.findMany({ where: { propriedadeId }, select: { id: true } })).map(t => t.id);
+  await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: [...operacoes, ...transacoes] } } });
   await prisma.liquidacao.deleteMany({ where: { transacao: { propriedadeId } } });
   await prisma.movimentoConta.deleteMany({ where: { transacao: { propriedadeId } } });
   await prisma.transacaoFinanceira.deleteMany({ where: { reversaoDeId: { not: null }, propriedadeId } });
@@ -79,6 +83,7 @@ afterAll(async () => {
   await prisma.operacao.deleteMany({ where: { corrigeOperacaoId: { not: null }, propriedadeId } });
   await prisma.operacao.deleteMany({ where: { propriedadeId } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ animalId }, { entidadeId: { in: animais } }] } });
+  await prisma.exameAnimal.deleteMany({ where: { animalId } });
   await prisma.baixaAnimal.deleteMany({ where: { animalId } });
   await prisma.localizacaoAnimal.deleteMany({ where: { OR: [{ animalId }, { propriedadeId }] } });
   await prisma.periodoReprodutivoAnimal.deleteMany({ where: { animalId } });
@@ -95,6 +100,38 @@ afterAll(async () => {
 });
 
 comBanco("compra de animais — PostgreSQL", () => {
+  it("reexecuta compra Serializable após movimento ReadCommitted com snapshot antigo", async () => {
+    const contaTeste = (await prisma.contaFinanceira.create({ data: { nome: `Snapshot ${crypto.randomUUID()}`, tipo: "BANCO", propriedadeId: sitio, saldoAbertura: 100_000, dataSaldoAbertura: new Date("2026-01-01") } })).id;
+    const dados = compra([itemAnimal(1, 100)], { financeiro: { condicao: "A_VISTA", contaId: contaTeste } });
+    let liberar!: () => void;
+    let pronto!: () => void;
+    const espera = new Promise<void>(r => { liberar = r; });
+    const iniciou = new Promise<void>(r => { pronto = r; });
+    let tentativas = 0;
+    const compraPendente = transacaoPecuaria(async tx => {
+      tentativas++;
+      await tx.propriedade.findUnique({ where: { id: sitio } });
+      if (tentativas === 1) { pronto(); await espera; }
+      return confirmarRascunhoOperacao(tx, dados, { origem: "direta" });
+    }).catch(e => e);
+    await iniciou;
+    try {
+      await criarTransacaoAvulsa({ tipo: "PAGAMENTO", data: new Date(HOJE), valor: 99950, descricao: "Fixture concorrente", contaId: contaTeste, propriedadeId: sitio });
+    } finally { liberar(); }
+    const resultado = await compraPendente;
+    expect(tentativas).toBeGreaterThan(1);
+    expect(resultado).toMatchObject({ code: "SALDO_NEGATIVO", saldoNegativo: { saldoAtual: "50.00", saldoProjetado: "-50.00" } });
+    expect(await prisma.animal.count({ where: { brinco: dados.itens[0].animal!.brinco } })).toBe(0);
+  });
+
+  it("reenvios simultâneos de compra animal retornam o mesmo recibo", async () => {
+    const contaTeste = (await prisma.contaFinanceira.create({ data: { nome: `Reenvio ${crypto.randomUUID()}`, tipo: "BANCO", propriedadeId: sitio, saldoAbertura: 100_000, dataSaldoAbertura: new Date("2026-01-01") } })).id;
+    const dados = compra([itemAnimal(1, 100)], { chave: crypto.randomUUID(), financeiro: { condicao: "A_VISTA", contaId: contaTeste } });
+    const [a, b] = await Promise.all([criarOperacao(dados, { origem: "direta" }), criarOperacao(dados, { origem: "direta" })]);
+    expect(a.id).toBe(b.id);
+    expect(await prisma.itemOperacao.count({ where: { operacaoId: a.id } })).toBe(1);
+  });
+
   it("confirma operação, itens, pagamento e animais no mesmo commit, sem estoque", async () => {
     const frete = { descricao: "Frete", quantidade: 1, unidade: "un", valorTotal: 300 };
     const operacao = await criarOperacao(compra([itemAnimal(312.5, 12), itemAnimal(298, 12), frete]));
@@ -116,13 +153,53 @@ comBanco("compra de animais — PostgreSQL", () => {
     }
   });
 
+  it("cadastro avulso grava ECC e peso independentes com autoria", async () => {
+    const base = { brinco: brinco(), sexo: "F" as const, dataNascimento: "2024-03-01", nascimentoEstimado: false, origem: "COMPRADO" as const, dataEntrada: HOJE, partosAntesDaEntrada: 0, propriedadeId: sitio, aptidao: "CORTE" as const, composicao: [] };
+    const criado = await cadastrar({ ...base, eccEntrada: 3, pesoEntradaKg: 300 }, usuario);
+    const exames = await prisma.exameAnimal.findMany({ where: { animalId: criado.id }, include: { resultados: true } });
+    expect(exames).toHaveLength(1);
+    expect(exames[0]).toMatchObject({ propriedadeId: sitio, criadoPorId: usuario, finalidadePrincipal: "ESCORE_CORPORAL" });
+    expect(exames[0].data.toISOString().slice(0, 10)).toBe(HOJE);
+    expect(await prisma.pesagem.count({ where: { animalId: criado.id } })).toBe(1);
+  });
+
+  it("falha após gravar ECC reverte animal e exame na mesma transação", async () => {
+    const identificacao = brinco();
+    const entrada = cadastrarAnimalSchema.parse({ brinco: identificacao, sexo: "F", origem: "COMPRADO", dataNascimento: "2024-01-01", dataEntrada: HOJE, propriedadeId: sitio, aptidao: "CORTE", eccEntrada: 3 });
+    let animalId = "";
+    await expect(prisma.$transaction(async tx => {
+      const criado = await cadastrarTx(tx, entrada, usuario);
+      animalId = criado.animal.id;
+      await registrarEccEntradaTx(tx, { animalId, propriedadeId: sitio, data: HOJE, valor: 3 }, usuario);
+      expect(await tx.exameAnimal.count({ where: { animalId } })).toBe(1);
+      throw new Error("Falha simulada após ECC");
+    })).rejects.toThrow("Falha simulada após ECC");
+    expect(await prisma.animal.findUnique({ where: { id: animalId } })).toBeNull();
+    expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(0);
+  });
+
+  it("ECC de entrada é exame estruturado e reenvio não duplica", async () => {
+    const entrada = compra([itemAnimal(300, 10, { eccEntrada: 3.25 }), itemAnimal(290, 10, { eccEntrada: 4, dataEntrada: "2026-01-10" })], { chave: crypto.randomUUID() });
+    const primeira = await criarOperacao(entrada);
+    const segunda = await criarOperacao(entrada);
+    expect(segunda.id).toBe(primeira.id);
+    const itens = await prisma.itemOperacao.findMany({ where: { operacaoId: primeira.id }, orderBy: { ordem: "asc" } });
+    for (const [indice, item] of itens.entries()) {
+      const exames = await prisma.exameAnimal.findMany({ where: { animalId: item.animalId! }, include: { resultados: true } });
+      expect(exames).toHaveLength(1);
+      expect(exames[0]).toMatchObject({ propriedadeId: sitio, finalidadePrincipal: "ESCORE_CORPORAL", realizacao: "REALIZADO" });
+      expect(exames[0].data.toISOString().slice(0, 10)).toBe(indice ? "2026-01-10" : HOJE);
+      expect(Object.fromEntries(exames[0].resultados.map(r => [r.campo, r.valor]))).toEqual({ ESCORE: indice ? "4" : "3.25", ESCALA_MIN: "1", ESCALA_MAX: "5" });
+    }
+  });
+
   it("brinco já ativo no sítio desfaz tudo: nenhuma operação nem animal", async () => {
     const existente = await cadastrar({ brinco: brinco(), sexo: "F", dataNascimento: "2024-01-01", nascimentoEstimado: false, origem: "COMPRADO", dataEntrada: HOJE,
       partosAntesDaEntrada: 0, propriedadeId: sitio, aptidao: "CORTE", composicao: [] }, null);
     const antes = await prisma.operacao.count({ where: { propriedadeId: sitio } });
     const animaisAntes = await prisma.animal.count({ where: { localizacoes: { some: { propriedadeId: sitio } } } });
     const repetido = itemAnimal(300, 10, { brinco: existente.brinco });
-    await expect(criarOperacao(compra([itemAnimal(300, 10), repetido]))).rejects.toMatchObject({ campo: "itens.1.animal.brinco" });
+    await expect(criarOperacao(compra([itemAnimal(300, 10, { eccEntrada: 3 }), repetido]))).rejects.toMatchObject({ campo: "itens.1.animal.brinco" });
     expect(await prisma.operacao.count({ where: { propriedadeId: sitio } })).toBe(antes);
     expect(await prisma.animal.count({ where: { localizacoes: { some: { propriedadeId: sitio } } } })).toBe(animaisAntes);
   });

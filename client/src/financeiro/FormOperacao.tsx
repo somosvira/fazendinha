@@ -1,4 +1,5 @@
 import { SeletorProdutoLocal } from "../estoque/SeletorProdutoLocal";
+import { chaveCacheAnimal, contextoCacheAnimal, removerCacheAnimal, removerCachesAnimal, vincularCachesAnimal } from "./cacheCadastroAnimal";
 import { animalArremateSimulado } from "./ArremateSimulado";
 import { AjudaCampo } from "@/components/Dica";
 import { useDescarteTrabalhoAtivo } from "./descarteTrabalhoAtivo";
@@ -22,7 +23,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 import { getPropriedadeAtiva } from "../propriedadeScope";
 import { listarPropriedades } from "@/api/propriedades";
-import { anexarDocumentoOperacao, anexarDocumentoRascunho, ApiError, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, registrarAjusteEstoque, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas } from "./novo-api";
+import { anexarDocumentoOperacao, anexarDocumentoRascunho, ApiError, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, registrarAjusteEstoque, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas, type SaldoNegativo } from "./novo-api";
 import { brl, Button, dataBR, emDias, ErrorBox, hoje, TIPO_OPERACAO } from "./financeiro-ui";
 import { LinhaPrevia as ReviewLine } from "./LinhaPrevia";
 import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
@@ -64,6 +65,7 @@ const TIPOS_COM_ESTOQUE = new Set(["COMPRA_ESTOQUE", "VENDA", "INVENTARIO_INICIA
 const TIPOS_FINANCEIROS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO", "VENDA", "DEVOLUCAO"]);
 const TIPOS_COM_PARCEIRO = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO", "VENDA", "DEVOLUCAO"]);
 const TIPOS_DOCUMENTO = { NOTA_FISCAL: "Nota fiscal", BOLETO: "Boleto", CONTRATO: "Contrato", RECIBO: "Recibo", COMPROVANTE: "Comprovante", JUSTIFICATIVA: "Justificativa", OUTRO: "Outro" };
+const centavosSaldo = (valor: string) => valor.startsWith("-") ? -(paraCentavos(valor.slice(1)) ?? 0) : (paraCentavos(valor) ?? 0);
 const normalizarMoeda = (valor: string) => valor === "" ? "" : Number(valor).toFixed(2);
 // valorUnitario do item é Decimal(14,4) no server — normalizarMoeda (2 casas)
 // truncaria insumos fracionários (ex.: R$ 0,1234/un ou R$ 0,00045/g) para
@@ -112,6 +114,8 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
   const atalhoAjuste = !operacaoBase && tipoInicial === TIPO_AJUSTE;
   const podeRascunho = podeVerValoresFinanceiros();
   const [confirmarSaida, setConfirmarSaida] = useState(false);
+  const [rascunhoCacheId, setRascunhoCacheId] = useState<string | null>(() => rascunho?.id ?? null);
+  const rascunhoCacheIdRef = useRef(rascunhoCacheId);
   const [recuperacaoInicial] = useState(() => podeRascunho && !operacaoBase && !atalhoAjuste ? estadoRascunhoAtivo().recuperacao : null);
   const inicial = (podeRascunho && !operacaoBase && !atalhoAjuste ? recuperacaoInicial?.dados.formulario ?? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
   // Correção de uma compra de animais: os animais são os da original (itens com `animalId`), sem cadastro novo.
@@ -184,6 +188,10 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
   }, [rascunho?.documentos, operacaoBase, atalhoAjuste]);
   const [anexosEnviando, setAnexosEnviando] = useState<AnexoEnviando[]>([]);
   const [salvando, setSalvando] = useState(false);
+  const [saldoConfirmacao, setSaldoConfirmacao] = useState<SaldoNegativo | null>(null);
+  const [saldoMudou, setSaldoMudou] = useState(false);
+  const [erroSaldo, setErroSaldo] = useState<string | null>(null);
+  const [saldosConfirmados, setSaldosConfirmados] = useState<Record<string, string>>({});
   const envioEmCurso = useRef(false);
   const [confirmarLimpeza, setConfirmarLimpeza] = useState(false);
   const [confirmarSugestao, setConfirmarSugestao] = useState(false);
@@ -263,7 +271,22 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
     return () => { ativo = false; };
   }, [ehCompraAnimais, modoCorrecao, sitiosAtivos]);
   const sitioAtivoId = getPropriedadeAtiva();
+  const [sitioPrincipalId, setSitioPrincipalId] = useState<number | null>(null);
+  useEffect(() => {
+    if (sitioAtivoId != null || !podeRascunho || !contaId || !TIPOS_FINANCEIROS.has(tipo) || tipo === "VENDA" || tipo === "DEVOLUCAO" || !["A_VISTA", "PARCIAL"].includes(condicao)) return;
+    let ativo = true;
+    listarPropriedades({ incluirInativos: true }).then(lista => {
+      if (!ativo || !Array.isArray(lista)) return;
+      const porId = [...lista].sort((a, b) => a.id - b.id);
+      setSitioPrincipalId(porId.find(p => p.principal)?.id ?? porId[0]?.id ?? null);
+    }).catch(() => { if (ativo) setSitioPrincipalId(null); });
+    return () => { ativo = false; };
+  }, [sitioAtivoId, podeRascunho, contaId, tipo, condicao]);
+  const sitioFinanceiroId = sitioAtivoId ?? sitioPrincipalId;
   const sitioCompra = !ehCompraAnimais || sitiosAtivos === null ? null : sitioAtivoId != null ? sitiosAtivos.find((sitio) => sitio.id === sitioAtivoId) ?? null : sitiosAtivos.length === 1 ? sitiosAtivos[0] : null;
+  const contextoCache = contextoCacheAnimal(sitioAtivoId ?? (sitiosAtivos?.length === 1 ? sitiosAtivos[0].id : null), podeRascunho && !operacaoBase && !atalhoAjuste);
+  const contextoCacheRef = useRef(contextoCache);
+  contextoCacheRef.current = contextoCache;
   const motivoSemSitio = sitiosAtivos === null ? "Carregando o sítio da compra…" : sitioAtivoId == null && sitiosAtivos.length >= 2 ? "Selecione uma fazenda no seletor do topo para cadastrar os animais — a compra é feita em uma fazenda por vez." : "Não foi possível identificar o sítio da compra. Atualize a página ou escolha a fazenda no seletor do topo.";
   const valoresAnimais = useMemo(() => ehCompraAnimais ? valoresDosAnimais(unidadePrecoAnimal, valorLote, animais) : [], [ehCompraAnimais, unidadePrecoAnimal, valorLote, animais]);
   // Sem sítio ativo e com mais de um sítio, o saldo lido soma todos os sítios mas o
@@ -344,6 +367,11 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
   const assinaturaSimulacao = JSON.stringify(entradaSimulacao);
   const simulacaoAtual = simulacao?.assinatura === assinaturaSimulacao ? simulacao.resultado : null;
   const totalFinanceiro = simulacaoAtual ? Number(simulacaoAtual.totalOperacao) : total;
+  const contaSelecionada = config.contas.find(conta => conta.id === contaId);
+  const saldoConta = saldosConfirmados[`${sitioFinanceiroId}:${contaId}`] ?? contaSelecionada?.saldoAtual;
+  const mostraSaldo = podeRascunho && permiteFinanceiro && !entradaFinanceira && (condicao === "A_VISTA" || condicao === "PARCIAL") && sitioFinanceiroId != null && contaSelecionada?.ativo === true && contaSelecionada.propriedadeId === sitioFinanceiroId && saldoConta != null && Number.isFinite(Number(saldoConta));
+  const pagamentoAgora = condicao === "A_VISTA" ? totalFinanceiro : realizadoAgora;
+  const saldoProjetado = mostraSaldo ? (centavosSaldo(String(saldoConta)) - (paraCentavos(pagamentoAgora.toFixed(2)) ?? 0)) / 100 : null;
   const saldoFuturoFinanceiro = simulacaoAtual ? Number(simulacaoAtual.saldoAPrazo) : saldoFuturo;
   const categorias = config.categorias.filter((categoria) => categoria.ativo);
   const parceiros = useMemo(() => config.parceiros.filter((parceiro) => parceiroCompativel(parceiro, tipo)), [config.parceiros, tipo]);
@@ -430,6 +458,7 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
     try {
       const salvo = await requisicao;
       versaoRef.current = salvo.versao;
+      if (contextoRascunho() && !rascunhoCacheIdRef.current && salvo.id) { vincularCachesAnimal(contextoCacheRef.current, salvo.id); rascunhoCacheIdRef.current = salvo.id; setRascunhoCacheId(salvo.id); }
       if (contextoRascunho()) concluirEdicaoRascunho(dadosRascunho);
       if (ultimaEdicaoRef.current.dados === dadosRascunho) { setEstadoSalvamento("SALVO"); setErro(null); }
       return salvo;
@@ -791,8 +820,8 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
     return null;
   };
 
-  const submit = async (evento: FormEvent) => {
-    evento.preventDefault();
+  const submit = async (evento?: FormEvent, cienciaSaldoNegativo?: string) => {
+    evento?.preventDefault();
     if (envioEmCurso.current || concluidaRef.current || anexosEnviando.length || ajusteConsolidado) return;
     if (!podeConfirmar) {
       const invalido = encontrarPrimeiroCampoInvalido();
@@ -804,6 +833,7 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
     }
     envioEmCurso.current = true;
     setErroConfirmacao(null);
+    setErroSaldo(null);
     if (autosaveTimerRef.current != null) { window.clearTimeout(autosaveTimerRef.current); autosaveTimerRef.current = null; }
     setCampoInvalido(null);
     setErroPartidas(null);
@@ -824,7 +854,7 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
         return;
       }
       let operacao: Operacao;
-      if (operacaoBase || !podeRascunho) operacao = await criarOperacao(operacaoRascunho);
+      if (operacaoBase || !podeRascunho) operacao = await criarOperacao({ ...operacaoRascunho, ...(cienciaSaldoNegativo ? { cienciaSaldoNegativo } : {}) });
       else {
         let pendente = confirmacaoPendenteRef.current;
         if (pendente?.chave !== operacaoRascunho.chave) {
@@ -832,7 +862,7 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
           pendente = { chave: operacaoRascunho.chave, versao: salvo.versao };
           confirmacaoPendenteRef.current = pendente;
         }
-        operacao = await confirmarRascunhoOperacao(pendente.versao, pendente.chave);
+        operacao = await confirmarRascunhoOperacao(pendente.versao, pendente.chave, cienciaSaldoNegativo);
         confirmacaoPendenteRef.current = null;
       }
       const falhas: string[] = [];
@@ -841,8 +871,17 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
         catch (falha) { falhas.push(`${anexo.arquivo.name}: ${falha instanceof Error ? falha.message : String(falha)}`); }
       }
       concluidaRef.current = true;
+      removerCachesAnimal(contextoCacheRef.current, rascunhoCacheIdRef.current);
       onSalvo(operacao, falhas.length ? `A operação ${codigoOperacao(operacao.numero)} foi criada, mas alguns anexos falharam: ${falhas.join("; ")}` : undefined);
     } catch (falha) {
+      if (podeRascunho && falha instanceof ApiError && falha.status === 409 && falha.code === "SALDO_NEGATIVO" && falha.saldoNegativo && falha.saldoNegativo.contaId === contaId) {
+        const snapshot = falha.saldoNegativo;
+        const anterior = saldoConfirmacao;
+        setSaldoMudou(anterior ? anterior.saldoAtual !== snapshot.saldoAtual || anterior.valorPagamento !== snapshot.valorPagamento || anterior.saldoProjetado !== snapshot.saldoProjetado : mostraSaldo && (centavosSaldo(String(saldoConta)) !== centavosSaldo(snapshot.saldoAtual) || paraCentavos(pagamentoAgora.toFixed(2)) !== paraCentavos(snapshot.valorPagamento)));
+        setSaldosConfirmados(atuais => ({ ...atuais, [`${snapshot.propriedadeId}:${snapshot.contaId}`]: snapshot.saldoAtual }));
+        setSaldoConfirmacao(snapshot);
+        return;
+      }
       if (ehAjuste && falha instanceof ApiError && falha.code === "CONFLITO") {
         // Saldo mudou: recarrega para o usuário reconferir a nova diferença antes de reconfirmar.
         setErroConfirmacao(MSG_CONFLITO_SALDO);
@@ -850,6 +889,8 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
         return;
       }
       const mensagem = falha instanceof Error ? falha.message : String(falha);
+      if (cienciaSaldoNegativo && falha instanceof ApiError && falha.status === 0) { setErroSaldo(mensagem); return; }
+      if (cienciaSaldoNegativo) setSaldoConfirmacao(null);
       const linhaConflito = falha instanceof ApiError && falha.produtoExistente ? /^itens\.(\d+)\./.exec(falha.campo ?? "")?.[1] : undefined;
       if (falha instanceof ApiError && falha.produtoExistente && linhaConflito !== undefined && itens[Number(linhaConflito)]) {
         // Nome já usado por um produto da fazenda: a linha oferece trocar pelo produto existente em vez de um erro genérico.
@@ -901,7 +942,7 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
     try {
       if (autosaveTimerRef.current != null) window.clearTimeout(autosaveTimerRef.current);
       if (salvamentoEmCursoRef.current) await salvamentoEmCursoRef.current.catch(() => undefined);
-      await enfileirarSalvamentoRascunho(() => descartarRascunhoOperacao()); concluidaRef.current = true; window.location.reload();
+      await enfileirarSalvamentoRascunho(() => descartarRascunhoOperacao()); removerCachesAnimal(contextoCacheRef.current, rascunhoCacheIdRef.current); concluidaRef.current = true; window.location.reload();
     }
     catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); setSalvando(false); }
   };
@@ -917,6 +958,7 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
         if (!contextoRascunho()) throw new Error("O sítio ou a sessão mudou. Reabra a operação no contexto original.");
         return descartarRascunhoOperacao();
       });
+      removerCachesAnimal(contextoCacheRef.current, rascunhoCacheIdRef.current);
     } catch (falha) {
       concluidaRef.current = false; setSalvando(false);
       if (contextoRascunho()) guardarEdicaoRascunho(ultimaEdicaoRef.current.dados);
@@ -973,13 +1015,13 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
         </section>
         {ehAjuste ? secaoAjuste : comItens ? <>{ehCompraAnimais && <SecaoAnimais
           animais={animais} valores={valoresAnimais} unidade={unidadePrecoAnimal} valorLote={valorLote} sitio={sitioCompra} motivoSemSitio={motivoSemSitio} dataOperacao={data}
-          config={config} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erros={errosAnimais} correcao={modoCorrecao}
+          config={config} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erros={errosAnimais} correcao={modoCorrecao} contextoCache={contextoCache} rascunhoCacheId={rascunhoCacheId}
           onUnidade={(unidade) => { if (unidade === unidadePrecoAnimal) return; if (unidade === "LOTE" && !valorLote && modoCorrecao) setValorLote(String(valoresAnimais.reduce((soma, valor) => soma + (valor?.centavos ?? 0), 0) / 100)); setUnidadePrecoAnimal(unidade); setAnimais((atuais) => atuais.map((animal) => { const original = modoCorrecao && unidade === animaisOriginais?.unidade ? animaisOriginais.animais.find((item) => item.animalId === animal.animalId) : undefined; return original ? { ...animal, preco: original.preco, pesoPago: original.pesoPago } : { ...animal, preco: "" }; })); setErrosAnimais({}); limparCampoInvalido("valorLote"); }}
           onValorLote={setValorLote}
           onAdicionar={(novo) => { setAnimais((atuais) => [...atuais, { ...novo, id: Math.max(0, ...atuais.map((animal) => animal.id)) + 1 }]); setErrosAnimais({}); limparCampoInvalido("animais"); }}
           onSalvar={(id, dados) => { setAnimais((atuais) => atuais.map((animal) => animal.id === id ? { ...animal, ...dados } : animal)); setErrosAnimais({}); limparCampoInvalido(`animal-${id}`); }}
           onAtualizar={(id, patch) => { setAnimais((atuais) => atuais.map((animal) => animal.id === id ? { ...animal, ...patch } : animal)); setErrosAnimais(({ [animais.findIndex((animal) => animal.id === id)]: _descartado, ...resto }) => resto); }}
-          onRemover={(id) => { setAnimais((atuais) => atuais.filter((animal) => animal.id !== id)); setErrosAnimais({}); limparCampoInvalido(`animal-${id}`); }}
+          onRemover={(id) => { if (contextoCache) removerCacheAnimal(chaveCacheAnimal(contextoCache, rascunhoCacheId, `edicao:${id}`)); setAnimais((atuais) => atuais.filter((animal) => animal.id !== id)); setErrosAnimais({}); limparCampoInvalido(`animal-${id}`); }}
         />}<ItensOperacao escolhasItens={escolhasItens} propriedadeId={sitioAtivoId ?? undefined} contextoTipo={({ COMPRA_ESTOQUE: "Compra para estoque", INVENTARIO_INICIAL: "Inventário inicial", BONIFICACAO: "Bonificação", VENDA: "Venda" } as Record<string, string>)[tipo] ?? "Operação"} compraAnimais={ehCompraAnimais} deslocamento={ehCompraAnimais ? animais.length : 0} dataFato={data} itens={itens} setItens={alterarListaItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} saidaEstoque={tipo === "VENDA" || tipo === "DEVOLUCAO"} atualizarItem={atualizarItem} alterarProduto={alterarProduto} escolherProdutoItem={escolherProdutoItem} usarProdutoExistente={usarProdutoExistente} conflitosCatalogo={conflitosCatalogo} aceitaCatalogo={TIPOS_COM_CATALOGO.has(tipo)} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erroPartidas={erroPartidas} /></> :<section><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><ArrowUpDown aria-hidden /></span>Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<Input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
         {["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(tipo) && <section className="grid gap-3 rounded-lg border border-border p-4"><h3 className="font-semibold">Evidência do valor disponibilizado</h3><p className="text-sm text-ink-3">Informe o valor comprovado nos itens, inclusive zero quando documentado. Este registro não cria uma compra ou pagamento.</p><label className="text-sm">Referência do inventário ou origem<Input aria-label="Referência do inventário ou origem" required minLength={2} maxLength={200} value={referenciaValor} onChange={e=>setReferenciaValor(e.target.value)} /></label><label className="text-sm">Evidência do valor do inventário<Textarea aria-label="Evidência do valor do inventário" required minLength={5} maxLength={2000} value={evidenciaValor} onChange={e=>setEvidenciaValor(e.target.value)} /></label></section>}
         {compraComComposicao && <section aria-label="Desconto e frete da nota" className="grid items-start gap-4 md:grid-cols-2">
@@ -1018,7 +1060,7 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
           {parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length && <p className="my-2 text-xs text-ink-3">Informe o valor e a data para calcular as parcelas.</p>}
           <Button type="button" secondary disabled={salvando || (parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length)} onClick={() => setConfirmarSugestao(true)}>Usar sugestão</Button>
         </div>}
-        {!ehAjuste && <EfeitoFinanceiro permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={totalFinanceiro} parcelas={parcelas} setParcelas={setParcelas} somaParcelasConfere={somaParcelasConfere} saldoFuturo={saldoFuturoFinanceiro} entradaSimulacao={entradaSimulacao} assinaturaSimulacao={assinaturaSimulacao} onSimulacao={(resultado) => setSimulacao({ assinatura: assinaturaSimulacao, resultado })} geradorParcelas={geradorParcelas} setGeradorParcelas={setGeradorParcelas} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} />}
+        {!ehAjuste && <EfeitoFinanceiro saldoConta={mostraSaldo ? Number(saldoConta) : null} saldoProjetado={saldoProjetado} permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={totalFinanceiro} parcelas={parcelas} setParcelas={setParcelas} somaParcelasConfere={somaParcelasConfere} saldoFuturo={saldoFuturoFinanceiro} entradaSimulacao={entradaSimulacao} assinaturaSimulacao={assinaturaSimulacao} onSimulacao={(resultado) => setSimulacao({ assinatura: assinaturaSimulacao, resultado })} geradorParcelas={geradorParcelas} setGeradorParcelas={setGeradorParcelas} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} />}
         {podeRascunho && !ehAjuste && !atalhoAjuste && <Documentos anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />}
         {!podeRascunho && <p role="status" className="rounded-lg bg-muted p-3 text-sm">Você pode registrar os valores informados nesta operação. Seu perfil não consulta valores anteriores, rascunhos ou documentos financeiros. Este formulário não é salvo ao sair.</p>}
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><Button type="button" secondary disabled={salvando} onClick={() => { if (!podeRascunho && temConteudoRascunho) { setConfirmarSaida(true); return; } navegarPara("/financeiro/operacoes"); }}>Voltar para operações</Button>{podeRascunho && !operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button>}</footer>
@@ -1027,8 +1069,9 @@ export function FormOperacao({ config: configOriginal, rascunho = null, condicao
           <p className="flex items-center gap-2 text-sm font-semibold"><CircleAlert size={16} className="shrink-0 text-[var(--warn)]" aria-hidden />{ehAjuste && ajusteSemDiferenca ? "Nenhum ajuste necessário" : "Campos pendentes"}</p>
           {ehAjuste && ajusteSemDiferenca ? <p className="mt-1 text-xs text-ink-3">A quantidade contada é igual ao saldo atual.</p> :
             <ul aria-label="Campos pendentes" className="mt-2 list-disc space-y-1 pl-5 text-xs text-ink-3">{pendencias.map(item => <li key={item}>{item}</li>)}</ul>}
-        </div> : <><div className="mt-3 text-3xl font-semibold tabular-nums text-primary">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-ink-3">Diferença de estoque</div>}{comItens && <div className="mt-3 border-y border-border py-3"><div className="mb-3 flex items-center gap-2 text-xs font-semibold text-primary"><span className="fin-section-icon fin-form-icon"><Package aria-hidden /></span>Itens da operação</div><div className="space-y-2">{ehCompraAnimais && animais.map((animal, indice) => { const valor = valoresAnimais[indice]; return <div key={`animal-${animal.id}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-ink">Animal {animal.resumo.brinco}</div><div className="text-ink-3">{valor ? `${Number(valor.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${valor.unidade}` : "Preço pendente"}</div></div><strong className="self-center whitespace-nowrap text-ink">{brl((valor?.centavos ?? 0) / 100)}</strong></div>; })}{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-ink">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-ink-3">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-ink">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-3 text-xs"}><div className="space-y-2"><p className="flex items-center gap-2 font-semibold text-ink-3"><span className="fin-section-icon fin-form-icon"><ChartPie aria-hidden /></span>Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-ink-3">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><section aria-label="Efeitos ao confirmar" className="mt-4 space-y-2 border-t border-border pt-3"><h3 className="text-xs font-semibold text-primary">Efeitos ao confirmar</h3>{compraComComposicao && (Number(logisticaValor) > 0 || Number(descontoComercial) > 0) && <ReviewLine>{ehCompraAnimais ? "Animais e itens" : "Produtos"} {brl(composicaoCompra.liquidos.reduce((s,v)=>s+v,0))}{Number(descontoComercial) > 0 && <> já com desconto de {brl(Number(descontoComercial))}</>}{Number(logisticaValor) > 0 && <>; frete {brl(Number(logisticaValor))} como despesa separada</>}.</ReviewLine>}{ehCompraAnimais && <><ReviewLine tone="brown"><strong>Rebanho</strong> · {modoCorrecao ? <>Manter {animais.length} {animais.length === 1 ? "animal" : "animais"} da compra original (reativa os que estavam baixados pelo estorno).</> : animais.length > 0 ? <>Cadastrar {animais.length} {animais.length === 1 ? "animal" : "animais"} no Rebanho{sitioCompra ? ` do sítio ${sitioCompra.nome}` : ""}, com origem comprado.</> : "Adicione os animais para ver o cadastro no Rebanho."}</ReviewLine><ReviewLine tone="brown">Nenhum movimento de estoque será gerado.</ReviewLine></>}{ehAjuste && <ReviewLine tone="brown"><strong>Estoque</strong> · {saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : diferencaMilesimos === null ? "Informe a quantidade contada para ver o efeito no estoque." : "Nenhum movimento físico de estoque será gerado: a quantidade contada é igual ao saldo."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown"><strong>Estoque</strong> · {tipo === "VENDA" || tipo === "DEVOLUCAO" ? "Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda." : movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine><strong>Conta financeira</strong> · Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber"><strong>Compromissos</strong> · Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine><strong>Conta financeira</strong> · Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber"><strong>Compromissos</strong> · Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{!ehAjuste && (anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</section></>}</div></CollapsibleContent></Collapsible><div data-testid="confirmacao-operacao" className="shrink-0 border-t border-border p-4">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-destructive/30 bg-[var(--fin-danger-bg)] p-3 text-sm text-destructive">{erroConfirmacao}</div>}<Button type="submit" carregando={salvando || anexosEnviando.length > 0} disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && (ajusteSemDiferenca || ajusteConsolidado))} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full ">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button></div></aside>
+        </div> : <><div className="mt-3 text-3xl font-semibold tabular-nums text-primary">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-ink-3">Diferença de estoque</div>}{comItens && <div className="mt-3 border-y border-border py-3"><div className="mb-3 flex items-center gap-2 text-xs font-semibold text-primary"><span className="fin-section-icon fin-form-icon"><Package aria-hidden /></span>Itens da operação</div><div className="space-y-2">{ehCompraAnimais && animais.map((animal, indice) => { const valor = valoresAnimais[indice]; return <div key={`animal-${animal.id}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-ink">Animal {animal.resumo.brinco}</div><div className="text-ink-3">{valor ? `${Number(valor.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${valor.unidade}` : "Preço pendente"}</div></div><strong className="self-center whitespace-nowrap text-ink">{brl((valor?.centavos ?? 0) / 100)}</strong></div>; })}{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-ink">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-ink-3">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-ink">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-3 text-xs"}><div className="space-y-2"><p className="flex items-center gap-2 font-semibold text-ink-3"><span className="fin-section-icon fin-form-icon"><ChartPie aria-hidden /></span>Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-ink-3">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><section aria-label="Efeitos ao confirmar" className="mt-4 space-y-2 border-t border-border pt-3"><h3 className="text-xs font-semibold text-primary">Efeitos ao confirmar</h3>{mostraSaldo && saldoProjetado !== null && <div className="space-y-1 text-xs"><p className="font-semibold text-ink">{contaSelecionada?.nome}</p><p className="flex justify-between gap-3"><span>Saldo atual</span><strong>{brl(Number(saldoConta))}</strong></p><p className="flex justify-between gap-3"><span>Pagamento agora</span><strong>{brl(pagamentoAgora)}</strong></p><p className={`flex justify-between gap-3 ${saldoProjetado < 0 ? "text-[var(--warn)]" : ""}`}><span>Saldo após pagamento</span><strong>{brl(saldoProjetado)}</strong></p></div>}{compraComComposicao && (Number(logisticaValor) > 0 || Number(descontoComercial) > 0) && <ReviewLine>{ehCompraAnimais ? "Animais e itens" : "Produtos"} {brl(composicaoCompra.liquidos.reduce((s,v)=>s+v,0))}{Number(descontoComercial) > 0 && <> já com desconto de {brl(Number(descontoComercial))}</>}{Number(logisticaValor) > 0 && <>; frete {brl(Number(logisticaValor))} como despesa separada</>}.</ReviewLine>}{ehCompraAnimais && <><ReviewLine tone="brown"><strong>Rebanho</strong> · {modoCorrecao ? <>Manter {animais.length} {animais.length === 1 ? "animal" : "animais"} da compra original (reativa os que estavam baixados pelo estorno).</> : animais.length > 0 ? <>Cadastrar {animais.length} {animais.length === 1 ? "animal" : "animais"} no Rebanho{sitioCompra ? ` do sítio ${sitioCompra.nome}` : ""}, com origem comprado.</> : "Adicione os animais para ver o cadastro no Rebanho."}</ReviewLine><ReviewLine tone="brown">Nenhum movimento de estoque será gerado.</ReviewLine></>}{ehAjuste && <ReviewLine tone="brown"><strong>Estoque</strong> · {saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : diferencaMilesimos === null ? "Informe a quantidade contada para ver o efeito no estoque." : "Nenhum movimento físico de estoque será gerado: a quantidade contada é igual ao saldo."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown"><strong>Estoque</strong> · {tipo === "VENDA" || tipo === "DEVOLUCAO" ? "Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda." : movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && !mostraSaldo && <ReviewLine><strong>Conta financeira</strong> · Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber"><strong>Compromissos</strong> · Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <>{!mostraSaldo && <ReviewLine><strong>Conta financeira</strong> · Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine>}<ReviewLine tone="amber"><strong>Compromissos</strong> · Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{!ehAjuste && (anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</section></>}</div></CollapsibleContent></Collapsible><div data-testid="confirmacao-operacao" className="shrink-0 border-t border-border p-4">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-destructive/30 bg-[var(--fin-danger-bg)] p-3 text-sm text-destructive">{erroConfirmacao}</div>}<Button type="submit" carregando={salvando || anexosEnviando.length > 0} disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && (ajusteSemDiferenca || ajusteConsolidado))} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full ">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button></div></aside>
     </form>
+    <ConfirmDialog open={!!saldoConfirmacao} focoInicial="cancelar" title="Saldo negativo na conta" cancelLabel="Revisar conta" confirmLabel="Confirmar com saldo negativo" processando={salvando} onCancel={() => { setSaldoConfirmacao(null); window.setTimeout(() => setFocoPendente({ campo: "contaId", elementId: "campo-contaId" }), 0); }} onConfirm={() => { if (saldoConfirmacao) void submit(undefined, saldoConfirmacao.token); }} message={saldoConfirmacao && <div className="space-y-2">{erroSaldo && <p role="alert" className="text-destructive">{erroSaldo}</p>}{saldoMudou && <p role="status">O saldo mudou. Confira os valores atualizados e confirme novamente.</p>}<p>{Number(saldoConfirmacao.saldoAtual) < 0 ? "Esta conta já está negativa. O pagamento reduzirá ainda mais o saldo." : "O pagamento deixará esta conta com saldo negativo."}</p><p><strong>Conta:</strong> {config.contas.find(c => c.id === saldoConfirmacao.contaId)?.nome}</p><p>Saldo atual: {brl(Number(saldoConfirmacao.saldoAtual))}</p><p>Pagamento agora: {brl(Number(saldoConfirmacao.valorPagamento))}</p><p>Saldo após pagamento: {brl(Number(saldoConfirmacao.saldoProjetado))}</p><p>Total da operação: {brl(totalFinanceiro)}</p></div>} />
     <ConfirmDialog open={confirmarSaida} title="Sair sem registrar?" message="Este perfil não salva rascunhos financeiros. Os dados deste formulário serão perdidos ao sair." confirmLabel="Sair sem registrar" cancelLabel="Continuar preenchendo" onConfirm={() => navegarPara("/financeiro/operacoes")} onCancel={() => setConfirmarSaida(false)} />
     <ConfirmDialog open={confirmarSugestao} title="Usar a sugestão do parceiro?" message="As condições sugeridas substituirão as condições e parcelas correspondentes já preenchidas. Depois você poderá editá-las livremente." confirmLabel="Aplicar sugestão" onConfirm={aplicarSugestao} onCancel={() => setConfirmarSugestao(false)} />
     <ConfirmDialog
@@ -1086,7 +1129,7 @@ type GeradorParcelas = NonNullable<EstadoFormulario["geradorParcelas"]>;
 type PropsEfeitoFinanceiro = {
   permite: boolean; condicao: Condicao; alterarCondicao: (condicao: Condicao) => void;
   contaId: string; setContaId: (id: string) => void; formaPagamento: string; setFormaPagamento: (forma: string) => void;
-  config: ConfiguracoesFinanceiras; valorAgora: string; setValorAgora: (valor: string) => void;
+  saldoConta: number | null; saldoProjetado: number | null; config: ConfiguracoesFinanceiras; valorAgora: string; setValorAgora: (valor: string) => void;
   total: number; parcelas: ParcelaForm[]; setParcelas: React.Dispatch<React.SetStateAction<ParcelaForm[]>>;
   somaParcelasConfere: boolean; saldoFuturo: number;
   entradaSimulacao: { itens: ({ quantidade: string; valorTotal: string } | { quantidade: string; valorUnitario: string })[]; valorTotal?: string; valorPagoAgora?: string };
@@ -1095,7 +1138,7 @@ type PropsEfeitoFinanceiro = {
   campoInvalido: string | null; limparCampoInvalido: (campo: string) => void;
 };
 
-function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setContaId, formaPagamento, setFormaPagamento, config, valorAgora, setValorAgora, total, parcelas, setParcelas, somaParcelasConfere, saldoFuturo, entradaSimulacao, onSimulacao, geradorParcelas, setGeradorParcelas, campoInvalido, limparCampoInvalido }: PropsEfeitoFinanceiro) {
+function EfeitoFinanceiro({ saldoConta, saldoProjetado, permite, condicao, alterarCondicao, contaId, setContaId, formaPagamento, setFormaPagamento, config, valorAgora, setValorAgora, total, parcelas, setParcelas, somaParcelasConfere, saldoFuturo, entradaSimulacao, onSimulacao, geradorParcelas, setGeradorParcelas, campoInvalido, limparCampoInvalido }: PropsEfeitoFinanceiro) {
   const [gerando, setGerando] = useState(false);
   const [erroGeracao, setErroGeracao] = useState<string | null>(null);
   const [campoInvalidoGeracao, setCampoInvalidoGeracao] = useState<string | null>(null);
@@ -1145,7 +1188,7 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
     {!permite ? <div className="rounded-lg bg-muted p-4 text-sm text-primary"><strong>Sem movimentação financeira</strong></div> : <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-3">
         <label className="text-sm font-medium">Condição<SelectCampo aria-label="Condição financeira" className={SELECT} value={condicao} onValueChange={(valor) => alterarCondicao(valor as Condicao)}><option value="A_VISTA">Liquidação integral na operação</option><option value="A_PRAZO">Liquidação integral a prazo</option><option value="PARCIAL">Liquidação parcial com saldo a prazo</option><option value="SEM_EFEITO_FINANCEIRO">Sem movimentação financeira</option></SelectCampo></label>
-        {(condicao === "A_VISTA" || condicao === "PARCIAL") && <><label className="text-sm font-medium">Conta financeira *<SelectCampo id="campo-contaId" aria-label="Conta financeira" aria-invalid={campoInvalido === "contaId" || undefined} aria-describedby={campoInvalido === "contaId" ? "erro-contaId" : undefined} required className={SELECT + (campoInvalido === "contaId" ? " border-destructive ring-2 ring-destructive/20" : "")} value={contaId} onValueChange={(valor) => { setContaId(valor); limparCampoInvalido("contaId"); }}><option value="">Selecione</option>{config.contas.filter((conta) => conta.ativo).map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</SelectCampo>{campoInvalido === "contaId" && <CampoErro id="erro-contaId">Selecione a conta financeira.</CampoErro>}</label><label className="text-sm font-medium">Forma de liquidação<SelectCampo aria-label="Forma de liquidação" className={SELECT} value={formaPagamento} onValueChange={(valor) => setFormaPagamento(valor)}>{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</SelectCampo></label></>}
+        {(condicao === "A_VISTA" || condicao === "PARCIAL") && <><label className="text-sm font-medium">Conta financeira *<SelectCampo id="campo-contaId" aria-label="Conta financeira" aria-invalid={campoInvalido === "contaId" || undefined} aria-describedby={campoInvalido === "contaId" ? "erro-contaId" : undefined} required className={SELECT + (campoInvalido === "contaId" ? " border-destructive ring-2 ring-destructive/20" : "")} value={contaId} onValueChange={(valor) => { setContaId(valor); limparCampoInvalido("contaId"); }}><option value="">Selecione</option>{config.contas.filter((conta) => conta.ativo).map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</SelectCampo>{campoInvalido === "contaId" && <CampoErro id="erro-contaId">Selecione a conta financeira.</CampoErro>}{saldoConta !== null && <span className="mt-2 block text-xs font-normal text-ink-3">Saldo atual: <strong>{brl(saldoConta)}</strong>{saldoProjetado !== null && saldoProjetado < 0 && <span role="status" className="mt-1 block text-[var(--warn)]">{saldoConta < 0 ? "Esta conta já está negativa. O pagamento reduzirá ainda mais o saldo." : "O pagamento deixará esta conta com saldo negativo."}</span>}</span>}</label><label className="text-sm font-medium">Forma de liquidação<SelectCampo aria-label="Forma de liquidação" className={SELECT} value={formaPagamento} onValueChange={(valor) => setFormaPagamento(valor)}>{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</SelectCampo></label></>}
       </div>
       {condicao === "PARCIAL" && <label className="block max-w-xs text-sm font-medium">Valor liquidado na operação *<Input id="campo-valorAgora" aria-label="Valor liquidado na operação" aria-invalid={campoInvalido === "valorAgora" || undefined} aria-describedby={campoInvalido === "valorAgora" ? "erro-valorAgora" : undefined} required min="0.01" max={Math.max(total - 0.01, 0)} step="0.01" type="number" className={CAMPO + (campoInvalido === "valorAgora" ? " border-destructive ring-2 ring-destructive/20" : "")} value={valorAgora} onChange={(e) => { setValorAgora(e.target.value); limparCampoInvalido("valorAgora"); }} />{campoInvalido === "valorAgora" && <CampoErro id="erro-valorAgora">Informe o valor liquidado agora.</CampoErro>}</label>}
       {aPrazo && <div id="secao-parcelas" tabIndex={-1} className={`rounded-xl border border-border bg-muted p-4 outline-none${campoInvalido === "parcelas" ? " ring-2 ring-destructive/30" : ""}`}>

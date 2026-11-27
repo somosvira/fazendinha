@@ -8,6 +8,7 @@ import { obterEstruturaCadastro, obterProcedimentosEtapaCadastro, type EtapaEstr
 import { UNIDADES } from "../../../lib/unidades";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { EsqueletoLista } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 export function intervaloProcedimento(intervalo: number, unidade: string) {
   return `${unidade === "HORAS" ? "H" : "D"}${intervalo.toLocaleString("pt-BR", { maximumFractionDigits: 20 })}`;
@@ -27,8 +28,8 @@ function ProcedimentosEtapa({ origem, etapa }: { origem: CadastroProtocoloMeta; 
     <header><div><h3>{etapa.nome}</h3>{!etapa.agrupada && <p>Procedimento individual sem agrupamento em etapa</p>}</div><span>{etapa.modoAtendimento === "AUTOMATIZADA" ? "Confirmação do previsto" : etapa.modoAtendimento === "MANUAL" ? "Preenchimento no atendimento" : "Forma de atendimento não informada"}</span></header>
     <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(v=>v+1)}>Tentar carregar procedimentos novamente</Button>}
     {carregando && <EsqueletoLista label="Carregando procedimentos" />}
-    {!carregando && !erro && <ConsultaOperacional<ProcedimentoCadastro> rotulo={`Procedimentos de ${etapa.nome}`} itens={dados.itens} chaveDe={p=>p.id} colunas={[
-      {chave:"quando",titulo:"Quando",larguraMinima:85,celula:p=>intervaloProcedimento(p.intervalo,p.unidadeIntervalo)},
+    {!carregando && !erro && <ConsultaOperacional<ProcedimentoCadastro> icone={ICONES_TABELA.etapaProtocolo} rotulo={`Procedimentos de ${etapa.nome}`} itens={dados.itens} chaveDe={p=>p.id} colunas={[
+      {chave:"quando",titulo:"Quando",larguraMinima:85,celula:p=>p.referenciaPrazoReconfirmacao ? "Após o primeiro DG positivo" : p.referenciaPrazoDiagnostico ? "Após a tentativa" : intervaloProcedimento(p.intervalo,p.unidadeIntervalo)},
       {chave:"procedimento",titulo:"Procedimento",larguraMinima:170,principal:true,celula:p=><><strong>{p.procedimento}</strong>{p.nome !== p.procedimento && <small>{p.nome}</small>}</>},
       {chave:"referencia",titulo:"Produto / modelo",larguraMinima:230,larguraFlexivel:true,celula:p=><>{p.definirMaterialNoAtendimento ? "Material genético definido no atendimento, por animal ou grupo" : p.referencia ?? (p.procedimento === "Retirada de dispositivo" ? "Sem produto vinculado" : "Referência não informada")}{p.via && <small>Via: {p.via}</small>}{p.orientacaoUso && <small>Orientação de uso: {p.orientacaoUso}</small>}</>},
       {chave:"quantidade",titulo:"Quantidade por animal",larguraMinima:150,celula:p=>p.quantidade ? `${p.quantidade} ${(Object.entries(UNIDADES).find(([chave])=>chave===p.unidadeQuantidade)?.[1].rotulo ?? p.unidadeQuantidade ?? "(unidade não informada)")}` : p.definirMaterialNoAtendimento ? "Definida no atendimento" : "—"},

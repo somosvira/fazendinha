@@ -43,3 +43,23 @@ it("devolve calendário completo e metadados de momento para derivação sem arr
   const resultado = await listarAcoesCadastroProtocolo("p", {});
   expect(resultado.itens[0]).toMatchObject({ intervalo: 7.5, unidade: "DIAS", orientacaoTemporal, momento });
 });
+
+it("preserva a referência factual na segunda página da derivação sem acesso a valores", async () => {
+  db.protocolo.findUnique.mockResolvedValue({ tipo: "REPRODUTIVO", atualizadoEm: revisao });
+  db.etapaProtocolo.findMany.mockResolvedValue([{ id: "dg", ordem: 11, configuracao: {
+    referenciaPrazoDiagnostico: true, tipo: "AVALIACAO", planoAvaliacao: { tipo: "DIAGNOSTICO" }, referenciasCusto: { servico: { valorUnitario: "15" } },
+  } }]);
+  const pagina = await listarAcoesCadastroProtocolo("p", { pagina: 2, revisao: revisao.toISOString() }, false);
+  expect(pagina).toMatchObject({ pagina: 2, itens: [{ id: "dg", referenciaPrazoDiagnostico: true }] });
+  expect(pagina.itens[0]).not.toHaveProperty("referenciasCusto");
+});
+
+it("oculta referências de custo reprodutivas e preserva o contrato do editor sanitário", async () => {
+  const referenciasCusto = { material: { valorUnitario: "123.45", origem: "Tabela" } };
+  db.etapaProtocolo.findMany.mockResolvedValue([{ id: "e", configuracao: { referenciasCusto, planoAplicacao: { dose: "2" } } }]);
+  expect((await listarAcoesCadastroProtocolo("p", {}, false)).itens[0]).toMatchObject({ configuracao: { referenciasCusto } });
+  db.protocolo.findUnique.mockResolvedValue({ ...meta, tipo: "REPRODUTIVO" });
+  expect((await listarAcoesCadastroProtocolo("p", {}, false)).itens[0]).toMatchObject({ planoAplicacao: { dose: "2" } });
+  expect((await listarAcoesCadastroProtocolo("p", {}, false)).itens[0]).not.toHaveProperty("referenciasCusto");
+  expect((await listarAcoesCadastroProtocolo("p", {}, true)).itens[0]).toMatchObject({ referenciasCusto });
+});

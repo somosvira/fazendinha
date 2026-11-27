@@ -4,7 +4,7 @@
 
 `server/prisma/seed.ts` é a única entrada demonstrativa e o comando configurado no Prisma. Seus módulos internos ficam em `server/prisma/seed/`; o [guia da seed](../server/prisma/seed/README.md) descreve os cenários e as chaves para navegação. O código está preparado para o cenário integrado; o resultado de cada ambiente depende da baseline aplicada e da conferência efetivamente executada. A existência do gerador não comprova carga completa, arquivos R2 ou homologação pela fazenda.
 
-O destino permitido é exclusivamente o PostgreSQL local **`fazendinha_seedatev3`**, fora de produção, com `STORAGE_NAMESPACE=dev` ou `test`. `DATABASE_URL` e `DIRECT_URL`, quando fornecida, devem apontar para esse mesmo banco. O preflight exige a baseline canônica `20261025000000_base_unificada` como primeira migration, seguida de incrementais: cada arquivo deve corresponder a uma única aplicação ativa concluída com checksum idêntico, sem migrations desconhecidas ou pendentes no banco. Tentativas revertidas não substituem uma aplicação concluída. A identidade do manifesto permanece ancorada na baseline, permitindo retomar após incrementais válidas; manifesto e exclusão mútua continuam conferidos antes de importar os serviços que escrevem. O executor não cria banco, limpa dados ou aplica migrations.
+O destino permitido é exclusivamente o PostgreSQL local **`fazendinha_seedatev3`**, fora de produção, com `STORAGE_NAMESPACE=dev` ou `test`. `DATABASE_URL` e `DIRECT_URL`, quando fornecida, devem apontar para esse mesmo banco. O preflight confere todas as migrations ativas, seus checksums e conclusão: aceita a cadeia nova e/ou o conjunto legado completo e conhecido de `4271f299`, sem migrations desconhecidas, incompletas ou duplicadas. Tentativas revertidas não substituem uma aplicação concluída. Uma seed nova exige a baseline `20261124170000_base_unificada`; um manifesto existente conserva sua âncora e identidade anteriores, conferidas contra o ledger e a instância. A verificação não altera o manifesto, aplica migrations, cria banco ou limpa dados. A reconciliação da cadeia para ambientes existentes segue [deploy](../DEPLOY.md#banco-e-bootstrap).
 
 Após configurar `server/.env` conforme o [README](../README.md), use:
 
@@ -30,7 +30,7 @@ A seed cria somente os dois usuários abaixo, ativos e como donos, com o maior p
 | `fellipe@test.com` | `test1234` |
 | `rafael@test.com` | `test1234` |
 
-Perfis restritos são fixtures temporárias de testes, sem outros usuários persistentes na seed. Valide as permissões também na API: visibilidade de botão não comprova autorização e `verValores` precisa ser respeitado em DTOs, custos e relatórios. Consulte o [contrato financeiro](financeiro-rebuild-contrato.md#permissões-e-documentos).
+Perfis restritos são fixtures temporárias de testes, sem outros usuários persistentes na seed. Valide as permissões também na API: visibilidade de botão não comprova autorização e `verValores` precisa ser respeitado em DTOs, custos e relatórios. Consulte o [controle de acesso do Financeiro](../server/src/routes/financeiro.ts).
 
 ## Retomada, arquivos e verificação
 
@@ -115,7 +115,7 @@ A carga conserva anotações e dados originais de IATF, relações comprovadas, 
 
 ### Baixas históricas sem classificação
 
-A migration incremental `20261029000000_baixa_historica_tipo_indeterminado` acrescenta o tipo específico e as evidências de regularização, sem alterar registros antigos. Não executá-la incidentalmente ao testar interface. As rotas e precauções do fluxo estão no [contrato da Pecuária](pecuaria/README.md#regularização-de-baixa-histórica).
+A migration incremental `20261029000000_baixa_historica_tipo_indeterminado` acrescenta o tipo específico e as evidências de regularização, sem alterar registros antigos. Não executá-la incidentalmente ao testar interface. Confira as verificações do fluxo no [serviço de regularização histórica](../server/src/services/pecuaria/rebanho/baixas-historicas.ts).
 
 O importador técnico V1 não transforma mais uma classe de descarte em venda ou ausência de tipo em morte. O cálculo puro `classificacao-baixa-origem.ts` recusa casos ambíguos, preservando o rollback do animal já existente no importador e o relatório de falhas. A resolução desses casos exige dados comprovados e a regularização específica; não refazer uma carga nem apagar o banco para suprir essa lacuna.
 
@@ -133,7 +133,7 @@ As decisões são diferentes:
 
 Candidatos a duplicidade exigem `VINCULAR` ou revisão explícita com `duplicidadesRevisadas` cobrindo todos os IDs apresentados e motivo. A decisão não cria equivalências por proximidade temporal. Mapeamentos de unidade, escala e origem precisam estar comprovados nos dados do domínio; a ferramenta não os preenche por suposição.
 
-Os handlers cobrem `PESAGEM`, `LEITE` documental, `ECC`, `QUALIDADE` e `MASTITE`, conforme o [contrato de incorporação histórica](pecuaria/leite.md#incorporação-documental-e-clínica). `CORRIGIR` está habilitado somente para o documento `LEITE`, com versão, motivo e identidade preservada. Pesagens e fatos clínicos não são reescritos por essa operação; exigem revisão auditada específica do domínio. O envelope não amplia as permissões de correção de cada handler.
+Os handlers cobrem `PESAGEM`, `LEITE` documental, `ECC`, `QUALIDADE` e `MASTITE`, conforme o [serviço de incorporação histórica](../server/src/services/pecuaria/importacao/historico.ts). `CORRIGIR` está habilitado somente para o documento `LEITE`, com versão, motivo e identidade preservada. Pesagens e fatos clínicos não são reescritos por essa operação; exigem revisão auditada específica do domínio. O envelope não amplia as permissões de correção de cada handler.
 
 Execute em `server/`, com o `.env` autorizado configurado. Prévia é o padrão e só lê o banco; o relatório é gravado no arquivo solicitado:
 

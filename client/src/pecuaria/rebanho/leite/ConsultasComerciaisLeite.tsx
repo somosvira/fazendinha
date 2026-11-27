@@ -1,6 +1,5 @@
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { Truck } from "lucide-react";
-import { ColetaVisual } from "./VisuaisConsultaLeite";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { Button } from "@/components/ui/button";
 import { Pill, Paginacao } from "../../../financeiro/financeiro-ui";
@@ -54,15 +53,14 @@ export function ConsultasComerciaisLeite({ tipo, podeLancar = false }: { tipo: "
     <BarraComercialLeite filtros={filtros} parceiros={parceiros} onChange={f => { setFiltros(f); setPagina(1); }} />
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando {tipo}…</p> : <>
       {!dados.itens.length && !dados.total && <Empty>Nenhum registro neste recorte.</Empty>}
-      {!!(dados.itens.length || dados.total) && <ListaConsultaLeite icone={tipo === "coletas" ? Truck : undefined} layout="grade" renderizarVisual={tipo === "coletas" ? r => <ColetaVisual item={r} acao={<Button variant="outline" asChild><a href={`/pecuaria/leite?leiteSecao=vendas&operacaoLeiteId=${encodeURIComponent(r.comercialId)}&operacoesDe=${r.inicio}&operacoesAte=${r.fim}`}>Abrir operação e coletas</a></Button>}/> : undefined} preferencia={tipo === "coletas" ? "coletasVisualizacao" : "vendasConsultaVisualizacao"} rotulo={tipo === "coletas" ? "Coletas pela data real" : "Vendas pelo período comercial"} itens={dados.itens} chaveDe={r => r.id} colunas={[
+      {!!(dados.itens.length || dados.total) && <ListaConsultaLeite icone={tipo === "coletas" ? Truck : undefined} rotulo={tipo === "coletas" ? "Coletas pela data real" : "Vendas pelo período comercial"} itens={dados.itens} chaveDe={r => r.id} colunas={[
         { chave: "periodo", titulo: tipo === "coletas" ? "Data física" : "Período", larguraMinima: 130, celula: r => tipo === "coletas" ? r.data ? dataPt(r.data) : "Data não informada" : `${dataPt(r.inicio)} a ${dataPt(r.fim)}` },
         { chave: "referencia", titulo: "Coleta", larguraMinima: 160, celula: r => r.referencia },
         { chave: "comprador", titulo: "Comprador", principal: true, larguraMinima: 160, celula: r => <strong>{r.parceiroNome}</strong> },
         { chave: "litros", titulo: "Retirado (L)", alinhamento: "direita", larguraMinima: 110, celula: r => formatarLitros(r.quantidadeLitros !== undefined ? Number(r.quantidadeLitros) : r.fechamento ? Number(r.fechamento.volumeReconhecido) : null) },
         { chave: "situacao", titulo: "Preço", larguraMinima: 150, celula: r => <Pill tone={r.situacao === "PRECO_PENDENTE" ? "amber" : "green"}>{r.situacao === "PRECO_PENDENTE" ? "Preço pendente" : "Preço definido"}</Pill> },
         { chave: "detalhe", titulo: "Ação", larguraMinima: 180, acoes: true, celula: r => <Button variant="outline" asChild><a href={`/pecuaria/leite?leiteSecao=vendas&operacaoLeiteId=${encodeURIComponent(r.comercialId)}&operacoesDe=${r.inicio}&operacoesAte=${r.fim}`}>Abrir operação e coletas</a></Button> },
-      ]} />}
-      <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de coletas" substantivo="coletas" idSelect="pagina-coletas-leite" onPagina={setPagina} />
+      ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação de coletas" substantivo="coletas" idSelect="pagina-coletas-leite" onPagina={setPagina} />} />}
     </>}
     <DialogComercialLeite titulo="Registrar retirada" aberto={registrar} onFechar={() => { setRegistrar(false); setRevisao(r => r + 1); }}>
       <p>Escolha uma operação aberta do período para registrar a coleta sem preço.</p>

@@ -24,7 +24,7 @@ describe('sugestão de destino no parto',()=>{
   await waitFor(()=>expect(campo).toHaveProperty('value','bez'));
   expect(consultarBezerreiro).toHaveBeenCalledWith('/configuracoes',7);
   expect(screen.getByText(/Ao salvar, entra no Bezerreiro sem programação alimentar/)).toBeTruthy();
-  fireEvent.click(campo);fireEvent.change(campo,{target:{value:'__sem_lote__'}});fireEvent.change(screen.getByLabelText('Brinco (pode ficar pendente)'),{target:{value:'601'}});
+  fireEvent.click(campo);fireEvent.change(campo,{target:{value:'__sem_lote__'}});fireEvent.change(screen.getByLabelText('Brinco'),{target:{value:'601'}});
   expect(campo).toHaveProperty('value','__sem_lote__');
  });
  it('não escolhe arbitrariamente com mais de um perfil',async()=>{

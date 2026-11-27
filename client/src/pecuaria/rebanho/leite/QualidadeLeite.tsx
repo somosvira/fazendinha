@@ -7,8 +7,6 @@ import { valorResultadoQualidade } from './resultado-qualidade';
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { formatarDataBR } from "../lib/rotulos";
-import { CartaoAmostraVisual } from "./VisuaisConsultaLeite";
-import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { SubTabs } from "../../../components/SubTabs";
@@ -19,7 +17,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Paginacao } from "../../../financeiro/financeiro-ui";
 import "./consultas-leite.css";
 import { Button } from "@/components/ui/button";
-import { SecaoDetalhesLeite as SecaoHistoricoLeite } from "./SecaoDetalhesLeite";
 import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
 import { useEffect, useId, useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -140,7 +137,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
   return (
     <section className="leite-operacoes">
       <CabecalhoRotinaLeite titulo="Qualidade do leite" rotuloAjuda="Sobre qualidade do leite" />
-      <SubTabs variant="financeiro" ariaLabel="Consultas da qualidade" tabs={[{ id: "amostras", label: "Amostras" }, { id: "resultados", label: "Resultados" }]} active={aba} onSelect={setAba} />
+      <SubTabs aparencia="segmentado" variant="financeiro" ariaLabel="Consultas da qualidade" tabs={[{ id: "amostras", label: "Amostras" }, { id: "resultados", label: "Resultados" }]} active={aba} onSelect={setAba} />
       {aba === "amostras" && <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Consultar até"><DatePicker required value={filtros.rascunho.data} onChange={(valor) => { if(valor) filtros.editar("data", valor); }} /></CampoFiltro>} acao={<>
         {podeLancar && (
           <Button disabled={!propriedadeResolvida}
@@ -192,21 +189,16 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
       {aba === "amostras" && amostras && (
         <>
           <div className="leite-qualidade-contexto"><span><CalendarDays size={17} aria-hidden />Amostras até <time dateTime={data}>{formatarDataBR(data)}</time></span></div>
-          {!amostras.itens.length && (
-            <p>
-              Nenhuma amostra neste período. Registre a coleta mesmo se o
-              resultado ainda não chegou.
-            </p>
-          )}
-          <ListaConsultaLeite icone={FlaskConical} layout="grade" renderizarVisual={a => <CartaoAmostraVisual amostra={a} abrir={() => { setSelecionada(a); setNova(false); }}/>} preferencia="qualidadeLeiteVisualizacao" compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
+          {!amostras.itens.length ? <Empty icone={FlaskConical}><strong>Nenhuma amostra até {formatarDataBR(data)}</strong><p>Registre a coleta mesmo se o resultado ainda não chegou.</p></Empty> : <>
+          <ListaConsultaLeite icone={FlaskConical} compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
             { chave: "data", titulo: "Coleta", principal: true, celula: a => a.data.slice(0, 10).split("-").reverse().join("/") },
             { chave: "tipo", titulo: "Tipo", celula: a => a.sujeito.tipo === "ANIMAL" ? "Individual" : "Coletiva" },
             { chave: "origem", titulo: "Origem", celula: a => a.sujeito.tipo === "ANIMAL" ? a.animal?.brinco ?? "Sem brinco" : a.sujeito.origem },
             { chave: "formato", titulo: "Formato", celula: a => a.formatoSnapshot.nome },
             { chave: "situacao", titulo: "Situação", celula: a => a.status === "ANULADO" ? "Anulada" : a.realizacao === "COLETA_REGISTRADA" ? "Aguardando resultado" : "Resultado informado" },
             { chave: "acoes", titulo: "Ações", acoes: true, celula: a => <Button variant="outline" onClick={() => { setSelecionada(a); setNova(false); }}>Abrir amostra</Button> },
-          ]} />
-          <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(amostras.total / 20))} total={amostras.total} porPagina={20} rotulo="Paginação das amostras" substantivo="amostras" idSelect="pagina-amostras-leite" onPagina={setPagina} />
+          ]} rodape={<Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(amostras.total / 20))} total={amostras.total} porPagina={20} rotulo="Paginação das amostras" substantivo="amostras" idSelect="pagina-amostras-leite" onPagina={setPagina} />} />
+          </>}
         </>
       )}
       {selecionada && (
@@ -704,7 +696,7 @@ function DetalheAmostra({
     <section className="leite-operacoes" aria-label="Detalhe da amostra">
       <header className="leite-laudo-identidade"><div><h2>{inicial.sujeito.tipo === "COLETIVO" ? inicial.sujeito.origem : [inicial.animal?.brinco,inicial.animal?.nome].filter(Boolean).join(" · ")}</h2><span>{inicial.formatoSnapshot.nome}</span></div><Badge variant="outline">{inicial.status === "ANULADO" ? "Anulada" : inicial.realizacao === "COLETA_REGISTRADA" ? "Aguardando resultado" : "Resultado informado"}</Badge></header>
       <dl className="leite-laudo-metadados"><div><dt>Coleta</dt><dd>{formatarDataBR(inicial.data.slice(0,10))}</dd></div><div><dt>Resultado</dt><dd>{inicial.dataResultadoLaboratorial ? formatarDataBR(inicial.dataResultadoLaboratorial) : "Não informado"}</dd></div><div><dt>Recebimento</dt><dd>{inicial.dataRecebimentoLaudo ? formatarDataBR(inicial.dataRecebimentoLaudo) : "Não informado"}</dd></div><div><dt>Formato</dt><dd>Versão {inicial.formatoSnapshot.versao ?? 1}</dd></div>{inicial.criadoEm&&<div><dt>Cadastro da amostra</dt><dd>{new Date(inicial.criadoEm).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"})}</dd></div>}</dl>
-      <SubTabs variant="financeiro" ariaLabel="Detalhes da amostra" tabs={[{id:"resultado",label:"Resultados"},...(podeLancar&&inicial.status!=="ANULADO"?[{id:"corrigir",label:"Informar ou corrigir"}]:[]),{id:"arquivos",label:"Arquivos"},{id:"historico",label:"Histórico"}]} active={abaDetalhe} onSelect={setAbaDetalhe}/>
+      <SubTabs aparencia="segmentado" variant="financeiro" ariaLabel="Detalhes da amostra" tabs={[{id:"resultado",label:"Resultados"},...(podeLancar&&inicial.status!=="ANULADO"?[{id:"corrigir",label:"Informar ou corrigir"}]:[]),{id:"arquivos",label:"Arquivos"},{id:"historico",label:"Histórico"}]} active={abaDetalhe} onSelect={setAbaDetalhe}/>
       <div hidden={abaDetalhe!=="resultado"}><Resultados amostra={inicial}/>{inicial.anotacaoOriginal&&!inicial.resultados.some(r=>typeof r.valor==='string'&&r.valor.trim()===inicial.anotacaoOriginal?.trim())&&<section className="leite-laudo-observacao"><h3>Observação</h3><p>{inicial.anotacaoOriginal}</p></section>}</div>
       <div hidden={abaDetalhe!=="corrigir"}>
       {podeLancar && inicial.status !== "ANULADO" ? (

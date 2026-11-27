@@ -1,4 +1,3 @@
-import { AjudaCampo } from "@/components/Dica";
 import { formatarLitros } from "../leite/modelo";
 import { useState } from "react";
 import { Button, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
@@ -7,6 +6,7 @@ import { formatarDataBR } from "../lib/rotulos";
 import { custoTexto } from "./componentes";
 import { listarReferenciasLeite, revisarReferenciaLeite, type CandidatoReferenciaLeite, type FornecimentoLeiteNutricional } from "./api";
 import { SelectCampo } from "@/financeiro/SelectCampo";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 export function ReferenciaLeite({ leite, propriedadeId, verValores, verReferenciasComerciais, animais, podeLancar, onRecarregar }: { leite: FornecimentoLeiteNutricional; propriedadeId: number; verValores: boolean; verReferenciasComerciais: boolean; animais: { animalId: string; brinco: string }[]; podeLancar: boolean; onRecarregar?: () => Promise<void> }) {
   const [candidatos,setCandidatos] = useState<CandidatoReferenciaLeite[] | null>(null);
@@ -49,7 +49,6 @@ export function ReferenciaLeite({ leite, propriedadeId, verValores, verReferenci
             <label>Fechamento usado como referência<SelectCampo className={classeInput} required value={escolhido} onValueChange={(valor) => { setEscolhido(valor); setChave(crypto.randomUUID()); }}><option value="">Selecione a referência comprovada</option>{candidatos.map(c => <option key={c.fechamentoId} value={c.fechamentoId}>{c.comprador} · {formatarDataBR(c.periodoInicio)} a {formatarDataBR(c.periodoFim)} · {custoTexto(c.precoUnitario)}/L · {c.provisoria ? "provisória" : "do período"} · v{c.versao}</option>)}</SelectCampo></label>
             {candidatoEscolhido && <p className="text-sm break-words">Referência selecionada: {candidatoEscolhido.comprador} · {formatarDataBR(candidatoEscolhido.periodoInicio)} a {formatarDataBR(candidatoEscolhido.periodoFim)} · {custoTexto(candidatoEscolhido.precoUnitario)}/L · {candidatoEscolhido.provisoria ? "provisória" : "do período"} · versão {candidatoEscolhido.versao}.</p>}
             <label>Motivo da referência ou revisão<textarea className={classeInput} required minLength={5} maxLength={500} value={motivo} onChange={e => { setMotivo(e.target.value); setChave(crypto.randomUUID()); }} /></label>
-            <p className="text-sm">Confirmar cria uma versão auditada. Litros consumidos, origens e custo de produção são preservados.</p>
             <Button type="submit" disabled={ocupado || !escolhido || motivo.trim().length < 5}>Confirmar referência</Button>
           </>}
         </fieldset></form>}
@@ -57,7 +56,7 @@ export function ReferenciaLeite({ leite, propriedadeId, verValores, verReferenci
     </>}
     {leite.parcelas.length > 0 && <section className="nutricao-referencia-parcelas">
       <h3>Litros atribuídos por animal</h3>
-      <TabelaFinanceira compacta rotulo="Litros atribuídos por animal" itens={leite.parcelas} chaveDe={p => p.animalId} colunas={[
+      <TabelaFinanceira icone={ICONES_TABELA.animal} compacta rotulo="Litros atribuídos por animal" itens={leite.parcelas} chaveDe={p => p.animalId} colunas={[
         { chave: "animal", titulo: "Animal", principal: true, celula: p => animais.find(a => a.animalId === p.animalId)?.brinco ?? p.animalId },
         { chave: "litros", titulo: "Volume atribuído", alinhamento: "direita", celula: p => formatarLitros(Number(p.quantidadeLitros)) },
         { chave: "dias", titulo: "Dias no lote", alinhamento: "direita", celula: p => p.dias },

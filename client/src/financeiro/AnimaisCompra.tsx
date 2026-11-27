@@ -1,19 +1,20 @@
+import { assinaturaCadastroAnimal, chaveCacheAnimal, gravarCacheAnimal, lerCacheAnimal, removerCacheAnimal } from "./cacheCadastroAnimal";
+import { ModalCadastroAnimal } from "../pecuaria/rebanho/forms/ModalCadastroAnimal";
 // Seção "Animais" da compra de animais (FormOperacao.tsx). O cadastro de cada animal é o MESMO da
 // página Novo animal (pecuaria/rebanho/forms/CadastroAnimal.tsx), aberto em modal: ao confirmar, o
 // animal vira uma linha de resumo na operação, com os campos financeiros do item. A operação só
 // cadastra o animal no Rebanho quando é confirmada — aqui nada chama a API de cadastro.
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AjudaCampo } from "@/components/Dica";
 import { Input } from "@/components/ui/input";
 import { Button as UiButton } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { EsqueletoFormulario } from "../components/Esqueleto";
-import { CadastroAnimalCampos, useCadastroAnimal, type AnimalPayload, type FormAnimal, type SitioFixo } from "../pecuaria/rebanho/forms/CadastroAnimal";
+import { CadastroAnimalCampos, formAnimalInicial, useCadastroAnimal, type AnimalPayload, type FormAnimal, type SitioFixo } from "../pecuaria/rebanho/forms/CadastroAnimal";
 import type { Aptidao, Sexo } from "../pecuaria/rebanho/types";
 import { CAMPO, CampoErro, SELECT } from "./CamposOperacao";
-import { DialogFinanceiro } from "./DialogFinanceiro";
-import { brl, Button, Empty, ErrorBox } from "./financeiro-ui";
+import { brl, Button, Destaques, Empty, ErrorBox } from "./financeiro-ui";
 import { SelectCampo } from "./SelectCampo";
 import type { ConfiguracoesFinanceiras, Operacao } from "./novo-api";
 import { linkFichaAnimal } from "../pecuaria/rebanho/lib/navegacao";
@@ -60,7 +61,7 @@ export function pendenciaPrecoAnimal(unidade: UnidadePrecoAnimal, animal: Pick<A
 
 export function SecaoAnimais({
   animais, valores, unidade, onUnidade, valorLote, onValorLote, sitio, motivoSemSitio, dataOperacao, config, porItem, centroCustoOperacao,
-  campoInvalido, limparCampoInvalido, erros, correcao = false, onAdicionar, onSalvar, onAtualizar, onRemover,
+  campoInvalido, limparCampoInvalido, erros, correcao = false, contextoCache, rascunhoCacheId, onAdicionar, onSalvar, onAtualizar, onRemover,
 }: {
   animais: AnimalCompraForm[];
   valores: (ValorItemAnimal | null)[];
@@ -81,6 +82,7 @@ export function SecaoAnimais({
   erros: Record<number, ErroAnimalApi>;
   /** Correção de uma compra: os animais são os da original; só os dados da compra mudam. */
   correcao?: boolean;
+  contextoCache: string | null; rascunhoCacheId: string | null;
   onAdicionar: (animal: Omit<AnimalCompraForm, "id">) => void;
   /** Substitui o cadastro de um animal já resumido, mantendo seus campos financeiros. */
   onSalvar: (id: number, cadastro: Pick<AnimalCompraForm, "cadastro" | "payload" | "entradaSegueOperacao" | "resumo">) => void;
@@ -152,7 +154,7 @@ export function SecaoAnimais({
         </li>;
       })}</ul>}
     {erroSecao && <CampoErro id="erro-animais" className="mt-3">{sitio ? "Adicione ao menos um animal à compra." : motivoSemSitio}</CampoErro>}
-    {animais.length > 0 && <p className="mt-3 text-sm text-ink-3">{animais.length} {animais.length === 1 ? "animal" : "animais"} · valor dos animais <strong className="text-ink">{brl(total / 100)}</strong></p>}
+    {animais.length > 0 && <Destaques className="mt-3" itens={[{ valor: animais.length, rotulo: animais.length === 1 ? "animal" : "animais" }, { valor: brl(total / 100), rotulo: "valor dos animais" }]} />}
 
     {!correcao && modal && sitio && <ModalAnimalCompra
       key={modal.id ?? "novo"}
@@ -160,6 +162,7 @@ export function SecaoAnimais({
       dataOperacao={dataOperacao}
       inicial={emEdicao}
       erro={modal.erro}
+      chaveCache={contextoCache ? chaveCacheAnimal(contextoCache, rascunhoCacheId, modal.id == null ? "novo" : `edicao:${modal.id}`) : null}
       brincosReservados={animais.filter((animal) => animal.id !== modal.id).map((animal) => animal.resumo.brinco)}
       onFechar={() => setModal(null)}
       onConfirmar={(resultado) => {
@@ -172,21 +175,28 @@ export function SecaoAnimais({
 }
 
 /** Modal com o cadastro compartilhado. "Confirmar" valida como o cadastro e só devolve os dados. */
-function ModalAnimalCompra({ sitio, dataOperacao, inicial, erro, brincosReservados, onFechar, onConfirmar }: {
+function ModalAnimalCompra({ sitio, dataOperacao, inicial, erro, brincosReservados, chaveCache, onFechar, onConfirmar }: {
   sitio: SitioFixo;
   dataOperacao: string;
   inicial: AnimalCompraForm | null;
   erro?: ErroAnimalApi;
   brincosReservados: string[];
+  chaveCache: string | null;
   onFechar: () => void;
   onConfirmar: (resultado: Pick<AnimalCompraForm, "cadastro" | "payload" | "entradaSegueOperacao" | "resumo">) => void;
 }) {
   const errosIniciais = erro?.campo.startsWith("animal.") ? { [erro.campo.slice("animal.".length).split(".")[0]]: erro.mensagem } : undefined;
+  const baseCache = inicial?.cadastro ? assinaturaCadastroAnimal(inicial.cadastro) : "novo";
+  const [formInicial] = useState(() => lerCacheAnimal(chaveCache, baseCache, dataOperacao));
   const cadastro = useCadastroAnimal({
     prefixo: PREFIXO_ANIMAL_COMPRA, sitioFixo: sitio, dataEntradaInicial: dataOperacao, brincosReservados, errosIniciais,
-    valorInicial: inicial?.cadastro ? { ...inicial.cadastro, dataEntrada: inicial.entradaSegueOperacao ? dataOperacao : inicial.cadastro.dataEntrada } : null,
+    valorInicial: formInicial ?? (inicial?.cadastro ? { ...inicial.cadastro, dataEntrada: inicial.entradaSegueOperacao ? dataOperacao : inicial.cadastro.dataEntrada } : null),
   });
   const { catalogos, erroCatalogos, categoriaPrevista } = cadastro;
+  const [revisaoCampos, setRevisaoCampos] = useState(0);
+  const [baseForm] = useState(() => inicial?.cadastro ? { ...inicial.cadastro, dataEntrada: inicial.entradaSegueOperacao ? dataOperacao : inicial.cadastro.dataEntrada } : formAnimalInicial(dataOperacao));
+  const naoGravar = useRef(false);
+  useEffect(() => { if (naoGravar.current) { naoGravar.current = false; return; } if (assinaturaCadastroAnimal(cadastro.form) !== assinaturaCadastroAnimal(baseForm)) gravarCacheAnimal(chaveCache, baseCache, cadastro.form, dataOperacao); else removerCacheAnimal(chaveCache); }, [cadastro.form, chaveCache, baseCache, baseForm, dataOperacao]);
 
   // A recusa da API aponta um campo: leva até ele assim que o cadastro carrega.
   useEffect(() => {
@@ -200,6 +210,7 @@ function ModalAnimalCompra({ sitio, dataOperacao, inicial, erro, brincosReservad
     cadastro.setErros(validacao);
     if (Object.keys(validacao).length) { cadastro.irParaPrimeiroErro(validacao); return; }
     const payload = cadastro.montarPayload();
+    removerCacheAnimal(chaveCache);
     onConfirmar({
       cadastro: cadastro.form,
       payload,
@@ -208,24 +219,24 @@ function ModalAnimalCompra({ sitio, dataOperacao, inicial, erro, brincosReservad
     });
   };
 
-  return <DialogFinanceiro
+  return <ModalCadastroAnimal
     titulo={inicial ? `Editar animal ${inicial.resumo.brinco}` : "Adicionar animal"}
-    eyebrow={`Compra de animais · ${sitio.nome}.`}
-    onClose={onFechar}
-    className="max-w-4xl"
+    contexto={`Compra de animais · ${sitio.nome}.`}
+    onFechar={onFechar}
     rodape={<div className="flex flex-wrap items-center justify-end gap-3">
       {categoriaPrevista && <span className="mr-auto text-sm">Categoria prevista: <strong>{categoriaPrevista.nome}</strong></span>}
+      {assinaturaCadastroAnimal(cadastro.form) !== assinaturaCadastroAnimal(baseForm) && <Button type="button" secondary onClick={() => { removerCacheAnimal(chaveCache); naoGravar.current = true; cadastro.resetarForm(baseForm); cadastro.setErros(errosIniciais ?? {}); setRevisaoCampos(v => v + 1); }}>Limpar</Button>}
       <Button type="button" secondary onClick={onFechar}>Cancelar</Button>
-      <Button type="button" disabled={!catalogos} onClick={confirmar}>Confirmar animal</Button>
+      <Button type="button" disabled={!catalogos} onClick={confirmar}>Adicionar à compra</Button>
     </div>}
   >
     {/* O modal é um portal React dentro do formulário da operação: o envio daqui não pode subir até lá. */}
     <form noValidate onSubmit={(evento) => { evento.preventDefault(); evento.stopPropagation(); confirmar(); }} className="space-y-7 p-5 sm:p-6 [&>section+section]:border-t [&>section+section]:border-border [&>section+section]:pt-5">
       <ErrorBox erro={erroCatalogos} />
       {!catalogos && !erroCatalogos && <EsqueletoFormulario label="Carregando cadastro" campos={8} />}
-      <CadastroAnimalCampos cadastro={cadastro} />
+      <CadastroAnimalCampos key={revisaoCampos} cadastro={cadastro} />
     </form>
-  </DialogFinanceiro>;
+  </ModalCadastroAnimal>;
 }
 
 /**

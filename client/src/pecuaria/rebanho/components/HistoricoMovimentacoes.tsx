@@ -7,7 +7,7 @@ import type { FiltrosColunas } from "@/financeiro/FiltroColunaConsulta";
 // à página 1. Uma linha desfeita continua na lista (o histórico nunca apaga nada).
 
 import { useEffect, useState } from "react";
-import { Button, Empty, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Button, Empty, Pill } from "../../../financeiro/financeiro-ui";
 import { RebanhoApiError } from "../api";
 import type { MovimentacaoResumo } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
@@ -26,11 +26,10 @@ function mensagemErro(e: unknown): string {
 }
 
 export function HistoricoMovimentacoes({
-  carregar, mostrarDirecao = false, podeLancar = true, recarregarToken, onAbrir, onMudou, paginaControlada, onPaginaChange, filtrosColunas, visualizacao = "automatica",
+  carregar, mostrarDirecao = false, podeLancar = true, recarregarToken, onAbrir, onMudou, paginaControlada, onPaginaChange, filtrosColunas,
 }: {
   /** busca a página informada (1-based) — os filtros já vêm fechados na função de quem chama */
   filtrosColunas?: FiltrosColunas;
-  visualizacao?: "automatica" | "tabela";
   carregar: (pagina: number) => Promise<{ itens: MovimentacaoResumo[]; total: number }>;
   /** exibe o selo Entrada/Saída — só faz sentido quando a listagem está presa a um lote */
   mostrarDirecao?: boolean;
@@ -74,10 +73,9 @@ export function HistoricoMovimentacoes({
 
   if (carregando && !itens.length) return <EsqueletoTabela label="Carregando histórico" className="p-6" />;
 
-  const ListaMovimentos = visualizacao === "automatica" ? ConsultaOperacional : TabelaFinanceira;
   return <>
     {erro && <div role="alert" className="p-5 text-sm text-destructive">{erro}</div>}
-    {itens.length ? <ListaMovimentos visualizacao={visualizacao} filtrosColunas={filtrosColunas} rotulo="Histórico de movimentações" itens={itens} chaveDe={m=>m.id} onAbrir={onAbrir} colunas={[
+    {itens.length ? <ConsultaOperacional filtrosColunas={filtrosColunas} rotulo="Histórico de movimentações" itens={itens} chaveDe={m=>m.id} onAbrir={onAbrir} colunas={[
       {chave:"data",titulo:"Data",larguraMinima:110,principal:true,celula:m=>formatarDataBR(m.data)},
       {chave:"animais",titulo:"Animais",larguraMinima:100,celula:m=>m.quantidade},
       {chave:"origem",titulo:"Origem",larguraMinima:180,larguraFlexivel:true,celula:m=>m.origens.length?m.origens.join("; "):"Não identificada"},

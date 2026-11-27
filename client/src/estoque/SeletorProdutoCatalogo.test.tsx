@@ -49,3 +49,27 @@ it("confirmar a mesma identidade não altera a linha de origem", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Confirmar seleção" }));
   expect(mudou).not.toHaveBeenCalled();
 });
+
+it("preserva seleção sem oferecer limpeza ou cadastro quando o fluxo proíbe", async () => {
+  vi.mocked(buscarPaginaProdutos).mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 });
+  const mudou = vi.fn();
+  render(<SeletorProdutoCatalogo rotulo="Produto planejado" value={{ tipo: "produto", produtoId: local.id, nome: local.nome, produto: local }} limpavel={false} permitirCadastro={false} onChange={mudou} />);
+  fireEvent.click(screen.getByRole("button", { name: "Produto planejado" }));
+  expect(await screen.findByText("Nenhum produto encontrado.")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Cadastrar produto" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Limpar seleção" })).toBeNull();
+  expect(mudou).not.toHaveBeenCalled();
+});
+
+it("abre diretamente o catálogo e retorna ao botão externo ao cancelar", async () => {
+  function MontadoExterno() {
+    const [aberto, setAberto] = useState(false);
+    const [gatilho] = useState(() => ({ current: null as HTMLButtonElement | null }));
+    return <><button ref={gatilho} onClick={() => setAberto(true)}>Ver catálogo</button>{aberto && <SeletorProdutoCatalogo abertoInicial abaInicial="catalogo" retornoFoco={gatilho} aoFechar={() => setAberto(false)} rotulo="Produto planejado" value={null} onChange={vi.fn()} />}</>;
+  }
+  render(<MontadoExterno />);
+  const botao = screen.getByRole("button", { name: "Ver catálogo" }); fireEvent.click(botao);
+  expect(screen.getByRole("tab", { name: "Catálogo" }).getAttribute("aria-selected")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  await waitFor(() => expect(document.activeElement).toBe(botao));
+});

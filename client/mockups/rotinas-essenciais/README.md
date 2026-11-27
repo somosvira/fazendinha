@@ -1,6 +1,6 @@
 # Prévia interativa das rotinas essenciais
 
-Proposta para revisão visual, orientada pelo [README do frontend](../../README.md). Não substitui nem altera as páginas operacionais.
+Proposta elaborada para a revisão visual das rotinas essenciais. Não substitui nem altera as páginas operacionais.
 
 ## Abrir
 

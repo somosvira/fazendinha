@@ -14,6 +14,7 @@ import { ROTULO_APTIDAO } from "../lib/rotulos";
 import { Button, type ColunaTabela, Empty, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro, classeInput } from "../../../financeiro/PainelCadastro";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 
 const ITENS_POR_PAGINA = 20;
 /** Lote máximo por requisição da API de animais. */
@@ -226,7 +227,7 @@ export function SelecaoAnimais({ excluirLoteId, sexo: sexoFixo, titulo = "Seleci
             // total > 0 mantém a paginação visível mesmo que esta página específica venha vazia
             : total > 0 ? <>
               {itens.length > 0
-                ? <TabelaFinanceira rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => alternar(item)} classeLinha={(item) => selecionados.has(item.id) ? "bg-[#eef1e9]" : ""} />
+                ? <TabelaFinanceira icone={ICONES_TABELA.animal} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => alternar(item)} classeLinha={(item) => selecionados.has(item.id) ? "bg-[#eef1e9]" : ""} />
                 : <Empty>Nenhum animal nesta página.</Empty>}
               <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-seletor-animais" />
             </> : <Empty>Nenhum animal ativo encontrado com os filtros selecionados.</Empty>}

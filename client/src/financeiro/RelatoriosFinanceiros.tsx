@@ -1,5 +1,3 @@
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
-import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
 import { useOrdenacaoTabela } from "./OrdenarConsulta";
 import { useFiltrosTabelaLocal } from "./useFiltrosTabelaLocal";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
@@ -41,7 +39,6 @@ function recorte(r: RelatorioFinanceiro) {
 }
 
 export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: boolean }) {
-  const visual = useVisualizacaoConsulta("visualRelatorios");
   const trabalho = useRascunhoRelatorioAtivo();
   const [vista, setVista] = useState<Vista>(() => typeof window === "undefined" ? { tipo: "lista" } : vistaDaUrl(window.location.pathname));
   const [relatorios, setRelatorios] = useState<RelatorioFinanceiro[] | null>(null);
@@ -161,10 +158,9 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
         <label className="fin-filtro-busca text-sm font-medium">Buscar relatório<span className="relative mt-1 block"><Search size={18} strokeWidth={1.8} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" /><Input aria-label="Buscar relatório" placeholder="Nome ou autor…" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} className="pl-10" /></span></label>
         <div className="fin-filtro-controle"><PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={periodo => { setPeriodoEmissao(periodo); setPagina(1); }} /></div>
       </BarraConsulta>
-      <div className="consulta-visual-barra"><span>{relatoriosFiltrados.length} relatórios</span><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos relatórios" /></div>
       {relatoriosFiltrados.length === 0
         ? <Empty>{relatorios.length ? "Nenhum relatório emitido no período selecionado." : "Nenhum relatório foi gerado ainda."}</Empty>
-        : visual.modo === "visual" ? <div className="consulta-entidades" style={{ gridTemplateColumns: "1fr" }}>{relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15).map(r => <CartaoConsulta key={r.id} titulo={r.nome} detalhe={recorte(r)} icon={FileText} onAbrir={() => abrir(r)} status={<StatusPill status={r.status} />} acoes={podeExportar && r.status === "CONCLUIDO" ? <Button secondary onClick={() => void baixar(r)}><Download size={16} aria-hidden /> Baixar PDF</Button> : undefined}><div className="consulta-fatos"><FatoConsulta rotulo="Sítio">{r.propriedade}</FatoConsulta><FatoConsulta rotulo="Período do relatório">{dataCurta(r.parametros.dataInicio)} a {dataCurta(r.parametros.dataFim)}</FatoConsulta><FatoConsulta rotulo="Gerado em">{dataHora(r.geradoEm)}</FatoConsulta><FatoConsulta rotulo="Autor">{r.autor}</FatoConsulta></div>{r.erro && <p className="mt-3 text-sm text-destructive">{r.erro}</p>}</CartaoConsulta>)}</div> : <TabelaFinanceira icone={FileText} ordenacao={ordem.controle} filtrosColunas={consultaColunas.colunas} rotulo="Relatórios gerados" colunas={colunas} compacta itens={relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-muted" : ""} />}
+        : <TabelaFinanceira icone={FileText} ordenacao={ordem.controle} filtrosColunas={consultaColunas.colunas} rotulo="Relatórios gerados" colunas={colunas} compacta itens={relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-muted" : ""} />}
       <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={relatoriosFiltrados.length} porPagina={15} rotulo="Paginação de relatórios" substantivo="relatórios" idSelect="pagina-relatorios" onPagina={setPagina} />
     </Panel>
     <ConfirmDialog

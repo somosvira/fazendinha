@@ -1,3 +1,4 @@
+import { nomeExame } from "./nomeExame";
 import { useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, List } from "lucide-react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -63,7 +64,7 @@ export function AgendaSanitaria({
   );
   const nome = (t: TarefaRodada) =>
     t.parametros.tipoAplicacaoNomeSnapshot ??
-    t.parametros.tipoExameNomeSnapshot ??
+    (t.parametros.tipoExameNomeSnapshot ? nomeExame(t.parametros.tipoExameId, t.parametros.tipoExameNomeSnapshot) : undefined) ??
     t.execucao.protocolo.nome;
   const situacao = (t: TarefaRodada) =>
     rotuloTarefaSanitaria(t.situacao, t.previstaPara, hoje);

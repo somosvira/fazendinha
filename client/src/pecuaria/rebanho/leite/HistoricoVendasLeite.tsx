@@ -11,6 +11,7 @@ import { DialogComercialLeite } from "./ComercialConsultaLeite";
 import { lerValorCorrecao, nomeEstadoVenda, type VendaLeiteHistorico, type VendasLeiteHistorico } from "./vendas-types";
 import "./operacoes.css";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 interface Props {
   produtoId: string; data: string; de?: string; operacaoInicial?: string;
   propriedadeId: number | null; config: ConfiguracoesFinanceiras | null;
@@ -36,7 +37,7 @@ export function HistoricoVendasLeite({ produtoId, data, de, operacaoInicial, pro
     <CabecalhoTabela titulo={produtoId ? "Vendas e versões comerciais" : "Vendas de leite do sítio"} descricao={`Versões de ${dataPt(inicio)} a ${dataPt(data)}.`} />
     {operacaoInicial && <p>Venda selecionada: {linhas.find(v => v.operacaoId === operacaoInicial)?.numero ? `#${linhas.find(v => v.operacaoId === operacaoInicial)!.numero}` : "consulte as versões abaixo"}. As versões anteriores permanecem neste histórico.</p>}
     {erro ? <p role="alert">{erro}<Button variant="outline" onClick={() => setAtualizacao(r => r + 1)}>Tentar novamente</Button></p> : !historico ? <p role="status">Consultando vendas e versões…</p> : <>
-      <ConsultaOperacional rotulo="Histórico comercial · versões vigentes e substituídas" itens={linhas} chaveDe={v => v.operacaoId} colunas={[
+      <ConsultaOperacional icone={ICONES_TABELA.receber} rotulo="Histórico comercial · versões vigentes e substituídas" itens={linhas} chaveDe={v => v.operacaoId} colunas={[
         { chave: "venda", titulo: "Venda", principal: true, celula: v => <strong>#{v.numero} · versão {v.versaoComercial}</strong> },
         { chave: "data", titulo: "Data", celula: v => dataPt(v.data) },
         { chave: "comprador", titulo: "Comprador", celula: v => v.parceiroNome ?? "Comprador não informado" },

@@ -14,11 +14,10 @@ describe("instalação do estado final na baseline unificada", () => {
     const cadeia = readdirSync(new URL("../../prisma/migrations/", import.meta.url)).filter(n => /^\d+_/.test(n)).sort();
     // Uma baseline inicial, seguida de evoluções incrementais: não reintroduzir
     // a cadeia anterior nem impedir a criação das próximas migrations.
-    expect(cadeia[0]).toBe("20261025000000_base_unificada");
-    expect(cadeia.filter(n => /base_unificada/.test(n))).toEqual(["20261025000000_base_unificada"]);
+    expect(cadeia[0]).toBe("20261124170000_base_unificada");
+    expect(cadeia.filter(n => /base_unificada/.test(n))).toEqual(["20261124170000_base_unificada"]);
     expect(sql).not.toMatch(/_prisma_migrations|OWNER TO|GRANT |REVOKE |^COPY |^UPDATE |^DELETE FROM|^TRUNCATE /m);
-    const catalogos = [...sql.matchAll(/^INSERT INTO (.+?) \(/gm)].map(m => m[1]);
-    expect(catalogos).toEqual(['"pecuaria"."CategoriaAnimal"', 'pecuaria."TipoAplicacaoSanitaria"', '"public"."Categoria"', 'pecuaria."TipoExame"', 'pecuaria."TipoExame"']);
+    expect(sql).not.toMatch(/^INSERT INTO /m);
     expect(sql).not.toMatch(/CREATE TABLE public\."(?:Animal|GestacaoAnimal|Agricultura|Cultivo|RegistroChuva|Funcionario)"/);
   });
 

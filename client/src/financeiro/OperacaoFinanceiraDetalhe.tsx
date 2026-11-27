@@ -1,4 +1,3 @@
-import { AjudaCampo } from "@/components/Dica";
 import "./operacao-detalhe.css";
 import { PageHeader, TabelaFinanceira } from "./financeiro-ui";
 import { podeVerValoresFinanceiros } from "./permissoes";
@@ -23,6 +22,7 @@ import { GerenciarProcedimentosServico, podeGerenciarProcedimentosServico } from
 import { ProcedimentosAtendimento } from "./ProcedimentosAtendimento";
 import { FORMAS_PAGAMENTO, TIPOS_TRANSACAO } from "./lib/parceiros";
 import { DevolucaoAnimais, itensDeAnimal, situacaoDoAnimal } from "./DevolucaoAnimais";
+import { ICONES_TABELA } from "../components/iconesTabela";
 
 function StatusDetalhe({ status }: { status: string }) {
   const tom = ["CONFIRMADA", "LIQUIDADO", "CONCLUIDO"].includes(status) ? "entrada" : ["PENDENTE", "PARCIAL"].includes(status) ? "pendente" : status.includes("CANCEL") || status === "REVERTIDA" ? "alerta" : "neutro";
@@ -156,7 +156,7 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
           <p>Motivo: {perda.motivo ?? "Motivo não registrado"}</p>
           {perda.lotes.length ? <ul className="space-y-2">{perda.lotes.map((lote, indice) => <li key={`${lote.id}-${indice}`} className="text-xs text-ink-3">Lote do produto: {lote.nome || lote.codigo} · {Number(lote.quantidade).toLocaleString("pt-BR")} {perda.unidade} · {lote.validade ? `Validade ${dataBR(lote.validade)}` : "Validade não informada"}</li>)}</ul> : <p className="text-xs text-ink-3">Sem lotes do produto vinculados.</p>}
         </div>) : operacao.itens.length ? <>
-          <TabelaFinanceira rotulo="Itens da operação" itens={operacao.itens} chaveDe={item => item.id} colunas={[
+          <TabelaFinanceira icone={ICONES_TABELA.produto} rotulo="Itens da operação" itens={operacao.itens} chaveDe={item => item.id} colunas={[
             { chave: "produto", titulo: operacao.tipo === "COMPRA_ANIMAIS" || operacao.itens.some((item) => item.animalId) ? "Item" : "Produto", principal: true, larguraMinima: 240, larguraFlexivel: true, celula: item => <div><strong>{item.descricao}</strong><p className="fin-ficha-item-categoria">{item.categoriaNome ?? "Sem categoria"} · {item.centroCustoNome ?? operacao.centroCusto?.nome ?? "Sem centro"}</p></div> },
             ...(operacao.itens.some((item) => item.animal?.situacao) ? [{ chave: "situacao", titulo: "Situação do animal", larguraMinima: 190, celula: (item: ItemOperacao) => { const situacao = situacaoDoAnimal(item, operacao.id); if (!situacao) return null; return situacao.estado === "DEVOLVIDO" && situacao.devolucao.id !== operacao.id ? <Button variant="ghost" onClick={() => onAbrir(situacao.devolucao.id)} className="h-auto whitespace-normal p-0 text-xs font-semibold text-primary underline">{situacao.rotulo}</Button> : <span className="text-xs">{situacao.rotulo}</span>; } }] : []),
             { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", larguraMinima: 110, celula: item => `${Number(item.quantidade).toLocaleString("pt-BR")} ${item.unidade}` },

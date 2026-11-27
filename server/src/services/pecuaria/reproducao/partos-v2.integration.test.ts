@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
-import { criarPartoTx, corrigirPartoTx } from "./registros.js";
+import { adicionarEscorePartoTx, criarPartoTx, corrigirPartoTx } from "./registros.js";
 import { editarPesagemTx } from "../rebanho/animais.js";
 import { lerPartoTx } from "./partos.js";
 import { registrarColostroTx, corrigirColostroTx } from "./colostro.js";
@@ -30,6 +30,30 @@ async function fixtures(tx: Prisma.TransactionClient) {
   return { sitio, matriz };
 }
 suite("parto/pós-parto com fixtures inteiramente revertidas", () => {
+  it("ECC numérico no parto usa data persistida e inclusão posterior é idempotente e isolada por sítio", async () => {
+    await emRollback(async tx => {
+      const { sitio, matriz } = await fixtures(tx);
+      const base = { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id, data: "2026-01-01", tipo: "ABORTO" as const, observacao: "Aborto observado na fixture", iniciarLactacao: false, crias: [] };
+      const comEscore = await criarPartoTx(tx, { ...base, escoreMatriz: { acao: "REGISTRAR", data: "2026-01-04", valor: 0 } }, null);
+      const exame = comEscore.examesPosParto[0];
+      expect(exame.data.toISOString().slice(0, 10)).toBe("2026-01-01");
+      expect(exame.resultados.map(r => [r.campo, Number(r.valor)])).toEqual([["ESCORE", 0]]);
+      expect(exame.formatoSnapshot).not.toHaveProperty("escala");
+      const outra = await fixtures(tx);
+      const sem = await criarPartoTx(tx, { ...base, chave: randomUUID(), animalId: outra.matriz.id, propriedadeId: outra.sitio.id }, null);
+      expect(sem.examesPosParto).toHaveLength(0);
+      const dados = { chave: randomUUID(), propriedadeId: outra.sitio.id, data: "2026-01-03", valor: 3.5 };
+      await expect(adicionarEscorePartoTx(tx, sem.id, { ...dados, data: "2025-12-31" }, null)).rejects.toThrow(/anteceder/);
+      expect((await lerPartoTx(tx, sem.id)).examesPosParto).toHaveLength(0);
+      const adicionado = await adicionarEscorePartoTx(tx, sem.id, dados, null);
+      expect(adicionado.examesPosParto).toHaveLength(1);
+      expect(adicionado.examesPosParto[0].data.toISOString().slice(0, 10)).toBe("2026-01-03");
+      expect((await adicionarEscorePartoTx(tx, sem.id, dados, null)).id).toBe(sem.id);
+      await expect(adicionarEscorePartoTx(tx, sem.id, { ...dados, chave: randomUUID() }, null)).rejects.toThrow(/Já há escore/);
+      await expect(adicionarEscorePartoTx(tx, sem.id, { ...dados, propriedadeId: sitio.id, chave: randomUUID() }, null)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
+      expect((await lerPartoTx(tx, sem.id)).examesPosParto.filter(e => e.status === "VALIDO")).toHaveLength(1);
+    });
+  });
   it("cria RP e peso matriz na mesma transação e conserva RP após encerramento", async () => {
     await emRollback(async tx => {
       const { sitio, matriz } = await fixtures(tx);

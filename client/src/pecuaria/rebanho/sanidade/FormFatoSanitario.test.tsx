@@ -28,7 +28,6 @@ it("oferece seleção própria sem animal inicial", async () => {
   render(<FormFatoSanitario tipo="exame" onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await screen.findByText("GV3-1");
   expect(screen.getByLabelText("Animal")).toHaveProperty("value", "");
-  expect(screen.getByText(/O resultado é opcional/)).toBeTruthy();
   await alterarControle(screen.getByLabelText("Animal"), { target: { value: "a" } });
   await screen.findByText(/Sítio na data: Sítio B/);
 });

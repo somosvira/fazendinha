@@ -8,7 +8,7 @@ export const descarteLeiteSchema = z.object({
 }).strict().refine(v => v.quantidadeLitros <= v.quantidadeDisponivelEsperadaLitros, "O descarte supera o saldo informado");
 export const estornoDescarteLeiteSchema = z.object({ chave: z.string().uuid(), propriedadeId: propriedadeLeiteSchema.optional(), versaoEsperada: z.number().int().positive(), motivo: z.string().trim().min(5).max(1000) }).strict();
 export const consultaDescartesLeiteSchema = z.object({
-  de: dataLeiteSchema.optional(), ate: dataLeiteSchema.optional(), propriedadeId: z.coerce.number().int().positive().max(2147483647).optional(), pagina: z.coerce.number().int().min(1).max(100000).default(1),
+  de: dataLeiteSchema.optional(), ate: dataLeiteSchema.optional(), propriedadeId: z.coerce.number().int().positive().max(2147483647).optional(), pagina: z.coerce.number().int().min(1).max(100000).default(1), busca: z.string().trim().max(100).optional(),
 }).strict().refine(v => !v.de || !v.ate || v.de <= v.ate, "Período invertido");
 export type DescarteLeiteInput = z.infer<typeof descarteLeiteSchema>;
 export type EstornoDescarteLeiteInput = z.infer<typeof estornoDescarteLeiteSchema>;

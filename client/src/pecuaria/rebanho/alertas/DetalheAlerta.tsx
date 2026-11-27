@@ -112,7 +112,7 @@ export function DetalheAlerta({
       eyebrow=""
       onClose={onFechar}
     >
-      <div className="p-5">
+      <div className="alerta-detalhe p-5">
         {erro ? (
           <>
             <ErrorBox erro={erro} />
@@ -125,8 +125,8 @@ export function DetalheAlerta({
         ) : (
           <>
             <Pill>{rotuloSituacao(dados.situacao)}</Pill>
-            <h3 className="mt-5 font-semibold">Evidência do disparo</h3>
-            <p className="mt-2">
+            <h3 className="alerta-secao-titulo">Evidência do disparo</h3>
+            <p className="alerta-evidencia">
               {dados.evidenciaDisparo.motivo ?? dados.motivo}
             </p>
             <dl className="alertas-detalhe-dados">
@@ -144,7 +144,7 @@ export function DetalheAlerta({
                 </div>
               )}
             </dl>
-            <h3 className="mt-3 font-semibold">Situação atual na origem</h3>
+            <h3 className="alerta-secao-titulo">Situação atual na origem</h3>
             {dados.origem.estado !== "DISPONIVEL" ? (
               <p className="mt-2">
                 {dados.origem.estado === "REMOVIDA"
@@ -223,13 +223,14 @@ export function DetalheAlerta({
                   )}
                 </dl>
                 {reprodutivo && (
-                  <p className="mb-4 text-sm">
+                  <p className="alerta-nota">
                     {dados.origem.tipo === "DISPOSITIVO_SEM_RETIRADA"
                       ? "A necessidade de retirada física permanece mesmo após dispensa de tarefa ou retirada da participação. Registre a remoção realizada para concluir este cuidado."
                       : "Programação, reagendamento e decisões administrativas não comprovam atendimento. Registre a execução pelo fluxo do fato correspondente."}
                   </p>
                 )}
-                <div className="flex flex-wrap gap-2">
+                <h3 className="alerta-secao-titulo">O que fazer</h3>
+                <div className="alerta-acoes">
                   {dados.acoes.includes("REGISTRAR_APLICACAO") &&
                     propriedadeId &&
                     dados.origem.animal && (

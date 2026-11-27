@@ -67,7 +67,7 @@ describe("escritas financeiras exigem lancar antes de validar ou acessar dados",
     expect(mocks.salvar).toHaveBeenCalledWith({ dados: { formulario: {} }, propriedadeId: 3, usuarioId: 7 });
     const chave = uid(9);
     expect((await operador.request(`${prefixo}/rascunho/confirmacao`, { method: "POST", headers, body: JSON.stringify({ chave, versao: 1 }) })).status).toBe(201);
-    expect(mocks.confirmar).toHaveBeenCalledWith(3, 7, 1, chave, { permitirAnimais: expect.any(Boolean), previa: { envolveAnimais: false, animais: 0 } });
+    expect(mocks.confirmar).toHaveBeenCalledWith(3, 7, 1, chave, expect.objectContaining({ permitirAnimais: expect.any(Boolean), previa: { envolveAnimais: false, animais: 0 }, conferirSaldo: true }));
     expect((await operador.request(`${prefixo}/rascunho`, { method: "DELETE" })).status).toBe(204);
     expect(mocks.descartar).toHaveBeenCalledWith(3, 7);
   });
@@ -77,6 +77,6 @@ describe("escritas financeiras exigem lancar antes de validar ou acessar dados",
       itens: [{ descricao: "Vacina", produtoId: uid(1), quantidade: 50, unidade: "mL", valorTotal: 100, estocavel: true }],
       financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
     }) });
-    expect(resposta.status).toBe(201); expect(mocks.criar).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 3, usuarioId: 7 }));
+    expect(resposta.status).toBe(201); expect(mocks.criar).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 3, usuarioId: 7 }), undefined);
   });
 });

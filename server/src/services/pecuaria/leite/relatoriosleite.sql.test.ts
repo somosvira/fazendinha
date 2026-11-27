@@ -1,8 +1,7 @@
-import { contemSql } from "../../../test/sql-baseline.js";
-import { readFileSync } from "node:fs";
+import { baselineSql, contemSql } from "../../../test/sql-baseline.js";
 import { describe, expect, it } from "vitest";
-const sql = readFileSync(new URL("../../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
-const conferenciaSql = readFileSync(new URL("../../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
+const sql = baselineSql;
+const conferenciaSql = baselineSql;
 describe("histórico SQL de emissão e descarte", () => {
   it("observação física aceita zero, mantém versões sequenciais e bloqueia update/delete", () => {
     expect(contemSql(conferenciaSql, '"litrosObservados" >= (0)::numeric')).toBe(true); expect(contemSql(conferenciaSql, "NEW.versao<>COALESCE(anterior,0)+1")).toBe(true);

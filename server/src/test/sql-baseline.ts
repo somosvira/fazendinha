@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-export const baselineSql = readFileSync(new URL("../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
+export const baselineSql = readFileSync(new URL("../../prisma/migrations/20261124170000_base_unificada/migration.sql", import.meta.url), "utf8");
 
 // pg_dump normaliza aspas, espaços, USING btree e a ordem dos eventos de triggers.
 // Essas diferenças de representação não alteram as garantias examinadas.

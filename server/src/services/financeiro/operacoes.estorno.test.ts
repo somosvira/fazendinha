@@ -36,6 +36,7 @@ vi.mock("../../db.js", () => {
     compromissoFinanceiro: { findUniqueOrThrow: mocks.compromissoFindUniqueOrThrow, findUnique: mocks.compromissoFindUnique, update: mocks.compromissoUpdate, updateMany: mocks.compromissoUpdateMany },
     liquidacao: { create: mocks.liquidacaoCreate },
     operacao: { findFirst: mocks.operacaoFindFirst, update: mocks.operacaoUpdate },
+    movimentoConta: { findMany: vi.fn().mockResolvedValue([]) },
     movimentoEstoque: { findMany: vi.fn().mockResolvedValue([]), create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
     contaFinanceira: { findFirst: mocks.contaFindFirst },

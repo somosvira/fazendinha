@@ -1,4 +1,6 @@
+import { nomeExame } from "./nomeExame";
 import { AplicacoesTablet } from "./AplicacoesTablet";
+import { escalaRegistrada, ResultadoVisualExame } from "./ResultadoVisualExame";
 import { ConsultaExames, ConsultaCarencias } from "./ConsultasSanitariasVisuais";
 import { AgendaCuidados } from "./AgendaCuidados";
 import { AgendaCalendario } from "./AgendaCalendario";
@@ -80,7 +82,8 @@ type Exame = ExameResultado & {
   animalId: string;
   data: string;
   status: string;
-  tipoExame: { nome: string };
+  tipoExame: { id?: string; nome: string };
+  tipoExameId?: string;
 };
 type Tarefa = {
   regularizacaoPendente?:boolean; historicoRegularizacao?:EventoRegularizacao[]; propriedadeRegularizacaoId?:number | null;
@@ -1001,8 +1004,8 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
             <>
               <ConsultaExames abas={abasExames} nomeAnimal={e => nomeAnimal(e.animalId)} filtrosColunas={filtrosColunas} rotulo="Exames sanitários" itens={exames.filter((e) => noPeriodo(e.data, e.status, null, e.resultadoTexto ?? e.resultadoNumero ?? e.resultadoOpcao))} chaveDe={(e) => e.id} onAbrir={(e) => abrirDetalhe("exame", e.id, e.propriedadeId)} colunas={[
                 { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 180, celula: (e) => <LinkInterno area="pecuaria" href={linkFichaAnimal(e.animalId)}>{nomeAnimal(e.animalId)}</LinkInterno> },
-                { chave: "tipo", titulo: "Exame / coleta", larguraMinima: 200, celula: (e) => <><div>{e.tipoExame.nome}</div><div className="text-sm text-ink-3">{dataSanitaria(e.data)}</div></> },
-                { chave: "resultado", titulo: "Resultado / situação", larguraMinima: 240, larguraFlexivel: true, celula: (e) => <>{resultadoExameSanitario(e) !== "Aguardando resultado" && <div className="mb-1">{resultadoExameSanitario(e)}</div>}<EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : resultadoExameSanitario(e) === "Aguardando resultado" ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario></> },
+                { chave: "tipo", titulo: "Exame / coleta", larguraMinima: 200, celula: (e) => <><div>{nomeExame(e.tipoExameId ?? e.tipoExame.id, e.tipoExame.nome)}</div><div className="text-sm text-ink-3">{dataSanitaria(e.data)}</div></> },
+                { chave: "resultado", titulo: "Resultado / situação", larguraMinima: 240, larguraFlexivel: true, celula: (e) => <>{escalaRegistrada(e) ? <div className="mb-1 san-exame-escala"><ResultadoVisualExame exame={e} /></div> : resultadoExameSanitario(e) !== "Aguardando resultado" && <div className="mb-1">{resultadoExameSanitario(e)}</div>}<EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : resultadoExameSanitario(e) === "Aguardando resultado" ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario></> },
                 { chave: "acoes", titulo: "Ações", acoes: true, celula: (e) => <div className="sanidade-acoes-linha" onClick={(v) => v.stopPropagation()}>{podeLancar && e.status === "VALIDO" && <ResultadoExame exame={e} propriedadeId={e.propriedadeId} onSalvo={() => { setRevisao((v) => v + 1); setRecarregarDetalhe((v) => v + 1); }} />}</div> },
               ]} />
               {!carregandoAba && !erroAba && !exames.length && (
@@ -1123,7 +1126,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
                         : protocolos.filter((v) => v.publicadoEm && v.ativo)
                     ).map((v) => (
                       <option key={v.id} value={v.id}>
-                        {v.nome}
+                        {painel.tipo === "exame" ? nomeExame(v.id, v.nome) : v.nome}
                       </option>
                     ))}
                   </SelectCampo>

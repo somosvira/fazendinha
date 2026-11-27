@@ -34,10 +34,9 @@ afterEach(cleanup);
 describe("Configurações > Sítios", () => {
   it("lista sítios pelo nome, com cidade, principal e situação", () => {
     render(<Sitios />);
-    expect(screen.getByRole("heading", { name: "Mexicana" })).toBeTruthy();
-    expect(screen.getByText("Localização não informada")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
     const tabela = screen.getByRole("table", { name: "Sítios" });
+    expect(within(tabela).getByText("Mexicana")).toBeTruthy();
+    expect(within(tabela).getAllByText("—").length).toBeGreaterThan(0);
     expect(within(tabela).getByText("Principal", { selector: "strong" })).toBeTruthy();
     expect(within(tabela).queryByText("Sede")).toBeNull();
     expect(within(tabela).getByText("Uberaba — MG")).toBeTruthy();

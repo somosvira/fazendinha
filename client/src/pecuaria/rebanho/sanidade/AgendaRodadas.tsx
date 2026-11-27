@@ -2,27 +2,23 @@ import { AjudaCampo } from "../../../components/Dica";
 import "../protocolos/protocolos.css";
 import { OperacaoProtocolo } from "../protocolos/OperacaoProtocolo";
 import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
-import { CartoesCiclos } from "./CartoesCiclos";
 import { AlternarVisualizacaoSanitaria, useVisualizacaoSanitaria } from "./VisualizacaoSanitaria";
 import { FiltroColunaConsulta, type FiltrosColunas } from "@/financeiro/FiltroColunaConsulta";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { MoreHorizontal, CalendarDays } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CalendarDays } from "lucide-react";
 import { Button, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
-import { RegularizacaoTarefa, rotuloSituacaoTarefa } from "./RegularizacaoTarefa";
+import { RegularizacaoTarefa } from "./RegularizacaoTarefa";
 import { Empty } from "../../../financeiro/financeiro-ui";
 import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { Paginacao } from "../ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { reqSanidade } from "./api";
 import { FormRodada } from "./FormRodada";
-import { consultaRodadas, consultarRodada, listarEtapasRodada, listarParticipantesRodada, listarRodadas, listarTarefasEtapa, removerParticipante, type EtapaRodada, type PaginaSanitaria, type ParticipanteRodada, type RodadaSanitaria, type TarefaRodada } from "./rodadas-api";
-import { dataSanitaria, nomeAnimalSanitario, unidadeSanitaria } from "./rotulos";
-import { ContagensEtapa, EstadoSanitario, rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
+import { consultaRodadas, consultarRodada, listarParticipantesRodada, listarRodadas, removerParticipante, type PaginaSanitaria, type ParticipanteRodada, type RodadaSanitaria, type TarefaRodada } from "./rodadas-api";
+import { dataSanitaria, nomeAnimalSanitario } from "./rotulos";
 import { SkeletonSanitario } from "./SkeletonSanitario";
 import { EsqueletoFicha } from "../../../components/Esqueleto";
+import { ICONES_TABELA } from "../../../components/iconesTabela";
 const paginaUrl = (chave: string) => Math.max(1, Number(new URLSearchParams(window.location.search).get(chave)) || 1);
 
 export function AgendaRodadas({ filtrosColunas, filtrosUI, filtros, podeLancar, rodadaId, onAbrir, onExecutar, onAcao, recarregarToken }: { filtrosColunas?: FiltrosColunas; filtrosUI?: ReactNode | ((acao: ReactNode) => ReactNode); filtros: Record<string, string | number | undefined>; podeLancar: boolean; rodadaId: string; onAbrir: (id: string) => void; onExecutar: (tarefas: TarefaRodada[]) => void; onAcao: (acao: "adiar" | "dispensar" | "cancelar" | "consultar", tarefa: TarefaRodada) => void; recarregarToken: number }) {
@@ -42,7 +38,7 @@ export function AgendaRodadas({ filtrosColunas, filtrosUI, filtros, podeLancar, 
     <div className="san-visual-barra"><AlternarVisualizacaoSanitaria rotulo="Visualização dos ciclos" {...visual}/></div>
     {salvo && <p role="status">Ciclo salvo.</p>}
     {erro && <><ErrorBox erro={erro} /><Button secondary onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></>}
-    {carregando ? <SkeletonSanitario estrutura="ciclos" label="Carregando ciclos de protocolos…" /> : !erro && <>{visual.modo === "visual" ? <CartoesCiclos ciclos={pagina?.itens ?? []} onAbrir={onAbrir} revisao={revisao + recarregarToken}/> : <div className="sanidade-ciclos">
+    {carregando ? <SkeletonSanitario estrutura="ciclos" label="Carregando ciclos de protocolos…" /> : !erro && <>{<div className="sanidade-ciclos">
       <div className="sanidade-ciclo-linha sanidade-ciclo-cabecalho text-sm text-ink-3"><span>Ciclo</span><span>Protocolo</span><span>{filtrosColunas?.data ? <FiltroColunaConsulta titulo="Início" {...filtrosColunas.data}/> : "Início"}</span><span>Participantes</span></div>
       {(pagina?.itens ?? []).map((r) => <div key={r.id}>
         <div role="button" tabIndex={0} aria-label={`Abrir ciclo ${r.nome}`} onClick={() => onAbrir(r.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onAbrir(r.id); } }} className={`sanidade-ciclo-linha sanidade-ciclo-clicavel ${rodadaId === r.id ? "sanidade-ciclo-ativo" : ""}`}>
@@ -93,7 +89,7 @@ function DetalheRodada({ id, filtros, podeLancar, onFechar, onExecutar, onMudou,
     {carregando ? <EsqueletoFicha label="Carregando ciclo" /> : rodada && <div className="grid gap-5">
       <OperacaoProtocolo acaoCabecalho={voltar} acoes={podeGerirRodada && <div className="flex flex-wrap gap-2"><Button secondary onClick={() => setAdicionando(true)}>Adicionar participantes</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); setNovoNome(rodada.nome); setRenomeando(true); }}>Renomear ciclo</Button><Button secondary onClick={() => { chave.current = crypto.randomUUID(); void abrirAssociacao(); }}>Associar execuções existentes</Button><AjudaCampo rotulo="Ajuda sobre associação de execuções" texto="Somente execuções sem ciclo da mesma versão e sítio são elegíveis. Datas e fatos existentes serão preservados."/></div>} programacaoId={id} propriedadeId={sitioConsultado} podeLancar={podeLancar} revisao={revisao + recarregarToken} aoExecutar={(tarefas) => onExecutar(tarefas.map(t => t.tarefaOrigem))} regularizacao={(t, atualizarOperacao) => <RegularizacaoTarefa tarefa={t.tarefaOrigem} podeLancar={podeLancar} onMudou={async () => { atualizarOperacao(); onMudou(); }} />} gestao={<>
       <SecaoRecolhivel titulo="Gestão das participações" abertaInicial={false}>
-      <section><h3 className="font-semibold">Participações e histórico</h3><TabelaFinanceira rotulo="Participantes do ciclo" itens={participantes?.itens ?? []} chaveDe={(p) => p.id} colunas={[
+      <section><h3 className="font-semibold">Participações e histórico</h3><TabelaFinanceira icone={ICONES_TABELA.animal} rotulo="Participantes do ciclo" itens={participantes?.itens ?? []} chaveDe={(p) => p.id} colunas={[
         { chave: "animal", titulo: "Animal", principal: true, celula: (p) => <a className="underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(p.animalId)}`}>{nomeAnimalSanitario(p.animal)}</a> },
         { chave: "inicio", titulo: "Início próprio", celula: (p) => dataSanitaria(p.inicio) },
         { chave: "estado", titulo: "Participação", celula: (p) => p.canceladaEm ? `Removida · ${p.motivoCancelamento ?? "motivo não registrado"}` : "Em andamento" },
