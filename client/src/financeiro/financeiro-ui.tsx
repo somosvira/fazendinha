@@ -114,12 +114,13 @@ export function Metric({ label, valor, detalhe, icon: Icon, tone = "default", to
 
 /* Rodapé de paginação das tabelas: intervalo exibido, Anterior/Próxima e salto
  * direto por página. `substantivo` completa "1–15 de N …" (ex.: "operações"). */
-export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, substantivo, idSelect, onPagina, ocultarControlesPaginaUnica = true }: {
+export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, substantivo, idSelect, onPagina, ocultarControlesPaginaUnica = true, ocultarResumoPaginaUnica = false }: {
   pagina: number; totalPaginas: number; total: number; porPagina: number; ocultarControlesPaginaUnica?: boolean;
+  /** a consulta já informa a contagem em outro lugar: com uma página só, não repete "1–N de N". */ ocultarResumoPaginaUnica?: boolean;
   /** aria-label da <nav> */ rotulo: string; substantivo: string; idSelect: string;
   onPagina: (pagina: number) => void;
 }) {
-  if (total === 0 && totalPaginas <= 1) return null;
+  if ((total === 0 || ocultarResumoPaginaUnica) && totalPaginas <= 1) return null;
   return <nav aria-label={rotulo} className="fin-paginacao flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
     <span className="text-ink-3">{(total ? (pagina - 1) * porPagina + 1 : 0).toLocaleString("pt-BR")}–{Math.min(pagina * porPagina, total).toLocaleString("pt-BR")} de {total.toLocaleString("pt-BR")} {substantivo}</span>
     {(!ocultarControlesPaginaUnica || totalPaginas > 1) && <div className="flex items-center gap-2 max-sm:w-full">

@@ -1,4 +1,3 @@
-import { AjudaCampo } from "@/components/Dica";
 import { SecaoFinanceira } from "./SecaoFinanceira";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectCampo } from "./SelectCampo";
@@ -12,6 +11,7 @@ import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro, useErrosCadastro } from "./PainelCadastro";
 import { formatarDocumento, somenteDigitos, validarDocumento, validarParceiro, type ErrosCampo } from "./lib/validacao";
 import { Users } from "lucide-react";
+import { MultiSelect } from "@/components/MultiSelect";
 
 const ENDERECO = [["cep", "CEP", 9], ["logradouro", "Logradouro", 160], ["numero", "Número", 20], ["complemento", "Complemento", 100], ["bairro", "Bairro", 100], ["cidade", "Cidade", 100], ["uf", "UF", 2], ["referencia", "Referência", 240]] as const;
 
@@ -70,20 +70,18 @@ export function FormParceiro({ parceiro, aberto, onSalvo, onFechar }: { parceiro
       <section className="grid gap-4">
         <h3 className="text-sm font-semibold text-ink">Identificação e papéis</h3>
       <CampoFormulario id="parceiro-nome" rotulo="Nome / razão social" obrigatorio erro={erros.nome}>{(p) => <Input {...p} required maxLength={120} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="parceiro-documento" rotulo="CPF/CNPJ" erro={erros.documento}>{(p) => <Input {...p} inputMode="numeric" value={documento} onChange={(e) => setDocumento(e.target.value)} onBlur={() => { if (!validarDocumento(documento)) setDocumento(formatarDocumento(documento)); }} placeholder="Opcional" className={classeInput} />}</CampoFormulario>
-        {(somenteDigitos(documento).length === 14 || extras.nomeFantasia) && <CampoFormulario id="parceiro-fantasia" rotulo="Nome fantasia" erro={erros.nomeFantasia}>{(p) => <Input {...p} maxLength={120} value={extras.nomeFantasia} onChange={(e) => setExtras((s) => ({ ...s, nomeFantasia: e.target.value }))} className={classeInput} />}</CampoFormulario>}
-      </div>
-      <fieldset aria-invalid={Boolean(erros.papeis)} aria-describedby={erros.papeis ? "papeis-erro" : undefined}><legend className="mb-2 text-sm font-medium">Papéis do parceiro *<AjudaCampo rotulo="Ajuda: papéis do parceiro" texto="Escolha ao menos um papel; nenhum vem marcado automaticamente. Para um cliente, basta o nome e o papel Cliente. Contatos e documento são opcionais." /></legend><div className="grid gap-3 sm:grid-cols-2">{(Object.keys(PAPEIS_PARCEIRO) as PapelParceiro[]).map((papel) => <label key={papel} className="flex items-center gap-2 text-sm"><Checkbox  checked={papeis.includes(papel)} onCheckedChange={(checked) => setPapeis((atual) => checked === true ? [...atual, papel] : atual.filter((p) => p !== papel))} />{PAPEIS_PARCEIRO[papel]}</label>)}</div>{erros.papeis ? <p id="papeis-erro" role="alert" className="mt-2 text-sm text-destructive">{erros.papeis}</p> : null}</fieldset>
+      <CampoFormulario id="parceiro-documento" rotulo="CPF/CNPJ" erro={erros.documento}>{(p) => <Input {...p} inputMode="numeric" value={documento} onChange={(e) => setDocumento(e.target.value)} onBlur={() => { if (!validarDocumento(documento)) setDocumento(formatarDocumento(documento)); }} placeholder="Opcional" className={classeInput} />}</CampoFormulario>
+      {(somenteDigitos(documento).length === 14 || extras.nomeFantasia) && <CampoFormulario id="parceiro-fantasia" rotulo="Nome fantasia" erro={erros.nomeFantasia}>{(p) => <Input {...p} maxLength={120} value={extras.nomeFantasia} onChange={(e) => setExtras((s) => ({ ...s, nomeFantasia: e.target.value }))} className={classeInput} />}</CampoFormulario>}
+      <MultiSelect label="Papéis do parceiro *" ajuda="Escolha ao menos um papel; nenhum vem marcado automaticamente. Para um cliente, basta o nome e o papel Cliente. Contatos e documento são opcionais." placeholder="Selecione os papéis" searchPlaceholder="Buscar papel…" options={(Object.keys(PAPEIS_PARCEIRO) as PapelParceiro[]).map((papel) => ({ value: papel, label: PAPEIS_PARCEIRO[papel] }))} value={papeis} onValueChange={setPapeis} error={erros.papeis} contentClassName="z-[1300]" />
       </section>
       <section className="grid gap-4 border-t border-border pt-4">
         <h3 className="text-sm font-semibold text-ink">Contato</h3>
       <CampoFormulario id="parceiro-contato" rotulo="Pessoa de contato" erro={erros.pessoaContato}>{(p) => <Input {...p} maxLength={120} value={extras.pessoaContato} onChange={(e) => setExtras((s) => ({ ...s, pessoaContato: e.target.value }))} className={classeInput} />}</CampoFormulario>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <CampoFormulario id="parceiro-email" rotulo="E-mail" erro={erros.email}>{(p) => <Input {...p} type="text" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Opcional" className={classeInput} />}</CampoFormulario>
+      <div role="group" aria-label="Telefone e WhatsApp" className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         <CampoFormulario id="parceiro-telefone" rotulo="Telefone" erro={erros.telefone}>{(p) => <Input {...p} type="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="Opcional" className={classeInput} />}</CampoFormulario>
-        <CampoFormulario id="parceiro-email" rotulo="E-mail" erro={erros.email}>{(p) => <Input {...p} type="text" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Opcional" className={classeInput} />}</CampoFormulario>
+        <label className="flex min-h-10 items-center gap-2 text-sm sm:pb-0.5"><Checkbox checked={telefoneWhatsapp} onCheckedChange={(checked) => setTelefoneWhatsapp(checked === true)} />Este telefone possui WhatsApp</label>
       </div>
-      <label className="flex items-center gap-2 text-sm"><Checkbox  checked={telefoneWhatsapp} onCheckedChange={(checked) => setTelefoneWhatsapp(checked === true)} />Este telefone possui WhatsApp</label>
       </section>
       <div><SecaoFinanceira titulo="Endereço" abrir={ENDERECO.some(([campo]) => Boolean(erros[campo]))}><CamposCadastro prefixo="parceiro" campos={ENDERECO} valores={extras} onChange={(k, v) => setExtras((s) => ({ ...s, [k]: v }))} erros={erros} /></SecaoFinanceira></div>
       <fieldset className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2"><legend className="font-medium">Preferências de pagamento</legend>

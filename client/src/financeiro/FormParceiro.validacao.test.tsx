@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { alternarPapelParceiro } from "./papeis-parceiro.fixture";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormParceiro } from "./FormParceiro";
 import { ApiError, criarParceiro } from "./novo-api";
@@ -29,7 +30,7 @@ it("preserva dados e aponta CPF/CNPJ quando a API recusa duplicidade", async () 
   abrir();
   fireEvent.change(screen.getByRole("textbox", { name: "Nome / razão social" }), { target: { value: "Cliente teste" } });
   fireEvent.change(screen.getByRole("textbox", { name: "CPF/CNPJ" }), { target: { value: "12345678901" } });
-  fireEvent.click(screen.getByRole("checkbox", { name: "Cliente" }));
+  await alternarPapelParceiro(document.body, "Cliente");
   fireEvent.click(screen.getByRole("button", { name: "Criar parceiro" }));
   await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "CPF/CNPJ" })));
   expect(document.querySelector('[data-slot="dialog-footer"] [role="alert"]')?.textContent).toBe("Já existe um parceiro com este CPF/CNPJ");
@@ -39,7 +40,7 @@ it("preserva dados e aponta CPF/CNPJ quando a API recusa duplicidade", async () 
 it("abre endereço recolhido e focaliza o CEP inválido", async () => {
   abrir();
   fireEvent.change(screen.getByRole("textbox", { name: "Nome / razão social" }), { target: { value: "Cliente teste" } });
-  fireEvent.click(screen.getByRole("checkbox", { name: "Cliente" }));
+  await alternarPapelParceiro(document.body, "Cliente");
   fireEvent.click(screen.getByRole("button", { name: "Endereço" }));
   fireEvent.change(screen.getByRole("textbox", { name: "CEP" }), { target: { value: "123" } });
   fireEvent.click(screen.getByRole("button", { name: "Endereço" }));

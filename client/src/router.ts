@@ -139,7 +139,15 @@ export function urlEtapaVisita(id: string, etapa: EtapaVisita, opcoes: { grupo?:
 
 /** Atualiza a URL e notifica o roteador leve da aplicação. */
 export function navegarPara(pathname: string): void {
+  const anterior = window.location.pathname;
   window.history.pushState(null, "", normalizarRotaPecuaria(pathname));
+  // Outra tela começa no topo: sem isso ela herdava a rolagem da anterior e abria com o
+  // cabeçalho fora de vista. Filtros na mesma tela e âncoras (#) mantêm a posição; o
+  // voltar do navegador segue a restauração dele.
+  if (window.location.pathname !== anterior && !window.location.hash) {
+    const raiz = document.scrollingElement ?? document.documentElement;
+    raiz.scrollTop = 0;
+  }
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
