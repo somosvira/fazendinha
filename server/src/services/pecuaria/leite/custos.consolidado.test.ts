@@ -30,3 +30,12 @@ it("sem permissão de valores o consolidado fica oculto", () => {
   expect(r.consolidado).toMatchObject({ situacao: "OCULTO", custoPorLitro: null });
   expect(r.consolidado.custos.situacao).toBe("OCULTO");
 });
+it("sítio sem leite e sem custo não trava o custo por litro do consolidado", () => {
+  const vazio = sitio(3, null, null, ["SEM_VOLUME_POSITIVO"], "DESCONHECIDO") as unknown as { r: { consolidado: { producao: { esperadas: number }; custos: { componentesPendentes: number } } } };
+  vazio.r.consolidado.producao.esperadas = 0;
+  vazio.r.consolidado.custos.componentesPendentes = 0;
+  const r = combinarCustosSitios([sitio(1, "100.00", 100), sitio(2, "900.00", 300), vazio as never], true);
+  expect(r.consolidado).toMatchObject({ custoPorLitro: "2.50", situacao: "APURADO", motivos: [] });
+  expect(r.consolidado.custos.cobertura).toBe("COMPLETO");
+  expect(r.porSitio.map(s => s.nome)).toEqual(["Sítio 1", "Sítio 2", "Sítio 3"]);
+});

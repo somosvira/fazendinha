@@ -322,7 +322,12 @@ export async function consultarCustosLeiteConsolidadoTx(tx: Prisma.TransactionCl
   return combinarCustosSitios(resultados, verValores);
 }
 /** Combinação pura dos resultados por sítio (exportada para teste). */
-export function combinarCustosSitios(resultados: Array<{ sitio: { id: number; nome: string }; r: Pick<ResultadoCustosSitio, "consolidado" | "porClassificacao" | "periodo"> }>, verValores: boolean) {
+export function combinarCustosSitios(todos: Array<{ sitio: { id: number; nome: string }; r: Pick<ResultadoCustosSitio, "consolidado" | "porClassificacao" | "periodo"> }>, verValores: boolean) {
+  // Sítio sem leite e sem custo no período (ex.: só cria ou recria) não participa da soma: o
+  // "sem volume" dele não pode travar o custo por litro da fazenda. Continua listado em porSitio.
+  const comAtividade = todos.filter(({ r: { consolidado: c } }) => c.producao.esperadas > 0 || (c.producao.litros ?? 0) > 0
+    || c.custos.totalConhecido !== null || c.custos.componentes.length > 0 || c.custos.componentesPendentes > 0);
+  const resultados = comAtividade.length ? comAtividade : todos;
   const resumos = resultados.map(x => x.r.consolidado);
   const producao = resumos.reduce((s, r) => ({
     litros: r.producao.litros === null ? s.litros : (s.litros ?? 0) + r.producao.litros,
@@ -337,12 +342,12 @@ export function combinarCustosSitios(resultados: Array<{ sitio: { id: number; no
   const finalidades = [...new Set(resultados.flatMap(x => x.r.porClassificacao.map(p => p.finalidade)))];
   return {
     propriedadeId: null, escopoConsolidado: true as const,
-    periodo: resultados[0]?.r.periodo ?? null,
+    periodo: todos[0]?.r.periodo ?? null,
     porClassificacao: finalidades.map(finalidade => ({ finalidade,
       custos: somarCustos(resultados.flatMap(x => x.r.porClassificacao.filter(p => p.finalidade === finalidade).map(p => p.custos)), verValores) })),
     consolidado: { custos, producao, animaisSemComponentes: resumos.flatMap(r => r.animaisSemComponentes), custoPorLitro,
       situacao: !verValores ? "OCULTO" as const : motivos.length ? "NAO_APURADO" as const : "APURADO" as const, motivos },
-    porSitio: resultados.map(({ sitio, r }) => ({ propriedadeId: sitio.id, nome: sitio.nome, custoPorLitro: r.consolidado.custoPorLitro,
+    porSitio: todos.map(({ sitio, r }) => ({ propriedadeId: sitio.id, nome: sitio.nome, custoPorLitro: r.consolidado.custoPorLitro,
       totalConhecido: r.consolidado.custos.totalConhecido, litros: r.consolidado.producao.litros, situacao: r.consolidado.situacao })),
   };
 }
