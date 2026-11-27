@@ -226,38 +226,60 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
     const op = await ops.criarOperacao(input()); await snapshot("compromisso de 100");
     const barrier = new pg.Client({ connectionString: process.env.DATABASE_URL });
     await barrier.connect();
-    const key = 2492026;
     let running: Promise<PromiseSettledResult<unknown>[]> | undefined;
+    let bloqueioAtivo = false;
     try {
-      await barrier.query("SELECT pg_advisory_lock($1)", [key]);
-      await db.$executeRawUnsafe(`CREATE FUNCTION qa249_barrier() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(${key}); RETURN NEW; END $$`);
-      await db.$executeRawUnsafe(`CREATE TRIGGER qa249_barrier BEFORE INSERT ON "TransacaoFinanceira" FOR EACH ROW EXECUTE FUNCTION qa249_barrier()`);
+      await barrier.query("BEGIN");
+      bloqueioAtivo = true;
+      await barrier.query('SELECT "id" FROM "Operacao" WHERE "id" = $1 FOR NO KEY UPDATE', [op.id]);
+      const backendId = (await barrier.query("SELECT pg_backend_pid() AS pid")).rows[0].pid;
       running = Promise.allSettled([pay(op.compromissos[0].id, 60), pay(op.compromissos[0].id, 60)]);
-      // Ambas já leram o restante quando chegam à inserção. A barreira força
-      // essa intercalação sem substituir nenhum serviço ou cliente por mock.
+      // A fila de tuple locks pode bloquear a segunda sessão pela primeira,
+      // não diretamente pela barreira. Percorremos toda a cadeia de bloqueios.
       let waiting = 0;
-      for (let attempt = 0; attempt < 60 && waiting < 2; attempt++) {
-        const result = await barrier.query("SELECT count(*)::int AS count FROM pg_locks WHERE locktype = 'advisory' AND objid = $1 AND NOT granted", [key]);
+      for (let attempt = 0; attempt < 300 && waiting < 2; attempt++) {
+        await barrier.query("SELECT pg_stat_clear_snapshot()");
+        const result = await barrier.query(`
+          WITH RECURSIVE bloqueados(pid) AS (
+            SELECT $1::integer
+            UNION
+            SELECT atividade.pid FROM pg_stat_activity atividade
+            JOIN bloqueados bloqueador ON bloqueador.pid = ANY(pg_blocking_pids(atividade.pid))
+            WHERE atividade.datname = current_database()
+          )
+          SELECT count(*)::int AS count FROM bloqueados
+          JOIN pg_stat_activity atividade USING (pid)
+          WHERE atividade.wait_event_type = 'Lock'
+            AND atividade.query LIKE '%FROM "Operacao"%FOR NO KEY UPDATE%'
+        `, [backendId]);
         waiting = result.rows[0].count;
         if (waiting < 2) await new Promise(resolve => setTimeout(resolve, 25));
       }
-      expect(waiting, "duas liquidações devem alcançar a barreira").toBe(2);
-      await barrier.query("SELECT pg_advisory_unlock($1)", [key]);
+      expect(waiting, "duas liquidações devem disputar a trava da operação").toBe(2);
+      const antes = await barrier.query(`SELECT
+        (SELECT count(*)::int FROM "TransacaoFinanceira" WHERE "operacaoId" = $1) AS transacoes,
+        (SELECT count(*)::int FROM "Liquidacao" WHERE "compromissoId" = $2) AS liquidacoes`, [op.id, op.compromissos[0].id]);
+      expect(antes.rows[0]).toEqual({ transacoes: 0, liquidacoes: 0 });
+      await barrier.query("COMMIT");
+      bloqueioAtivo = false;
       const outcomes = await running;
       const state = await snapshot("após concorrência");
       evidence.push({ caso: serial, outcomes: outcomes.map(o => o.status) });
       const paid = state.operacoes[0].compromissos[0].liquidacoes.reduce((total, l) => total + Number(l.valor), 0);
-      expect.soft(paid).toBeLessThanOrEqual(100);
+      expect.soft(paid).toBe(60);
+      expect.soft(state.operacoes[0].compromissos[0].liquidacoes).toHaveLength(1);
+      expect.soft(state.operacoes[0].transacoes).toHaveLength(1);
       expect.soft(state.saldoConta).toBe(940);
       expect(outcomes.filter(o => o.status === "fulfilled")).toHaveLength(1);
+      const rejeitados = outcomes.filter((o): o is PromiseRejectedResult => o.status === "rejected");
+      expect(rejeitados).toHaveLength(1);
+      expect(rejeitados[0].reason).toMatchObject({ code: "VALIDACAO", message: expect.stringContaining("excede o saldo restante") });
     } finally {
-      await barrier.query("SELECT pg_advisory_unlock_all()");
+      if (bloqueioAtivo) await barrier.query("ROLLBACK");
       await running;
-      await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS qa249_barrier ON "TransacaoFinanceira"`);
-      await db.$executeRawUnsafe(`DROP FUNCTION IF EXISTS qa249_barrier()`);
       await barrier.end();
     }
-  });
+  }, 20_000);
 
   it("contagem encontrada reduz, aumenta e zera o estoque sem dinheiro", async () => {
     await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));

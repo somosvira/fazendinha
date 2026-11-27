@@ -79,14 +79,15 @@ export async function lerPreviaRascunho(propriedadeId: number, usuarioId: number
  * `opcoes.previa`: leitura prévia que quem chama já fez (a rota confere a permissão da Pecuária com ela);
  * sem ela, o serviço lê. Mesmo com ela, o conteúdo é conferido de novo dentro da transação.
  */
-export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string, opcoes: { permitirAnimais?: boolean; previa?: PreviaRascunho } = {}) {
+export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string, opcoes: { permitirAnimais?: boolean; previa?: PreviaRascunho; cienciaSaldoNegativo?: string; conferirSaldo?: boolean } = {}) {
   // Com animais, a confirmação segue a isolação do Rebanho. A leitura prévia escolhe a transação;
   // dentro dela o conteúdo é conferido de novo, para um rascunho regravado no meio não escapar.
   // O tempo usa o teto: o rascunho pode ter ganho animais depois da leitura prévia.
   const previa = opcoes.previa ?? await lerPreviaRascunho(propriedadeId, usuarioId);
   const comAnimais = previa.envolveAnimais;
   const executar: typeof transacaoValidada = comAnimais ? (fn) => transacaoPecuaria(fn, { timeout: timeoutTransacaoAnimais(MAX_ANIMAIS_POR_OPERACAO) }) : transacaoValidada;
-  return executar(async (tx) => {
+  try {
+  return await executar(async (tx) => {
     if (chaveReenvio) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fin-rascunho-confirmacao:${chaveReenvio}`}))`;
       const anterior = await tx.auditoriaFinanceira.findFirst({ where: { acao: "CONFIRMACAO_RASCUNHO_IDEMPOTENTE", estadoPosterior: { path: ["chave"], equals: chaveReenvio } } });
@@ -115,12 +116,13 @@ export async function confirmarRascunho(propriedadeId: number, usuarioId: number
       if (opcoes.permitirAnimais === false) throw new FinanceiroError("CONFLITO", "Compra e devolução de animais exigem acesso à Pecuária");
       if (!comAnimais) throw new FinanceiroError("CONFLITO", "O rascunho mudou durante a confirmação. Recarregue a página e confirme de novo.");
     }
-    const operacao = await confirmarRascunhoOperacao(tx, { ...validacao.data, ...(chaveReenvio ? { chave: chaveReenvio } : {}), propriedadeId, usuarioId });
+    const operacao = await confirmarRascunhoOperacao(tx, { ...validacao.data, ...(chaveReenvio ? { chave: chaveReenvio } : {}), propriedadeId, usuarioId }, opcoes.conferirSaldo ? { origem: "rascunho", token: opcoes.cienciaSaldoNegativo, rascunho: { id: rascunho.id, versao: rascunho.versao } } : undefined);
     await tx.documentoFinanceiro.updateMany({
       where: { rascunhoId: rascunho.id },
       data: { rascunhoId: null, operacaoId: operacao.id },
     });
-    await tx.rascunhoOperacao.delete({ where: { id: rascunho.id } });
+    const removidos = await tx.rascunhoOperacao.deleteMany({ where: { id: rascunho.id, versao: rascunho.versao } });
+    if (removidos.count !== 1) throw new FinanceiroError("CONFLITO", "O rascunho mudou durante a confirmação. Recarregue a página.");
     if (chaveReenvio) await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMACAO_RASCUNHO_IDEMPOTENTE", usuarioId,
       depois: { chave: chaveReenvio, propriedadeId, versao: versao ?? null } });
     return tx.operacao.findUniqueOrThrow({
@@ -132,4 +134,19 @@ export async function confirmarRascunho(propriedadeId: number, usuarioId: number
       },
     });
   });
+  } catch (erro) {
+    if (comAnimais && chaveReenvio) {
+      const anterior = await transacaoValidada(async tx => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fin-rascunho-confirmacao:${chaveReenvio}`}))`;
+        const recibo = await tx.auditoriaFinanceira.findFirst({ where: { acao: "CONFIRMACAO_RASCUNHO_IDEMPOTENTE", estadoPosterior: { path: ["chave"], equals: chaveReenvio } } });
+        if (!recibo) return null;
+        const dados = recibo.estadoPosterior as { propriedadeId: number; versao: number | null };
+        if (recibo.usuarioId !== usuarioId || dados.propriedadeId !== propriedadeId || dados.versao !== (versao ?? null)) throw new FinanceiroError("CONFLITO", "Chave de reenvio usada com outros dados");
+        if (await tx.rascunhoOperacao.findUnique({ where: chave(propriedadeId, usuarioId) })) throw new FinanceiroError("CONFLITO", "Já existe uma confirmação com esta chave. Confira o histórico antes de confirmar o novo rascunho.");
+        return tx.operacao.findUniqueOrThrow({ where: { id: recibo.entidadeId }, include: includeOperacaoConfirmada });
+      });
+      if (anterior) return anterior;
+    }
+    throw erro;
+  }
 }

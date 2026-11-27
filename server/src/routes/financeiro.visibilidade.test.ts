@@ -8,6 +8,7 @@ vi.mock("../services/financeiro/cadastros-gerenciais.js", () => ({ listarCadastr
 vi.mock("../services/estoque/produtos.js", () => ({ listarProdutosCadastro: mocks.produtos }));
 vi.mock("../services/financeiro/rascunhos.js", () => ({ lerPreviaRascunho: async () => ({ envolveAnimais: false, animais: 0 }), obterRascunho: mocks.rascunho }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
+import { SaldoNegativoError } from "../services/financeiro/saldo-negativo.js";
 import { financeiroRouter } from "./financeiro.js";
 import { uid } from "../lib/uid.fixture.js";
 const op = { id: uid(1), tipo: "COMPRA_ESTOQUE", valorTotal: "987.65", itens: [{ quantidade: "2", valorUnitario: "987.65", valorTotal: "987.65" }], movimentosEstoque: [{ origem: "COMPRA", quantidade: "2", custoUnitario: "987.65", valorTotal: "987.65" }], compromissos: [], transacoes: [] };
@@ -36,7 +37,20 @@ describe("perfis e escopo dos DTOs financeiros", () => {
   it("grava operação com preços manuais, mas mascara também a resposta de escrita", async () => {
     const r = await app(["lancar"]).request("/financeiro/operacoes", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tipo: "COMPRA_ESTOQUE", data: "2026-09-10", propriedadeId: 3, descricao: "Compra", parceiroId: uid(2), itens: [{ descricao: "Produto", produtoId: uid(3), quantidade: 2, unidade: "KG", valorTotal: 987.65, estocavel: true }], financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" } }) });
     expect(r.status).toBe(201); expect((await r.json()).valorTotal).toBeNull();
-    expect(mocks.criar).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 3, usuarioId: 7 }));
+    expect(mocks.criar).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 3, usuarioId: 7 }), undefined);
+  });
+  it("entrega ciência apenas a quem vê valores e separa o token da intenção", async () => {
+    const corpo = { tipo: "SERVICO", data: "2026-09-10", propriedadeId: 3, descricao: "Serviço", parceiroId: uid(2), centroCustoId: uid(4), itens: [], valorTotal: 100, financeiro: { condicao: "A_VISTA", contaId: uid(5) }, cienciaSaldoNegativo: "token-enviado" };
+    const snapshot = { propriedadeId: 3, contaId: uid(5), saldoAtual: "50.00", valorPagamento: "100.00", saldoProjetado: "-50.00", token: "token-novo" };
+    mocks.criar.mockRejectedValueOnce(new SaldoNegativoError(snapshot));
+    const req = { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(corpo) };
+    const resposta = await app(["lancar", "verValores"]).request("/financeiro/operacoes", req);
+    expect(resposta.status).toBe(409);
+    expect(await resposta.json()).toMatchObject({ code: "SALDO_NEGATIVO", campo: "financeiro.contaId", saldoNegativo: snapshot });
+    expect(mocks.criar).toHaveBeenLastCalledWith(expect.not.objectContaining({ cienciaSaldoNegativo: expect.anything() }), { origem: "direta", token: "token-enviado" });
+    const oculta = await app(["lancar"]).request("/financeiro/operacoes", req);
+    expect(oculta.status).toBe(201);
+    expect(mocks.criar).toHaveBeenLastCalledWith(expect.not.objectContaining({ cienciaSaldoNegativo: expect.anything() }), undefined);
   });
   it.each([
     ["PUT", "/financeiro/operacoes/rascunho"], ["DELETE", "/financeiro/operacoes/rascunho"],

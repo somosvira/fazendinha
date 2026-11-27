@@ -22,6 +22,7 @@ export function ConfirmDialog({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   cancelTone = "neutral",
+  focoInicial = "confirmar",
   tone = "neutral",
   processando = false,
   onConfirm,
@@ -36,6 +37,7 @@ export function ConfirmDialog({
   confirmLabel?: string;
   cancelLabel?: string;
   cancelTone?: "neutral" | "safe";
+  focoInicial?: "confirmar" | "cancelar";
   tone?: ConfirmTone;
   processando?: boolean;
   onConfirm: () => void;
@@ -44,6 +46,7 @@ export function ConfirmDialog({
   dismissLabel?: string;
 }) {
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   return (
     <Dialog
@@ -57,7 +60,7 @@ export function ConfirmDialog({
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => {
           e.preventDefault();
-          confirmRef.current?.focus();
+          (focoInicial === "cancelar" ? cancelRef : confirmRef).current?.focus();
         }}
         overlayClassName={camada === "sobreDetalhe" ? "z-[1390]" : "z-[1200]"}
         className={camada === "sobreDetalhe" ? "z-[1400] gap-0" : "z-[1200] gap-0"}
@@ -71,6 +74,7 @@ export function ConfirmDialog({
         <DialogFooter className="border-t border-border bg-card px-5 py-4">
           {dismissLabel && onDismiss && <Button variant="ghost" disabled={processando} onClick={onDismiss}>{dismissLabel}</Button>}
           <Button
+            ref={cancelRef}
             variant="outline"
             className={cancelTone === "safe" ? "border-primary text-primary hover:bg-[color:var(--fin-positive-bg)]" : undefined}
             onClick={onCancel}

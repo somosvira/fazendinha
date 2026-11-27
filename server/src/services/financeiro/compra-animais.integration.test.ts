@@ -10,7 +10,8 @@ import { cadastrar, cadastrarTx, darBaixa, estornarBaixa } from "../pecuaria/reb
 import { registrarEccEntradaTx } from "../pecuaria/rebanho/ecc-entrada.js";
 import { cadastrarAnimalSchema } from "../pecuaria/rebanho/schemas.js";
 import { hojeFazenda } from "../pecuaria/rebanho/regras.js";
-import { criarOperacao, estornarOperacao, obterOperacao } from "./operacoes.js";
+import { criarOperacao, criarTransacaoAvulsa, confirmarRascunhoOperacao, estornarOperacao, obterOperacao } from "./operacoes.js";
+import { transacaoPecuaria } from "../pecuaria/transacao.js";
 import { confirmarRascunho } from "./rascunhos.js";
 import { operacaoSchema } from "./schemas.js";
 
@@ -71,7 +72,8 @@ afterAll(async () => {
   const animais = (await prisma.animal.findMany({ where: { localizacoes: { some: { propriedadeId } } }, select: { id: true } })).map((a) => a.id);
   const animalId = { in: animais };
   await prisma.rascunhoOperacao.deleteMany({ where: { propriedadeId } });
-  await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: operacoes } } });
+  const transacoes = (await prisma.transacaoFinanceira.findMany({ where: { propriedadeId }, select: { id: true } })).map(t => t.id);
+  await prisma.auditoriaFinanceira.deleteMany({ where: { entidadeId: { in: [...operacoes, ...transacoes] } } });
   await prisma.liquidacao.deleteMany({ where: { transacao: { propriedadeId } } });
   await prisma.movimentoConta.deleteMany({ where: { transacao: { propriedadeId } } });
   await prisma.transacaoFinanceira.deleteMany({ where: { reversaoDeId: { not: null }, propriedadeId } });
@@ -98,6 +100,38 @@ afterAll(async () => {
 });
 
 comBanco("compra de animais — PostgreSQL", () => {
+  it("reexecuta compra Serializable após movimento ReadCommitted com snapshot antigo", async () => {
+    const contaTeste = (await prisma.contaFinanceira.create({ data: { nome: `Snapshot ${crypto.randomUUID()}`, tipo: "BANCO", propriedadeId: sitio, saldoAbertura: 100_000, dataSaldoAbertura: new Date("2026-01-01") } })).id;
+    const dados = compra([itemAnimal(1, 100)], { financeiro: { condicao: "A_VISTA", contaId: contaTeste } });
+    let liberar!: () => void;
+    let pronto!: () => void;
+    const espera = new Promise<void>(r => { liberar = r; });
+    const iniciou = new Promise<void>(r => { pronto = r; });
+    let tentativas = 0;
+    const compraPendente = transacaoPecuaria(async tx => {
+      tentativas++;
+      await tx.propriedade.findUnique({ where: { id: sitio } });
+      if (tentativas === 1) { pronto(); await espera; }
+      return confirmarRascunhoOperacao(tx, dados, { origem: "direta" });
+    }).catch(e => e);
+    await iniciou;
+    try {
+      await criarTransacaoAvulsa({ tipo: "PAGAMENTO", data: new Date(HOJE), valor: 99950, descricao: "Fixture concorrente", contaId: contaTeste, propriedadeId: sitio });
+    } finally { liberar(); }
+    const resultado = await compraPendente;
+    expect(tentativas).toBeGreaterThan(1);
+    expect(resultado).toMatchObject({ code: "SALDO_NEGATIVO", saldoNegativo: { saldoAtual: "50.00", saldoProjetado: "-50.00" } });
+    expect(await prisma.animal.count({ where: { brinco: dados.itens[0].animal!.brinco } })).toBe(0);
+  });
+
+  it("reenvios simultâneos de compra animal retornam o mesmo recibo", async () => {
+    const contaTeste = (await prisma.contaFinanceira.create({ data: { nome: `Reenvio ${crypto.randomUUID()}`, tipo: "BANCO", propriedadeId: sitio, saldoAbertura: 100_000, dataSaldoAbertura: new Date("2026-01-01") } })).id;
+    const dados = compra([itemAnimal(1, 100)], { chave: crypto.randomUUID(), financeiro: { condicao: "A_VISTA", contaId: contaTeste } });
+    const [a, b] = await Promise.all([criarOperacao(dados, { origem: "direta" }), criarOperacao(dados, { origem: "direta" })]);
+    expect(a.id).toBe(b.id);
+    expect(await prisma.itemOperacao.count({ where: { operacaoId: a.id } })).toBe(1);
+  });
+
   it("confirma operação, itens, pagamento e animais no mesmo commit, sem estoque", async () => {
     const frete = { descricao: "Frete", quantidade: 1, unidade: "un", valorTotal: 300 };
     const operacao = await criarOperacao(compra([itemAnimal(312.5, 12), itemAnimal(298, 12), frete]));
