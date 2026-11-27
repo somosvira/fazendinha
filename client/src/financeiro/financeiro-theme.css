@@ -4,7 +4,8 @@
   background-image: radial-gradient(ellipse 680px 360px at 100% 0%, var(--fin-canvas-sage), transparent 100%), linear-gradient(180deg, var(--fin-canvas-light), var(--fin-canvas-end));
   background-size: 100% 720px, 100% 100%;
   background-repeat: no-repeat;
-  min-height: 100dvh;
+  /* O cabeçalho fica acima do main: 100dvh inteiro criava rolagem mesmo com a página curta. */
+  min-height: calc(100dvh - var(--header-h));
 }
 @media print {
   .app-main:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) { background: white; }

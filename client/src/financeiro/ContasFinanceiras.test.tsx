@@ -143,7 +143,8 @@ it("pagina contas e busca em todos os registros antes de paginar", async () => {
   expect(tabela.queryByText("Conta 01")).toBeNull();
   await alterarControle(screen.getByLabelText("Buscar conta"), { target: { value: "Conta 01" } });
   expect(tabela.getByText("Conta 01")).toBeTruthy();
-  expect(screen.getByRole("navigation", { name: "Paginação das contas" }).textContent).toContain("1–1 de 1");
+  expect(screen.queryByRole("navigation", { name: "Paginação das contas" })).toBeNull();
+  expect(screen.getByText(/Saldo da consulta · 1 conta$/)).toBeTruthy();
 });
 
 
@@ -177,7 +178,7 @@ it("mantém fluxo consolidado independente dos filtros dentro do extrato", async
   fireEvent.mouseDown(screen.getByRole("tab", { name: "Análise" }));
   await waitFor(() => expect(within(grafico).getByRole("list", { name: "Totais acumulados do gráfico" }).textContent).toContain("35,00"));
   fireEvent.mouseDown(screen.getByRole("tab", { name: /^Contas$/ }));
-  expect(within(screen.getByRole("navigation", { name: "Paginação das contas" })).queryByRole("button", { name: "Próxima" })).toBeNull();
+  expect(screen.queryByRole("navigation", { name: "Paginação das contas" })).toBeNull();
 });
 
 it("breadcrumb mantém o período ao abrir a conta e retornar ao consolidado", async () => {

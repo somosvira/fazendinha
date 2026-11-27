@@ -1,4 +1,5 @@
 import { abrirFiltrosConsulta, alterarControle, aplicarFiltrosConsulta } from "../lib/controles.fixture";
+import { alternarPapelParceiro, papelSelecionado } from "./papeis-parceiro.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -106,6 +107,36 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     await alterarControle(within(painel).getByLabelText("Local"), { target: { value: "Escritório" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
     await waitFor(() => expect(criarConta).toHaveBeenCalledWith(expect.objectContaining({ tipo: "CAIXA", saldoAbertura: 0, local: "Escritório" })));
+  });
+
+  it("nova conta sem agência leva o foco ao campo e mostra o aviso com ícone no rodapé", async () => {
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: /Nova conta/ }));
+    const painel = await screen.findByRole("dialog");
+    await alterarControle(within(painel).getByLabelText("Nome de exibição"), { target: { value: "Conta de teste" } });
+    await alterarControle(within(painel).getByLabelText("Instituição"), { target: { value: "Sicoob" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
+    await waitFor(() => expect(document.activeElement).toBe(within(painel).getByLabelText("Agência")));
+    const rodape = document.querySelector('[data-slot="dialog-footer"] [role="alert"]')!;
+    expect(rodape.textContent).toBe("Informe a agência");
+    expect(rodape.querySelector("svg")).toBeTruthy();
+    expect(criarConta).not.toHaveBeenCalled();
+  });
+
+  it("saldo de abertura aceita valor colado com R$ e salva no padrão brasileiro", async () => {
+    vi.mocked(criarConta).mockResolvedValue(config.contas[0]);
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: /Nova conta/ }));
+    const painel = await screen.findByRole("dialog");
+    await alterarControle(within(painel).getByLabelText("Nome de exibição"), { target: { value: "Aplicação" } });
+    await escolherSelect(painel, "Tipo", "Aplicação financeira");
+    await alterarControle(within(painel).getByLabelText("Instituição"), { target: { value: "Sicredi" } });
+    const saldo = within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement;
+    fireEvent.change(saldo, { target: { value: "R$ 1.234,56" } });
+    fireEvent.blur(saldo);
+    expect(saldo.value).toBe("1.234,56");
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
+    await waitFor(() => expect(criarConta).toHaveBeenCalledWith(expect.objectContaining({ saldoAbertura: 1234.56 })));
   });
 
   it("ignora eventos de teclado dos botões filhos e bloqueia reativação duplicada", async () => {
@@ -347,7 +378,7 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     await montar("parceiros");
     fireEvent.click(primeiro("button", "Editar Cooperativa"));
     const painel = await screen.findByRole("dialog");
-    fireEvent.click(within(painel).getByRole("checkbox", { name: "Prestador de serviço" }));
+    await alternarPapelParceiro(painel, "Prestador de serviço");
     await alterarControle(within(painel).getByLabelText("Condição sugerida"), { target: { value: "A_PRAZO" } });
     await alterarControle(within(painel).getByLabelText("Intervalo em dias"), { target: { value: "30" } });
     await alterarControle(within(painel).getByLabelText("Forma de pagamento sugerida"), { target: { value: "BOLETO" } });
@@ -370,7 +401,7 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     const painel = await screen.findByRole("dialog");
     expect((within(painel).getByLabelText("Nome / razão social") as HTMLInputElement).value).toBe("Cooperativa");
     expect((within(painel).getByLabelText("CPF/CNPJ") as HTMLInputElement).value).toBe("11.222.333/0001-81");
-    expect((within(painel).getByRole("checkbox", { name: "Fornecedor" }) as HTMLInputElement).getAttribute("aria-checked")).toBe("true");
+    expect(papelSelecionado(painel, "Fornecedor")).toBe(true);
     expect((within(painel).getByLabelText("Telefone") as HTMLInputElement).value).toBe("3499990000");
     expect((within(painel).getByLabelText("E-mail") as HTMLInputElement).value).toBe("coop@x.com");
   });
@@ -415,8 +446,8 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     await montar("parceiros");
     fireEvent.click(screen.getByRole("button", { name: /Novo parceiro/ }));
     const painel = await screen.findByRole("dialog");
-    expect(within(painel).getByRole("checkbox", { name: "Fornecedor" }).getAttribute("aria-checked")).toBe("false");
-    fireEvent.click(within(painel).getByRole("checkbox", { name: "Fornecedor" }));
+    expect(papelSelecionado(painel, "Fornecedor")).toBe(false);
+    await alternarPapelParceiro(painel, "Fornecedor");
     await alterarControle(within(painel).getByLabelText("Nome / razão social"), { target: { value: "Cooperativa 2" } });
     await alterarControle(within(painel).getByLabelText("CPF/CNPJ"), { target: { value: "11.222.333/0001-81" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar parceiro" }));

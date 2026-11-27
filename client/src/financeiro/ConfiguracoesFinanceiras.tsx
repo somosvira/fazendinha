@@ -63,7 +63,7 @@ const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) =>
 
 const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
   { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
-  { chave: "grupo", titulo: "Grupo", larguraMinima: 160, celula: (c) => c.grupo?.nome ?? <Pill tone="amber">Sem grupo</Pill> },
+  { chave: "grupo", titulo: "Grupo", larguraMinima: 160, celula: (c) => c.grupo ? <span className="inline-flex max-w-full" title={c.grupo.nome}><Pill tone="blue"><span className="block max-w-[16rem] truncate">{c.grupo.nome}</span></Pill></span> : <Pill tone="amber">Sem grupo</Pill> },
   { chave: "referencias", titulo: "Vínculos", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
