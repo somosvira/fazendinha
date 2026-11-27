@@ -110,7 +110,8 @@ export async function confirmarRascunho(propriedadeId: number, usuarioId: number
     const conteudo = rascunho.dados as { operacao?: unknown };
     const validacao = operacaoSchema.safeParse(conteudo.operacao);
     if (!validacao.success) {
-      throw new FinanceiroError("VALIDACAO", validacao.error.issues[0]?.message ?? "Preencha todos os campos obrigatórios");
+      const problema = validacao.error.issues[0];
+      throw new FinanceiroError("VALIDACAO", problema?.message ?? "Preencha todos os campos obrigatórios", problema?.path.length ? problema.path.join(".") : undefined);
     }
     if (envolveAnimais(validacao.data)) {
       if (opcoes.permitirAnimais === false) throw new FinanceiroError("CONFLITO", "Compra e devolução de animais exigem acesso à Pecuária");

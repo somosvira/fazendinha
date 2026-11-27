@@ -51,4 +51,19 @@ describe("rascunho único de operação", () => {
     expect(mocks.documentoUpdateMany).toHaveBeenCalledWith({ where: { rascunhoId: uid(9) }, data: { rascunhoId: null, operacaoId: uid(20) } });
     expect(mocks.delete).toHaveBeenCalledWith({ where: { id: uid(9), versao: 2 } });
   });
+
+  it("frete sem categoria recusa a confirmação apontando o campo, em português", async () => {
+    const tx = {
+      $executeRaw: vi.fn().mockResolvedValue(0),
+      rascunhoOperacao: { findUnique: vi.fn().mockResolvedValue({ id: uid(9), versao: 2, dados: { operacao: {
+        chave: uid(1), tipo: "COMPRA_ESTOQUE", data: "2026-10-01", descricao: "Compra com frete", parceiroId: uid(3),
+        itens: [{ produtoId: uid(5), descricao: "Material", quantidade: 150, unidade: "DOSE", valorTotal: 300 }],
+        logistica: { valor: 10, descricao: "Logística da aquisição", categoriaId: "" }, financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
+      } }, documentos: [] }), deleteMany: mocks.delete },
+    };
+    mocks.transaction.mockImplementation((callback) => callback(tx));
+    const falha = await confirmarRascunho(7, 3, 2).catch((e: unknown) => e);
+    expect(falha).toMatchObject({ code: "VALIDACAO", message: "Selecione a categoria do frete", campo: "logistica.categoriaId" });
+    expect(mocks.confirmarOperacao).not.toHaveBeenCalled();
+  });
 });
