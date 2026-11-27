@@ -1,3 +1,4 @@
+import { Syringe, Wallet } from "lucide-react";
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/DatePicker';
@@ -5,7 +6,7 @@ import { BuscaLista } from '@/components/BuscaLista';
 import { BarraConsulta } from '@/financeiro/BarraConsulta';
 import { PeriodoFinanceiroControl } from '@/financeiro/PeriodoFinanceiroControl';
 import { SelectCampo } from '@/financeiro/SelectCampo';
-import { TabelaFinanceira } from '@/financeiro/financeiro-ui';
+import { TabelaFinanceira, Empty} from '@/financeiro/financeiro-ui';
 import { navegarPara } from '../../../router';
 import { formatarDataBR } from '../lib/rotulos';
 import { FormFatoSanitario, type TipoFatoSanitario } from '../sanidade/FormFatoSanitario';
@@ -80,7 +81,7 @@ export function CustosBezerreiro({sitio,params,mudar,revisao,aoSelecionarSitio}:
               { chave: 'sanidade', titulo: 'Sanidade', alinhamento: 'direita', celula: a => valor(a.custoSanitario) },
               { chave: 'pendencias', titulo: 'Cobertura', celula: a => coberturaRegistro(a.pendencias) },
             ]} />
-          {dados.porAnimal.length === 0 && <p className="bez-estado">Nenhum custo atribuído por animal neste período.</p>}
+          {dados.porAnimal.length === 0 && <Empty icone={Wallet}>Nenhum custo atribuído por animal neste período.</Empty>}
         </section>
       </>}
     </EstadoConsulta>
@@ -123,7 +124,7 @@ export function SanidadeBezerreiro({sitio,params,mudar,revisao,podeLancar:podeLa
             {chave:'status',titulo:'Situação',celula:situacao},
             {chave:'detalhe',titulo:'Ação',acoes:true,celula:detalhes},
           ]} />}
-        {!consulta.dados.total && <p className="bez-estado">Nenhuma ação sanitária registrada durante as participações deste recorte.</p>}
+        {!consulta.dados.total && <Empty icone={Syringe}>Nenhuma ação sanitária registrada durante as participações deste recorte.</Empty>}
         <PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} mudar={p => mudar({pagina:String(p)})} />
       </>}
     </EstadoConsulta>

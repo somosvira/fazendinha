@@ -1,6 +1,7 @@
 import { BuscaLista } from "@/components/BuscaLista";
 import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { useEffect, useState, type ReactNode } from "react";
+import { CircleHelp } from "lucide-react";
 import {
   Button,
   Destaques,
@@ -592,10 +593,10 @@ export function VisaoGeralReprodutiva({
                   avaliadas.
                 </Empty>
               ) : (
-                <p>
+                <Empty icone={CircleHelp}>
                   Não há cuidados conhecidos neste recorte. A cobertura ainda
                   não permite afirmar ausência de necessidades.
-                </p>
+                </Empty>
               )}
             </>
           )}

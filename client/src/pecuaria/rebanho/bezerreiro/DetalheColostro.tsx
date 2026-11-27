@@ -1,3 +1,5 @@
+import { History } from "lucide-react";
+import { Empty } from "@/financeiro/financeiro-ui";
 import { useState, type ReactNode } from 'react';
 import { navegarPara } from '../../../router';
 import { Button } from '@/components/ui/button';
@@ -26,7 +28,7 @@ function ListaHistorico({tipo,sitio,revisao,params,mudar}: {tipo:'destinacoes'|'
   const consulta=useConsultaBezerreiro<Pagina<RegistroHistorico>>(`/colostro/${tipo}${consultaBezerreiro({pagina,inicio:params.get('de'),fim:params.get('ate')})}`,sitio,revisao);
   return <section className="bez-secao"><h3>{tipo==='destinacoes'?'Histórico de destinações':'Enriquecimentos registrados'}</h3><EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&<><ListaColostro rotulo={tipo==='destinacoes'?'Histórico de destinações':'Enriquecimentos registrados'} itens={consulta.dados.itens} chaveDe={r=>r.id} colunas={[
     {chave:'data',titulo:'Data',principal:true,celula:r=>formatarDataBR(r.data)}, {chave:'responsavel',titulo:'Responsável',celula:r=>r.responsavel??'Não informado'}, {chave:'status',titulo:'Situação',celula:r=>r.status==='ESTORNADO'?'Estornado':'Confirmado'}, {chave:'acao',titulo:'Ação',acoes:true,celula:r=><Button variant="outline" onClick={()=>mudar(parametrosDetalheColostro(tipo,r.id))}>Detalhes / regularizar</Button>},
-  ]}/>{consulta.dados.total===0&&<p className="bez-estado">Nenhum registro neste período.</p>}<PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} tamanho={consulta.dados.tamanho??30} mudar={p=>mudar({[parametro]:String(p)})}/></>}</EstadoConsulta></section>;
+  ]}/>{consulta.dados.total===0&&<Empty icone={History}>Nenhum registro neste período.</Empty>}<PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} tamanho={consulta.dados.tamanho??30} mudar={p=>mudar({[parametro]:String(p)})}/></>}</EstadoConsulta></section>;
 }
 export function DetalheColostro({sitio,revisao,tipo,id,podeLancar,mudar,aoSalvar}: {sitio:number;revisao:number;tipo:RecursoColostro;id:string;podeLancar:boolean;mudar:Navegar;aoSalvar:()=>void}) {
   const consulta=useConsultaBezerreiro<DetalheOrigem|Destinacao|Enriquecimento>(`/colostro/${tipo}/${id}`,sitio,revisao),[estorno,setEstorno]=useState(false);
@@ -80,7 +82,7 @@ function OrigemDetalhada({origem,abrir}: {origem:DetalheOrigem;abrir:(tipo:Recur
     {chave:'acao',titulo:'Ação',acoes:true,celula:d=><Button variant="outline" onClick={()=>abrir('destinacoes',d.id)}>Abrir destinação</Button>},
   ]}/></section>}
   {origem.historico.enriquecimentos.length>0&&<section className="bez-secao"><h3>Enriquecimentos desta origem</h3><ul className="bez-registros">{origem.historico.enriquecimentos.map(r=><li key={r.id}><span>{formatarDataBR(r.data)} · {r.status==='ESTORNADO'?'Estornado':'Confirmado'}</span><Button variant="outline" onClick={()=>abrir('enriquecimentos',r.id)}>Abrir enriquecimento</Button></li>)}</ul></section>}
-  {!origem.historico.destinacoes.length&&!origem.historico.enriquecimentos.length&&<p className="bez-estado">Esta origem ainda não tem destinações nem enriquecimentos.</p>}
+  {!origem.historico.destinacoes.length&&!origem.historico.enriquecimentos.length&&<Empty icone={History}>Esta origem ainda não tem destinações nem enriquecimentos.</Empty>}
 </>;}
 function DestinacaoDetalhada({registro,abrir}: {registro:Destinacao;abrir:(tipo:RecursoColostro,id:string)=>void}) {return <>
   <Ficha linhas={[['Brix aplicado',registro.brix?.resultado==null?'Não aferido':`${numero(registro.brix.resultado)}%${registro.brix?.data?` · ${formatarDataBR(registro.brix.data)}`:''}`],

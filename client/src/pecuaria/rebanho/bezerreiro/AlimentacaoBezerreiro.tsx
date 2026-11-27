@@ -1,8 +1,9 @@
+import { Milk } from "lucide-react";
 import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/DatePicker';
 import { SelectCampo } from '@/financeiro/SelectCampo';
-import { TabelaFinanceira, type ColunaTabela } from '@/financeiro/financeiro-ui';
+import { TabelaFinanceira, type ColunaTabela, Empty} from '@/financeiro/financeiro-ui';
 import { navegarPara } from '../../../router';
 import { hojeOperacional } from '../leite/modelo';
 import { consultaBezerreiro, consultarBezerreiro } from './api';
@@ -95,7 +96,7 @@ export function AlimentacaoBezerreiro({sitio,config,podeLancar,revisao,aoSalvar,
     <section className="bez-painel-secao"><div className="bez-sectionhead"><h3>Fornecimentos do dia</h3><Button variant="outline" onClick={()=>mudar({aba:'custos'})}>Consultar custos</Button></div><EstadoConsulta {...ofertas} carregando={!ofertas.dados}>{ofertas.dados&&(ofertas.dados.itens.length?<>{<TabelaFinanceira icone={ICONES_TABELA.leite} rotulo="Fornecimentos do dia" itens={ofertas.dados.itens} chaveDe={chaveOferta}
         colunas={[{chave:'oferta',titulo:'Oferta',principal:true,celula:tituloOferta}, ...camposOferta,
           {chave:'status',titulo:'Situação',celula:situacaoOferta},
-          {chave:'acao',titulo:'Ação',acoes:true,celula:o=>acaoEstorno(o)??'—'}]} />}<PaginacaoBezerreiro pagina={pagina} total={ofertas.dados.total} mudar={v=>mudar({pagina:String(v)})}/></>:<p className="bez-estado">Nenhum fornecimento registrado nesta data.</p>)}</EstadoConsulta></section>
+          {chave:'acao',titulo:'Ação',acoes:true,celula:o=>acaoEstorno(o)??'—'}]} />}<PaginacaoBezerreiro pagina={pagina} total={ofertas.dados.total} mudar={v=>mudar({pagina:String(v)})}/></>:<Empty icone={Milk}>Nenhum fornecimento registrado nesta data.</Empty>)}</EstadoConsulta></section>
     {fornecer&&<FormFornecimento {...fornecer} contextoAtivo={fornecer.sitio===sitio&&fornecer.perfilId===perfil&&fornecer.data===data} aoFechar={()=>setFornecer(null)} aoSalvar={()=>{setFornecer(null);aoSalvar();}}/>}
     {estornar&&<EstornoOferta sitio={sitio} oferta={estornar} aoFechar={()=>setEstornar(null)} aoSalvar={()=>{setEstornar(null);aoSalvar();}}/>}
   </div>;

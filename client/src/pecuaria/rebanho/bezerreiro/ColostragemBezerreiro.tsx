@@ -1,3 +1,5 @@
+import { Milk, Package, PackageOpen, Snowflake } from "lucide-react";
+import { Empty } from "@/financeiro/financeiro-ui";
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AjudaCampo } from '@/components/Dica';
@@ -36,7 +38,7 @@ export function ColostragemBezerreiro({sitio,podeLancar,revisao,aoSalvar,config,
       {chave:'tipo',titulo:'Tipo',celula:o=>o.tipo==='ENRIQUECIDO'?'Enriquecido':'Não enriquecido'},{chave:'brix',titulo:'Brix',celula:o=><>{o.brix.resultado==null?'Não aferido':`${numero(o.brix.resultado)}%`}<span className="bez-subtexto">{o.brix.situacao==='ADEQUADO'?'Referência atendida':o.brix.situacao==='PENDENTE'?'Pendente':'Avaliação registrada'}</span></>},
       {chave:'fisica',titulo:'Armazenamento físico',celula:o=>textoFisico(o.origemFisica)},{chave:'livre',titulo:'Volume livre',alinhamento:'direita',celula:o=>litros(o.livreLitros)},
       {chave:'acao',titulo:'Ação',acoes:true,celula:o=><div className="bez-acoes"><Button variant="outline" onClick={()=>mudar(parametrosDetalheColostro('origens',o.id))}>Detalhes / histórico</Button>{podeLancar&&<><Button variant="outline" onClick={()=>setAcao({tipo:'brix',origem:o})}>Registrar Brix</Button>{Number(o.livreLitros)>0&&<><Button onClick={()=>setAcao({tipo:'destino',origem:o})}>Destinar</Button>{o.tipo!=='ENRIQUECIDO'&&<Button variant="outline" onClick={()=>setAcao({tipo:'enriquecer',origem:o})}>Enriquecer</Button>}</>}</>}</div>},
-    ]}/> {!consulta.dados.total&&<p className="bez-estado">Nenhuma origem confirmada. Registre uma retirada e confirme a entrada para disponibilizar o volume.</p>}<PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} tamanho={consulta.dados.tamanho??30} mudar={p=>mudar({pagina:String(p),colostro:secao==='retiradas'?'':secao,paginaLancamentos:String(paginaLancamentos)})}/></>}</EstadoConsulta>
+    ]}/> {!consulta.dados.total&&<Empty icone={Milk}>Nenhuma origem confirmada. Registre uma retirada e confirme a entrada para disponibilizar o volume.</Empty>}<PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} tamanho={consulta.dados.tamanho??30} mudar={p=>mudar({pagina:String(p),colostro:secao==='retiradas'?'':secao,paginaLancamentos:String(paginaLancamentos)})}/></>}</EstadoConsulta>
     <section className="bez-secao scroll-mt-6" id="banco-colostro"><h3>Banco de colostro</h3><BancoColostro sitio={sitio} pagina={Math.max(1,Number(params.get('paginaBanco'))||1)} paginaRetiradas={Math.max(1,Number(params.get('paginaRetiradas'))||1)} revisao={revisao} podeLancar={podeLancar} mudar={mudar} aoAcao={setAcao}/></section>
     <section className="bez-secao scroll-mt-6" id="retiradas-colostro">
       <h3>Retiradas de colostro</h3>
@@ -45,7 +47,7 @@ export function ColostragemBezerreiro({sitio,podeLancar,revisao,aoSalvar,config,
       {chave:'tipo',titulo:'Retirada',celula:r=>r.primeiraRetirada?'Primeira retirada':'Retirada seguinte'},{chave:'volume',titulo:'Volume',celula:r=>litros(r.quantidadeLitros)},{chave:'fisica',titulo:'Armazenamento',celula:r=>textoFisico(r.origemFisica)},
       {chave:'status',titulo:'Situação',celula:r=>['RASCUNHO','PENDENTE'].includes(r.status)?'Entrada pendente':r.status==='CONFIRMADO'?'Confirmado':r.status},
       {chave:'acao',titulo:'Ação',acoes:true,celula:r=>podeLancar?<div className="bez-acoes">{!r.origemId&&r.status!=='ESTORNADO'&&<Button onClick={()=>setConfirmar(r)}>Confirmar entrada</Button>}{r.status!=='ESTORNADO'&&<Button variant="outline" onClick={()=>setEstorno({id:r.id,versao:r.versao,recurso:'retiradas'})}>Estornar</Button>}</div>:'—'},
-    ]}/>{!retiradas.dados.total&&<p className="bez-estado">Nenhuma retirada registrada.</p>}<PaginacaoBezerreiro pagina={paginaLancamentos} total={retiradas.dados.total} tamanho={retiradas.dados.tamanho??30} mudar={p=>mudar({paginaLancamentos:String(p)})}/></>}</EstadoConsulta>
+    ]}/>{!retiradas.dados.total&&<Empty icone={PackageOpen}>Nenhuma retirada registrada.</Empty>}<PaginacaoBezerreiro pagina={paginaLancamentos} total={retiradas.dados.total} tamanho={retiradas.dados.tamanho??30} mudar={p=>mudar({paginaLancamentos:String(p)})}/></>}</EstadoConsulta>
     </section>
     <HistoricoColostro sitio={sitio} revisao={revisao} params={params} mudar={mudar}/>
     {contexto.erro&&<p className="bez-erro" role="alert">{contexto.erro}</p>}
@@ -147,5 +149,5 @@ function TabelaUnidadesColostro({sitio,pagina,revisao,podeLancar,situacao,mudar,
     {chave:'volume',titulo:'Volume inicial',celula:u=>litros(u.volumeLitros)},{chave:'saldo',titulo:'Saldo restante',celula:u=>litros(u.saldoRestanteLitros)},{chave:'brix',titulo:'Brix',celula:u=>u.brix?u.brix.resultado==null?'Não aferido':`${numero(u.brix.resultado)}%`:'Consultar origem'},
     {chave:'data',titulo:'Congelamento',celula:u=>formatarDataBR(u.dataCongelamento)},{chave:'status',titulo:'Situação',celula:()=> situacao==='CONGELADA'?'No banco':'Retirada · fora do banco'},
     {chave:'acao',titulo:'Ação',acoes:true,celula:u=><div className="bez-acoes"><Button variant="outline" onClick={()=>aoDetalhe(u.origemId)}>Ver origem</Button>{podeLancar&&saldoUnidadeColostro(u)>0&&<><Button disabled={!!ocupado} onClick={()=>void abrir(u,'destino')}>{ocupado===u.id?'Carregando…':'Fornecer à cria'}</Button>{u.tipo!=='ENRIQUECIDO'&&<Button disabled={!!ocupado} variant="outline" onClick={()=>void abrir(u,'enriquecer')}>Enriquecer</Button>}</>}</div>},
-  ]}/>{!consulta.dados.total&&<p className="bez-estado">{situacao==='CONGELADA'?'Nenhuma unidade congelada no banco.':'Nenhuma embalagem retirada registrada.'}</p>}<PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} mudar={mudar}/></>}{erro&&<p role="alert" className="bez-erro">{erro}</p>}</EstadoConsulta>;
+  ]}/>{!consulta.dados.total&&<Empty icone={situacao==='CONGELADA'?Snowflake:Package}>{situacao==='CONGELADA'?'Nenhuma unidade congelada no banco.':'Nenhuma embalagem retirada registrada.'}</Empty>}<PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} mudar={mudar}/></>}{erro&&<p role="alert" className="bez-erro">{erro}</p>}</EstadoConsulta>;
 }

@@ -1,8 +1,9 @@
+import { ListOrdered } from "lucide-react";
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { SubTabs } from '@/components/SubTabs';
 import { SelectCampo } from '@/financeiro/SelectCampo';
-import { CabecalhoTabela, TabelaFinanceira } from '@/financeiro/financeiro-ui';
+import { CabecalhoTabela, TabelaFinanceira, Empty} from '@/financeiro/financeiro-ui';
 import { getPropriedadeAtiva } from '../../../propriedadeScope';
 import { EstadoConsulta, useComando, useConsultaBezerreiro } from './ui';
 import { numero, ofertasConfiguracao, validarOfertas } from './modelo';
@@ -34,7 +35,7 @@ function EditorConfiguracao({sitio,config,contexto,podeLancar,aoSalvar}: {sitio:
   return <div className="bez-conteudo"><SubTabs aparencia="segmentado" variant="financeiro" ariaLabel="Configurações do bezerreiro" active={aba} onSelect={setAba} tabs={[{id:'aleitamento',label:'Aleitamento e coleiras'},{id:'brix',label:'Avaliação Brix'},{id:'colostro',label:'Fornecimento de colostro'}]}/>
     <form onSubmit={e=>{e.preventDefault();void salvar();}}><fieldset disabled={!podeLancar||comando.ocupado}>
     {aba==='aleitamento'&&<><div className="bez-sectionhead"><h3>Coleiras e fases</h3>{podeLancar&&<div className="bez-acoes">{!fases.length&&<Button variant="outline" type="button" onClick={iniciais}>Carregar rotina inicial</Button>}<Button variant="outline" type="button" onClick={()=>setFases([...fases,{identidadeId:crypto.randomUUID(),nome:'',coleiraNome:'',cor:'#006f68',litrosDia:'0',publicada:true,idadeDias:'',pesoKg:'',combinacao:'E'}])}>Adicionar fase</Button></div>}</div>
-    {!fases.length?<p className="bez-estado">Nenhuma fase configurada. Carregue a rotina inicial ou adicione uma fase.</p>:<TabelaFinanceira icone={ICONES_TABELA.coleira} rotulo="Coleiras e fases" itens={fases} chaveDe={f=>f.identidadeId} colunas={[
+    {!fases.length?<Empty icone={ListOrdered}>Nenhuma fase configurada. Carregue a rotina inicial ou adicione uma fase.</Empty>:<TabelaFinanceira icone={ICONES_TABELA.coleira} rotulo="Coleiras e fases" itens={fases} chaveDe={f=>f.identidadeId} colunas={[
       {chave:'coleira',titulo:'Coleira',principal:true,celula:f=><input aria-label={`Nome da coleira ${f.nome}`} required value={f.coleiraNome} onChange={e=>mudarFase(f.identidadeId,{coleiraNome:e.target.value})}/>},
       {chave:'cor',titulo:'Cor',celula:f=><input type="color" aria-label={`Cor da coleira ${f.nome}`} value={f.cor} onChange={e=>mudarFase(f.identidadeId,{cor:e.target.value})}/>},
       {chave:'fase',titulo:'Fase',celula:f=><input required aria-label={`Fase ${f.coleiraNome}`} value={f.nome} onChange={e=>mudarFase(f.identidadeId,{nome:e.target.value})}/>},
