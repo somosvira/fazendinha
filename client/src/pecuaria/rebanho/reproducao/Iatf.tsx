@@ -327,7 +327,7 @@ export function Iatf({
   const modeloInicioId = novo === "participantes" ? detalhe?.protocolo.id ?? "" : novo ? protocoloId : "";
   const modeloInicio = useAcoesInicioProtocolo(modeloInicioId, sitioEfetivo ?? undefined);
   const [politicaDg, setPoliticaDg] = useState<PoliticaAcompanhamento | null | undefined>(undefined);
-  useEffect(() => { let ativo = true; setPoliticaDg(undefined); if (sitioEfetivo != null) void listarPoliticasAcompanhamento(sitioEfetivo).then(politicas => { if (ativo) { const hoje = new Date().toLocaleDateString("en-CA", {timeZone:"America/Sao_Paulo"}); setPoliticaDg(politicas.filter(p => p.vigenteDesde.slice(0,10) <= hoje).sort((a,b) => b.vigenteDesde.localeCompare(a.vigenteDesde))[0] ?? null); } }).catch(() => { if (ativo) setPoliticaDg(undefined); }); return () => { ativo = false; }; }, [sitioEfetivo]);
+  useEffect(() => { let ativo = true; setPoliticaDg(undefined); if (paginaProgramacao && novo && modeloInicioId && sitioEfetivo != null) void listarPoliticasAcompanhamento(sitioEfetivo).then(politicas => { if (ativo) { const hoje = new Date().toLocaleDateString("en-CA", {timeZone:"America/Sao_Paulo"}); setPoliticaDg(politicas.filter(p => p.vigenteDesde.slice(0,10) <= hoje).sort((a,b) => b.vigenteDesde.localeCompare(a.vigenteDesde))[0] ?? null); } }).catch(() => { if (ativo) setPoliticaDg(undefined); }); return () => { ativo = false; }; }, [paginaProgramacao, novo, modeloInicioId, sitioEfetivo]);
   const regrasDg = modeloInicio.modelo?.configuracaoAcompanhamento?.regras.filter(r => r.finalidade === "DIAGNOSTICO") ?? [];
   const prazosDg = (["IA", "TE", "COBERTURA"] as const).map(tipo => {
     const regra = regrasDg.find(r => r.publico === tipo);

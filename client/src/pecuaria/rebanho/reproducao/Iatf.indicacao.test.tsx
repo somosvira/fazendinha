@@ -129,6 +129,7 @@ it("página dedicada confere o calendário antes da única gravação", async ()
  fireEvent.click(screen.getByRole("button", { name: "Modelo do protocolo" }));
  fireEvent.click(await screen.findByRole("button", { name: "Protocolo publicado · versão 2" }));
  expect(screen.getByText("Protocolo publicado · v2")).toBeTruthy();
+ await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/acompanhamento/politicas", undefined, "GET", 7));
  mudarCampo(screen.getByLabelText("Início previsto"), { target: { value: "2026-10-18" } });
  fireEvent.click(screen.getByRole("button", { name: "Ir para animais" }));
  await screen.findByRole("region", { name: "Seleção de participantes" });
